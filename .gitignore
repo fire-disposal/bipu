@@ -1,0 +1,384 @@
+# ==============================================================================
+# PROJECT SPECIFIC IGNORES
+# ==============================================================================
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ==============================================================================
+# BACKEND (Python/FastAPI) IGNORES
+# ==============================================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# PyCharm
+.idea/
+
+# Backend specific
+backend/logs/
+backend/uploads/
+backend/.python-version
+backend/uv.lock
+
+# Build artifacts
+**/build/
+**/android/
+**/ios/
+**/linux/
+**/macos/
+**/windows/
+**/web/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/pubspec.lock
+**/*.iml
+**/.idea/
+**/.vscode/
+**/gradle/
+**/gradlew*
+**/gradle-wrapper*
+**/.gradle/
+**/*.jks
+**/key.properties
+**/local.properties
+**/*.pbxuser
+**/*.mode1v3
+**/*.mode2v3
+**/*.perspectivev3
+**/*.xcworkspace/
+**/*.xcuserdata/
+**/DerivedData/
+**/.symlinks/
+**/Flutter/ephemeral/
+**/Flutter/flutter_export_environment.sh
+**/ephemeral/
+**/.plugin_symlinks/
+**/*.last_build_id
+**/*.cache/
+**/*.dill
+**/*.stamp
+**/*.json
+!**/pubspec.yaml
+!**/package.json
+!**/tsconfig.json
+!**/*.config.json
+
+# ==============================================================================
+# MOBILE (Flutter) IGNORES
+# ==============================================================================
+
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+flutter_*.png
+linked_*.ds
+unlinked.ds
+unlinked_spec.ds
+.fvm/
+
+# Flutter specific
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/build/
+mobile/*.iml
+mobile/.idea/
+mobile/.vscode/
+mobile/pubspec.lock
+
+# Android
+mobile/android/
+mobile/*.jks
+mobile/key.properties
+mobile/local.properties
+mobile/.gradle/
+mobile/gradlew
+mobile/gradlew.bat
+mobile/gradle-wrapper.jar
+mobile/gradle-wrapper.properties
+
+# iOS
+mobile/ios/
+mobile/*.pbxuser
+mobile/*.mode1v3
+mobile/*.mode2v3
+mobile/*.perspectivev3
+mobile/*.xcworkspace/
+mobile/*.xcuserdata/
+mobile/DerivedData/
+mobile/.symlinks/
+mobile/Flutter/Flutter.framework/
+mobile/Flutter/Flutter.podspec
+mobile/Flutter/ephemeral/
+mobile/Flutter/flutter_export_environment.sh
+mobile/Flutter/app.flx
+mobile/Flutter/app.zip
+mobile/Flutter/flutter_assets/
+mobile/Flutter/flutter_build/
+mobile/ServiceDefinitions.json
+
+# ==============================================================================
+# ADMIN (Flutter Web) IGNORES
+# ==============================================================================
+
+# Flutter Web
+admin/build/
+admin/.dart_tool/
+admin/.flutter-plugins
+admin/.flutter-plugins-dependencies
+admin/*.iml
+admin/.idea/
+admin/.vscode/
+admin/pubspec.lock
+
+# ==============================================================================
+# DEPLOYMENT IGNORES
+# ==============================================================================
+
+# Docker
+deployment/docker/data/
+deployment/docker/volumes/
+deployment/logs/
+
+# Nginx
+deployment/nginx/logs/
+deployment/nginx/cache/
+
+# Scripts
+deployment/scripts/logs/
+deployment/scripts/tmp/
+
+# ==============================================================================
+# GENERAL IGNORES
+# ==============================================================================
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# OS generated files
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+*.war
+*.ear
+*.sar
+*.class
+
+# Profiling
+*.prof
+
+# Node (if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Backup files
+*~
+*.swp
+*.swo
+
+# Local development
+local/
+local_*
+dev/
+.development/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+.nox/
+
+# Ruff
+.ruff_cache/
+
+# Security
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Misc
+*.pid
+*.seed
+*.pid.lock
