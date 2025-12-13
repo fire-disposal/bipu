@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from app.api.router import api_router
 from app.core.config import settings
+from app.core.exceptions import register_exception_handlers
 from app.db.database import init_db
 from app.core.logging import setup_logging
 
@@ -39,6 +40,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # 注册异常处理器
+    register_exception_handlers(app)
+    
     # 注册路由
     app.include_router(api_router, prefix="/api")
 

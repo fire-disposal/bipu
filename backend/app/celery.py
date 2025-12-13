@@ -1,12 +1,17 @@
+"""Celery配置"""
+import os
 from celery import Celery
 from app.core.config import settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
+# 获取容器角色
+CONTAINER_ROLE = os.getenv("CONTAINER_ROLE", "backend")
+
 # 创建Celery实例
 celery_app = Celery(
-    "fastapi-app",
+    "bipupu",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
     include=["app.tasks"]
@@ -24,32 +29,31 @@ celery_app.conf.update(
     task_soft_time_limit=25 * 60,  # 25分钟
     worker_prefetch_multiplier=1,
     worker_max_tasks_per_child=1000,
+    beat_schedule={
+        "cleanup-old-messages": {
+            "task": "app.tasks.cleanup.cleanup_old_messages",
+            "schedule": 3600.0,  # 每小时执行一次
+        },
+        "cleanup-old-notifications": {
+            "task": "app.tasks.cleanup.cleanup_old_notifications",
+            "schedule": 3600.0,  # 每小时执行一次
+        },
+        "update-device-status": {
+            "task": "app.tasks.device.update_device_status",
+            "schedule": 300.0,  # 每5分钟执行一次
+        },
+    }
 )
 
-# 配置任务路由
-celery_app.conf.task_routes = {
-    "app.tasks.*": {"queue": "default"},
-}
+# 根据容器角色配置不同的日志级别
+if CONTAINER_ROLE == "worker":
+    celery_app.conf.worker_log_level = "INFO"
+    logger.info("Celery worker configured")
+elif CONTAINER_ROLE == "beat":
+    celery_app.conf.beat_log_level = "INFO"
+    logger.info("Celery beat configured")
+else:
+    logger.info("Celery app configured for backend")
 
-
-@celery_app.task(bind=True)
-def debug_task(self):
-    """调试任务"""
-    logger.info(f"Request: {self.request!r}")
-    return {"status": "success", "task_id": self.request.id}
-
-
-@celery_app.on_after_configure.connect
-def setup_periodic_tasks(sender, **kwargs):
-    """配置定时任务"""
-    # 每分钟执行一次调试任务
-    sender.add_periodic_task(
-        60.0,  # 60秒
-        debug_task.s(),
-        name="debug every minute"
-    )
-    logger.info("Periodic tasks configured")
-
-
-if __name__ == "__main__":
-    celery_app.start()
+# 自动发现任务
+celery_app.autodiscover_tasks(["app.tasks"])

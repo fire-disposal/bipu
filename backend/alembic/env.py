@@ -11,6 +11,12 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from app.db.database import Base
 from app.core.config import settings
 
+# 导入所有模型以确保它们被Alembic识别
+from app.models.user import User
+from app.models.device import Device
+from app.models.message import Message
+from app.models.notification import Notification
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

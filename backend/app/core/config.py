@@ -24,8 +24,14 @@ class Settings(BaseSettings):
     # CORS配置
     ALLOWED_HOSTS: List[str] = ["*"]
     
-    # 安全配置
+    # JWT配置
     SECRET_KEY: str = "your-secret-key-here"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    
+    # 安全配置
+    PASSWORD_HASH_ALGORITHM: str = "bcrypt"
     
     # 日志配置
     LOG_LEVEL: str = "INFO"

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from typing import Optional
 
@@ -14,12 +14,17 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     """创建用户模式"""
-    pass
+    password: str = Field(..., min_length=6, max_length=128)
 
 
-class UserUpdate(UserBase):
+class UserUpdate(BaseModel):
     """更新用户模式"""
-    pass
+    email: Optional[EmailStr] = None
+    username: Optional[str] = None
+    full_name: Optional[str] = None
+    is_active: Optional[bool] = None
+    is_superuser: Optional[bool] = None
+    password: Optional[str] = Field(None, min_length=6, max_length=128)
 
 
 class UserResponse(UserBase):
@@ -38,3 +43,21 @@ class UserList(BaseModel):
     total: int
     page: int
     size: int
+
+
+class UserLogin(BaseModel):
+    """用户登录模式"""
+    username: str
+    password: str
+
+
+class Token(BaseModel):
+    """令牌响应模式"""
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+
+
+class TokenData(BaseModel):
+    """令牌数据模式"""
+    username: Optional[str] = None
