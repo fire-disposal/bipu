@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/utils/constants.dart';
+import '../../../core/ble/bluetooth_service.dart';
 
 class DeviceScanPage extends StatefulWidget {
   const DeviceScanPage({super.key});
@@ -18,7 +19,6 @@ class _DeviceScanPageState extends State<DeviceScanPage> {
   @override
   void initState() {
     super.initState();
-    // TODO: Logger.logUserAction('进入设备扫描页面'); 需补充 logger 方法实现或移除
     _startScan();
   }
 
@@ -178,43 +178,81 @@ class _DeviceScanPageState extends State<DeviceScanPage> {
     );
   }
 
-  void _startScan() {
+  void _startScan() async {
+    // 检查蓝牙是否支持
+    final bluetoothService = BluetoothService.instance;
+    if (!bluetoothService.isInitialized) {
+      await bluetoothService.initialize();
+    }
+
     setState(() {
       _isScanning = true;
       _devices = [];
     });
 
-    // 模拟扫描过程
-    _scanTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (timer.tick >= 5) {
-        _stopScan();
-        return;
-      }
+    try {
+      // 开始真实扫描
+      await bluetoothService.startScan();
 
-      // 模拟发现设备
-      if (mounted) {
-        setState(() {
-          _devices.addAll([
-            const BluetoothDeviceInfo(
-              id: 'pupu_001',
-              name: 'pupu机-001',
-              isConnected: false,
-              signalStrength: -45,
-              batteryLevel: 85,
-            ),
-            const BluetoothDeviceInfo(
-              id: 'pupu_002',
-              name: 'pupu机-002',
-              isConnected: true,
-              signalStrength: -60,
-              batteryLevel: 92,
-            ),
-          ]);
+      // 监听扫描结果
+      _scanTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
+        if (timer.tick >= 20) {
+          // 10秒超时
+          _stopScan();
+          return;
+        }
+
+        // 获取最新的扫描结果
+        bluetoothService.scanResults.listen((scanResults) {
+          if (mounted) {
+            setState(() {
+              _devices = scanResults
+                  .where((result) => result.device.name.isNotEmpty)
+                  .map(
+                    (result) => BluetoothDeviceInfo(
+                      id: result.device.remoteId.str,
+                      name: result.device.name,
+                      isConnected: result.device.isConnected,
+                      signalStrength: result.rssi,
+                      batteryLevel: 0, // 扫描时无法获取电量，使用0表示未知
+                    ),
+                  )
+                  .toList();
+            });
+          }
         });
+      });
+    } catch (e) {
+      // 如果真实扫描失败，显示模拟数据
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('蓝牙扫描失败：$e，显示模拟数据')));
+        _showMockDevices();
       }
-    });
+    }
+  }
 
-    // TODO: Logger.logBluetooth('开始扫描设备'); 需补充 logger 方法实现或移除
+  void _showMockDevices() {
+    // 显示模拟设备数据，用于不支持蓝牙的平台
+    setState(() {
+      _devices = [
+        const BluetoothDeviceInfo(
+          id: 'mock_001',
+          name: '模拟pupu机-001',
+          isConnected: false,
+          signalStrength: -45,
+          batteryLevel: 85,
+        ),
+        const BluetoothDeviceInfo(
+          id: 'mock_002',
+          name: '模拟pupu机-002',
+          isConnected: true,
+          signalStrength: -60,
+          batteryLevel: 92,
+        ),
+      ];
+    });
   }
 
   void _stopScan() {
@@ -224,15 +262,15 @@ class _DeviceScanPageState extends State<DeviceScanPage> {
         _isScanning = false;
       });
     }
-    // TODO: Logger.logBluetooth('停止扫描设备'); 需补充 logger 方法实现或移除
   }
 
   void _handleDeviceTap(BluetoothDeviceInfo device) {
-    // TODO: Logger.logUserAction('点击设备'); 需补充 logger 方法实现或移除
-
     if (device.isConnected) {
-      // 已连接的设备，跳转到详情页
-      context.push('/device-detail');
+      // 已连接的设备，跳转到控制页面
+      context.push(
+        '/device-control',
+        extra: {'deviceId': device.id, 'deviceName': device.name},
+      );
     } else {
       // 未连接的设备，显示连接选项
       _showConnectionDialog(device);
@@ -292,8 +330,6 @@ class _DeviceScanPageState extends State<DeviceScanPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('已连接到 ${device.name}')));
-
-      // TODO: Logger.logBluetooth('设备连接成功'); 需补充 logger 方法实现或移除
     } catch (e) {
       if (!mounted) return;
 
@@ -302,8 +338,6 @@ class _DeviceScanPageState extends State<DeviceScanPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('连接失败: $e')));
-
-      // TODO: Logger.logBluetooth('设备连接失败'); 需补充 logger 方法实现或移除
     }
   }
 }

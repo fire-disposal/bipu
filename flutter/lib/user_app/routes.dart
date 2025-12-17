@@ -13,14 +13,12 @@ import 'pages/profile/privacy_settings_page.dart';
 
 import 'pages/message/message_list_page.dart';
 import 'pages/message/message_detail_page.dart';
-import 'pages/message/voice_input_page.dart';
 import 'pages/message/export_print_page.dart';
-
-import 'pages/cosmos_comm/cosmos_comm_settings_page.dart';
-import 'pages/cosmos_comm/daily_fortune_page.dart';
 
 import 'pages/device/device_scan_page.dart';
 import 'pages/device/device_detail_page.dart';
+import 'pages/device/device_control_page.dart';
+import 'pages/device/device_test_page.dart';
 
 import 'pages/home/home_page.dart';
 
@@ -72,20 +70,8 @@ final GoRouter router = GoRouter(
           builder: (context, state) => const MessageDetailPage(),
         ),
         GoRoute(
-          path: 'voice-input',
-          builder: (context, state) => const VoiceInputPage(),
-        ),
-        GoRoute(
           path: 'export-print',
           builder: (context, state) => const ExportPrintPage(),
-        ),
-        GoRoute(
-          path: 'cosmos-comm-settings',
-          builder: (context, state) => const CosmosCommSettingsPage(),
-        ),
-        GoRoute(
-          path: 'daily-fortune',
-          builder: (context, state) => const DailyFortunePage(),
         ),
         GoRoute(
           path: 'device-scan',
@@ -94,6 +80,20 @@ final GoRouter router = GoRouter(
         GoRoute(
           path: 'device-detail',
           builder: (context, state) => const DeviceDetailPage(),
+        ),
+        GoRoute(
+          path: 'device-control',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>?;
+            return DeviceControlPage(
+              deviceId: extra?['deviceId'] ?? '',
+              deviceName: extra?['deviceName'] ?? '未知设备',
+            );
+          },
+        ),
+        GoRoute(
+          path: 'device-test',
+          builder: (context, state) => const DeviceTestPage(),
         ),
       ],
     ),

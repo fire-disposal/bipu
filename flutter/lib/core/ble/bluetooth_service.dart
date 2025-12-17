@@ -17,10 +17,19 @@ class BluetoothService {
     if (_initialized) return;
 
     try {
+      // 检查当前平台是否支持蓝牙
+      if (!await _isBluetoothSupported()) {
+        Logger.warning('当前平台不支持蓝牙功能');
+        _initialized = true; // 标记为已初始化，避免重复尝试
+        return;
+      }
+
       // 检查蓝牙是否可用
       final isSupported = await FlutterBluePlus.isSupported;
       if (!isSupported) {
-        throw Exception('蓝牙不可用');
+        Logger.warning('设备不支持蓝牙');
+        _initialized = true;
+        return;
       }
 
       // 检查蓝牙是否开启
@@ -34,7 +43,40 @@ class BluetoothService {
       Logger.info('蓝牙服务初始化完成');
     } catch (e) {
       Logger.error('蓝牙服务初始化失败: $e');
-      rethrow;
+      // 在非移动平台上，蓝牙初始化失败是预期的，不抛出异常
+      if (await _isMobilePlatform()) {
+        rethrow;
+      } else {
+        Logger.info('在非移动平台上跳过蓝牙初始化');
+        _initialized = true;
+      }
+    }
+  }
+
+  /// 检查当前平台是否支持蓝牙功能
+  Future<bool> _isBluetoothSupported() async {
+    try {
+      // 尝试访问FlutterBluePlus，如果抛出UnsupportedError则说明不支持
+      await FlutterBluePlus.isSupported;
+      return true;
+    } catch (e) {
+      if (e is UnsupportedError) {
+        return false;
+      }
+      // 其他错误也视为不支持
+      return false;
+    }
+  }
+
+  /// 检查是否为移动平台（iOS/Android）
+  Future<bool> _isMobilePlatform() async {
+    // 这里可以根据需要添加更详细的平台检测逻辑
+    // 目前简化为：如果isSupported不抛出UnsupportedError，则认为是移动平台
+    try {
+      await FlutterBluePlus.isSupported;
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 

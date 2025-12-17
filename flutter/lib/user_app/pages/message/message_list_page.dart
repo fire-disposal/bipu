@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/utils/constants.dart';
+import '../../../core/ble/device_control_service.dart';
+import '../../../core/ble/ble_protocol.dart';
 
 class MessageListPage extends StatefulWidget {
   const MessageListPage({super.key});
@@ -18,7 +20,6 @@ class _MessageListPageState extends State<MessageListPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    // TODO: Logger.logUserAction('进入消息列表页面'); 需补充 logger 方法实现或移除
   }
 
   @override
@@ -102,11 +103,54 @@ class _MessageListPageState extends State<MessageListPage>
   Widget? _buildFloatingActionButton() {
     return FloatingActionButton.extended(
       onPressed: () {
-        context.push('/voice-input');
+        _showMessageInputDialog();
       },
-      icon: const Icon(Icons.mic),
-      label: Text(_selectedTab == 0 ? '发送消息' : '回复消息'),
+      icon: const Icon(Icons.edit),
+      label: Text(_selectedTab == 0 ? '新建消息' : '回复消息'),
     );
+  }
+
+  void _showMessageInputDialog() {
+    final textController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(_selectedTab == 0 ? '发送新消息' : '回复消息'),
+        content: TextField(
+          controller: textController,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            hintText: '请输入消息内容...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              final message = textController.text.trim();
+              if (message.isNotEmpty) {
+                Navigator.of(context).pop();
+                _sendMessage(message);
+              }
+            },
+            icon: const Icon(Icons.send),
+            label: const Text('发送'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _sendMessage(String message) {
+    // TODO: 实现消息发送逻辑，包括蓝牙设备通信
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('消息已发送: $message')));
   }
 }
 
@@ -248,7 +292,6 @@ Widget _buildEmptyState(
 }
 
 void _handleMessageTap(BuildContext context, MessageInfo message) {
-  // TODO: Logger.logUserAction('查看消息详情'); 需补充 logger 方法实现或移除
   context.push('/message-detail', extra: message);
 }
 

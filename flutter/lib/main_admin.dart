@@ -3,12 +3,42 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'core/utils/logger.dart';
-import 'admin_app/pages/admin_main_page.dart';
-import 'admin_app/pages/login_page.dart';
+import 'package:flutter/services.dart';
+import 'core/core.dart';
+import 'core/utils/injected_dependencies.dart';
+import 'admin_app/routes.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 初始化核心服务
+  await _initializeCoreServices();
+
+  // 设置系统UI样式
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+    ),
+  );
+
   runApp(const AdminApp());
+}
+
+/// 初始化核心服务
+Future<void> _initializeCoreServices() async {
+  try {
+    // 初始化依赖注入
+    await initDependencies();
+
+    // 初始化API客户端
+    await ApiClient.instance.initialize();
+
+    Logger.info('管理端核心服务初始化完成');
+  } catch (e) {
+    Logger.error('管理端核心服务初始化失败: $e');
+    rethrow;
+  }
 }
 
 /// 管理端应用主类
@@ -17,25 +47,19 @@ class AdminApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Bipupu 管理端',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
-      home: const AdminMainPage(),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
       debugShowCheckedModeBanner: false,
+      routerConfig: adminRouter,
+      builder: (context, child) {
+        return GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
-  }
-}
-
-/// 管理端应用主页（简化版，直接跳转到主页面）
-class AdminAppHome extends StatelessWidget {
-  const AdminAppHome({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    // 直接跳转到主页面，后续可以添加登录验证逻辑
-    return const AdminMainPage();
   }
 }

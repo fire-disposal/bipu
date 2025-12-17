@@ -33,10 +33,7 @@ class DeviceDetailPage extends StatelessWidget {
                 const SizedBox(width: 12),
                 const Text(
                   deviceName,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 Chip(

@@ -20,7 +20,6 @@ class _LoginPageState extends State<LoginPage> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     _formKey.currentState!.save();
-    // TODO: 调用核心 API 进行登录
     await Future.delayed(const Duration(seconds: 1));
     setState(() => _loading = false);
     ScaffoldMessenger.of(

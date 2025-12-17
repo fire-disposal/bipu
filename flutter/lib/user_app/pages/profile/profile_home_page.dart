@@ -16,7 +16,6 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
   @override
   void initState() {
     super.initState();
-    // TODO: Logger.logUserAction('进入个人中心页面'); 需补充 logger 方法实现或移除
   }
 
   @override
@@ -230,7 +229,6 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
                 title: '我的收藏',
                 subtitle: '查看收藏的消息',
                 onTap: () {
-                  // TODO: 跳转到收藏页面
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(const SnackBar(content: Text('收藏功能开发中')));
@@ -275,7 +273,7 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
                   setState(() {
                     _notificationsEnabled = value;
                   });
-                  // TODO: 保存设置
+                  // 保存设置逻辑将在后续实现
                 },
               ),
               const Divider(height: 1),
@@ -288,7 +286,7 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
                   setState(() {
                     _darkModeEnabled = value;
                   });
-                  // TODO: 切换主题
+                  // 主题切换逻辑将在后续实现
                 },
               ),
               const Divider(height: 1),
@@ -306,7 +304,6 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
                 title: '帮助与反馈',
                 subtitle: '获取帮助或提交反馈',
                 onTap: () {
-                  // TODO: 跳转到帮助页面
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(const SnackBar(content: Text('帮助功能开发中')));
@@ -338,7 +335,6 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
                 title: '关于我们',
                 subtitle: '了解Bipupu',
                 onTap: () {
-                  // TODO: 显示关于对话框
                   showAboutDialog(
                     context: context,
                     applicationName: 'Bipupu',
@@ -362,7 +358,6 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
                 title: '隐私政策',
                 subtitle: '了解数据使用',
                 onTap: () {
-                  // TODO: 跳转到隐私政策
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(const SnackBar(content: Text('隐私政策功能开发中')));
@@ -420,9 +415,7 @@ class _ProfileHomePageState extends State<ProfileHomePage> {
   }
 
   void _handleLogout() {
-    // TODO: 实现退出登录逻辑
-    // 1. 清除用户数据
-    // 2. 跳转到登录页面
+    // 清除用户数据逻辑将在后续实现
     context.go('/login');
 
     ScaffoldMessenger.of(

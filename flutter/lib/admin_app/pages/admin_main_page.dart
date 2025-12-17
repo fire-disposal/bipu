@@ -1,74 +1,72 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../widgets/admin_scaffold.dart';
+import '../state/admin_state.dart';
 import 'dashboard_page.dart';
 import 'user_management_page.dart';
-// TODO: 导入其他管理页面
-// import 'device_management_page.dart';
-// import 'message_management_page.dart';
-// import 'notification_management_page.dart';
 
 /// 管理端主页面，包含侧边栏导航和内容区域
-class AdminMainPage extends StatefulWidget {
+class AdminMainPage extends StatelessWidget {
   const AdminMainPage({super.key});
 
   @override
-  State<AdminMainPage> createState() => _AdminMainPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => AdminNavigationCubit(),
+      child: const _AdminMainPageContent(),
+    );
+  }
 }
 
-class _AdminMainPageState extends State<AdminMainPage> {
-  int _selectedIndex = 0;
-  String _pageTitle = '仪表盘';
-
-  // 页面标题映射
-  final List<String> _pageTitles = [
-    '仪表盘',
-    '用户管理',
-    '设备管理',
-    '消息管理',
-    '通知管理',
-    '数据分析',
-    '系统设置',
-  ];
+class _AdminMainPageContent extends StatelessWidget {
+  const _AdminMainPageContent();
 
   @override
   Widget build(BuildContext context) {
+    final navigationCubit = context.watch<AdminNavigationCubit>();
+
     return AdminScaffold(
-      title: _pageTitle,
-      selectedIndex: _selectedIndex,
-      onNavigationChanged: _onNavigationChanged,
-      body: _buildCurrentPage(),
-      actions: _buildPageActions(),
+      title: _getPageTitle(navigationCubit.selectedIndex),
+      selectedIndex: navigationCubit.selectedIndex,
+      onNavigationChanged: navigationCubit.changeIndex,
+      body: _buildCurrentPage(context, navigationCubit.selectedIndex),
+      actions: _buildPageActions(context, navigationCubit.selectedIndex),
     );
   }
 
-  Widget _buildCurrentPage() {
-    switch (_selectedIndex) {
+  String _getPageTitle(int index) {
+    const titles = ['仪表盘', '用户管理', '设备管理', '消息管理', '通知管理', '数据分析', '系统设置'];
+    return titles[index];
+  }
+
+  Widget _buildCurrentPage(BuildContext context, int selectedIndex) {
+    switch (selectedIndex) {
       case 0:
         return const DashboardPage();
       case 1:
         return const UserManagementPage();
       case 2:
-        return _buildPlaceholderPage('设备管理');
+        return _buildPlaceholderPage(context, '设备管理');
       case 3:
-        return _buildPlaceholderPage('消息管理');
+        return _buildPlaceholderPage(context, '消息管理');
       case 4:
-        return _buildPlaceholderPage('通知管理');
+        return _buildPlaceholderPage(context, '通知管理');
       case 5:
-        return _buildAnalyticsPage();
+        return _buildAnalyticsPage(context);
       case 6:
-        return _buildSettingsPage();
+        return _buildSettingsPage(context);
       default:
         return const DashboardPage();
     }
   }
 
-  List<Widget>? _buildPageActions() {
-    switch (_selectedIndex) {
+  List<Widget>? _buildPageActions(BuildContext context, int selectedIndex) {
+    switch (selectedIndex) {
       case 1: // 用户管理
         return [
           IconButton(
             icon: const Icon(Icons.person_add),
-            onPressed: () => _showAddUserDialog(),
+            onPressed: () => _showAddUserDialog(context),
             tooltip: '添加用户',
           ),
         ];
@@ -76,7 +74,7 @@ class _AdminMainPageState extends State<AdminMainPage> {
         return [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () => _showAddDeviceDialog(),
+            onPressed: () => _showAddDeviceDialog(context),
             tooltip: '添加设备',
           ),
         ];
@@ -84,7 +82,7 @@ class _AdminMainPageState extends State<AdminMainPage> {
         return [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () => _showAddMessageDialog(),
+            onPressed: () => _showAddMessageDialog(context),
             tooltip: '发送消息',
           ),
         ];
@@ -92,7 +90,7 @@ class _AdminMainPageState extends State<AdminMainPage> {
         return [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () => _showAddNotificationDialog(),
+            onPressed: () => _showAddNotificationDialog(context),
             tooltip: '发送通知',
           ),
         ];
@@ -101,22 +99,19 @@ class _AdminMainPageState extends State<AdminMainPage> {
     }
   }
 
-  void _onNavigationChanged(int index) {
-    setState(() {
-      _selectedIndex = index;
-      _pageTitle = _pageTitles[index];
-    });
+  Widget _buildAnalyticsPage(BuildContext context) {
+    return Center(
+      child: Text('数据分析页面开发中...', style: Theme.of(context).textTheme.bodyLarge),
+    );
   }
 
-  Widget _buildAnalyticsPage() {
-    return const Center(child: Text('数据分析页面开发中...'));
+  Widget _buildSettingsPage(BuildContext context) {
+    return Center(
+      child: Text('系统设置页面开发中...', style: Theme.of(context).textTheme.bodyLarge),
+    );
   }
 
-  Widget _buildSettingsPage() {
-    return const Center(child: Text('系统设置页面开发中...'));
-  }
-
-  Widget _buildPlaceholderPage(String pageName) {
+  Widget _buildPlaceholderPage(BuildContext context, String pageName) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -143,29 +138,25 @@ class _AdminMainPageState extends State<AdminMainPage> {
     );
   }
 
-  void _showAddUserDialog() {
-    // TODO: 实现添加用户对话框
+  void _showAddUserDialog(BuildContext context) {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('添加用户功能开发中...')));
   }
 
-  void _showAddDeviceDialog() {
-    // TODO: 实现添加设备对话框
+  void _showAddDeviceDialog(BuildContext context) {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('添加设备功能开发中...')));
   }
 
-  void _showAddMessageDialog() {
-    // TODO: 实现发送消息对话框
+  void _showAddMessageDialog(BuildContext context) {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('发送消息功能开发中...')));
   }
 
-  void _showAddNotificationDialog() {
-    // TODO: 实现发送通知对话框
+  void _showAddNotificationDialog(BuildContext context) {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('发送通知功能开发中...')));

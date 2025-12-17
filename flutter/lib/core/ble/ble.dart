@@ -6,3 +6,5 @@ library;
 export 'bluetooth_service.dart';
 export 'ble_exceptions.dart';
 export 'ble_models.dart';
+export 'ble_protocol.dart';
+export 'device_control_service.dart';

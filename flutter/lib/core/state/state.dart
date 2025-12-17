@@ -4,3 +4,4 @@
 library;
 
 export 'app_state.dart';
+export 'base_cubit.dart';

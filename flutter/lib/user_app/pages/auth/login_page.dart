@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/utils/constants.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/validators.dart';
-// TODO: validators.dart 需实现或补充
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -263,11 +262,6 @@ class _LoginPageState extends State<LoginPage> {
     try {
       Logger.logUserAction('用户尝试登录');
 
-      // TODO: 实现登录逻辑
-      // 1. 调用登录API
-      // 2. 保存用户信息
-      // 3. 跳转到主页
-
       // 模拟登录过程
       await Future.delayed(const Duration(seconds: 2));
 
@@ -280,7 +274,7 @@ class _LoginPageState extends State<LoginPage> {
         context,
       ).showSnackBar(const SnackBar(content: Text('登录成功')));
     } catch (e) {
-      Logger.logBluetooth('登录失败');
+      Logger.error('登录失败: $e');
 
       if (!mounted) return;
 

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../utils/logger.dart';
+import '../utils/app_config.dart';
 
 /// API 客户端类 - 单例模式
 class ApiClient {
@@ -19,12 +20,13 @@ class ApiClient {
 
     try {
       _dio = Dio();
+      final appConfig = AppConfig();
 
       // 配置基础选项
       _dio.options = BaseOptions(
-        baseUrl: 'http://localhost:8084/api', // TODO: 从配置读取
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
+        baseUrl: appConfig.baseUrl,
+        connectTimeout: Duration(seconds: appConfig.connectionTimeout),
+        receiveTimeout: Duration(seconds: appConfig.receiveTimeout),
         headers: {'Content-Type': 'application/json'},
       );
 
