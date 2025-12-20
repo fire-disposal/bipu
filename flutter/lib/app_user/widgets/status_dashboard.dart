@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../user_app/state/device_control_state.dart';
+import '../state/device_control_state.dart';
 
 /// 现代状态栏Dashboard组件
 /// 显示设备连接状态、电池电量、信号强度等信息

@@ -1,5 +1,5 @@
-import 'user_app/main.dart' as user_app;
-import 'admin_app/main.dart' as admin_app;
+import 'app_user/main.dart' as app_user;
+import 'app_admin/main.dart' as app_admin;
 
 /// 应用启动选择器
 /// 根据运行参数决定启动用户端还是管理端
@@ -11,8 +11,8 @@ void main() {
   );
 
   if (appType == 'admin') {
-    admin_app.main();
+    app_admin.main();
   } else {
-    user_app.main();
+    app_user.main();
   }
 }

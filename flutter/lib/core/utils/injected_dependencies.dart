@@ -9,8 +9,8 @@ import '../ble/device_control_service.dart';
 import 'logger.dart';
 import 'app_config.dart';
 // User App State
-import '../../user_app/state/user_data_cubit.dart' as user_data;
-import '../../user_app/state/device_control_state.dart';
+import '../../app_user/state/user_data_cubit.dart' as user_data;
+import '../../app_user/state/device_control_state.dart';
 
 final getIt = GetIt.instance;
 

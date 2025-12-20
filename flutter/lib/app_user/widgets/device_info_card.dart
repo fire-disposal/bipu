@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../user_app/state/device_control_state.dart';
+import '../state/device_control_state.dart';
 
 /// 设备信息卡片组件
 /// 显示详细的设备信息和状态

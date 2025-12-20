@@ -1,6 +1,6 @@
 /// Core BLE 模块
 /// 提供蓝牙通信功能
-/// 供 user_app 和 admin_app 共用
+/// 供 app_user 和 app_admin 共用
 library;
 
 export 'bluetooth_service.dart';

@@ -2,7 +2,7 @@
 
 ## 1. 架构与分层
 
-- 项目采用 core（核心能力）+ user_app/admin_app（业务实现）分层，结构清晰，便于扩展和维护。
+- 项目采用 core（核心能力）+ app_user/app_admin（业务实现）分层，结构清晰，便于扩展和维护。
 - 依赖注入通过 [`injected_dependencies.dart`](lib/core/utils/injected_dependencies.dart:1) 统一管理，支持多端解耦和测试。
 
 ## 2. 核心服务实现
@@ -13,7 +13,7 @@
 
 ## 3. 业务分层与一致性
 
-- user_app/admin_app 均采用 State/Cubit 进行状态管理，业务状态与 UI 解耦，便于测试和维护。
+- app_user/app_admin 均采用 State/Cubit 进行状态管理，业务状态与 UI 解耦，便于测试和维护。
 - 业务数据模型、消息、设备、用户等均有独立类型，数据流动清晰。
 - 页面、组件、状态、路由分离，符合现代 Flutter 最佳实践。
 

@@ -1,5 +1,5 @@
 /// Core 模块初始化文件
-/// 包含应用的核心功能，供 user_app 和 admin_app 共用
+/// 包含应用的核心功能，供 app_user 和 app_admin 共用
 ///
 /// 主要功能：
 /// - API 通信

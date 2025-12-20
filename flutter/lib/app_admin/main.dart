@@ -1,5 +1,5 @@
 /// 管理端应用入口文件
-/// 加载 admin_app 模块，提供管理功能
+/// 加载 app_admin 模块，提供管理功能
 library;
 
 import 'package:flutter/material.dart';
