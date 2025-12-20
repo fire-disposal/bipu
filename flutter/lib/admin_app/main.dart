@@ -4,9 +4,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'core/core.dart';
-import 'core/utils/injected_dependencies.dart';
-import 'admin_app/routes.dart';
+import '../core/core.dart';
+import '../core/utils/injected_dependencies.dart';
+import 'routes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

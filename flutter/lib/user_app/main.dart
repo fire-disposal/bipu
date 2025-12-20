@@ -5,10 +5,11 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'core/core.dart';
-import 'core/utils/injected_dependencies.dart';
-import 'user_app/routes.dart';
-import 'user_app/state/user_data_cubit.dart' as user_data;
+import '../core/core.dart';
+import '../core/utils/injected_dependencies.dart';
+import 'routes.dart';
+import 'state/user_data_cubit.dart' as user_data;
+import 'state/device_control_state.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,8 +61,11 @@ class UserApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => get<user_data.UserDataCubit>(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (context) => user_data.UserDataCubit()),
+        BlocProvider(create: (context) => DeviceControlCubit()),
+      ],
       child: MaterialApp.router(
         title: 'Bipupu 寻呼机',
         theme: AppTheme.lightTheme,

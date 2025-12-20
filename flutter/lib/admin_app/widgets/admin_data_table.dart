@@ -83,7 +83,7 @@ class _AdminDataTableState<T> extends State<AdminDataTable<T>> {
                   headingRowColor: WidgetStateProperty.all(
                     Theme.of(
                       context,
-                    ).colorScheme.surfaceVariant.withOpacity(0.3),
+                    ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
                   ),
                   dataRowColor: WidgetStateProperty.all(
                     Theme.of(context).colorScheme.surface,
@@ -135,7 +135,7 @@ class _AdminDataTableState<T> extends State<AdminDataTable<T>> {
                 filled: true,
                 fillColor: Theme.of(
                   context,
-                ).colorScheme.surfaceVariant.withOpacity(0.3),
+                ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 8,

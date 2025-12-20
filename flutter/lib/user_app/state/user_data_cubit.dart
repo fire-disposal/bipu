@@ -1,5 +1,6 @@
 /// 用户数据管理Cubit
 /// 管理设备、消息、用户资料等真实数据
+library;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:bipupu_flutter/core/ble/ble_protocol.dart';

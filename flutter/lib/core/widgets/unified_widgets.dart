@@ -187,7 +187,7 @@ class CoreTextField extends StatelessWidget {
         filled: true,
         fillColor: Theme.of(
           context,
-        ).colorScheme.surfaceVariant.withOpacity(0.3),
+        ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
       ),
     );
   }

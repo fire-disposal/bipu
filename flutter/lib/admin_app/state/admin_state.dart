@@ -25,7 +25,7 @@ class AdminSuccessState extends AdminState {
 
 /// 管理端Cubit基类
 abstract class AdminCubit<T extends AdminState> extends BaseCubit<T> {
-  AdminCubit(T initialState) : super(initialState);
+  AdminCubit(super.initialState);
 }
 
 /// 管理端导航Cubit

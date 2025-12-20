@@ -1,5 +1,5 @@
-import 'main_user.dart' as user_app;
-import 'main_admin.dart' as admin_app;
+import 'user_app/main.dart' as user_app;
+import 'admin_app/main.dart' as admin_app;
 
 /// 应用启动选择器
 /// 根据运行参数决定启动用户端还是管理端

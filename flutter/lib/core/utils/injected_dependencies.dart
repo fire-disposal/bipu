@@ -10,6 +10,7 @@ import 'logger.dart';
 import 'app_config.dart';
 // User App State
 import '../../user_app/state/user_data_cubit.dart' as user_data;
+import '../../user_app/state/device_control_state.dart';
 
 final getIt = GetIt.instance;
 
@@ -74,6 +75,12 @@ Future<void> _initAppSpecificDependencies() async {
 
   // 用户数据管理
   getIt.registerLazySingleton(() => user_data.UserDataCubit());
+
+  // 设备控制管理
+  getIt.registerLazySingleton(
+    () =>
+        DeviceControlCubit(deviceControlService: getIt<DeviceControlService>()),
+  );
 }
 
 void resetDependencies() {

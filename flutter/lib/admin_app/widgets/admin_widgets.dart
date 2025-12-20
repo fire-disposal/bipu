@@ -1,5 +1,6 @@
 /// 管理端组件库导出文件
 /// 统一导出所有管理端专用组件
+library;
 
 export 'admin_layout.dart';
 export 'admin_sidebar.dart';

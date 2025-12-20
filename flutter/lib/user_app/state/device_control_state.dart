@@ -3,7 +3,6 @@
 library;
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:equatable/equatable.dart';
 import 'package:bipupu_flutter/core/ble/ble_protocol.dart';
 import 'package:bipupu_flutter/core/ble/device_control_service.dart';
 import 'package:bipupu_flutter/core/state/base_cubit.dart';

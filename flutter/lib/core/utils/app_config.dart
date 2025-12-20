@@ -21,11 +21,11 @@ class AppConfig {
   String get fullVersion => '$_appVersion+$_buildNumber';
 
   /// 是否启用调试模式
-  bool get isDebugMode => bool.fromEnvironment('DEBUG', defaultValue: false);
+  bool get isDebugMode => const bool.fromEnvironment('DEBUG', defaultValue: false);
 
   /// 是否启用日志
   bool get enableLogging =>
-      bool.fromEnvironment('ENABLE_LOGGING', defaultValue: true);
+      const bool.fromEnvironment('ENABLE_LOGGING', defaultValue: true);
 
   /// 连接超时时间（秒）
   int get connectionTimeout => 30;

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/core.dart';
 
 /// 管理端侧边栏组件
 class AdminSidebar extends StatelessWidget {

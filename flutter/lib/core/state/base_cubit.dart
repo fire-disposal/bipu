@@ -37,7 +37,7 @@ class EmptyState extends BaseState {
 
 /// 基础Cubit类，提供通用的状态管理功能
 abstract class BaseCubit<T extends BaseState> extends Cubit<T> {
-  BaseCubit(T initialState) : super(initialState);
+  BaseCubit(super.initialState);
 
   /// 处理异步操作，自动管理加载和错误状态
   Future<void> handleAsyncOperation(

@@ -62,7 +62,7 @@ class _AdminScaffoldState extends State<AdminScaffold> {
                   child: Container(
                     color: Theme.of(
                       context,
-                    ).colorScheme.surfaceVariant.withOpacity(0.1),
+                    ).colorScheme.surfaceContainerHighest.withOpacity(0.1),
                     child: widget.body,
                   ),
                 ),
@@ -117,7 +117,7 @@ class _AdminScaffoldState extends State<AdminScaffold> {
                 filled: true,
                 fillColor: Theme.of(
                   context,
-                ).colorScheme.surfaceVariant.withOpacity(0.3),
+                ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 8,
