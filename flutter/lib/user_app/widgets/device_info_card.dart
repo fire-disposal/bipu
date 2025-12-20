@@ -17,7 +17,7 @@ class DeviceInfoCard extends StatelessWidget {
           return _DisconnectedDeviceCard();
         }
 
-        final deviceState = state as DeviceConnected;
+        final deviceState = state;
         return _ConnectedDeviceCard(deviceState: deviceState);
       },
     );

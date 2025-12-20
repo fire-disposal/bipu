@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../utils/logger.dart';
 import '../utils/app_config.dart';
+import 'auth_service.dart';
 
 /// API 客户端类 - 单例模式
 class ApiClient {
@@ -31,10 +32,16 @@ class ApiClient {
       );
 
       // 添加拦截器
+      // 添加认证token拦截器
       _dio.interceptors.add(
         InterceptorsWrapper(
-          onRequest: (options, handler) {
-            // TODO: 添加认证token
+          onRequest: (options, handler) async {
+            try {
+              final token = await AuthService.instance.getToken();
+              if (token != null && token.isNotEmpty) {
+                options.headers['Authorization'] = 'Bearer $token';
+              }
+            } catch (_) {}
             Logger.info('API Request: ${options.method} ${options.path}');
             return handler.next(options);
           },

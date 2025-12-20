@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../core/ble/bluetooth_service.dart';
 import '../../user_app/state/device_control_state.dart';
 
 /// 现代状态栏Dashboard组件
@@ -13,12 +12,8 @@ class StatusDashboard extends StatelessWidget {
     return BlocBuilder<DeviceControlCubit, DeviceControlState>(
       builder: (context, state) {
         final isConnected = state is DeviceConnected;
-        final deviceName = isConnected
-            ? (state as DeviceConnected).deviceName
-            : '未连接';
-        final deviceInfo = isConnected
-            ? (state as DeviceConnected).deviceInfo
-            : null;
+        final deviceName = isConnected ? state.deviceName : '未连接';
+        final deviceInfo = isConnected ? state.deviceInfo : null;
 
         return Container(
           margin: const EdgeInsets.all(16),

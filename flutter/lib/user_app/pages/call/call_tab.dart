@@ -34,33 +34,112 @@ class _CallTabState extends State<CallTab> {
 
   Widget _buildInitial() {
     return Scaffold(
-      body: Center(
+      body: SafeArea(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            GestureDetector(
-              onLongPress: _toConnecting,
-              child: Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: Colors.blueAccent,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.blue.withOpacity(0.2),
-                      blurRadius: 16,
-                      spreadRadius: 4,
-                    ),
-                  ],
+            // 顶部：接线员选择区域
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: SizedBox(
+                height: 60,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: 5,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    return ChoiceChip(
+                      label: Text('接线员${index + 1}'),
+                      selected: index == 0,
+                      onSelected: (_) {},
+                    );
+                  },
                 ),
-                child: const Icon(Icons.mic, color: Colors.white, size: 60),
               ),
             ),
-            const SizedBox(height: 24),
-            const Text(
-              '长按键连接传呼台',
-              style: TextStyle(fontSize: 18, color: Colors.black54),
+            // 中部：消息自定义区域
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
+                child: Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          '自定义消息',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          decoration: const InputDecoration(
+                            hintText: '请输入要发送的消息',
+                            border: OutlineInputBorder(),
+                          ),
+                          maxLines: 2,
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _EffectButton(icon: Icons.light_mode, label: '光效'),
+                            _EffectButton(icon: Icons.vibration, label: '震动'),
+                            _EffectButton(
+                              icon: Icons.auto_awesome,
+                              label: '特效',
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        ElevatedButton.icon(
+                          onPressed: () {},
+                          icon: const Icon(Icons.send),
+                          label: const Text('发送消息'),
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(44),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // 底部：语音输入按钮
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24, top: 8),
+              child: GestureDetector(
+                onLongPress: _toConnecting,
+                child: Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.blueAccent,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blue.withOpacity(0.2),
+                        blurRadius: 16,
+                        spreadRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.mic, color: Colors.white, size: 48),
+                ),
+              ),
             ),
           ],
         ),
@@ -198,6 +277,38 @@ class _CallTabState extends State<CallTab> {
           },
         ),
       ),
+    );
+  }
+}
+
+class _EffectButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _EffectButton({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Material(
+          color: Colors.blue.shade50,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () {},
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Icon(icon, color: Colors.blueAccent, size: 28),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 13, color: Colors.black87),
+        ),
+      ],
     );
   }
 }

@@ -7,6 +7,7 @@ class UserBase(BaseModel):
     """用户基础模式"""
     email: EmailStr
     username: str
+    nickname: Optional[str] = None
     full_name: Optional[str] = None
     is_active: bool = True
     is_superuser: bool = False
@@ -15,12 +16,14 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     """创建用户模式"""
     password: str = Field(..., min_length=6, max_length=128)
+    nickname: Optional[str] = None
 
 
 class UserUpdate(BaseModel):
     """更新用户模式"""
     email: Optional[EmailStr] = None
     username: Optional[str] = None
+    nickname: Optional[str] = None
     full_name: Optional[str] = None
     is_active: Optional[bool] = None
     is_superuser: Optional[bool] = None
@@ -30,6 +33,7 @@ class UserUpdate(BaseModel):
 class UserResponse(UserBase):
     """用户响应模式"""
     id: int
+    nickname: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     

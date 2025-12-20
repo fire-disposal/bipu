@@ -36,7 +36,9 @@ async def register_user(
     # 创建新用户
     user_data = user.dict(exclude={"password"})
     user_data["hashed_password"] = get_password_hash(user.password)
-    
+    # 支持nickname字段
+    if hasattr(user, "nickname"):
+        user_data["nickname"] = user.nickname
     db_user = User(**user_data)
     db.add(db_user)
     db.commit()
@@ -107,6 +109,11 @@ async def update_current_user(
         update_data["hashed_password"] = get_password_hash(update_data["password"])
         del update_data["password"]
     
+    # 支持nickname字段
+    if "nickname" in update_data:
+        current_user.nickname = update_data["nickname"]
+        del update_data["nickname"]
+    
     for key, value in update_data.items():
         setattr(current_user, key, value)
     
@@ -160,6 +167,11 @@ async def update_user(
     if "password" in update_data:
         update_data["hashed_password"] = get_password_hash(update_data["password"])
         del update_data["password"]
+    
+    # 支持nickname字段
+    if "nickname" in update_data:
+        user.nickname = update_data["nickname"]
+        del update_data["nickname"]
     
     for key, value in update_data.items():
         setattr(user, key, value)

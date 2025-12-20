@@ -1,9 +1,9 @@
 /// 用户数据管理Cubit
 /// 管理设备、消息、用户资料等真实数据
 library;
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:bipupu_flutter/core/ble/ble_protocol.dart';
 import 'package:bipupu_flutter/core/ble/device_control_service.dart';
 import 'package:bipupu_flutter/core/utils/logger.dart';
 
@@ -124,12 +124,9 @@ class UserProfile {
 
 /// 用户数据Cubit
 class UserDataCubit extends Cubit<UserDataState> {
-  final DeviceControlService _deviceControlService;
+  // final DeviceControlService _deviceControlService;
 
-  UserDataCubit({DeviceControlService? deviceControlService})
-    : _deviceControlService =
-          deviceControlService ?? DeviceControlService.instance,
-      super(const UserDataInitial());
+  UserDataCubit() : super(const UserDataInitial());
 
   /// 加载用户数据
   Future<void> loadUserData() async {

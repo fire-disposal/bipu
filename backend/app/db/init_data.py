@@ -10,23 +10,28 @@ logger = get_logger(__name__)
 
 
 async def create_default_admin_user(db: Session):
-    """创建默认管理员用户"""
+    """创建默认管理员用户（支持环境变量注入）"""
+    import os
+    admin_email = os.getenv("ADMIN_EMAIL", "adminemail@qq.com")
+    admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
+    admin_username = os.getenv("ADMIN_USERNAME", "admin")
+    admin_full_name = os.getenv("ADMIN_FULL_NAME", "Administrator")
     # 检查是否已存在管理员用户
-    admin_user = db.query(User).filter(User.username == "admin").first()
+    admin_user = db.query(User).filter(User.username == admin_username).first()
     
     if not admin_user:
         logger.info("创建默认管理员用户...")
         admin_user = User(
-            email="admin@example.com",
-            username="admin",
-            full_name="Administrator",
-            hashed_password=get_password_hash("admin123"),
+            email=admin_email,
+            username=admin_username,
+            full_name=admin_full_name,
+            hashed_password=get_password_hash(admin_password),
             is_active=True,
             is_superuser=True
         )
         db.add(admin_user)
         db.commit()
-        logger.info("默认管理员用户创建成功")
+        logger.info(f"默认管理员用户创建成功: {admin_email}")
     else:
         logger.info("管理员用户已存在，跳过创建")
 

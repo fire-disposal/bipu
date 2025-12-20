@@ -14,7 +14,10 @@ class Settings(BaseSettings):
     
     # 数据库配置
     POSTGRES_PASSWORD: str = "1919810"
-    DATABASE_URL: str = f"postgresql://postgres:1919810@db:5432/bipupu"
+    DATABASE_URL: str = os.getenv(
+        "DATABASE_URL",
+        "sqlite:///./bipupu.db"
+    )
     
     # Redis配置
     REDIS_URL: str = f"redis://:114514@redis:6379/0"
@@ -35,7 +38,7 @@ class Settings(BaseSettings):
     
     # 日志配置
     LOG_LEVEL: str = "INFO"
-    LOG_FORMAT: str = "json"  # json or text
+    LOG_FORMAT: str = "text"
     
     # 分页配置
     DEFAULT_PAGE_SIZE: int = 20

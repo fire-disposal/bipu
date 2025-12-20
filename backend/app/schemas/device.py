@@ -10,7 +10,7 @@ class DeviceBase(BaseModel):
     device_type: str = Field(..., min_length=1, max_length=50)
     device_id: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = None
-    status: str = Field(default="offline", regex="^(online|offline|error|maintenance)$")
+    status: str = Field(default="offline", pattern="^(online|offline|error|maintenance)$")
     config: Optional[Dict[str, Any]] = None
     location: Optional[str] = Field(None, max_length=200)
     is_active: bool = True
@@ -27,7 +27,7 @@ class DeviceUpdate(BaseModel):
     device_type: Optional[str] = Field(None, min_length=1, max_length=50)
     device_id: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = None
-    status: Optional[str] = Field(None, regex="^(online|offline|error|maintenance)$")
+    status: Optional[str] = Field(None, pattern="^(online|offline|error|maintenance)$")
     config: Optional[Dict[str, Any]] = None
     location: Optional[str] = Field(None, max_length=200)
     is_active: Optional[bool] = None
