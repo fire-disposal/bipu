@@ -2,21 +2,21 @@ import 'package:flutter/material.dart';
 
 /// 消息中心 (C) - ListView.separated 消息分类列表
 class MessageTab extends StatelessWidget {
-  const MessageTab({Key? key}) : super(key: key);
+  const MessageTab({super.key});
 
   static final List<_MessageCategory> _categories = [
-    _MessageCategory(
+    const _MessageCategory(
       icon: Icons.mark_email_unread_outlined,
       title: '收到的消息',
       online: true,
     ),
-    _MessageCategory(icon: Icons.send_outlined, title: '发出的消息', online: false),
-    _MessageCategory(
+    const _MessageCategory(icon: Icons.send_outlined, title: '发出的消息', online: false),
+    const _MessageCategory(
       icon: Icons.subscriptions_outlined,
       title: '订阅消息',
       online: false,
     ),
-    _MessageCategory(
+    const _MessageCategory(
       icon: Icons.settings_outlined,
       title: '消息管理',
       online: false,

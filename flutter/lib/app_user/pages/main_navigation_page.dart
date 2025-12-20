@@ -6,7 +6,7 @@ import 'profile/profile_tab.dart';
 
 /// 主导航页面，包含底部导航栏与四大主页面
 class MainNavigationPage extends StatefulWidget {
-  const MainNavigationPage({Key? key}) : super(key: key);
+  const MainNavigationPage({super.key});
 
   @override
   State<MainNavigationPage> createState() => _MainNavigationPageState();
@@ -49,7 +49,7 @@ class _CustomBottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color selected = Theme.of(context).colorScheme.primary;
-    final Color unselected = Colors.grey;
+    const Color unselected = Colors.grey;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -197,11 +197,11 @@ class _PagerButton extends StatelessWidget {
             ),
 
             // 主要图标
-            Column(
+            const Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.radio, size: 28, color: Colors.white),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
                   '传呼台',
                   style: TextStyle(

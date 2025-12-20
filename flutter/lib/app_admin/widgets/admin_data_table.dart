@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../core/widgets/core_button.dart';
 
 /// 管理端数据表格组件，支持排序、筛选、分页、操作等功能

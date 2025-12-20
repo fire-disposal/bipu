@@ -378,7 +378,7 @@ class _MessageItem extends StatelessWidget {
                   width: 8,
                   height: 8,
                   margin: const EdgeInsets.only(right: 12),
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: Colors.blue,
                     shape: BoxShape.circle,
                   ),

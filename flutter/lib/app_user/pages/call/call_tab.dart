@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 /// 传呼台 (B) - 四态切换，支持巨型按钮、声波动画、解锁卡片、图鉴列表
 class CallTab extends StatefulWidget {
-  const CallTab({Key? key}) : super(key: key);
+  const CallTab({super.key});
 
   @override
   State<CallTab> createState() => _CallTabState();
@@ -81,15 +81,15 @@ class _CallTabState extends State<CallTab> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        TextField(
-                          decoration: const InputDecoration(
+                        const TextField(
+                          decoration: InputDecoration(
                             hintText: '请输入要发送的消息',
                             border: OutlineInputBorder(),
                           ),
                           maxLines: 2,
                         ),
                         const SizedBox(height: 16),
-                        Row(
+                        const Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             _EffectButton(icon: Icons.light_mode, label: '光效'),

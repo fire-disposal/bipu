@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 
 /// 个人中心 (D) - 头像、ID、菜单卡片式列表
 class ProfileTab extends StatelessWidget {
-  const ProfileTab({Key? key}) : super(key: key);
+  const ProfileTab({super.key});
 
   static const String userId = '12345678';
 
   static final List<_ProfileMenu> _menus = [
-    _ProfileMenu(icon: Icons.person_outline, title: '个人资料'),
-    _ProfileMenu(icon: Icons.devices_other, title: 'PuPu机'),
-    _ProfileMenu(icon: Icons.security, title: '账号与安全'),
-    _ProfileMenu(icon: Icons.settings, title: '设置'),
+    const _ProfileMenu(icon: Icons.person_outline, title: '个人资料'),
+    const _ProfileMenu(icon: Icons.devices_other, title: 'PuPu机'),
+    const _ProfileMenu(icon: Icons.security, title: '账号与安全'),
+    const _ProfileMenu(icon: Icons.settings, title: '设置'),
   ];
 
   @override
@@ -33,10 +33,10 @@ class ProfileTab extends StatelessWidget {
                   child: const Icon(Icons.person, size: 48, color: Colors.blue),
                 ),
                 const SizedBox(width: 20),
-                Expanded(
+                const Expanded(
                   child: Text(
                     'BiPuPu ID: $userId',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w500,
                     ),
