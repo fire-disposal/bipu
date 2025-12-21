@@ -43,7 +43,7 @@ Future<void> _initializeCoreServices() async {
     }
 
     // 初始化API客户端
-    await ApiClient.instance.initialize();
+    CoreApi.init();
 
     Logger.info('用户端核心服务初始化完成');
   } catch (e) {

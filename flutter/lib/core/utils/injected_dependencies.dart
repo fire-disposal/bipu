@@ -3,7 +3,7 @@ import 'package:get_it/get_it.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 // Core
-import '../api/api_client.dart';
+// import '../api/api_client.dart';
 import '../ble/bluetooth_service.dart';
 import '../ble/device_control_service.dart';
 import 'logger.dart';

@@ -13,9 +13,8 @@
 /// - 仪表板组件
 library;
 
-export 'api/api.dart';
+export 'api/api_service.dart';
 export 'ble/ble.dart';
-export 'models/models.dart';
 export 'state/state.dart';
 export 'utils/utils.dart';
 export 'utils/logger.dart';

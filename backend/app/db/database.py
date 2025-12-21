@@ -57,9 +57,9 @@ async def init_db():
     try:
         # 创建所有表
         Base.metadata.create_all(bind=engine)
-        logger.info("Database tables created successfully")
+        logger.info("🌳 数据库表创建成功")
     except Exception as e:
-        logger.error(f"Error creating database tables: {e}")
+        logger.error(f"❌ 创建数据库表时出错: {e}")
         raise
 
 

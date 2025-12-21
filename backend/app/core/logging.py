@@ -47,7 +47,7 @@ def setup_logging() -> None:
         formatter = JSONFormatter()
     else:
         formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            "INFO:     %(name)s - %(message)s"
         )
     
     console_handler.setFormatter(formatter)

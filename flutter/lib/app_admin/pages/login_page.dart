@@ -1,101 +1,52 @@
-import 'package:flutter/material.dart';
-import '../../core/widgets/core_button.dart';
-import '../widgets/admin_layout.dart';
-import '../../core/api/auth_service.dart';
+// lib/core/api/auth_service.dart
+import 'package:openapi/openapi.dart';
+import 'api_service.dart'; // 包含 CoreApi.client 的那个文件
 
-/// 管理员登录页
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class AuthService {
+  // 单例模式，匹配你 UI 中的调用：AuthService.instance
+  static final AuthService instance = AuthService._internal();
+  AuthService._internal();
 
-  @override
-  State<LoginPage> createState() => _LoginPageState();
-}
-
-class _LoginPageState extends State<LoginPage> {
-  final _formKey = GlobalKey<FormState>();
-  String _username = '';
-  String _password = '';
-  bool _loading = false;
-
-  void _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _loading = true);
-    _formKey.currentState!.save();
-
+  /// 核心登录逻辑
+  Future<bool> login(
+    String username,
+    String password, {
+    bool adminOnly = false,
+  }) async {
     try {
-      final success = await AuthService.instance.login(
-        _username,
-        _password,
-        adminOnly: true,
+      // 1. 使用生成的 Body 类创建请求对象 (built_value 风格)
+      // 注意：具体的类名取决于你 Swagger 里的定义，通常是 LoginRequest
+      final loginBody = BodyLoginLoginPost(
+        (b) => b
+          ..username = username
+          ..password = password,
       );
-      setState(() => _loading = false);
-      if (success) {
-        if (!mounted) return;
-        Navigator.of(context).pushReplacementNamed('/');
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('登录失败，请检查用户名和密码')));
+
+      // 2. 调用生成的 API 方法
+      final response = await CoreApi.client.getAuthApi().loginLoginPost(
+        bodyLoginLoginPost: loginBody,
+      );
+
+      // 3. 假设后端返回一个包含 access_token 的对象
+      final token = response.data?.accessToken;
+
+      if (token != null) {
+        // 4. 将 Token 存入全局 Dio 拦截器或持久化存储
+        _handleLoginSuccess(token);
+        return true;
       }
+      return false;
     } catch (e) {
-      setState(() => _loading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('登录失败: $e')));
+      print('登录异常: $e');
+      rethrow; // 抛出异常让 UI 的 catch 捕获并显示 SnackBar
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return AdminLayout(
-      title: '管理员登录',
-      child: Center(
-        child: Card(
-          margin: const EdgeInsets.symmetric(horizontal: 32),
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '管理员登录',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 24),
-                  TextFormField(
-                    decoration: const InputDecoration(
-                      labelText: '用户名',
-                      prefixIcon: Icon(Icons.person),
-                    ),
-                    onSaved: (v) => _username = v ?? '',
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? '请输入用户名' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    decoration: const InputDecoration(
-                      labelText: '密码',
-                      prefixIcon: Icon(Icons.lock),
-                    ),
-                    obscureText: true,
-                    onSaved: (v) => _password = v ?? '',
-                    validator: (v) => (v == null || v.isEmpty) ? '请输入密码' : null,
-                  ),
-                  const SizedBox(height: 32),
-                  CoreButton(
-                    label: '登录',
-                    onPressed: _loading ? null : _submit,
-                    loading: _loading,
-                    icon: Icons.login,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+  void _handleLoginSuccess(String token) {
+    // 设置全局 Token，这样后续所有请求都会自动带上
+    // 之前我们建议用拦截器，这里是直接设置生成的 SDK 内部的认证方式
+    CoreApi.client.setBearerAuth('HTTPBearer', token);
+
+    // TODO: 使用 shared_preferences 存到本地，防止刷新掉登录
   }
 }

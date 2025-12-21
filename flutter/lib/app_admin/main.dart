@@ -31,8 +31,7 @@ Future<void> _initializeCoreServices() async {
     // 初始化依赖注入
     await initDependencies();
 
-    // 初始化API客户端
-    await ApiClient.instance.initialize();
+    CoreApi.init();
 
     Logger.info('管理端核心服务初始化完成');
   } catch (e) {
