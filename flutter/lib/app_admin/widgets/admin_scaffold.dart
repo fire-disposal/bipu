@@ -59,9 +59,8 @@ class _AdminScaffoldState extends State<AdminScaffold> {
                 // 内容区域
                 Expanded(
                   child: Container(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest.withOpacity(0.1),
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.1),
                     child: widget.body,
                   ),
                 ),
@@ -86,7 +85,7 @@ class _AdminScaffoldState extends State<AdminScaffold> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -116,7 +115,7 @@ class _AdminScaffoldState extends State<AdminScaffold> {
                 filled: true,
                 fillColor: Theme.of(
                   context,
-                ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 8,

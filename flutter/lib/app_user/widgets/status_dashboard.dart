@@ -29,8 +29,8 @@ class StatusDashboard extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: (isConnected ? Colors.blue : Colors.grey).withOpacity(
-                  0.3,
+                color: (isConnected ? Colors.blue : Colors.grey).withValues(
+                  alpha: 0.3,
                 ),
                 blurRadius: 12,
                 offset: const Offset(0, 6),
@@ -46,7 +46,7 @@ class StatusDashboard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -78,7 +78,7 @@ class StatusDashboard extends StatelessWidget {
                         Text(
                           isConnected ? '已连接' : '设备未连接',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             fontSize: 12,
                           ),
                         ),
@@ -196,7 +196,7 @@ class _ConnectionStatusIndicator extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -214,7 +214,7 @@ class _ConnectionStatusIndicator extends StatelessWidget {
           Text(
             isConnected ? '在线' : '离线',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
               fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
@@ -236,7 +236,7 @@ class _DeviceStatusRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -288,7 +288,10 @@ class _StatusItem extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           label,
-          style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11),
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.7),
+            fontSize: 11,
+          ),
         ),
         const SizedBox(height: 1),
         Text(
@@ -326,9 +329,12 @@ class _QuickActionButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.2),
+              width: 1,
+            ),
           ),
           child: Column(
             children: [
@@ -337,7 +343,7 @@ class _QuickActionButton extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
                 ),

@@ -148,7 +148,7 @@ class _ConnectedDeviceCard extends StatelessWidget {
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -176,7 +176,7 @@ class _ConnectedDeviceCard extends StatelessWidget {
                         Text(
                           'ID: ${deviceState.deviceId}',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             fontSize: 12,
                           ),
                         ),
@@ -191,7 +191,7 @@ class _ConnectedDeviceCard extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Row(
@@ -325,7 +325,7 @@ class _InfoItem extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: color, size: 24),
@@ -442,8 +442,8 @@ class _FeatureStatusItem extends StatelessWidget {
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: enabled
-                ? color.withOpacity(0.1)
-                : Colors.grey.withOpacity(0.1),
+                ? color.withValues(alpha: 0.1)
+                : Colors.grey.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, size: 20, color: enabled ? color : Colors.grey),

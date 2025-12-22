@@ -58,7 +58,7 @@ class _CustomBottomNavBar extends StatelessWidget {
         color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, -5),
           ),
@@ -78,7 +78,9 @@ class _CustomBottomNavBar extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Theme.of(context).colorScheme.primary.withOpacity(0.05),
+                    Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.05),
                     Colors.transparent,
                   ],
                   begin: Alignment.topCenter,
@@ -148,7 +150,7 @@ class _PagerButton extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: selected
-                ? [baseColor, baseColor.withOpacity(0.8)]
+                ? [baseColor, baseColor.withValues(alpha: 0.8)]
                 : [Colors.grey.shade300, Colors.grey.shade400],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -156,13 +158,13 @@ class _PagerButton extends StatelessWidget {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: baseColor.withOpacity(0.3),
+              color: baseColor.withValues(alpha: 0.3),
               blurRadius: selected ? 20 : 10,
               spreadRadius: selected ? 2 : 0,
               offset: const Offset(0, 4),
             ),
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -178,7 +180,7 @@ class _PagerButton extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.3),
+                  color: Colors.white.withValues(alpha: 0.3),
                   width: 2,
                 ),
               ),
@@ -191,7 +193,10 @@ class _PagerButton extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
-                  colors: [Colors.white.withOpacity(0.2), Colors.transparent],
+                  colors: [
+                    Colors.white.withValues(alpha: 0.2),
+                    Colors.transparent,
+                  ],
                 ),
               ),
             ),
@@ -227,7 +232,7 @@ class _PagerButton extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: baseColor.withOpacity(0.3),
+                          color: baseColor.withValues(alpha: 0.3),
                           width: 2,
                         ),
                       ),
@@ -270,7 +275,9 @@ class _NavBarItem extends StatelessWidget {
         width: 60,
         height: 60,
         decoration: BoxDecoration(
-          color: selected ? selectedColor.withOpacity(0.1) : Colors.transparent,
+          color: selected
+              ? selectedColor.withValues(alpha: 0.1)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
         child: SingleChildScrollView(
@@ -283,7 +290,7 @@ class _NavBarItem extends StatelessWidget {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: selected
-                      ? selectedColor.withOpacity(0.1)
+                      ? selectedColor.withValues(alpha: 0.1)
                       : Colors.transparent,
                   shape: BoxShape.circle,
                 ),

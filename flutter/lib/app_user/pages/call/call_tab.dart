@@ -131,7 +131,7 @@ class _CallTabState extends State<CallTab> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.blue.withOpacity(0.2),
+                        color: Colors.blue.withValues(alpha: 0.2),
                         blurRadius: 16,
                         spreadRadius: 4,
                       ),
@@ -182,7 +182,7 @@ class _CallTabState extends State<CallTab> {
 
   Widget _buildSuccess() {
     return Scaffold(
-      backgroundColor: Colors.black.withOpacity(0.2),
+      backgroundColor: Colors.black.withValues(alpha: 0.2),
       body: Center(
         child: Card(
           margin: const EdgeInsets.symmetric(horizontal: 32),
@@ -253,7 +253,7 @@ class _CallTabState extends State<CallTab> {
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.08),
+                    color: Colors.grey.withValues(alpha: 0.08),
                     blurRadius: 4,
                   ),
                 ],
@@ -329,7 +329,7 @@ class _WaveformAnimation extends StatelessWidget {
             height: 60.0 + i * 20,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.blue.withOpacity(0.2 - i * 0.05),
+              color: Colors.blue.withValues(alpha: 0.2 - i * 0.05),
             ),
           );
         })..add(const Icon(Icons.mic, color: Colors.blue, size: 40)),

@@ -93,8 +93,8 @@ class _UserManagementPageState extends State<UserManagementPage> {
                           style: const TextStyle(fontSize: 12),
                         ),
                         backgroundColor: user['status'] == 'active'
-                            ? Colors.green.withOpacity(0.1)
-                            : Colors.red.withOpacity(0.1),
+                            ? Colors.green.withValues(alpha: 0.1)
+                            : Colors.red.withValues(alpha: 0.1),
                         labelStyle: TextStyle(
                           color: user['status'] == 'active'
                               ? Colors.green

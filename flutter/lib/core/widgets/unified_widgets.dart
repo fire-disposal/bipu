@@ -28,7 +28,9 @@ class CoreLoadingIndicator extends StatelessWidget {
             Text(
               message!,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           ],
@@ -75,7 +77,9 @@ class CoreErrorWidget extends StatelessWidget {
             Text(
               message,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
               textAlign: TextAlign.center,
             ),
@@ -120,13 +124,17 @@ class CoreEmptyWidget extends StatelessWidget {
             Icon(
               icon ?? Icons.inbox_outlined,
               size: 64,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 16),
             Text(
               message,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
               textAlign: TextAlign.center,
             ),
@@ -187,7 +195,7 @@ class CoreTextField extends StatelessWidget {
         filled: true,
         fillColor: Theme.of(
           context,
-        ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
       ),
     );
   }
