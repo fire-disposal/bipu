@@ -4,19 +4,16 @@ library;
 
 import 'dart:async';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' as blue_plus;
-import 'ble_protocol.dart';
 import 'bluetooth_service.dart' as ble_service;
-import '../utils/logger.dart';
+import '../core.dart';
 
-/// 设备控制服务 - 单例模式
+/// 设备控制服务 - 依赖注入模式
 class DeviceControlService {
-  static final DeviceControlService _instance =
-      DeviceControlService._internal();
+  final ble_service.BluetoothService _bluetoothService;
 
-  factory DeviceControlService() => _instance;
-  DeviceControlService._internal();
-
-  static DeviceControlService get instance => _instance;
+  DeviceControlService({ble_service.BluetoothService? bluetoothService})
+    : _bluetoothService =
+          bluetoothService ?? getIt<ble_service.BluetoothService>();
 
   blue_plus.BluetoothDevice? _connectedDevice;
   blue_plus.BluetoothCharacteristic? _commandCharacteristic;
@@ -30,8 +27,8 @@ class DeviceControlService {
 
     try {
       // 确保蓝牙服务已初始化
-      if (!ble_service.BluetoothService.instance.isInitialized) {
-        await ble_service.BluetoothService.instance.initialize();
+      if (!_bluetoothService.isInitialized) {
+        await _bluetoothService.initialize();
       }
 
       _isInitialized = true;

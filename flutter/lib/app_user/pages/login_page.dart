@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../core/core.dart';
 import '../../core/widgets/core_button.dart';
-import '../../core/api/auth_service.dart';
 
 /// 用户登录页
 class LoginPage extends StatefulWidget {
@@ -12,10 +12,19 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  String _email = '';
+  String _username = '';
   String _password = '';
   bool _loading = false;
   String? _error;
+
+  late final AuthService _authService;
+
+  @override
+  void initState() {
+    super.initState();
+    // 通过依赖注入获取认证服务
+    _authService = getIt<AuthService>();
+  }
 
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -26,18 +35,24 @@ class _LoginPageState extends State<LoginPage> {
     _formKey.currentState!.save();
 
     try {
-      final success = await AuthService.instance.login(_email, _password);
+      final result = await _authService.login(
+        username: _username,
+        password: _password,
+      );
+
       setState(() => _loading = false);
-      if (success) {
+
+      if (result.success) {
         if (!mounted) return;
+        // 登录成功，跳转到主页
         Navigator.of(context).pushReplacementNamed('/');
       } else {
-        setState(() => _error = '登录失败，请检查邮箱和密码');
+        setState(() => _error = result.message ?? '登录失败，请检查用户名和密码');
       }
     } catch (e) {
       setState(() {
         _loading = false;
-        _error = e.toString();
+        _error = '登录异常: $e';
       });
     }
   }
@@ -63,12 +78,13 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 24),
                   TextFormField(
                     decoration: const InputDecoration(
-                      labelText: '邮箱',
-                      prefixIcon: Icon(Icons.email),
+                      labelText: '用户名',
+                      prefixIcon: Icon(Icons.person),
                     ),
-                    keyboardType: TextInputType.emailAddress,
-                    onSaved: (v) => _email = v ?? '',
-                    validator: (v) => (v == null || v.isEmpty) ? '请输入邮箱' : null,
+                    keyboardType: TextInputType.text,
+                    onSaved: (v) => _username = v ?? '',
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? '请输入用户名' : null,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(

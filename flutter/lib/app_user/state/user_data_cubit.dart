@@ -4,7 +4,7 @@ library;
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:bipupu_flutter/core/utils/logger.dart';
+import '../../core/core.dart';
 
 /// 用户数据状态
 abstract class UserDataState extends Equatable {
@@ -123,9 +123,11 @@ class UserProfile {
 
 /// 用户数据Cubit
 class UserDataCubit extends Cubit<UserDataState> {
-  // final DeviceControlService _deviceControlService;
+  final CoreApi _apiService;
 
-  UserDataCubit() : super(const UserDataInitial());
+  UserDataCubit()
+    : _apiService = getIt<CoreApi>(),
+      super(const UserDataInitial());
 
   /// 加载用户数据
   Future<void> loadUserData() async {
@@ -160,8 +162,31 @@ class UserDataCubit extends Cubit<UserDataState> {
 
   /// 获取连接的设备
   Future<List<DeviceInfo>> _getConnectedDevices() async {
-    // 这里应该从实际的设备控制服务获取数据
-    // 目前返回模拟数据，后续可以替换为真实数据
+    try {
+      // 使用API服务获取设备数据
+      final response = await _apiService
+          .getOpenapi()
+          .getDevicesApi()
+          .getDevicesApiDevicesGet();
+
+      if (response.statusCode == 200 && response.data != null) {
+        // 转换API数据为本地模型
+        return response.data!.items.map((device) {
+          return DeviceInfo(
+            id: device.deviceId,
+            name: device.name,
+            isConnected: device.status == 'online',
+            batteryLevel: null, // DeviceResponse没有batteryLevel字段
+            signalStrength: null, // DeviceResponse没有signalStrength字段
+            lastConnectedTime: device.lastSeenAt,
+          );
+        }).toList();
+      }
+    } catch (e) {
+      Logger.error('获取设备数据失败: $e');
+    }
+
+    // 如果API调用失败，返回模拟数据
     return [
       const DeviceInfo(
         id: 'pupu_001',
@@ -176,7 +201,32 @@ class UserDataCubit extends Cubit<UserDataState> {
 
   /// 获取最近消息
   Future<List<MessageInfo>> _getRecentMessages() async {
-    // 模拟最近消息数据
+    try {
+      // 使用API服务获取消息数据
+      final response = await _apiService
+          .getOpenapi()
+          .getMessagesApi()
+          .getMessagesApiMessagesGet();
+
+      if (response.statusCode == 200 && response.data != null) {
+        // 转换API数据为本地模型
+        return response.data!.items.map((message) {
+          return MessageInfo(
+            id: message.id.toString(),
+            content: message.content,
+            timestamp: message.createdAt,
+            isFavorite: false, // MessageResponse没有isFavorite字段
+            sender: message.userId.toString(),
+            recipient: message.deviceId?.toString(),
+            type: _convertMessageType(message.messageType.name),
+          );
+        }).toList();
+      }
+    } catch (e) {
+      Logger.error('获取消息数据失败: $e');
+    }
+
+    // 如果API调用失败，返回模拟数据
     final now = DateTime.now();
     return [
       MessageInfo(
@@ -196,9 +246,46 @@ class UserDataCubit extends Cubit<UserDataState> {
     ];
   }
 
+  /// 转换消息类型
+  MessageType _convertMessageType(String? type) {
+    switch (type) {
+      case 'text':
+        return MessageType.text;
+      case 'voice':
+        return MessageType.voice;
+      case 'notification':
+        return MessageType.notification;
+      default:
+        return MessageType.text;
+    }
+  }
+
   /// 获取用户资料
   Future<UserProfile?> _getUserProfile() async {
-    // 模拟用户资料
+    try {
+      // 使用API服务获取当前用户信息
+      final response = await _apiService
+          .getOpenapi()
+          .getUsersApi()
+          .getCurrentUserInfoApiUsersMeGet();
+
+      if (response.statusCode == 200 && response.data != null) {
+        final user = response.data!;
+        return UserProfile(
+          id: user.id.toString(),
+          nickname: user.nickname ?? user.username,
+          email: user.email,
+          avatarUrl: null, // UserResponse没有avatarUrl字段
+          birthDate: null, // UserResponse没有birthDate字段
+          constellation: null, // UserResponse没有constellation字段
+          mbti: null, // UserResponse没有mbti字段
+        );
+      }
+    } catch (e) {
+      Logger.error('获取用户资料失败: $e');
+    }
+
+    // 如果API调用失败，返回模拟数据
     return const UserProfile(
       id: 'user_001',
       nickname: '用户昵称',

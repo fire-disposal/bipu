@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../core/core.dart';
 import '../../core/widgets/core_button.dart';
-import '../../core/api/auth_service.dart';
 
 /// 用户注册页
 class RegisterPage extends StatefulWidget {
@@ -14,9 +14,18 @@ class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   String _email = '';
   String _password = '';
-  String _nickname = '';
+  String _username = '';
   bool _loading = false;
   String? _error;
+
+  late final AuthService _authService;
+
+  @override
+  void initState() {
+    super.initState();
+    // 通过依赖注入获取认证服务
+    _authService = getIt<AuthService>();
+  }
 
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -27,22 +36,25 @@ class _RegisterPageState extends State<RegisterPage> {
     _formKey.currentState!.save();
 
     try {
-      final success = await AuthService.instance.register(
-        _email,
-        _password,
-        _nickname,
+      final result = await _authService.register(
+        username: _username,
+        email: _email,
+        password: _password,
       );
+
       setState(() => _loading = false);
-      if (success) {
+
+      if (result.success) {
         if (!mounted) return;
+        // 注册成功，跳转到主页
         Navigator.of(context).pushReplacementNamed('/');
       } else {
-        setState(() => _error = '注册失败，请检查信息');
+        setState(() => _error = result.message ?? '注册失败，请检查信息');
       }
     } catch (e) {
       setState(() {
         _loading = false;
-        _error = e.toString();
+        _error = '注册异常: $e';
       });
     }
   }
@@ -78,11 +90,12 @@ class _RegisterPageState extends State<RegisterPage> {
                   const SizedBox(height: 16),
                   TextFormField(
                     decoration: const InputDecoration(
-                      labelText: '昵称',
+                      labelText: '用户名',
                       prefixIcon: Icon(Icons.person),
                     ),
-                    onSaved: (v) => _nickname = v ?? '',
-                    validator: (v) => (v == null || v.isEmpty) ? '请输入昵称' : null,
+                    onSaved: (v) => _username = v ?? '',
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? '请输入用户名' : null,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(

@@ -1,52 +1,129 @@
-// lib/core/api/auth_service.dart
-import 'package:openapi/openapi.dart';
-import 'api_service.dart'; // 包含 CoreApi.client 的那个文件
+import 'package:flutter/material.dart';
+import '../../core/core.dart';
+import '../../core/widgets/core_button.dart';
 
-class AuthService {
-  // 单例模式，匹配你 UI 中的调用：AuthService.instance
-  static final AuthService instance = AuthService._internal();
-  AuthService._internal();
+/// 管理端登录页
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
 
-  /// 核心登录逻辑
-  Future<bool> login(
-    String username,
-    String password, {
-    bool adminOnly = false,
-  }) async {
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
+  String _username = '';
+  String _password = '';
+  bool _loading = false;
+  String? _error;
+
+  late final AuthService _authService;
+
+  @override
+  void initState() {
+    super.initState();
+    // 通过依赖注入获取认证服务
+    _authService = getIt<AuthService>();
+  }
+
+  void _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    _formKey.currentState!.save();
+
     try {
-      // 1. 使用生成的 Body 类创建请求对象 (built_value 风格)
-      // 注意：具体的类名取决于你 Swagger 里的定义，通常是 LoginRequest
-      final loginBody = BodyLoginLoginPost(
-        (b) => b
-          ..username = username
-          ..password = password,
+      final result = await _authService.login(
+        username: _username,
+        password: _password,
       );
 
-      // 2. 调用生成的 API 方法
-      final response = await CoreApi.client.getAuthApi().loginLoginPost(
-        bodyLoginLoginPost: loginBody,
-      );
+      setState(() => _loading = false);
 
-      // 3. 假设后端返回一个包含 access_token 的对象
-      final token = response.data?.accessToken;
-
-      if (token != null) {
-        // 4. 将 Token 存入全局 Dio 拦截器或持久化存储
-        _handleLoginSuccess(token);
-        return true;
+      if (result.success) {
+        if (!mounted) return;
+        // 登录成功，跳转到管理仪表板
+        Navigator.of(context).pushReplacementNamed('/admin/dashboard');
+      } else {
+        setState(() => _error = result.message ?? '登录失败，请检查用户名和密码');
       }
-      return false;
     } catch (e) {
-      print('登录异常: $e');
-      rethrow; // 抛出异常让 UI 的 catch 捕获并显示 SnackBar
+      setState(() {
+        _loading = false;
+        _error = '登录异常: $e';
+      });
     }
   }
 
-  void _handleLoginSuccess(String token) {
-    // 设置全局 Token，这样后续所有请求都会自动带上
-    // 之前我们建议用拦截器，这里是直接设置生成的 SDK 内部的认证方式
-    CoreApi.client.setBearerAuth('HTTPBearer', token);
-
-    // TODO: 使用 shared_preferences 存到本地，防止刷新掉登录
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('管理员登录')),
+      body: Center(
+        child: Card(
+          margin: const EdgeInsets.symmetric(horizontal: 32),
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '管理员登录',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 24),
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: '用户名',
+                      prefixIcon: Icon(Icons.person),
+                    ),
+                    keyboardType: TextInputType.text,
+                    onSaved: (v) => _username = v ?? '',
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? '请输入用户名' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: '密码',
+                      prefixIcon: Icon(Icons.lock),
+                    ),
+                    obscureText: true,
+                    onSaved: (v) => _password = v ?? '',
+                    validator: (v) => (v == null || v.isEmpty) ? '请输入密码' : null,
+                  ),
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Text(
+                        _error!,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  const SizedBox(height: 32),
+                  CoreButton(
+                    label: '登录',
+                    onPressed: _loading ? null : _submit,
+                    loading: _loading,
+                    icon: Icons.login,
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pushReplacementNamed('/login');
+                    },
+                    child: const Text('返回用户登录'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

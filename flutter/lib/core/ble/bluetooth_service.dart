@@ -1,15 +1,8 @@
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../utils/logger.dart';
 
-/// 蓝牙服务类 - 单例模式
+/// 蓝牙服务类 - 依赖注入模式
 class BluetoothService {
-  static final BluetoothService _instance = BluetoothService._internal();
-
-  factory BluetoothService() => _instance;
-  BluetoothService._internal();
-
-  static BluetoothService get instance => _instance;
-
   bool _initialized = false;
 
   /// 初始化蓝牙服务

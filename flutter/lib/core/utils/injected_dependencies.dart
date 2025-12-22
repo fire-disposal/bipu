@@ -2,10 +2,13 @@ import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:openapi/openapi.dart';
 // Core
-// import '../api/api_client.dart';
+import '../api/api_service.dart';
+import '../api/auth_service.dart';
 import '../ble/bluetooth_service.dart';
 import '../ble/device_control_service.dart';
+import '../utils/jwt_manager.dart';
 import 'logger.dart';
 import 'app_config.dart';
 // User App State
@@ -53,16 +56,68 @@ Future<void> _initExternalDependencies() async {
 Future<void> _initCoreDependencies() async {
   Logger.debug('初始化核心依赖...');
 
-  // API客户端
-  getIt.registerLazySingleton<ApiClient>(() => ApiClient());
+  // JWT管理器
+  final jwtManager = JwtManager(getIt<SharedPreferences>());
+  getIt.registerLazySingleton<JwtManager>(() => jwtManager);
 
-  // 蓝牙服务
+  // OpenAPI客户端 - 使用AppConfig中的配置
+  final appConfig = getIt<AppConfig>();
+  final dio = Dio(
+    BaseOptions(
+      baseUrl: appConfig.baseUrl,
+      connectTimeout: Duration(seconds: appConfig.connectionTimeout),
+      receiveTimeout: Duration(seconds: appConfig.receiveTimeout),
+      headers: {'Content-Type': 'application/json'},
+    ),
+  );
+
+  // 添加JWT认证拦截器
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) {
+        // 添加JWT令牌到请求头
+        final token = jwtManager.getAccessToken();
+        if (token != null) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        handler.next(options);
+      },
+      onError: (error, handler) async {
+        // 处理401错误，尝试刷新令牌或跳转到登录
+        if (error.response?.statusCode == 401) {
+          Logger.warning('JWT令牌无效或过期');
+
+          // 清除过期的令牌
+          await jwtManager.clearToken();
+
+          // 这里可以添加刷新令牌的逻辑，或者通知应用跳转到登录页面
+          // 暂时直接返回错误
+        }
+        handler.next(error);
+      },
+    ),
+  );
+
+  final openApi = Openapi(dio: dio);
+  getIt.registerLazySingleton<Openapi>(() => openApi);
+
+  // API服务 - 包装OpenAPI客户端并支持JWT
+  getIt.registerLazySingleton<CoreApi>(
+    () => CoreApi(openapi: openApi, jwtManager: jwtManager),
+  );
+
+  // 认证服务
+  getIt.registerLazySingleton<AuthService>(
+    () => AuthService(openapi: openApi, jwtManager: jwtManager),
+  );
+
+  // 蓝牙服务 - 移除单例模式，使用DI管理
   getIt.registerLazySingleton<BluetoothService>(() => BluetoothService());
 
   // 应用配置
-  getIt.registerLazySingleton<AppConfig>(() => AppConfig());
+  getIt.registerLazySingleton<AppConfig>(() => appConfig);
 
-  // 设备控制服务
+  // 设备控制服务 - 移除单例模式，使用DI管理
   getIt.registerLazySingleton<DeviceControlService>(
     () => DeviceControlService(),
   );

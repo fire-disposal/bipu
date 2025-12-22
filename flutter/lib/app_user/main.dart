@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../core/core.dart';
-import '../core/utils/injected_dependencies.dart';
 import 'routes.dart';
 import 'state/user_data_cubit.dart' as user_data;
 import 'state/device_control_state.dart';
@@ -31,19 +30,8 @@ void main() async {
 /// 初始化核心服务
 Future<void> _initializeCoreServices() async {
   try {
-    // 初始化依赖注入
-    await initDependencies();
-
-    // 初始化蓝牙服务（可选，失败不影响应用启动）
-    try {
-      await BluetoothService.instance.initialize();
-    } catch (e) {
-      Logger.warning('蓝牙服务初始化失败，将在需要时重试: $e');
-      // 蓝牙初始化失败不影响应用主要功能
-    }
-
-    // 初始化API客户端
-    CoreApi.init();
+    // 使用核心初始化器统一初始化所有核心模块
+    await CoreInitializer.initialize(enableBluetooth: true, validateAuth: true);
 
     Logger.info('用户端核心服务初始化完成');
   } catch (e) {
@@ -63,8 +51,8 @@ class UserApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (context) => user_data.UserDataCubit()),
-        BlocProvider(create: (context) => DeviceControlCubit()),
+        BlocProvider(create: (context) => getIt<user_data.UserDataCubit>()),
+        BlocProvider(create: (context) => getIt<DeviceControlCubit>()),
       ],
       child: MaterialApp.router(
         title: 'Bipupu 寻呼机',

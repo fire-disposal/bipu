@@ -5,7 +5,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/core.dart';
-import '../core/utils/injected_dependencies.dart';
 import 'routes.dart';
 
 void main() async {
@@ -28,10 +27,11 @@ void main() async {
 /// 初始化核心服务
 Future<void> _initializeCoreServices() async {
   try {
-    // 初始化依赖注入
-    await initDependencies();
-
-    CoreApi.init();
+    // 使用核心初始化器统一初始化所有核心模块（不包含蓝牙）
+    await CoreInitializer.initialize(
+      enableBluetooth: false,
+      validateAuth: true,
+    );
 
     Logger.info('管理端核心服务初始化完成');
   } catch (e) {
