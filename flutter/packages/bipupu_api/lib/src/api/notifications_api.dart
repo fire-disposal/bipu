@@ -7,13 +7,10 @@ import 'dart:async';
 import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
-
-import 'package:built_value/json_object.dart';
 import 'package:openapi/src/api_util.dart';
 import 'package:openapi/src/model/app_schemas_notification_notification_status.dart';
 import 'package:openapi/src/model/app_schemas_notification_notification_type.dart';
 import 'package:openapi/src/model/email_notification.dart';
-import 'package:openapi/src/model/http_validation_error.dart';
 import 'package:openapi/src/model/notification_create.dart';
 import 'package:openapi/src/model/notification_list.dart';
 import 'package:openapi/src/model/notification_response.dart';

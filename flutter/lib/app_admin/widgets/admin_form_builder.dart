@@ -186,9 +186,6 @@ class AdminFormBuilder extends StatelessWidget {
           initialValue:
               field.initialValue == 'true' || field.initialValue == true,
         );
-
-      default:
-        return const SizedBox.shrink();
     }
   }
 }

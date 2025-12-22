@@ -46,7 +46,11 @@ class _$ValidationErrorLocInnerSerializer
     Serializers serializers,
     ValidationErrorLocInner object, {
     FullType specifiedType = FullType.unspecified,
-  }) sync* {}
+  }) sync* {
+    // 移除未使用的参数警告
+    // ignore: unused_local_variable
+    final _ = specifiedType;
+  }
 
   @override
   Object serialize(

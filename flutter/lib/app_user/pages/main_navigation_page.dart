@@ -48,10 +48,6 @@ class _CustomBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color selected = Theme.of(context).colorScheme.primary;
-    const Color unselected = Colors.grey;
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Container(
       height: 80,
       decoration: BoxDecoration(

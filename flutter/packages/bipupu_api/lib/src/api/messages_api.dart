@@ -7,12 +7,9 @@ import 'dart:async';
 import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
-
-import 'package:built_value/json_object.dart';
 import 'package:openapi/src/api_util.dart';
 import 'package:openapi/src/model/app_schemas_message_message_status.dart';
 import 'package:openapi/src/model/app_schemas_message_message_type.dart';
-import 'package:openapi/src/model/http_validation_error.dart';
 import 'package:openapi/src/model/message_create.dart';
 import 'package:openapi/src/model/message_list.dart';
 import 'package:openapi/src/model/message_response.dart';
