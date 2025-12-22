@@ -80,7 +80,7 @@ class AuthValidator {
       );
     } catch (e) {
       Logger.error('检查认证状态失败', e);
-      return AuthStatus(
+      return const AuthStatus(
         isAuthenticated: false,
         hasValidToken: false,
         tokenExpiresSoon: false,

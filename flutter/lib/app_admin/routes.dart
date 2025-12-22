@@ -7,11 +7,11 @@ import 'pages/user_management_page.dart';
 /// 管理端路由配置
 final GoRouter adminRouter = GoRouter(
   routes: [
+    GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
     GoRoute(
       path: '/',
       builder: (context, state) => const AdminMainPage(),
       routes: [
-        GoRoute(path: 'login', builder: (context, state) => const LoginPage()),
         GoRoute(
           path: 'dashboard',
           builder: (context, state) => const DashboardPage(),

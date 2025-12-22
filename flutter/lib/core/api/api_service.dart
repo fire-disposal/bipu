@@ -11,7 +11,9 @@ class CoreApi {
   static void init({Dio? dio, String? baseUrl}) {
     // 使用传入的dio实例或创建新的，使用传入的baseUrl或默认地址
     _staticClient = Openapi(
-      dio: dio ?? Dio(BaseOptions(baseUrl: baseUrl ?? 'http://localhost:8000')),
+      dio:
+          dio ??
+          Dio(BaseOptions(baseUrl: baseUrl ?? 'http://localhost:8848/api')),
     );
   }
 

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:openapi/openapi.dart';
+import '../../core/core.dart';
 import 'home/home_tab.dart';
 import 'call/call_tab.dart';
 import 'message/message_tab.dart';
@@ -14,6 +17,8 @@ class MainNavigationPage extends StatefulWidget {
 
 class _MainNavigationPageState extends State<MainNavigationPage> {
   int _currentIndex = 0;
+  late final AuthService _authService;
+  UserResponse? _currentUser;
 
   final List<Widget> _pages = [
     const HomeTab(),
@@ -23,8 +28,70 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _authService = getIt<AuthService>();
+    _loadCurrentUser();
+  }
+
+  /// 加载当前用户信息
+  Future<void> _loadCurrentUser() async {
+    try {
+      final user = await _authService.getCurrentUser();
+      if (mounted) {
+        setState(() {
+          _currentUser = user;
+        });
+      }
+    } catch (e) {
+      Logger.error('加载用户信息失败', e);
+    }
+  }
+
+  /// 处理用户注销
+  Future<void> _handleLogout() async {
+    try {
+      await _authService.logout();
+      if (mounted) {
+        context.go('/login');
+      }
+    } catch (e) {
+      Logger.error('注销失败', e);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('注销失败: $e')));
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Bipupu 寻呼机'),
+        actions: [
+          // 显示当前用户信息
+          if (_currentUser != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Row(
+                children: [
+                  Text(
+                    _currentUser!.username,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.logout),
+                    onPressed: _handleLogout,
+                    tooltip: '注销',
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
       body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: _CustomBottomNavBar(
         currentIndex: _currentIndex,

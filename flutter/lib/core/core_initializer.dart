@@ -23,10 +23,10 @@ class CoreInitializer {
       // 2. 初始化API客户端
       Logger.debug('初始化API客户端...');
       final openapi = getIt<Openapi>();
-      CoreApi.init(
-        dio: openapi.dio,
-        baseUrl: baseUrl ?? openapi.dio.options.baseUrl,
-      );
+      final appConfig = getIt<AppConfig>();
+      final actualBaseUrl = baseUrl ?? appConfig.baseUrl;
+      Logger.info('API基础地址: $actualBaseUrl');
+      CoreApi.init(dio: openapi.dio, baseUrl: actualBaseUrl);
 
       // 3. 初始化认证状态
       Logger.debug('初始化认证状态...');
@@ -100,7 +100,7 @@ class CoreInitializer {
       );
     } catch (e) {
       Logger.error('获取核心模块状态失败', e);
-      return CoreModuleStatus(
+      return const CoreModuleStatus(
         isAuthenticated: false,
         hasValidToken: false,
         isBluetoothInitialized: false,

@@ -1,16 +1,77 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import '../../core/core.dart';
+import '../../core/utils/auth_guard.dart';
 import '../widgets/admin_scaffold.dart';
 import '../state/admin_state.dart';
 import 'dashboard_page.dart';
 import 'user_management_page.dart';
+import 'login_page.dart';
 
 /// 管理端主页面，包含侧边栏导航和内容区域
-class AdminMainPage extends StatelessWidget {
+class AdminMainPage extends StatefulWidget {
   const AdminMainPage({super.key});
 
   @override
+  State<AdminMainPage> createState() => _AdminMainPageState();
+}
+
+class _AdminMainPageState extends State<AdminMainPage> {
+  bool _isChecking = true;
+  bool _isAuthenticated = false;
+  bool _isAdmin = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthStatus();
+  }
+
+  Future<void> _checkAuthStatus() async {
+    try {
+      final authService = getIt<AuthService>();
+      final isAuthenticated = authService.isAuthenticated();
+      final isAdmin = await authService.isAdmin();
+
+      if (mounted) {
+        setState(() {
+          _isChecking = false;
+          _isAuthenticated = isAuthenticated;
+          _isAdmin = isAdmin;
+        });
+
+        // 如果没有认证或不是管理员，跳转到登录页
+        if (!isAuthenticated || !isAdmin) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              context.go('/login');
+            }
+          });
+        }
+      }
+    } catch (e) {
+      Logger.error('检查认证状态失败', e);
+      if (mounted) {
+        setState(() {
+          _isChecking = false;
+          _isAuthenticated = false;
+          _isAdmin = false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isChecking) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (!_isAuthenticated || !_isAdmin) {
+      return const SizedBox.shrink(); // 等待跳转
+    }
+
     return BlocProvider(
       create: (context) => AdminNavigationCubit(),
       child: const _AdminMainPageContent(),

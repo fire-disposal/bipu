@@ -46,6 +46,7 @@ class AuthService {
   }) async {
     try {
       Logger.info('用户登录: $username');
+      Logger.info('API基础地址: ${_openapi.dio.options.baseUrl}');
 
       // 创建登录请求
       final loginBody = UserLogin(
@@ -53,6 +54,8 @@ class AuthService {
           ..username = username
           ..password = password,
       );
+
+      Logger.info('登录请求URL: ${_openapi.dio.options.baseUrl}/api/users/login');
 
       // 调用登录API
       final response = await _openapi.getUsersApi().loginApiUsersLoginPost(
@@ -213,8 +216,8 @@ class AuthService {
       }
 
       final updateBody = UserUpdate((b) {
-        if (username != null) b..username = username;
-        if (email != null) b..email = email;
+        if (username != null) b.username = username;
+        if (email != null) b.email = email;
       });
 
       final response = await _openapi
@@ -257,6 +260,41 @@ class AuthService {
   /// 从令牌获取用户信息
   Map<String, dynamic>? getUserInfoFromToken() {
     return _jwtManager.getUserInfoFromToken();
+  }
+
+  /// 检查当前用户是否为管理员
+  Future<bool> isAdmin() async {
+    try {
+      final userInfo = await getCurrentUser();
+      return userInfo?.isSuperuser ?? false;
+    } catch (e) {
+      Logger.error('检查管理员权限失败', e);
+      return false;
+    }
+  }
+
+  /// 验证管理员权限
+  Future<AuthResult> validateAdminAccess() async {
+    try {
+      if (!isAuthenticated()) {
+        return AuthResult.failure('请先登录');
+      }
+
+      final userInfo = await getCurrentUser();
+      if (userInfo == null) {
+        return AuthResult.failure('无法获取用户信息');
+      }
+
+      if (userInfo.isSuperuser != true) {
+        return AuthResult.failure('需要管理员权限');
+      }
+
+      return AuthResult.success(getCurrentToken()!, userInfo);
+    } catch (e) {
+      final errorMsg = '验证管理员权限失败: $e';
+      Logger.error(errorMsg, e);
+      return AuthResult.failure(errorMsg);
+    }
   }
 
   /// 初始化认证状态
