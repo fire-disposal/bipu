@@ -41,6 +41,9 @@ Future<void> _initExternalDependencies() async {
   // Dio HTTP客户端
   final dio = Dio();
   final appConfig = AppConfig();
+  // 立即注册AppConfig，以便后续使用
+  getIt.registerLazySingleton<AppConfig>(() => appConfig);
+
   dio.options = BaseOptions(
     baseUrl: appConfig.baseUrl,
     connectTimeout: Duration(seconds: appConfig.connectionTimeout),
@@ -113,9 +116,6 @@ Future<void> _initCoreDependencies() async {
 
   // 蓝牙服务 - 移除单例模式，使用DI管理
   getIt.registerLazySingleton<BluetoothService>(() => BluetoothService());
-
-  // 应用配置
-  getIt.registerLazySingleton<AppConfig>(() => appConfig);
 
   // 设备控制服务 - 移除单例模式，使用DI管理
   getIt.registerLazySingleton<DeviceControlService>(
