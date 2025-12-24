@@ -11,13 +11,15 @@ part 'user_create.g.dart';
 /// 创建用户模式
 ///
 /// Properties:
-/// * [email]
-/// * [username]
-/// * [nickname]
-/// * [fullName]
-/// * [isActive]
-/// * [isSuperuser]
-/// * [password]
+/// * [email] 
+/// * [username] 
+/// * [nickname] 
+/// * [fullName] 
+/// * [isActive] 
+/// * [isSuperuser] 
+/// * [role] - 角色（user/admin）
+/// * [lastActive] 
+/// * [password] 
 @BuiltValue()
 abstract class UserCreate implements Built<UserCreate, UserCreateBuilder> {
   @BuiltValueField(wireName: r'email')
@@ -38,6 +40,13 @@ abstract class UserCreate implements Built<UserCreate, UserCreateBuilder> {
   @BuiltValueField(wireName: r'is_superuser')
   bool? get isSuperuser;
 
+  /// 角色（user/admin）
+  @BuiltValueField(wireName: r'role')
+  String? get role;
+
+  @BuiltValueField(wireName: r'last_active')
+  DateTime? get lastActive;
+
   @BuiltValueField(wireName: r'password')
   String get password;
 
@@ -47,8 +56,9 @@ abstract class UserCreate implements Built<UserCreate, UserCreateBuilder> {
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(UserCreateBuilder b) => b
-    ..isActive = true
-    ..isSuperuser = false;
+      ..isActive = true
+      ..isSuperuser = false
+      ..role = 'user';
 
   @BuiltValueSerializer(custom: true)
   static Serializer<UserCreate> get serializer => _$UserCreateSerializer();
@@ -104,6 +114,20 @@ class _$UserCreateSerializer implements PrimitiveSerializer<UserCreate> {
         specifiedType: const FullType(bool),
       );
     }
+    if (object.role != null) {
+      yield r'role';
+      yield serializers.serialize(
+        object.role,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.lastActive != null) {
+      yield r'last_active';
+      yield serializers.serialize(
+        object.lastActive,
+        specifiedType: const FullType.nullable(DateTime),
+      );
+    }
     yield r'password';
     yield serializers.serialize(
       object.password,
@@ -117,9 +141,7 @@ class _$UserCreateSerializer implements PrimitiveSerializer<UserCreate> {
     UserCreate object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -178,6 +200,21 @@ class _$UserCreateSerializer implements PrimitiveSerializer<UserCreate> {
           ) as bool;
           result.isSuperuser = valueDes;
           break;
+        case r'role':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.role = valueDes;
+          break;
+        case r'last_active':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(DateTime),
+          ) as DateTime?;
+          if (valueDes == null) continue;
+          result.lastActive = valueDes;
+          break;
         case r'password':
           final valueDes = serializers.deserialize(
             value,
@@ -213,3 +250,4 @@ class _$UserCreateSerializer implements PrimitiveSerializer<UserCreate> {
     return result.build();
   }
 }
+

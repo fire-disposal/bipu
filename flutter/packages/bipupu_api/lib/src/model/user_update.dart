@@ -11,13 +11,13 @@ part 'user_update.g.dart';
 /// 更新用户模式
 ///
 /// Properties:
-/// * [email]
-/// * [username]
-/// * [nickname]
-/// * [fullName]
-/// * [isActive]
-/// * [isSuperuser]
-/// * [password]
+/// * [email] 
+/// * [username] 
+/// * [nickname] 
+/// * [fullName] 
+/// * [isActive] 
+/// * [isSuperuser] 
+/// * [password] 
 @BuiltValue()
 abstract class UserUpdate implements Built<UserUpdate, UserUpdateBuilder> {
   @BuiltValueField(wireName: r'email')
@@ -121,9 +121,7 @@ class _$UserUpdateSerializer implements PrimitiveSerializer<UserUpdate> {
     UserUpdate object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -222,3 +220,4 @@ class _$UserUpdateSerializer implements PrimitiveSerializer<UserUpdate> {
     return result.build();
   }
 }
+

@@ -13,18 +13,17 @@ part 'device_update.g.dart';
 /// 更新设备模式
 ///
 /// Properties:
-/// * [name]
-/// * [deviceType]
-/// * [deviceId]
-/// * [description]
-/// * [status]
-/// * [config]
-/// * [location]
-/// * [isActive]
-/// * [lastSeenAt]
+/// * [name] 
+/// * [deviceType] 
+/// * [deviceId] 
+/// * [description] 
+/// * [status] 
+/// * [config] 
+/// * [location] 
+/// * [isActive] 
+/// * [lastSeenAt] 
 @BuiltValue()
-abstract class DeviceUpdate
-    implements Built<DeviceUpdate, DeviceUpdateBuilder> {
+abstract class DeviceUpdate implements Built<DeviceUpdate, DeviceUpdateBuilder> {
   @BuiltValueField(wireName: r'name')
   String? get name;
 
@@ -114,8 +113,7 @@ class _$DeviceUpdateSerializer implements PrimitiveSerializer<DeviceUpdate> {
       yield r'config';
       yield serializers.serialize(
         object.config,
-        specifiedType: const FullType.nullable(
-            BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
+        specifiedType: const FullType.nullable(BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
       );
     }
     if (object.location != null) {
@@ -147,9 +145,7 @@ class _$DeviceUpdateSerializer implements PrimitiveSerializer<DeviceUpdate> {
     DeviceUpdate object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -207,8 +203,7 @@ class _$DeviceUpdateSerializer implements PrimitiveSerializer<DeviceUpdate> {
         case r'config':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(
-                BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
+            specifiedType: const FullType.nullable(BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
           ) as BuiltMap<String, JsonObject?>?;
           if (valueDes == null) continue;
           result.config.replace(valueDes);
@@ -265,3 +260,4 @@ class _$DeviceUpdateSerializer implements PrimitiveSerializer<DeviceUpdate> {
     return result.build();
   }
 }
+

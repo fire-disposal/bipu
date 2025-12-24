@@ -20,6 +20,10 @@ class _$UserCreate extends UserCreate {
   @override
   final bool? isSuperuser;
   @override
+  final String? role;
+  @override
+  final DateTime? lastActive;
+  @override
   final String password;
 
   factory _$UserCreate([void Function(UserCreateBuilder)? updates]) =>
@@ -32,6 +36,8 @@ class _$UserCreate extends UserCreate {
       this.fullName,
       this.isActive,
       this.isSuperuser,
+      this.role,
+      this.lastActive,
       required this.password})
       : super._();
   @override
@@ -51,6 +57,8 @@ class _$UserCreate extends UserCreate {
         fullName == other.fullName &&
         isActive == other.isActive &&
         isSuperuser == other.isSuperuser &&
+        role == other.role &&
+        lastActive == other.lastActive &&
         password == other.password;
   }
 
@@ -63,6 +71,8 @@ class _$UserCreate extends UserCreate {
     _$hash = $jc(_$hash, fullName.hashCode);
     _$hash = $jc(_$hash, isActive.hashCode);
     _$hash = $jc(_$hash, isSuperuser.hashCode);
+    _$hash = $jc(_$hash, role.hashCode);
+    _$hash = $jc(_$hash, lastActive.hashCode);
     _$hash = $jc(_$hash, password.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -77,6 +87,8 @@ class _$UserCreate extends UserCreate {
           ..add('fullName', fullName)
           ..add('isActive', isActive)
           ..add('isSuperuser', isSuperuser)
+          ..add('role', role)
+          ..add('lastActive', lastActive)
           ..add('password', password))
         .toString();
   }
@@ -109,6 +121,14 @@ class UserCreateBuilder implements Builder<UserCreate, UserCreateBuilder> {
   bool? get isSuperuser => _$this._isSuperuser;
   set isSuperuser(bool? isSuperuser) => _$this._isSuperuser = isSuperuser;
 
+  String? _role;
+  String? get role => _$this._role;
+  set role(String? role) => _$this._role = role;
+
+  DateTime? _lastActive;
+  DateTime? get lastActive => _$this._lastActive;
+  set lastActive(DateTime? lastActive) => _$this._lastActive = lastActive;
+
   String? _password;
   String? get password => _$this._password;
   set password(String? password) => _$this._password = password;
@@ -126,6 +146,8 @@ class UserCreateBuilder implements Builder<UserCreate, UserCreateBuilder> {
       _fullName = $v.fullName;
       _isActive = $v.isActive;
       _isSuperuser = $v.isSuperuser;
+      _role = $v.role;
+      _lastActive = $v.lastActive;
       _password = $v.password;
       _$v = null;
     }
@@ -156,6 +178,8 @@ class UserCreateBuilder implements Builder<UserCreate, UserCreateBuilder> {
           fullName: fullName,
           isActive: isActive,
           isSuperuser: isSuperuser,
+          role: role,
+          lastActive: lastActive,
           password: BuiltValueNullFieldError.checkNotNull(
               password, r'UserCreate', 'password'),
         );

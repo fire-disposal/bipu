@@ -9,111 +9,22 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**cancelNotificationApiNotificationsNotificationIdCancelPost**](NotificationsApi.md#cancelnotificationapinotificationsnotificationidcancelpost) | **POST** /api/notifications/{notification_id}/cancel | Cancel Notification
-[**createEmailNotificationApiNotificationsEmailPost**](NotificationsApi.md#createemailnotificationapinotificationsemailpost) | **POST** /api/notifications/email | Create Email Notification
 [**createNotificationApiNotificationsPost**](NotificationsApi.md#createnotificationapinotificationspost) | **POST** /api/notifications/ | Create Notification
-[**createPushNotificationApiNotificationsPushPost**](NotificationsApi.md#createpushnotificationapinotificationspushpost) | **POST** /api/notifications/push | Create Push Notification
 [**deleteNotificationApiNotificationsNotificationIdDelete**](NotificationsApi.md#deletenotificationapinotificationsnotificationiddelete) | **DELETE** /api/notifications/{notification_id} | Delete Notification
 [**getNotificationApiNotificationsNotificationIdGet**](NotificationsApi.md#getnotificationapinotificationsnotificationidget) | **GET** /api/notifications/{notification_id} | Get Notification
 [**getNotificationStatsApiNotificationsStatsGet**](NotificationsApi.md#getnotificationstatsapinotificationsstatsget) | **GET** /api/notifications/stats | Get Notification Stats
 [**getNotificationsApiNotificationsGet**](NotificationsApi.md#getnotificationsapinotificationsget) | **GET** /api/notifications/ | Get Notifications
-[**sendNotificationApiNotificationsNotificationIdSendPost**](NotificationsApi.md#sendnotificationapinotificationsnotificationidsendpost) | **POST** /api/notifications/{notification_id}/send | Send Notification
-[**sendPendingNotificationsApiNotificationsBatchSendPost**](NotificationsApi.md#sendpendingnotificationsapinotificationsbatchsendpost) | **POST** /api/notifications/batch/send | Send Pending Notifications
+[**markAllNotificationsAsReadApiNotificationsReadAllPut**](NotificationsApi.md#markallnotificationsasreadapinotificationsreadallput) | **PUT** /api/notifications/read-all | Mark All Notifications As Read
+[**markNotificationAsReadApiNotificationsNotificationIdReadPut**](NotificationsApi.md#marknotificationasreadapinotificationsnotificationidreadput) | **PUT** /api/notifications/{notification_id}/read | Mark Notification As Read
 [**updateNotificationApiNotificationsNotificationIdPut**](NotificationsApi.md#updatenotificationapinotificationsnotificationidput) | **PUT** /api/notifications/{notification_id} | Update Notification
 
-
-# **cancelNotificationApiNotificationsNotificationIdCancelPost**
-> JsonObject cancelNotificationApiNotificationsNotificationIdCancelPost(notificationId)
-
-Cancel Notification
-
-取消通知
-
-### Example
-```dart
-import 'package:openapi/api.dart';
-
-final api = Openapi().getNotificationsApi();
-final int notificationId = 56; // int | 
-
-try {
-    final response = api.cancelNotificationApiNotificationsNotificationIdCancelPost(notificationId);
-    print(response);
-} catch on DioException (e) {
-    print('Exception when calling NotificationsApi->cancelNotificationApiNotificationsNotificationIdCancelPost: $e\n');
-}
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **notificationId** | **int**|  | 
-
-### Return type
-
-[**JsonObject**](JsonObject.md)
-
-### Authorization
-
-[HTTPBearer](../README.md#HTTPBearer)
-
-### HTTP request headers
-
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
-# **createEmailNotificationApiNotificationsEmailPost**
-> NotificationResponse createEmailNotificationApiNotificationsEmailPost(emailNotification)
-
-Create Email Notification
-
-创建邮件通知
-
-### Example
-```dart
-import 'package:openapi/api.dart';
-
-final api = Openapi().getNotificationsApi();
-final EmailNotification emailNotification = ; // EmailNotification | 
-
-try {
-    final response = api.createEmailNotificationApiNotificationsEmailPost(emailNotification);
-    print(response);
-} catch on DioException (e) {
-    print('Exception when calling NotificationsApi->createEmailNotificationApiNotificationsEmailPost: $e\n');
-}
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **emailNotification** | [**EmailNotification**](EmailNotification.md)|  | 
-
-### Return type
-
-[**NotificationResponse**](NotificationResponse.md)
-
-### Authorization
-
-[HTTPBearer](../README.md#HTTPBearer)
-
-### HTTP request headers
-
- - **Content-Type**: application/json
- - **Accept**: application/json
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **createNotificationApiNotificationsPost**
 > NotificationResponse createNotificationApiNotificationsPost(notificationCreate)
 
 Create Notification
 
-创建通知
+创建站内信
 
 ### Example
 ```dart
@@ -151,55 +62,12 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **createPushNotificationApiNotificationsPushPost**
-> NotificationResponse createPushNotificationApiNotificationsPushPost(pushNotification)
-
-Create Push Notification
-
-创建推送通知
-
-### Example
-```dart
-import 'package:openapi/api.dart';
-
-final api = Openapi().getNotificationsApi();
-final PushNotification pushNotification = ; // PushNotification | 
-
-try {
-    final response = api.createPushNotificationApiNotificationsPushPost(pushNotification);
-    print(response);
-} catch on DioException (e) {
-    print('Exception when calling NotificationsApi->createPushNotificationApiNotificationsPushPost: $e\n');
-}
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **pushNotification** | [**PushNotification**](PushNotification.md)|  | 
-
-### Return type
-
-[**NotificationResponse**](NotificationResponse.md)
-
-### Authorization
-
-[HTTPBearer](../README.md#HTTPBearer)
-
-### HTTP request headers
-
- - **Content-Type**: application/json
- - **Accept**: application/json
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
 # **deleteNotificationApiNotificationsNotificationIdDelete**
 > JsonObject deleteNotificationApiNotificationsNotificationIdDelete(notificationId)
 
 Delete Notification
 
-删除通知
+删除站内信（软删除）
 
 ### Example
 ```dart
@@ -242,7 +110,7 @@ Name | Type | Description  | Notes
 
 Get Notification
 
-获取指定通知
+获取指定站内信
 
 ### Example
 ```dart
@@ -285,7 +153,7 @@ Name | Type | Description  | Notes
 
 Get Notification Stats
 
-获取通知统计信息
+获取站内信统计信息
 
 ### Example
 ```dart
@@ -320,11 +188,11 @@ This endpoint does not need any parameter.
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getNotificationsApiNotificationsGet**
-> NotificationList getNotificationsApiNotificationsGet(skip, limit, notificationType, status)
+> NotificationList getNotificationsApiNotificationsGet(skip, limit, status)
 
 Get Notifications
 
-获取通知列表
+获取站内信列表
 
 ### Example
 ```dart
@@ -333,11 +201,10 @@ import 'package:openapi/api.dart';
 final api = Openapi().getNotificationsApi();
 final int skip = 56; // int | 
 final int limit = 56; // int | 
-final AppSchemasNotificationNotificationType notificationType = ; // AppSchemasNotificationNotificationType | 
 final AppSchemasNotificationNotificationStatus status = ; // AppSchemasNotificationNotificationStatus | 
 
 try {
-    final response = api.getNotificationsApiNotificationsGet(skip, limit, notificationType, status);
+    final response = api.getNotificationsApiNotificationsGet(skip, limit, status);
     print(response);
 } catch on DioException (e) {
     print('Exception when calling NotificationsApi->getNotificationsApiNotificationsGet: $e\n');
@@ -350,7 +217,6 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **skip** | **int**|  | [optional] [default to 0]
  **limit** | **int**|  | [optional] [default to 100]
- **notificationType** | [**AppSchemasNotificationNotificationType**](.md)|  | [optional] 
  **status** | [**AppSchemasNotificationNotificationStatus**](.md)|  | [optional] 
 
 ### Return type
@@ -368,12 +234,51 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **sendNotificationApiNotificationsNotificationIdSendPost**
-> JsonObject sendNotificationApiNotificationsNotificationIdSendPost(notificationId)
+# **markAllNotificationsAsReadApiNotificationsReadAllPut**
+> JsonObject markAllNotificationsAsReadApiNotificationsReadAllPut()
 
-Send Notification
+Mark All Notifications As Read
 
-发送通知
+标记所有站内信为已读
+
+### Example
+```dart
+import 'package:openapi/api.dart';
+
+final api = Openapi().getNotificationsApi();
+
+try {
+    final response = api.markAllNotificationsAsReadApiNotificationsReadAllPut();
+    print(response);
+} catch on DioException (e) {
+    print('Exception when calling NotificationsApi->markAllNotificationsAsReadApiNotificationsReadAllPut: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**JsonObject**](JsonObject.md)
+
+### Authorization
+
+[HTTPBearer](../README.md#HTTPBearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **markNotificationAsReadApiNotificationsNotificationIdReadPut**
+> JsonObject markNotificationAsReadApiNotificationsNotificationIdReadPut(notificationId)
+
+Mark Notification As Read
+
+标记站内信为已读
 
 ### Example
 ```dart
@@ -383,10 +288,10 @@ final api = Openapi().getNotificationsApi();
 final int notificationId = 56; // int | 
 
 try {
-    final response = api.sendNotificationApiNotificationsNotificationIdSendPost(notificationId);
+    final response = api.markNotificationAsReadApiNotificationsNotificationIdReadPut(notificationId);
     print(response);
 } catch on DioException (e) {
-    print('Exception when calling NotificationsApi->sendNotificationApiNotificationsNotificationIdSendPost: $e\n');
+    print('Exception when calling NotificationsApi->markNotificationAsReadApiNotificationsNotificationIdReadPut: $e\n');
 }
 ```
 
@@ -411,51 +316,12 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **sendPendingNotificationsApiNotificationsBatchSendPost**
-> JsonObject sendPendingNotificationsApiNotificationsBatchSendPost()
-
-Send Pending Notifications
-
-批量发送待处理通知（需要超级用户权限）
-
-### Example
-```dart
-import 'package:openapi/api.dart';
-
-final api = Openapi().getNotificationsApi();
-
-try {
-    final response = api.sendPendingNotificationsApiNotificationsBatchSendPost();
-    print(response);
-} catch on DioException (e) {
-    print('Exception when calling NotificationsApi->sendPendingNotificationsApiNotificationsBatchSendPost: $e\n');
-}
-```
-
-### Parameters
-This endpoint does not need any parameter.
-
-### Return type
-
-[**JsonObject**](JsonObject.md)
-
-### Authorization
-
-[HTTPBearer](../README.md#HTTPBearer)
-
-### HTTP request headers
-
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
 # **updateNotificationApiNotificationsNotificationIdPut**
 > NotificationResponse updateNotificationApiNotificationsNotificationIdPut(notificationId, notificationUpdate)
 
 Update Notification
 
-更新通知
+更新站内信
 
 ### Example
 ```dart

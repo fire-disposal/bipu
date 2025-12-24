@@ -7,14 +7,18 @@ import 'dart:async';
 import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
+
+import 'package:built_value/json_object.dart';
 import 'package:openapi/src/api_util.dart';
 import 'package:openapi/src/model/device_create.dart';
 import 'package:openapi/src/model/device_list.dart';
 import 'package:openapi/src/model/device_response.dart';
 import 'package:openapi/src/model/device_stats.dart';
 import 'package:openapi/src/model/device_update.dart';
+import 'package:openapi/src/model/http_validation_error.dart';
 
 class DevicesApi {
+
   final Dio _dio;
 
   final Serializers _serializers;
@@ -25,7 +29,7 @@ class DevicesApi {
   /// 创建设备
   ///
   /// Parameters:
-  /// * [deviceCreate]
+  /// * [deviceCreate] 
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -35,7 +39,7 @@ class DevicesApi {
   ///
   /// Returns a [Future] containing a [Response] with a [DeviceResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<DeviceResponse>> createDeviceApiDevicesPost({
+  Future<Response<DeviceResponse>> createDeviceApiDevicesPost({ 
     required DeviceCreate deviceCreate,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -69,9 +73,10 @@ class DevicesApi {
     try {
       const _type = FullType(DeviceCreate);
       _bodyData = _serializers.serialize(deviceCreate, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -94,12 +99,11 @@ class DevicesApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(DeviceResponse),
-            ) as DeviceResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(DeviceResponse),
+      ) as DeviceResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -126,7 +130,7 @@ class DevicesApi {
   /// 删除设备
   ///
   /// Parameters:
-  /// * [deviceId]
+  /// * [deviceId] 
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -136,7 +140,7 @@ class DevicesApi {
   ///
   /// Returns a [Future] containing a [Response] with a [JsonObject] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<JsonObject>> deleteDeviceApiDevicesDeviceIdDelete({
+  Future<Response<JsonObject>> deleteDeviceApiDevicesDeviceIdDelete({ 
     required int deviceId,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -145,10 +149,7 @@ class DevicesApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/api/devices/{device_id}'.replaceAll(
-        '{' r'device_id' '}',
-        encodeQueryParameter(_serializers, deviceId, const FullType(int))
-            .toString());
+    final _path = r'/api/devices/{device_id}'.replaceAll('{' r'device_id' '}', encodeQueryParameter(_serializers, deviceId, const FullType(int)).toString());
     final _options = Options(
       method: r'DELETE',
       headers: <String, dynamic>{
@@ -179,12 +180,11 @@ class DevicesApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(JsonObject),
-            ) as JsonObject;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(JsonObject),
+      ) as JsonObject;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -211,7 +211,7 @@ class DevicesApi {
   /// 设备心跳（更新最后在线时间）
   ///
   /// Parameters:
-  /// * [deviceId]
+  /// * [deviceId] 
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -221,7 +221,7 @@ class DevicesApi {
   ///
   /// Returns a [Future] containing a [Response] with a [JsonObject] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<JsonObject>> deviceHeartbeatApiDevicesDeviceIdHeartbeatPost({
+  Future<Response<JsonObject>> deviceHeartbeatApiDevicesDeviceIdHeartbeatPost({ 
     required int deviceId,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -230,10 +230,7 @@ class DevicesApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/api/devices/{device_id}/heartbeat'.replaceAll(
-        '{' r'device_id' '}',
-        encodeQueryParameter(_serializers, deviceId, const FullType(int))
-            .toString());
+    final _path = r'/api/devices/{device_id}/heartbeat'.replaceAll('{' r'device_id' '}', encodeQueryParameter(_serializers, deviceId, const FullType(int)).toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -264,12 +261,11 @@ class DevicesApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(JsonObject),
-            ) as JsonObject;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(JsonObject),
+      ) as JsonObject;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -296,7 +292,7 @@ class DevicesApi {
   /// 获取指定设备
   ///
   /// Parameters:
-  /// * [deviceId]
+  /// * [deviceId] 
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -306,7 +302,7 @@ class DevicesApi {
   ///
   /// Returns a [Future] containing a [Response] with a [DeviceResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<DeviceResponse>> getDeviceApiDevicesDeviceIdGet({
+  Future<Response<DeviceResponse>> getDeviceApiDevicesDeviceIdGet({ 
     required int deviceId,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -315,10 +311,7 @@ class DevicesApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/api/devices/{device_id}'.replaceAll(
-        '{' r'device_id' '}',
-        encodeQueryParameter(_serializers, deviceId, const FullType(int))
-            .toString());
+    final _path = r'/api/devices/{device_id}'.replaceAll('{' r'device_id' '}', encodeQueryParameter(_serializers, deviceId, const FullType(int)).toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -349,12 +342,11 @@ class DevicesApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(DeviceResponse),
-            ) as DeviceResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(DeviceResponse),
+      ) as DeviceResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -390,7 +382,7 @@ class DevicesApi {
   ///
   /// Returns a [Future] containing a [Response] with a [DeviceStats] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<DeviceStats>> getDeviceStatsApiDevicesStatsGet({
+  Future<Response<DeviceStats>> getDeviceStatsApiDevicesStatsGet({ 
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -429,12 +421,11 @@ class DevicesApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(DeviceStats),
-            ) as DeviceStats;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(DeviceStats),
+      ) as DeviceStats;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -461,10 +452,10 @@ class DevicesApi {
   /// 获取设备列表
   ///
   /// Parameters:
-  /// * [skip]
-  /// * [limit]
-  /// * [statusFilter]
-  /// * [deviceType]
+  /// * [skip] 
+  /// * [limit] 
+  /// * [statusFilter] 
+  /// * [deviceType] 
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -474,7 +465,7 @@ class DevicesApi {
   ///
   /// Returns a [Future] containing a [Response] with a [DeviceList] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<DeviceList>> getDevicesApiDevicesGet({
+  Future<Response<DeviceList>> getDevicesApiDevicesGet({ 
     int? skip = 0,
     int? limit = 100,
     String? statusFilter,
@@ -506,15 +497,10 @@ class DevicesApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (skip != null)
-        r'skip': encodeQueryParameter(_serializers, skip, const FullType(int)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
-      r'status_filter': encodeQueryParameter(
-          _serializers, statusFilter, const FullType(String)),
-      r'device_type': encodeQueryParameter(
-          _serializers, deviceType, const FullType(String)),
+      if (skip != null) r'skip': encodeQueryParameter(_serializers, skip, const FullType(int)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
+      r'status_filter': encodeQueryParameter(_serializers, statusFilter, const FullType(String)),
+      r'device_type': encodeQueryParameter(_serializers, deviceType, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
@@ -530,12 +516,11 @@ class DevicesApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(DeviceList),
-            ) as DeviceList;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(DeviceList),
+      ) as DeviceList;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -562,8 +547,8 @@ class DevicesApi {
   /// 更新设备信息
   ///
   /// Parameters:
-  /// * [deviceId]
-  /// * [deviceUpdate]
+  /// * [deviceId] 
+  /// * [deviceUpdate] 
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -573,7 +558,7 @@ class DevicesApi {
   ///
   /// Returns a [Future] containing a [Response] with a [DeviceResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<DeviceResponse>> updateDeviceApiDevicesDeviceIdPut({
+  Future<Response<DeviceResponse>> updateDeviceApiDevicesDeviceIdPut({ 
     required int deviceId,
     required DeviceUpdate deviceUpdate,
     CancelToken? cancelToken,
@@ -583,10 +568,7 @@ class DevicesApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/api/devices/{device_id}'.replaceAll(
-        '{' r'device_id' '}',
-        encodeQueryParameter(_serializers, deviceId, const FullType(int))
-            .toString());
+    final _path = r'/api/devices/{device_id}'.replaceAll('{' r'device_id' '}', encodeQueryParameter(_serializers, deviceId, const FullType(int)).toString());
     final _options = Options(
       method: r'PUT',
       headers: <String, dynamic>{
@@ -611,9 +593,10 @@ class DevicesApi {
     try {
       const _type = FullType(DeviceUpdate);
       _bodyData = _serializers.serialize(deviceUpdate, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -636,12 +619,11 @@ class DevicesApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(DeviceResponse),
-            ) as DeviceResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(DeviceResponse),
+      ) as DeviceResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -668,8 +650,8 @@ class DevicesApi {
   /// 更新设备状态
   ///
   /// Parameters:
-  /// * [deviceId]
-  /// * [status]
+  /// * [deviceId] 
+  /// * [status] 
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -679,7 +661,7 @@ class DevicesApi {
   ///
   /// Returns a [Future] containing a [Response] with a [JsonObject] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<JsonObject>> updateDeviceStatusApiDevicesDeviceIdStatusPost({
+  Future<Response<JsonObject>> updateDeviceStatusApiDevicesDeviceIdStatusPost({ 
     required int deviceId,
     required String status,
     CancelToken? cancelToken,
@@ -689,10 +671,7 @@ class DevicesApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/api/devices/{device_id}/status'.replaceAll(
-        '{' r'device_id' '}',
-        encodeQueryParameter(_serializers, deviceId, const FullType(int))
-            .toString());
+    final _path = r'/api/devices/{device_id}/status'.replaceAll('{' r'device_id' '}', encodeQueryParameter(_serializers, deviceId, const FullType(int)).toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -712,8 +691,7 @@ class DevicesApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      r'status':
-          encodeQueryParameter(_serializers, status, const FullType(String)),
+      r'status': encodeQueryParameter(_serializers, status, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
@@ -729,12 +707,11 @@ class DevicesApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(JsonObject),
-            ) as JsonObject;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(JsonObject),
+      ) as JsonObject;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -756,4 +733,5 @@ class DevicesApi {
       extra: _response.extra,
     );
   }
+
 }

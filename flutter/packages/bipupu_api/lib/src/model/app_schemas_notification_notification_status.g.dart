@@ -6,25 +6,21 @@ part of 'app_schemas_notification_notification_status.dart';
 // BuiltValueGenerator
 // **************************************************************************
 
-const AppSchemasNotificationNotificationStatus _$pending =
-    const AppSchemasNotificationNotificationStatus._('pending');
-const AppSchemasNotificationNotificationStatus _$sent =
-    const AppSchemasNotificationNotificationStatus._('sent');
-const AppSchemasNotificationNotificationStatus _$failed =
-    const AppSchemasNotificationNotificationStatus._('failed');
-const AppSchemasNotificationNotificationStatus _$cancelled =
-    const AppSchemasNotificationNotificationStatus._('cancelled');
+const AppSchemasNotificationNotificationStatus _$unread =
+    const AppSchemasNotificationNotificationStatus._('unread');
+const AppSchemasNotificationNotificationStatus _$read =
+    const AppSchemasNotificationNotificationStatus._('read');
+const AppSchemasNotificationNotificationStatus _$deleted =
+    const AppSchemasNotificationNotificationStatus._('deleted');
 
 AppSchemasNotificationNotificationStatus _$valueOf(String name) {
   switch (name) {
-    case 'pending':
-      return _$pending;
-    case 'sent':
-      return _$sent;
-    case 'failed':
-      return _$failed;
-    case 'cancelled':
-      return _$cancelled;
+    case 'unread':
+      return _$unread;
+    case 'read':
+      return _$read;
+    case 'deleted':
+      return _$deleted;
     default:
       throw ArgumentError(name);
   }
@@ -32,18 +28,16 @@ AppSchemasNotificationNotificationStatus _$valueOf(String name) {
 
 final BuiltSet<AppSchemasNotificationNotificationStatus> _$values = BuiltSet<
     AppSchemasNotificationNotificationStatus>(const <AppSchemasNotificationNotificationStatus>[
-  _$pending,
-  _$sent,
-  _$failed,
-  _$cancelled,
+  _$unread,
+  _$read,
+  _$deleted,
 ]);
 
 class _$AppSchemasNotificationNotificationStatusMeta {
   const _$AppSchemasNotificationNotificationStatusMeta();
-  AppSchemasNotificationNotificationStatus get pending => _$pending;
-  AppSchemasNotificationNotificationStatus get sent => _$sent;
-  AppSchemasNotificationNotificationStatus get failed => _$failed;
-  AppSchemasNotificationNotificationStatus get cancelled => _$cancelled;
+  AppSchemasNotificationNotificationStatus get unread => _$unread;
+  AppSchemasNotificationNotificationStatus get read => _$read;
+  AppSchemasNotificationNotificationStatus get deleted => _$deleted;
   AppSchemasNotificationNotificationStatus valueOf(String name) =>
       _$valueOf(name);
   BuiltSet<AppSchemasNotificationNotificationStatus> get values => _$values;
@@ -63,16 +57,14 @@ Serializer<AppSchemasNotificationNotificationStatus>
 class _$AppSchemasNotificationNotificationStatusSerializer
     implements PrimitiveSerializer<AppSchemasNotificationNotificationStatus> {
   static const Map<String, Object> _toWire = const <String, Object>{
-    'pending': 'pending',
-    'sent': 'sent',
-    'failed': 'failed',
-    'cancelled': 'cancelled',
+    'unread': 'unread',
+    'read': 'read',
+    'deleted': 'deleted',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
-    'pending': 'pending',
-    'sent': 'sent',
-    'failed': 'failed',
-    'cancelled': 'cancelled',
+    'unread': 'unread',
+    'read': 'read',
+    'deleted': 'deleted',
   };
 
   @override

@@ -13,14 +13,13 @@ part 'message_stats.g.dart';
 /// 消息统计信息
 ///
 /// Properties:
-/// * [total]
-/// * [unread]
-/// * [read]
-/// * [archived]
-/// * [byType]
+/// * [total] 
+/// * [unread] 
+/// * [read] 
+/// * [archived] 
+/// * [byType] 
 @BuiltValue()
-abstract class MessageStats
-    implements Built<MessageStats, MessageStatsBuilder> {
+abstract class MessageStats implements Built<MessageStats, MessageStatsBuilder> {
   @BuiltValueField(wireName: r'total')
   int get total;
 
@@ -82,8 +81,7 @@ class _$MessageStatsSerializer implements PrimitiveSerializer<MessageStats> {
     yield r'by_type';
     yield serializers.serialize(
       object.byType,
-      specifiedType: const FullType(
-          BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
+      specifiedType: const FullType(BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
     );
   }
 
@@ -93,9 +91,7 @@ class _$MessageStatsSerializer implements PrimitiveSerializer<MessageStats> {
     MessageStats object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -141,8 +137,7 @@ class _$MessageStatsSerializer implements PrimitiveSerializer<MessageStats> {
         case r'by_type':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(
-                BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
+            specifiedType: const FullType(BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
           ) as BuiltMap<String, JsonObject?>;
           result.byType.replace(valueDes);
           break;
@@ -174,3 +169,4 @@ class _$MessageStatsSerializer implements PrimitiveSerializer<MessageStats> {
     return result.build();
   }
 }
+

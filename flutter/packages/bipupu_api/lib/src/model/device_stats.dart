@@ -11,11 +11,11 @@ part 'device_stats.g.dart';
 /// 设备统计信息
 ///
 /// Properties:
-/// * [total]
-/// * [online]
-/// * [offline]
-/// * [error]
-/// * [maintenance]
+/// * [total] 
+/// * [online] 
+/// * [offline] 
+/// * [error] 
+/// * [maintenance] 
 @BuiltValue()
 abstract class DeviceStats implements Built<DeviceStats, DeviceStatsBuilder> {
   @BuiltValueField(wireName: r'total')
@@ -89,9 +89,7 @@ class _$DeviceStatsSerializer implements PrimitiveSerializer<DeviceStats> {
     DeviceStats object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -169,3 +167,4 @@ class _$DeviceStatsSerializer implements PrimitiveSerializer<DeviceStats> {
     return result.build();
   }
 }
+

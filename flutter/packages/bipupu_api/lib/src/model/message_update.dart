@@ -3,8 +3,8 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:openapi/src/model/app_models_message_message_type.dart';
 import 'package:openapi/src/model/app_schemas_message_message_status.dart';
-import 'package:openapi/src/model/app_schemas_message_message_type.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -13,15 +13,14 @@ part 'message_update.g.dart';
 /// 更新消息模式
 ///
 /// Properties:
-/// * [title]
-/// * [content]
-/// * [messageType]
-/// * [priority]
-/// * [status]
-/// * [isRead]
+/// * [title] 
+/// * [content] 
+/// * [messageType] 
+/// * [priority] 
+/// * [status] 
+/// * [isRead] 
 @BuiltValue()
-abstract class MessageUpdate
-    implements Built<MessageUpdate, MessageUpdateBuilder> {
+abstract class MessageUpdate implements Built<MessageUpdate, MessageUpdateBuilder> {
   @BuiltValueField(wireName: r'title')
   String? get title;
 
@@ -29,7 +28,7 @@ abstract class MessageUpdate
   String? get content;
 
   @BuiltValueField(wireName: r'message_type')
-  AppSchemasMessageMessageType? get messageType;
+  AppModelsMessageMessageType? get messageType;
   // enum messageTypeEnum {  system,  device,  user,  alert,  notification,  };
 
   @BuiltValueField(wireName: r'priority')
@@ -44,15 +43,13 @@ abstract class MessageUpdate
 
   MessageUpdate._();
 
-  factory MessageUpdate([void updates(MessageUpdateBuilder b)]) =
-      _$MessageUpdate;
+  factory MessageUpdate([void updates(MessageUpdateBuilder b)]) = _$MessageUpdate;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MessageUpdateBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<MessageUpdate> get serializer =>
-      _$MessageUpdateSerializer();
+  static Serializer<MessageUpdate> get serializer => _$MessageUpdateSerializer();
 }
 
 class _$MessageUpdateSerializer implements PrimitiveSerializer<MessageUpdate> {
@@ -85,7 +82,7 @@ class _$MessageUpdateSerializer implements PrimitiveSerializer<MessageUpdate> {
       yield r'message_type';
       yield serializers.serialize(
         object.messageType,
-        specifiedType: const FullType.nullable(AppSchemasMessageMessageType),
+        specifiedType: const FullType.nullable(AppModelsMessageMessageType),
       );
     }
     if (object.priority != null) {
@@ -117,9 +114,7 @@ class _$MessageUpdateSerializer implements PrimitiveSerializer<MessageUpdate> {
     MessageUpdate object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -153,9 +148,8 @@ class _$MessageUpdateSerializer implements PrimitiveSerializer<MessageUpdate> {
         case r'message_type':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType:
-                const FullType.nullable(AppSchemasMessageMessageType),
-          ) as AppSchemasMessageMessageType?;
+            specifiedType: const FullType.nullable(AppModelsMessageMessageType),
+          ) as AppModelsMessageMessageType?;
           if (valueDes == null) continue;
           result.messageType = valueDes;
           break;
@@ -170,8 +164,7 @@ class _$MessageUpdateSerializer implements PrimitiveSerializer<MessageUpdate> {
         case r'status':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType:
-                const FullType.nullable(AppSchemasMessageMessageStatus),
+            specifiedType: const FullType.nullable(AppSchemasMessageMessageStatus),
           ) as AppSchemasMessageMessageStatus?;
           if (valueDes == null) continue;
           result.status = valueDes;
@@ -212,3 +205,4 @@ class _$MessageUpdateSerializer implements PrimitiveSerializer<MessageUpdate> {
     return result.build();
   }
 }
+

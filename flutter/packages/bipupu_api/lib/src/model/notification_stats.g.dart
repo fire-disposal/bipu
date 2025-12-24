@@ -10,15 +10,11 @@ class _$NotificationStats extends NotificationStats {
   @override
   final int total;
   @override
-  final int pending;
+  final int unread;
   @override
-  final int sent;
+  final int read;
   @override
-  final int failed;
-  @override
-  final int cancelled;
-  @override
-  final BuiltMap<String, JsonObject?> byType;
+  final int deleted;
 
   factory _$NotificationStats(
           [void Function(NotificationStatsBuilder)? updates]) =>
@@ -26,11 +22,9 @@ class _$NotificationStats extends NotificationStats {
 
   _$NotificationStats._(
       {required this.total,
-      required this.pending,
-      required this.sent,
-      required this.failed,
-      required this.cancelled,
-      required this.byType})
+      required this.unread,
+      required this.read,
+      required this.deleted})
       : super._();
   @override
   NotificationStats rebuild(void Function(NotificationStatsBuilder) updates) =>
@@ -45,22 +39,18 @@ class _$NotificationStats extends NotificationStats {
     if (identical(other, this)) return true;
     return other is NotificationStats &&
         total == other.total &&
-        pending == other.pending &&
-        sent == other.sent &&
-        failed == other.failed &&
-        cancelled == other.cancelled &&
-        byType == other.byType;
+        unread == other.unread &&
+        read == other.read &&
+        deleted == other.deleted;
   }
 
   @override
   int get hashCode {
     var _$hash = 0;
     _$hash = $jc(_$hash, total.hashCode);
-    _$hash = $jc(_$hash, pending.hashCode);
-    _$hash = $jc(_$hash, sent.hashCode);
-    _$hash = $jc(_$hash, failed.hashCode);
-    _$hash = $jc(_$hash, cancelled.hashCode);
-    _$hash = $jc(_$hash, byType.hashCode);
+    _$hash = $jc(_$hash, unread.hashCode);
+    _$hash = $jc(_$hash, read.hashCode);
+    _$hash = $jc(_$hash, deleted.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -69,11 +59,9 @@ class _$NotificationStats extends NotificationStats {
   String toString() {
     return (newBuiltValueToStringHelper(r'NotificationStats')
           ..add('total', total)
-          ..add('pending', pending)
-          ..add('sent', sent)
-          ..add('failed', failed)
-          ..add('cancelled', cancelled)
-          ..add('byType', byType))
+          ..add('unread', unread)
+          ..add('read', read)
+          ..add('deleted', deleted))
         .toString();
   }
 }
@@ -86,27 +74,17 @@ class NotificationStatsBuilder
   int? get total => _$this._total;
   set total(int? total) => _$this._total = total;
 
-  int? _pending;
-  int? get pending => _$this._pending;
-  set pending(int? pending) => _$this._pending = pending;
+  int? _unread;
+  int? get unread => _$this._unread;
+  set unread(int? unread) => _$this._unread = unread;
 
-  int? _sent;
-  int? get sent => _$this._sent;
-  set sent(int? sent) => _$this._sent = sent;
+  int? _read;
+  int? get read => _$this._read;
+  set read(int? read) => _$this._read = read;
 
-  int? _failed;
-  int? get failed => _$this._failed;
-  set failed(int? failed) => _$this._failed = failed;
-
-  int? _cancelled;
-  int? get cancelled => _$this._cancelled;
-  set cancelled(int? cancelled) => _$this._cancelled = cancelled;
-
-  MapBuilder<String, JsonObject?>? _byType;
-  MapBuilder<String, JsonObject?> get byType =>
-      _$this._byType ??= MapBuilder<String, JsonObject?>();
-  set byType(MapBuilder<String, JsonObject?>? byType) =>
-      _$this._byType = byType;
+  int? _deleted;
+  int? get deleted => _$this._deleted;
+  set deleted(int? deleted) => _$this._deleted = deleted;
 
   NotificationStatsBuilder() {
     NotificationStats._defaults(this);
@@ -116,11 +94,9 @@ class NotificationStatsBuilder
     final $v = _$v;
     if ($v != null) {
       _total = $v.total;
-      _pending = $v.pending;
-      _sent = $v.sent;
-      _failed = $v.failed;
-      _cancelled = $v.cancelled;
-      _byType = $v.byType.toBuilder();
+      _unread = $v.unread;
+      _read = $v.read;
+      _deleted = $v.deleted;
       _$v = null;
     }
     return this;
@@ -140,33 +116,17 @@ class NotificationStatsBuilder
   NotificationStats build() => _build();
 
   _$NotificationStats _build() {
-    _$NotificationStats _$result;
-    try {
-      _$result = _$v ??
-          _$NotificationStats._(
-            total: BuiltValueNullFieldError.checkNotNull(
-                total, r'NotificationStats', 'total'),
-            pending: BuiltValueNullFieldError.checkNotNull(
-                pending, r'NotificationStats', 'pending'),
-            sent: BuiltValueNullFieldError.checkNotNull(
-                sent, r'NotificationStats', 'sent'),
-            failed: BuiltValueNullFieldError.checkNotNull(
-                failed, r'NotificationStats', 'failed'),
-            cancelled: BuiltValueNullFieldError.checkNotNull(
-                cancelled, r'NotificationStats', 'cancelled'),
-            byType: byType.build(),
-          );
-    } catch (_) {
-      late String _$failedField;
-      try {
-        _$failedField = 'byType';
-        byType.build();
-      } catch (e) {
-        throw BuiltValueNestedFieldError(
-            r'NotificationStats', _$failedField, e.toString());
-      }
-      rethrow;
-    }
+    final _$result = _$v ??
+        _$NotificationStats._(
+          total: BuiltValueNullFieldError.checkNotNull(
+              total, r'NotificationStats', 'total'),
+          unread: BuiltValueNullFieldError.checkNotNull(
+              unread, r'NotificationStats', 'unread'),
+          read: BuiltValueNullFieldError.checkNotNull(
+              read, r'NotificationStats', 'read'),
+          deleted: BuiltValueNullFieldError.checkNotNull(
+              deleted, r'NotificationStats', 'deleted'),
+        );
     replace(_$result);
     return _$result;
   }

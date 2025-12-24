@@ -10,16 +10,15 @@ import 'package:built_value/serializer.dart';
 
 part 'notification_list.g.dart';
 
-/// 通知列表响应模式
+/// 站内信列表响应模式
 ///
 /// Properties:
-/// * [items]
-/// * [total]
-/// * [page]
-/// * [size]
+/// * [items] 
+/// * [total] 
+/// * [page] 
+/// * [size] 
 @BuiltValue()
-abstract class NotificationList
-    implements Built<NotificationList, NotificationListBuilder> {
+abstract class NotificationList implements Built<NotificationList, NotificationListBuilder> {
   @BuiltValueField(wireName: r'items')
   BuiltList<NotificationResponse> get items;
 
@@ -34,19 +33,16 @@ abstract class NotificationList
 
   NotificationList._();
 
-  factory NotificationList([void updates(NotificationListBuilder b)]) =
-      _$NotificationList;
+  factory NotificationList([void updates(NotificationListBuilder b)]) = _$NotificationList;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(NotificationListBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<NotificationList> get serializer =>
-      _$NotificationListSerializer();
+  static Serializer<NotificationList> get serializer => _$NotificationListSerializer();
 }
 
-class _$NotificationListSerializer
-    implements PrimitiveSerializer<NotificationList> {
+class _$NotificationListSerializer implements PrimitiveSerializer<NotificationList> {
   @override
   final Iterable<Type> types = const [NotificationList, _$NotificationList];
 
@@ -61,8 +57,7 @@ class _$NotificationListSerializer
     yield r'items';
     yield serializers.serialize(
       object.items,
-      specifiedType:
-          const FullType(BuiltList, [FullType(NotificationResponse)]),
+      specifiedType: const FullType(BuiltList, [FullType(NotificationResponse)]),
     );
     yield r'total';
     yield serializers.serialize(
@@ -87,9 +82,7 @@ class _$NotificationListSerializer
     NotificationList object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -107,8 +100,7 @@ class _$NotificationListSerializer
         case r'items':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType:
-                const FullType(BuiltList, [FullType(NotificationResponse)]),
+            specifiedType: const FullType(BuiltList, [FullType(NotificationResponse)]),
           ) as BuiltList<NotificationResponse>;
           result.items.replace(valueDes);
           break;
@@ -161,3 +153,4 @@ class _$NotificationListSerializer
     return result.build();
   }
 }
+

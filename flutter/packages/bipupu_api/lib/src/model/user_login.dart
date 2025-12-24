@@ -11,8 +11,8 @@ part 'user_login.g.dart';
 /// 用户登录模式
 ///
 /// Properties:
-/// * [username]
-/// * [password]
+/// * [username] 
+/// * [password] 
 @BuiltValue()
 abstract class UserLogin implements Built<UserLogin, UserLoginBuilder> {
   @BuiltValueField(wireName: r'username')
@@ -62,9 +62,7 @@ class _$UserLoginSerializer implements PrimitiveSerializer<UserLogin> {
     UserLogin object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -121,3 +119,4 @@ class _$UserLoginSerializer implements PrimitiveSerializer<UserLogin> {
     return result.build();
   }
 }
+

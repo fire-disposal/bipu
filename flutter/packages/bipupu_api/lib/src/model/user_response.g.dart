@@ -20,6 +20,10 @@ class _$UserResponse extends UserResponse {
   @override
   final bool? isSuperuser;
   @override
+  final String? role;
+  @override
+  final DateTime? lastActive;
+  @override
   final int id;
   @override
   final DateTime createdAt;
@@ -36,6 +40,8 @@ class _$UserResponse extends UserResponse {
       this.fullName,
       this.isActive,
       this.isSuperuser,
+      this.role,
+      this.lastActive,
       required this.id,
       required this.createdAt,
       this.updatedAt})
@@ -57,6 +63,8 @@ class _$UserResponse extends UserResponse {
         fullName == other.fullName &&
         isActive == other.isActive &&
         isSuperuser == other.isSuperuser &&
+        role == other.role &&
+        lastActive == other.lastActive &&
         id == other.id &&
         createdAt == other.createdAt &&
         updatedAt == other.updatedAt;
@@ -71,6 +79,8 @@ class _$UserResponse extends UserResponse {
     _$hash = $jc(_$hash, fullName.hashCode);
     _$hash = $jc(_$hash, isActive.hashCode);
     _$hash = $jc(_$hash, isSuperuser.hashCode);
+    _$hash = $jc(_$hash, role.hashCode);
+    _$hash = $jc(_$hash, lastActive.hashCode);
     _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
     _$hash = $jc(_$hash, updatedAt.hashCode);
@@ -87,6 +97,8 @@ class _$UserResponse extends UserResponse {
           ..add('fullName', fullName)
           ..add('isActive', isActive)
           ..add('isSuperuser', isSuperuser)
+          ..add('role', role)
+          ..add('lastActive', lastActive)
           ..add('id', id)
           ..add('createdAt', createdAt)
           ..add('updatedAt', updatedAt))
@@ -122,6 +134,14 @@ class UserResponseBuilder
   bool? get isSuperuser => _$this._isSuperuser;
   set isSuperuser(bool? isSuperuser) => _$this._isSuperuser = isSuperuser;
 
+  String? _role;
+  String? get role => _$this._role;
+  set role(String? role) => _$this._role = role;
+
+  DateTime? _lastActive;
+  DateTime? get lastActive => _$this._lastActive;
+  set lastActive(DateTime? lastActive) => _$this._lastActive = lastActive;
+
   int? _id;
   int? get id => _$this._id;
   set id(int? id) => _$this._id = id;
@@ -147,6 +167,8 @@ class UserResponseBuilder
       _fullName = $v.fullName;
       _isActive = $v.isActive;
       _isSuperuser = $v.isSuperuser;
+      _role = $v.role;
+      _lastActive = $v.lastActive;
       _id = $v.id;
       _createdAt = $v.createdAt;
       _updatedAt = $v.updatedAt;
@@ -179,6 +201,8 @@ class UserResponseBuilder
           fullName: fullName,
           isActive: isActive,
           isSuperuser: isSuperuser,
+          role: role,
+          lastActive: lastActive,
           id: BuiltValueNullFieldError.checkNotNull(id, r'UserResponse', 'id'),
           createdAt: BuiltValueNullFieldError.checkNotNull(
               createdAt, r'UserResponse', 'createdAt'),

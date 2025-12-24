@@ -13,11 +13,11 @@ part 'message_list.g.dart';
 /// 消息列表响应模式
 ///
 /// Properties:
-/// * [items]
-/// * [total]
-/// * [page]
-/// * [size]
-/// * [unreadCount]
+/// * [items] 
+/// * [total] 
+/// * [page] 
+/// * [size] 
+/// * [unreadCount] 
 @BuiltValue()
 abstract class MessageList implements Built<MessageList, MessageListBuilder> {
   @BuiltValueField(wireName: r'items')
@@ -91,9 +91,7 @@ class _$MessageListSerializer implements PrimitiveSerializer<MessageList> {
     MessageList object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -111,8 +109,7 @@ class _$MessageListSerializer implements PrimitiveSerializer<MessageList> {
         case r'items':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType:
-                const FullType(BuiltList, [FullType(MessageResponse)]),
+            specifiedType: const FullType(BuiltList, [FullType(MessageResponse)]),
           ) as BuiltList<MessageResponse>;
           result.items.replace(valueDes);
           break;
@@ -172,3 +169,4 @@ class _$MessageListSerializer implements PrimitiveSerializer<MessageList> {
     return result.build();
   }
 }
+

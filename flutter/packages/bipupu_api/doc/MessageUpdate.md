@@ -10,7 +10,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **title** | **String** |  | [optional] 
 **content** | **String** |  | [optional] 
-**messageType** | [**AppSchemasMessageMessageType**](AppSchemasMessageMessageType.md) |  | [optional] 
+**messageType** | [**AppModelsMessageMessageType**](AppModelsMessageMessageType.md) |  | [optional] 
 **priority** | **int** |  | [optional] 
 **status** | [**AppSchemasMessageMessageStatus**](AppSchemasMessageMessageStatus.md) |  | [optional] 
 **isRead** | **bool** |  | [optional] 

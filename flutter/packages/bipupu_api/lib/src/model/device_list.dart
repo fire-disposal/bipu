@@ -13,10 +13,10 @@ part 'device_list.g.dart';
 /// 设备列表响应模式
 ///
 /// Properties:
-/// * [items]
-/// * [total]
-/// * [page]
-/// * [size]
+/// * [items] 
+/// * [total] 
+/// * [page] 
+/// * [size] 
 @BuiltValue()
 abstract class DeviceList implements Built<DeviceList, DeviceListBuilder> {
   @BuiltValueField(wireName: r'items')
@@ -82,9 +82,7 @@ class _$DeviceListSerializer implements PrimitiveSerializer<DeviceList> {
     DeviceList object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -102,8 +100,7 @@ class _$DeviceListSerializer implements PrimitiveSerializer<DeviceList> {
         case r'items':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType:
-                const FullType(BuiltList, [FullType(DeviceResponse)]),
+            specifiedType: const FullType(BuiltList, [FullType(DeviceResponse)]),
           ) as BuiltList<DeviceResponse>;
           result.items.replace(valueDes);
           break;
@@ -156,3 +153,4 @@ class _$DeviceListSerializer implements PrimitiveSerializer<DeviceList> {
     return result.build();
   }
 }
+

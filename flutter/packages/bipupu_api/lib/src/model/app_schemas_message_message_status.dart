@@ -10,22 +10,20 @@ import 'package:built_value/serializer.dart';
 part 'app_schemas_message_message_status.g.dart';
 
 class AppSchemasMessageMessageStatus extends EnumClass {
+
   /// 消息状态
   @BuiltValueEnumConst(wireName: r'unread')
   static const AppSchemasMessageMessageStatus unread = _$unread;
-
   /// 消息状态
   @BuiltValueEnumConst(wireName: r'read')
   static const AppSchemasMessageMessageStatus read = _$read;
-
   /// 消息状态
   @BuiltValueEnumConst(wireName: r'archived')
   static const AppSchemasMessageMessageStatus archived = _$archived;
 
-  static Serializer<AppSchemasMessageMessageStatus> get serializer =>
-      _$appSchemasMessageMessageStatusSerializer;
+  static Serializer<AppSchemasMessageMessageStatus> get serializer => _$appSchemasMessageMessageStatusSerializer;
 
-  const AppSchemasMessageMessageStatus._(String name) : super(name);
+  const AppSchemasMessageMessageStatus._(String name): super(name);
 
   static BuiltSet<AppSchemasMessageMessageStatus> get values => _$values;
   static AppSchemasMessageMessageStatus valueOf(String name) => _$valueOf(name);
@@ -37,5 +35,5 @@ class AppSchemasMessageMessageStatus extends EnumClass {
 /// corresponding Angular template.
 ///
 /// Trigger mixin generation by writing a line like this one next to your enum.
-abstract class AppSchemasMessageMessageStatusMixin = Object
-    with _$AppSchemasMessageMessageStatusMixin;
+abstract class AppSchemasMessageMessageStatusMixin = Object with _$AppSchemasMessageMessageStatusMixin;
+

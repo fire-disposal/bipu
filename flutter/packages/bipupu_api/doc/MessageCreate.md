@@ -10,9 +10,12 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **title** | **String** |  | 
 **content** | **String** |  | 
-**messageType** | [**AppSchemasMessageMessageType**](AppSchemasMessageMessageType.md) |  | 
+**messageType** | [**AppModelsMessageMessageType**](AppModelsMessageMessageType.md) |  | 
 **priority** | **int** |  | [optional] [default to 0]
 **deviceId** | **int** |  | [optional] 
+**pattern** | [**BuiltMap&lt;String, JsonObject&gt;**](JsonObject.md) |  | [optional] 
+**senderId** | **int** |  | [optional] 
+**receiverId** | **int** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

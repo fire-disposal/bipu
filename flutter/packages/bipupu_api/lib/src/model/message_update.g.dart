@@ -12,7 +12,7 @@ class _$MessageUpdate extends MessageUpdate {
   @override
   final String? content;
   @override
-  final AppSchemasMessageMessageType? messageType;
+  final AppModelsMessageMessageType? messageType;
   @override
   final int? priority;
   @override
@@ -88,9 +88,9 @@ class MessageUpdateBuilder
   String? get content => _$this._content;
   set content(String? content) => _$this._content = content;
 
-  AppSchemasMessageMessageType? _messageType;
-  AppSchemasMessageMessageType? get messageType => _$this._messageType;
-  set messageType(AppSchemasMessageMessageType? messageType) =>
+  AppModelsMessageMessageType? _messageType;
+  AppModelsMessageMessageType? get messageType => _$this._messageType;
+  set messageType(AppModelsMessageMessageType? messageType) =>
       _$this._messageType = messageType;
 
   int? _priority;

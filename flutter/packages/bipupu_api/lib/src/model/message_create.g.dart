@@ -12,11 +12,17 @@ class _$MessageCreate extends MessageCreate {
   @override
   final String content;
   @override
-  final AppSchemasMessageMessageType messageType;
+  final AppModelsMessageMessageType messageType;
   @override
   final int? priority;
   @override
   final int? deviceId;
+  @override
+  final BuiltMap<String, JsonObject?>? pattern;
+  @override
+  final int? senderId;
+  @override
+  final int? receiverId;
 
   factory _$MessageCreate([void Function(MessageCreateBuilder)? updates]) =>
       (MessageCreateBuilder()..update(updates))._build();
@@ -26,7 +32,10 @@ class _$MessageCreate extends MessageCreate {
       required this.content,
       required this.messageType,
       this.priority,
-      this.deviceId})
+      this.deviceId,
+      this.pattern,
+      this.senderId,
+      this.receiverId})
       : super._();
   @override
   MessageCreate rebuild(void Function(MessageCreateBuilder) updates) =>
@@ -43,7 +52,10 @@ class _$MessageCreate extends MessageCreate {
         content == other.content &&
         messageType == other.messageType &&
         priority == other.priority &&
-        deviceId == other.deviceId;
+        deviceId == other.deviceId &&
+        pattern == other.pattern &&
+        senderId == other.senderId &&
+        receiverId == other.receiverId;
   }
 
   @override
@@ -54,6 +66,9 @@ class _$MessageCreate extends MessageCreate {
     _$hash = $jc(_$hash, messageType.hashCode);
     _$hash = $jc(_$hash, priority.hashCode);
     _$hash = $jc(_$hash, deviceId.hashCode);
+    _$hash = $jc(_$hash, pattern.hashCode);
+    _$hash = $jc(_$hash, senderId.hashCode);
+    _$hash = $jc(_$hash, receiverId.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -65,7 +80,10 @@ class _$MessageCreate extends MessageCreate {
           ..add('content', content)
           ..add('messageType', messageType)
           ..add('priority', priority)
-          ..add('deviceId', deviceId))
+          ..add('deviceId', deviceId)
+          ..add('pattern', pattern)
+          ..add('senderId', senderId)
+          ..add('receiverId', receiverId))
         .toString();
   }
 }
@@ -82,9 +100,9 @@ class MessageCreateBuilder
   String? get content => _$this._content;
   set content(String? content) => _$this._content = content;
 
-  AppSchemasMessageMessageType? _messageType;
-  AppSchemasMessageMessageType? get messageType => _$this._messageType;
-  set messageType(AppSchemasMessageMessageType? messageType) =>
+  AppModelsMessageMessageType? _messageType;
+  AppModelsMessageMessageType? get messageType => _$this._messageType;
+  set messageType(AppModelsMessageMessageType? messageType) =>
       _$this._messageType = messageType;
 
   int? _priority;
@@ -94,6 +112,20 @@ class MessageCreateBuilder
   int? _deviceId;
   int? get deviceId => _$this._deviceId;
   set deviceId(int? deviceId) => _$this._deviceId = deviceId;
+
+  MapBuilder<String, JsonObject?>? _pattern;
+  MapBuilder<String, JsonObject?> get pattern =>
+      _$this._pattern ??= MapBuilder<String, JsonObject?>();
+  set pattern(MapBuilder<String, JsonObject?>? pattern) =>
+      _$this._pattern = pattern;
+
+  int? _senderId;
+  int? get senderId => _$this._senderId;
+  set senderId(int? senderId) => _$this._senderId = senderId;
+
+  int? _receiverId;
+  int? get receiverId => _$this._receiverId;
+  set receiverId(int? receiverId) => _$this._receiverId = receiverId;
 
   MessageCreateBuilder() {
     MessageCreate._defaults(this);
@@ -107,6 +139,9 @@ class MessageCreateBuilder
       _messageType = $v.messageType;
       _priority = $v.priority;
       _deviceId = $v.deviceId;
+      _pattern = $v.pattern?.toBuilder();
+      _senderId = $v.senderId;
+      _receiverId = $v.receiverId;
       _$v = null;
     }
     return this;
@@ -126,17 +161,33 @@ class MessageCreateBuilder
   MessageCreate build() => _build();
 
   _$MessageCreate _build() {
-    final _$result = _$v ??
-        _$MessageCreate._(
-          title: BuiltValueNullFieldError.checkNotNull(
-              title, r'MessageCreate', 'title'),
-          content: BuiltValueNullFieldError.checkNotNull(
-              content, r'MessageCreate', 'content'),
-          messageType: BuiltValueNullFieldError.checkNotNull(
-              messageType, r'MessageCreate', 'messageType'),
-          priority: priority,
-          deviceId: deviceId,
-        );
+    _$MessageCreate _$result;
+    try {
+      _$result = _$v ??
+          _$MessageCreate._(
+            title: BuiltValueNullFieldError.checkNotNull(
+                title, r'MessageCreate', 'title'),
+            content: BuiltValueNullFieldError.checkNotNull(
+                content, r'MessageCreate', 'content'),
+            messageType: BuiltValueNullFieldError.checkNotNull(
+                messageType, r'MessageCreate', 'messageType'),
+            priority: priority,
+            deviceId: deviceId,
+            pattern: _pattern?.build(),
+            senderId: senderId,
+            receiverId: receiverId,
+          );
+    } catch (_) {
+      late String _$failedField;
+      try {
+        _$failedField = 'pattern';
+        _pattern?.build();
+      } catch (e) {
+        throw BuiltValueNestedFieldError(
+            r'MessageCreate', _$failedField, e.toString());
+      }
+      rethrow;
+    }
     replace(_$result);
     return _$result;
   }

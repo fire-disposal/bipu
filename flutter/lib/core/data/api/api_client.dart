@@ -1,6 +1,6 @@
-/// API客户端接口
 library;
 
+/// API客户端接口
 import 'package:dio/dio.dart';
 import 'package:openapi/openapi.dart';
 

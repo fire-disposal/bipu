@@ -3,8 +3,10 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:openapi/src/model/app_models_message_message_type.dart';
 import 'package:openapi/src/model/app_schemas_message_message_status.dart';
-import 'package:openapi/src/model/app_schemas_message_message_type.dart';
+import 'package:built_collection/built_collection.dart';
+import 'package:built_value/json_object.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -13,21 +15,23 @@ part 'message_response.g.dart';
 /// 消息响应模式
 ///
 /// Properties:
-/// * [title]
-/// * [content]
-/// * [messageType]
-/// * [priority]
-/// * [deviceId]
-/// * [id]
-/// * [userId]
-/// * [status]
-/// * [isRead]
-/// * [createdAt]
-/// * [updatedAt]
-/// * [readAt]
+/// * [title] 
+/// * [content] 
+/// * [messageType] 
+/// * [priority] 
+/// * [deviceId] 
+/// * [pattern] 
+/// * [senderId] 
+/// * [receiverId] 
+/// * [id] 
+/// * [status] 
+/// * [isRead] 
+/// * [createdAt] 
+/// * [updatedAt] 
+/// * [deliveredAt] 
+/// * [readAt] 
 @BuiltValue()
-abstract class MessageResponse
-    implements Built<MessageResponse, MessageResponseBuilder> {
+abstract class MessageResponse implements Built<MessageResponse, MessageResponseBuilder> {
   @BuiltValueField(wireName: r'title')
   String get title;
 
@@ -35,7 +39,7 @@ abstract class MessageResponse
   String get content;
 
   @BuiltValueField(wireName: r'message_type')
-  AppSchemasMessageMessageType get messageType;
+  AppModelsMessageMessageType get messageType;
   // enum messageTypeEnum {  system,  device,  user,  alert,  notification,  };
 
   @BuiltValueField(wireName: r'priority')
@@ -44,11 +48,17 @@ abstract class MessageResponse
   @BuiltValueField(wireName: r'device_id')
   int? get deviceId;
 
+  @BuiltValueField(wireName: r'pattern')
+  BuiltMap<String, JsonObject?>? get pattern;
+
+  @BuiltValueField(wireName: r'sender_id')
+  int get senderId;
+
+  @BuiltValueField(wireName: r'receiver_id')
+  int get receiverId;
+
   @BuiltValueField(wireName: r'id')
   int get id;
-
-  @BuiltValueField(wireName: r'user_id')
-  int get userId;
 
   @BuiltValueField(wireName: r'status')
   AppSchemasMessageMessageStatus get status;
@@ -63,24 +73,25 @@ abstract class MessageResponse
   @BuiltValueField(wireName: r'updated_at')
   DateTime? get updatedAt;
 
+  @BuiltValueField(wireName: r'delivered_at')
+  DateTime? get deliveredAt;
+
   @BuiltValueField(wireName: r'read_at')
   DateTime? get readAt;
 
   MessageResponse._();
 
-  factory MessageResponse([void updates(MessageResponseBuilder b)]) =
-      _$MessageResponse;
+  factory MessageResponse([void updates(MessageResponseBuilder b)]) = _$MessageResponse;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(MessageResponseBuilder b) => b..priority = 0;
+  static void _defaults(MessageResponseBuilder b) => b
+      ..priority = 0;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<MessageResponse> get serializer =>
-      _$MessageResponseSerializer();
+  static Serializer<MessageResponse> get serializer => _$MessageResponseSerializer();
 }
 
-class _$MessageResponseSerializer
-    implements PrimitiveSerializer<MessageResponse> {
+class _$MessageResponseSerializer implements PrimitiveSerializer<MessageResponse> {
   @override
   final Iterable<Type> types = const [MessageResponse, _$MessageResponse];
 
@@ -105,7 +116,7 @@ class _$MessageResponseSerializer
     yield r'message_type';
     yield serializers.serialize(
       object.messageType,
-      specifiedType: const FullType(AppSchemasMessageMessageType),
+      specifiedType: const FullType(AppModelsMessageMessageType),
     );
     if (object.priority != null) {
       yield r'priority';
@@ -121,14 +132,26 @@ class _$MessageResponseSerializer
         specifiedType: const FullType.nullable(int),
       );
     }
+    if (object.pattern != null) {
+      yield r'pattern';
+      yield serializers.serialize(
+        object.pattern,
+        specifiedType: const FullType.nullable(BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
+      );
+    }
+    yield r'sender_id';
+    yield serializers.serialize(
+      object.senderId,
+      specifiedType: const FullType(int),
+    );
+    yield r'receiver_id';
+    yield serializers.serialize(
+      object.receiverId,
+      specifiedType: const FullType(int),
+    );
     yield r'id';
     yield serializers.serialize(
       object.id,
-      specifiedType: const FullType(int),
-    );
-    yield r'user_id';
-    yield serializers.serialize(
-      object.userId,
       specifiedType: const FullType(int),
     );
     yield r'status';
@@ -153,6 +176,13 @@ class _$MessageResponseSerializer
         specifiedType: const FullType.nullable(DateTime),
       );
     }
+    if (object.deliveredAt != null) {
+      yield r'delivered_at';
+      yield serializers.serialize(
+        object.deliveredAt,
+        specifiedType: const FullType.nullable(DateTime),
+      );
+    }
     if (object.readAt != null) {
       yield r'read_at';
       yield serializers.serialize(
@@ -168,9 +198,7 @@ class _$MessageResponseSerializer
     MessageResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -202,8 +230,8 @@ class _$MessageResponseSerializer
         case r'message_type':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(AppSchemasMessageMessageType),
-          ) as AppSchemasMessageMessageType;
+            specifiedType: const FullType(AppModelsMessageMessageType),
+          ) as AppModelsMessageMessageType;
           result.messageType = valueDes;
           break;
         case r'priority':
@@ -221,19 +249,34 @@ class _$MessageResponseSerializer
           if (valueDes == null) continue;
           result.deviceId = valueDes;
           break;
+        case r'pattern':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
+          ) as BuiltMap<String, JsonObject?>?;
+          if (valueDes == null) continue;
+          result.pattern.replace(valueDes);
+          break;
+        case r'sender_id':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(int),
+          ) as int;
+          result.senderId = valueDes;
+          break;
+        case r'receiver_id':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(int),
+          ) as int;
+          result.receiverId = valueDes;
+          break;
         case r'id':
           final valueDes = serializers.deserialize(
             value,
             specifiedType: const FullType(int),
           ) as int;
           result.id = valueDes;
-          break;
-        case r'user_id':
-          final valueDes = serializers.deserialize(
-            value,
-            specifiedType: const FullType(int),
-          ) as int;
-          result.userId = valueDes;
           break;
         case r'status':
           final valueDes = serializers.deserialize(
@@ -263,6 +306,14 @@ class _$MessageResponseSerializer
           ) as DateTime?;
           if (valueDes == null) continue;
           result.updatedAt = valueDes;
+          break;
+        case r'delivered_at':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(DateTime),
+          ) as DateTime?;
+          if (valueDes == null) continue;
+          result.deliveredAt = valueDes;
           break;
         case r'read_at':
           final valueDes = serializers.deserialize(
@@ -300,3 +351,4 @@ class _$MessageResponseSerializer
     return result.build();
   }
 }
+

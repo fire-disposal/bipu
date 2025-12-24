@@ -7,17 +7,22 @@ part of 'serializers.dart';
 // **************************************************************************
 
 Serializers _$serializers = (Serializers().toBuilder()
+      ..add(AdminLogResponse.serializer)
+      ..add(AppModelsMessageMessageType.serializer)
+      ..add(AppSchemasFriendshipFriendshipStatus.serializer)
       ..add(AppSchemasMessageMessageStatus.serializer)
-      ..add(AppSchemasMessageMessageType.serializer)
       ..add(AppSchemasNotificationNotificationStatus.serializer)
-      ..add(AppSchemasNotificationNotificationType.serializer)
       ..add(DeviceCreate.serializer)
       ..add(DeviceList.serializer)
       ..add(DeviceResponse.serializer)
       ..add(DeviceStats.serializer)
       ..add(DeviceUpdate.serializer)
-      ..add(EmailNotification.serializer)
+      ..add(FriendshipCreate.serializer)
+      ..add(FriendshipList.serializer)
+      ..add(FriendshipResponse.serializer)
       ..add(HTTPValidationError.serializer)
+      ..add(MessageAckEventCreate.serializer)
+      ..add(MessageAckEventResponse.serializer)
       ..add(MessageCreate.serializer)
       ..add(MessageList.serializer)
       ..add(MessageResponse.serializer)
@@ -28,10 +33,11 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(NotificationResponse.serializer)
       ..add(NotificationStats.serializer)
       ..add(NotificationUpdate.serializer)
-      ..add(PushNotification.serializer)
       ..add(Token.serializer)
+      ..add(TokenRefresh.serializer)
       ..add(UserCreate.serializer)
       ..add(UserLogin.serializer)
+      ..add(UserProfile.serializer)
       ..add(UserResponse.serializer)
       ..add(UserUpdate.serializer)
       ..add(ValidationError.serializer)
@@ -39,6 +45,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(DeviceResponse)]),
           () => ListBuilder<DeviceResponse>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(FriendshipResponse)]),
+          () => ListBuilder<FriendshipResponse>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(MessageResponse)]),
           () => ListBuilder<MessageResponse>())
@@ -53,24 +62,6 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(
               BuiltList, const [const FullType(ValidationErrorLocInner)]),
           () => ListBuilder<ValidationErrorLocInner>())
-      ..addBuilderFactory(
-          const FullType(BuiltMap, const [
-            const FullType(String),
-            const FullType.nullable(JsonObject)
-          ]),
-          () => MapBuilder<String, JsonObject?>())
-      ..addBuilderFactory(
-          const FullType(BuiltMap, const [
-            const FullType(String),
-            const FullType.nullable(JsonObject)
-          ]),
-          () => MapBuilder<String, JsonObject?>())
-      ..addBuilderFactory(
-          const FullType(BuiltMap, const [
-            const FullType(String),
-            const FullType.nullable(JsonObject)
-          ]),
-          () => MapBuilder<String, JsonObject?>())
       ..addBuilderFactory(
           const FullType(BuiltMap, const [
             const FullType(String),

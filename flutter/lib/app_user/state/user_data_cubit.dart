@@ -172,12 +172,12 @@ class UserDataCubit extends Cubit<UserDataState> {
         // 转换API数据为本地模型
         return response.data!.items.map((device) {
           return DeviceInfo(
-            id: device.deviceId,
-            name: device.name,
-            isConnected: device.status == 'online',
-            batteryLevel: null, // DeviceResponse没有batteryLevel字段
-            signalStrength: null, // DeviceResponse没有signalStrength字段
-            lastConnectedTime: device.lastSeenAt,
+            id: device.deviceIdentifier,
+            name: '', // DeviceResponse没有name字段
+            isConnected: false, // DeviceResponse没有status字段，需根据实际业务调整
+            batteryLevel: null,
+            signalStrength: null,
+            lastConnectedTime: device.lastSeen,
           );
         }).toList();
       }
@@ -214,7 +214,7 @@ class UserDataCubit extends Cubit<UserDataState> {
             content: message.content,
             timestamp: message.createdAt,
             isFavorite: false, // MessageResponse没有isFavorite字段
-            sender: message.userId.toString(),
+            sender: message.senderId.toString(),
             recipient: message.deviceId?.toString(),
             type: _convertMessageType(message.messageType.name),
           );
