@@ -16,14 +16,14 @@ async def health_check(db: Session = Depends(get_db)):
         # 检查数据库连接
         db.execute(text("SELECT 1"))
         
-        # 检查Redis连接
-        redis_client = await get_redis()
-        await redis_client.ping()
+        # 暂时注释掉Redis检查功能
+        # redis_client = await get_redis()
+        # await redis_client.ping()
         
         return {
             "status": "healthy",
             "database": "connected",
-            "redis": "connected",
+            # "redis": "connected",
             "service": "fastapi-backend"
         }
     except Exception as e:

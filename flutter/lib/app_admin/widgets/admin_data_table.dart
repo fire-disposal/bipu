@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/widgets/core_button.dart';
+import 'admin_widgets.dart';
 
 /// 管理端数据表格组件，支持排序、筛选、分页、操作等功能
 class AdminDataTable<T> extends StatefulWidget {
@@ -148,11 +148,10 @@ class _AdminDataTableState<T> extends State<AdminDataTable<T>> {
         ],
         // 筛选按钮
         if (widget.showFilter) ...[
-          CoreButton(
-            label: '筛选',
+          CoreButton.outline(
+            text: '筛选',
             onPressed: () => _showFilterDialog(context),
             icon: Icons.filter_list,
-            primary: false,
           ),
           const SizedBox(width: 16),
         ],

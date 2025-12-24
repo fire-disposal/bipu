@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../widgets/status_dashboard.dart';
 import '../../widgets/device_info_card.dart';
 import '../../state/device_control_state.dart';
-import '../../../core/ble/ble_protocol.dart';
+import '../../../core/domain/ble/ble.dart';
 
 /// 首页 (A) - 现代蓝牙寻呼机Dashboard主页
 /// 包含状态栏Dashboard、设备信息卡片、快速操作区域

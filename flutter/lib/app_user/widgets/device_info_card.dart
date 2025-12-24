@@ -114,7 +114,7 @@ class _ConnectedDeviceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final deviceInfo = deviceState.deviceInfo ?? {};
+    final deviceInfo = (deviceState.deviceInfo as Map<String, dynamic>?) ?? {};
 
     return Card(
       elevation: 4,

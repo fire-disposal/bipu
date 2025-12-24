@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/core.dart';
-import '../../core/widgets/core_button.dart';
+import '../widgets/user_widgets.dart';
 
 /// 用户登录页
 class LoginPage extends StatefulWidget {
@@ -24,7 +24,7 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     // 通过依赖注入获取认证服务
-    _authService = getIt<AuthService>();
+    _authService = ServiceLocatorConfig.get<AuthService>();
 
     // 检查是否已经登录，如果已登录则直接跳转到首页
     _checkAlreadyLoggedIn();
@@ -202,10 +202,10 @@ class _LoginPageState extends State<LoginPage> {
                     SizedBox(
                       width: double.infinity,
                       height: 48,
-                      child: CoreButton(
-                        label: '登录',
+                      child: CoreButton.primary(
+                        text: '登录',
                         onPressed: _loading ? null : _submit,
-                        loading: _loading,
+                        isLoading: _loading,
                         icon: Icons.login,
                       ),
                     ),

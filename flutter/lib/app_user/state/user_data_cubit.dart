@@ -123,10 +123,10 @@ class UserProfile {
 
 /// 用户数据Cubit
 class UserDataCubit extends Cubit<UserDataState> {
-  final CoreApi _apiService;
+  final ApiClient _apiClient;
 
   UserDataCubit()
-    : _apiService = getIt<CoreApi>(),
+    : _apiClient = ServiceLocatorConfig.get<ApiClient>(),
       super(const UserDataInitial());
 
   /// 加载用户数据
@@ -164,8 +164,7 @@ class UserDataCubit extends Cubit<UserDataState> {
   Future<List<DeviceInfo>> _getConnectedDevices() async {
     try {
       // 使用API服务获取设备数据
-      final response = await _apiService
-          .getOpenapi()
+      final response = await _apiClient.openapi
           .getDevicesApi()
           .getDevicesApiDevicesGet();
 
@@ -203,8 +202,7 @@ class UserDataCubit extends Cubit<UserDataState> {
   Future<List<MessageInfo>> _getRecentMessages() async {
     try {
       // 使用API服务获取消息数据
-      final response = await _apiService
-          .getOpenapi()
+      final response = await _apiClient.openapi
           .getMessagesApi()
           .getMessagesApiMessagesGet();
 
@@ -264,8 +262,7 @@ class UserDataCubit extends Cubit<UserDataState> {
   Future<UserProfile?> _getUserProfile() async {
     try {
       // 使用API服务获取当前用户信息
-      final response = await _apiService
-          .getOpenapi()
+      final response = await _apiClient.openapi
           .getUsersApi()
           .getCurrentUserInfoApiUsersMeGet();
 

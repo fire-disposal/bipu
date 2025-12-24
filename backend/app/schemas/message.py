@@ -28,6 +28,9 @@ class MessageBase(BaseModel):
     message_type: MessageType
     priority: int = Field(default=0, ge=0, le=10)
     device_id: Optional[int] = None
+    pattern: Optional[dict] = None
+    sender_id: Optional[int] = None
+    receiver_id: Optional[int] = None
 
 
 class MessageCreate(MessageBase):
@@ -48,13 +51,15 @@ class MessageUpdate(BaseModel):
 class MessageResponse(MessageBase):
     """消息响应模式"""
     id: int
-    user_id: int
+    sender_id: int
+    receiver_id: int
     status: MessageStatus
     is_read: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
+    delivered_at: Optional[datetime] = None
     read_at: Optional[datetime] = None
-    
+
     class Config:
         from_attributes = True
 

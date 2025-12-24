@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/widgets/core_stat_panel.dart';
-import '../../core/widgets/core_card.dart';
+import '../widgets/admin_widgets.dart';
 import '../widgets/admin_layout.dart';
 
 /// 管理端首页（仪表盘）
@@ -22,32 +21,11 @@ class DashboardPage extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             // 统计面板区
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: CoreStatPanel(
-                    title: '用户总数',
-                    value: '1,024',
-                    icon: Icons.people,
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: CoreStatPanel(
-                    title: '今日活跃',
-                    value: '128',
-                    icon: Icons.bolt,
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: CoreStatPanel(
-                    title: '消息数',
-                    value: '3,456',
-                    icon: Icons.message,
-                  ),
-                ),
+            CoreStatPanel(
+              stats: [
+                StatCard(title: '用户总数', value: '1,024', icon: Icons.people),
+                StatCard(title: '今日活跃', value: '128', icon: Icons.bolt),
+                StatCard(title: '消息数', value: '3,456', icon: Icons.message),
               ],
             ),
             const SizedBox(height: 32),

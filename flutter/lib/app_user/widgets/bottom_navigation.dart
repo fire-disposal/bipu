@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:bipupu_flutter/core/utils/constants.dart';
 
 /// 用户端底部导航栏
 class UserBottomNavigation extends StatelessWidget {
@@ -71,7 +70,7 @@ class UserBottomNavigation extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => onIndexChanged(index),
-          borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
+          borderRadius: BorderRadius.circular(8),
           child: SizedBox(
             height: kBottomNavigationBarHeight,
             child: Center(

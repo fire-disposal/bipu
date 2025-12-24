@@ -28,10 +28,7 @@ void main() async {
 Future<void> _initializeCoreServices() async {
   try {
     // 使用核心初始化器统一初始化所有核心模块（不包含蓝牙）
-    await CoreInitializer.initialize(
-      enableBluetooth: false,
-      validateAuth: true,
-    );
+    await AppInitializer.initialize(enableBluetooth: false, validateAuth: true);
 
     Logger.info('管理端核心服务初始化完成');
   } catch (e) {

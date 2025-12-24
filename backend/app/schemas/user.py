@@ -11,6 +11,8 @@ class UserBase(BaseModel):
     full_name: Optional[str] = None
     is_active: bool = True
     is_superuser: bool = False
+    role: str = Field(default="user", description="角色（user/admin）")
+    last_active: Optional[datetime] = Field(None, description="最后活跃时间")
 
 
 class UserCreate(UserBase):
@@ -33,10 +35,9 @@ class UserUpdate(BaseModel):
 class UserResponse(UserBase):
     """用户响应模式"""
     id: int
-    nickname: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
-    
+
     class Config:
         from_attributes = True
 

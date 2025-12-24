@@ -31,7 +31,7 @@ void main() async {
 Future<void> _initializeCoreServices() async {
   try {
     // 使用核心初始化器统一初始化所有核心模块
-    await CoreInitializer.initialize(enableBluetooth: true, validateAuth: true);
+    await AppInitializer.initialize(enableBluetooth: true, validateAuth: true);
 
     Logger.info('用户端核心服务初始化完成');
   } catch (e) {
@@ -49,10 +49,21 @@ class UserApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 优化依赖注入写法，避免未注册异常
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (context) => getIt<user_data.UserDataCubit>()),
-        BlocProvider(create: (context) => getIt<DeviceControlCubit>()),
+        BlocProvider<user_data.UserDataCubit>(
+          create: (context) =>
+              ServiceLocatorConfig.isRegistered<user_data.UserDataCubit>()
+              ? ServiceLocatorConfig.get<user_data.UserDataCubit>()
+              : user_data.UserDataCubit(),
+        ),
+        BlocProvider<DeviceControlCubit>(
+          create: (context) =>
+              ServiceLocatorConfig.isRegistered<DeviceControlCubit>()
+              ? ServiceLocatorConfig.get<DeviceControlCubit>()
+              : DeviceControlCubit(),
+        ),
       ],
       child: MaterialApp.router(
         title: 'Bipupu 寻呼机',

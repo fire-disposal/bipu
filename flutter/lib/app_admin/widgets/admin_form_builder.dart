@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
-import '../../core/widgets/core_button.dart';
+import 'admin_widgets.dart';
 
 /// 管理端通用表单构建器，支持快速创建各种类型的表单字段
 class AdminFormBuilder extends StatelessWidget {
@@ -44,10 +44,10 @@ class AdminFormBuilder extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                CoreButton(
-                  label: submitButtonText,
+                CoreButton.primary(
+                  text: submitButtonText,
                   onPressed: loading ? null : onSubmit,
-                  loading: loading,
+                  isLoading: loading,
                   icon: Icons.check,
                 ),
               ],

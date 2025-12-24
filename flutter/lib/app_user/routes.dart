@@ -18,7 +18,7 @@ final GoRouter router = GoRouter(
       builder: (context, state) => const MainNavigationPage(),
       redirect: (context, state) async {
         // 检查认证状态
-        final authService = getIt<AuthService>();
+        final authService = ServiceLocatorConfig.get<AuthService>();
         if (!authService.isAuthenticated()) {
           return '/login';
         }
@@ -35,7 +35,7 @@ final GoRouter router = GoRouter(
     }
 
     // 检查认证状态
-    final authService = getIt<AuthService>();
+    final authService = ServiceLocatorConfig.get<AuthService>();
     if (!authService.isAuthenticated()) {
       return '/login';
     }

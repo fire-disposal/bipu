@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bipupu_flutter/core/core.dart';
 
 /// 设备控制状态
-abstract class DeviceControlState extends BaseState {
+abstract class DeviceControlState {
   const DeviceControlState();
 }
 
@@ -24,16 +24,13 @@ class DeviceConnecting extends DeviceControlState {
 class DeviceConnected extends DeviceControlState {
   final String deviceId;
   final String deviceName;
-  final Map<String, dynamic>? deviceInfo;
+  final DeviceStatus? deviceInfo;
 
   const DeviceConnected({
     required this.deviceId,
     required this.deviceName,
     this.deviceInfo,
   });
-
-  @override
-  List<Object?> get props => [deviceId, deviceName, deviceInfo];
 }
 
 /// 设备断开连接
@@ -62,7 +59,8 @@ class DeviceControlCubit extends Cubit<DeviceControlState> {
 
   DeviceControlCubit({DeviceControlService? deviceControlService})
     : _deviceControlService =
-          deviceControlService ?? getIt<DeviceControlService>(),
+          deviceControlService ??
+          ServiceLocatorConfig.get<DeviceControlService>(),
       super(const DeviceControlInitial());
 
   /// 连接到设备
@@ -183,7 +181,7 @@ class DeviceControlCubit extends Cubit<DeviceControlState> {
       final success = await _deviceControlService.sendUrgentNotification(text);
 
       if (success) {
-        final message = BleProtocolUtils.createUrgentNotification(text: text);
+        final message = BleProtocolUtils.createUrgentNotification(text);
         emit(MessageSent(message));
         // 回到连接状态
         await Future.delayed(const Duration(seconds: 2));

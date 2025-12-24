@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/core.dart';
-import '../../core/widgets/core_button.dart';
+import '../widgets/admin_widgets.dart';
 
 /// 管理端登录页
 class LoginPage extends StatefulWidget {
@@ -24,7 +24,7 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     // 通过依赖注入获取认证服务
-    _authService = getIt<AuthService>();
+    _authService = ServiceLocatorConfig.get<AuthService>();
   }
 
   void _submit() async {
@@ -199,10 +199,10 @@ class _LoginPageState extends State<LoginPage> {
                     SizedBox(
                       width: double.infinity,
                       height: 48,
-                      child: CoreButton(
-                        label: '管理员登录',
+                      child: CoreButton.primary(
+                        text: '管理员登录',
                         onPressed: _loading ? null : _submit,
-                        loading: _loading,
+                        isLoading: _loading,
                         icon: Icons.login,
                       ),
                     ),

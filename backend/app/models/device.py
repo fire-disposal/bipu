@@ -18,18 +18,18 @@ class Device(Base):
     config = Column(JSON, nullable=True)  # 设备配置信息
     location = Column(String(200), nullable=True)  # 设备位置
     is_active = Column(Boolean, default=True)
-    
+
     # 外键
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+
     # 时间戳
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     last_seen_at = Column(DateTime(timezone=True), nullable=True)  # 最后在线时间
-    
+
     # 关系
     user = relationship("User", back_populates="devices")
     messages = relationship("Message", back_populates="device", cascade="all, delete-orphan")
-    
+
     def __repr__(self):
         return f"<Device(id={self.id}, name='{self.name}', device_id='{self.device_id}')>"
