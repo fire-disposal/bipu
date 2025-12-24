@@ -1,320 +1,84 @@
 # ==============================================================================
-# PROJECT SPECIFIC IGNORES
+# 1. 全局配置 (OS & IDE)
 # ==============================================================================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+*.iml
 
-# Environment files
+# 环境变量与机密文件
 .env
 .env.*
 !.env.example
-
-# IDE and Editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
-
-# ==============================================================================
-# BACKEND (Python/FastAPI) IGNORES
-# ==============================================================================
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-backend/lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-.pybuilder/
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-.python-version
-
-# pipenv
-Pipfile.lock
-
-# poetry
-poetry.lock
-
-# pdm
-.pdm.toml
-
-# PEP 582
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# PyCharm
-.idea/
-
-# Backend specific
-backend/logs/
-backend/uploads/
-backend/.python-version
-backend/uv.lock
-
-# Build artifacts
-**/build/
-**/.dart_tool/
-**/.flutter-plugins
-**/.flutter-plugins-dependencies
-**/pubspec.lock
-**/*.iml
-**/.idea/
-**/.vscode/
-**/gradle/
-**/gradlew*
-**/gradle-wrapper*
-**/.gradle/
-**/*.jks
-**/key.properties
-**/local.properties
-**/*.pbxuser
-**/*.mode1v3
-**/*.mode2v3
-**/*.perspectivev3
-**/*.xcworkspace/
-**/*.xcuserdata/
-**/DerivedData/
-**/.symlinks/
-**/Flutter/ephemeral/
-**/Flutter/flutter_export_environment.sh
-**/ephemeral/
-**/.plugin_symlinks/
-**/*.last_build_id
-**/*.cache/
-**/*.dill
-**/*.stamp
-**/*.json
-!**/pubspec.yaml
-!**/package.json
-!**/tsconfig.json
-!**/*.config.json
-
-
-# ==============================================================================
-# ADMIN (Flutter Web) IGNORES
-# ==============================================================================
-
-# Flutter Web
-admin/build/
-admin/.dart_tool/
-admin/.flutter-plugins
-admin/.flutter-plugins-dependencies
-admin/*.iml
-admin/.idea/
-admin/.vscode/
-admin/pubspec.lock
-
-# ==============================================================================
-# DEPLOYMENT IGNORES
-# ==============================================================================
-
-# Docker
-deployment/docker/data/
-deployment/docker/volumes/
-deployment/logs/
-
-# Nginx
-deployment/nginx/logs/
-deployment/nginx/cache/
-
-# Scripts
-deployment/scripts/logs/
-deployment/scripts/tmp/
-
-# ==============================================================================
-# GENERAL IGNORES
-# ==============================================================================
-
-# Logs
-logs/
-*.log
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-*.temp
-*.bak
-*.backup
-*.old
-*.orig
-*.rej
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# OS generated files
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Desktop.ini
-
-# Archives
-*.7z
-*.dmg
-*.gz
-*.iso
-*.jar
-*.rar
-*.tar
-*.zip
-*.war
-*.ear
-*.sar
-*.class
-
-# Profiling
-*.prof
-
-# Node (if any)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Backup files
-*~
-*.swp
-*.swo
-
-# Local development
-local/
-local_*
-dev/
-.development/
-
-# Testing
-.coverage
-htmlcov/
-.pytest_cache/
-.tox/
-.nox/
-
-# Ruff
-.ruff_cache/
-
-# Security
 *.pem
 *.key
-*.crt
-*.p12
-*.pfx
 
-# Misc
-*.pid
-*.seed
-*.pid.lock
+# ==============================================================================
+# 2. BACKEND (Python) 优化
+# ==============================================================================
+# 字节码与缓存
+**/__pycache__/
+**/*.py[cod]
+**/*.so
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
+
+# 虚拟环境 (精简为通用的名称)
+.venv/
+venv/
+ENV/
+backend/.python-version
+
+# 构建与安装包
+backend/build/
+backend/dist/
+backend/*.egg-info/
+backend/uv.lock
+
+# 业务相关 (日志与上传)
+backend/logs/
+backend/uploads/
+backend/db.sqlite3
+
+# ==============================================================================
+# 3. FLUTTER 优化
+# ==============================================================================
+# Flutter/Dart 核心缓存
+flutter/.dart_tool/
+flutter/.flutter-plugins
+flutter/.flutter-plugins-dependencies
+flutter/.pub-cache/
+flutter/build/
+
+# 这里的 lock 文件建议保留（不忽略），除非你有特殊需求
+# 因为 lock 文件保证了团队成员依赖版本的一致性
+# flutter/pubspec.lock 
+
+# Android 特定
+flutter/android/local.properties
+flutter/android/key.properties
+flutter/android/.gradle/
+flutter/android/app/src/main/res/raw/
+flutter/android/*.jks
+
+# iOS 特定
+flutter/ios/.symlinks/
+flutter/ios/Pods/
+flutter/ios/DerivedData/
+flutter/ios/Flutter/ephemeral/
+flutter/ios/Flutter/Generated.xcconfig
+flutter/ios/Flutter/flutter_export_environment.sh
+
+# Windows 平台的本地/临时配置
+flutter/windows/flutter/ephemeral/
+flutter/windows/flutter/generated_config.cmake
+# ==============================================================================
+# 4. 其他通用
+# ==============================================================================
+*.log
+*.tmp
+node_modules/
