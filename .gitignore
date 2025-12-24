@@ -38,7 +38,7 @@ backend/build/
 backend/dist/
 backend/*.egg-info/
 backend/uv.lock
-
+backend/*.db
 # 业务相关 (日志与上传)
 backend/logs/
 backend/uploads/
@@ -81,4 +81,5 @@ flutter/windows/flutter/generated_config.cmake
 # ==============================================================================
 *.log
 *.tmp
+
 node_modules/
