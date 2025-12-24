@@ -1,42 +1,43 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:openapi/openapi.dart';
 import '../widgets/admin_data_table.dart';
 
-/// 管理端-设备管理页面
-class DeviceManagementPage extends StatefulWidget {
-  const DeviceManagementPage({Key? key}) : super(key: key);
+/// 管理端-通知管理页面
+class NotificationManagementPage extends StatefulWidget {
+  const NotificationManagementPage({Key? key}) : super(key: key);
 
   @override
-  State<DeviceManagementPage> createState() => _DeviceManagementPageState();
+  State<NotificationManagementPage> createState() =>
+      _NotificationManagementPageState();
 }
 
-class _DeviceManagementPageState extends State<DeviceManagementPage> {
-  late final DevicesApi _api;
-  List<DeviceResponse>? _devices;
+class _NotificationManagementPageState
+    extends State<NotificationManagementPage> {
+  late final NotificationsApi _api;
+  List<NotificationResponse>? _notifications;
   bool _loading = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _api = Openapi().getDevicesApi();
-    _fetchDevices();
+    _api = Openapi().getNotificationsApi();
+    _fetchNotifications();
   }
 
-  Future<void> _fetchDevices() async {
+  Future<void> _fetchNotifications() async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final res = await _api.getDevicesApiDevicesGet();
+      final res = await _api.getNotificationsApiNotificationsGet();
       setState(() {
-        _devices = (res.data as List<DeviceResponse>? ?? []);
+        _notifications = (res.data as List<NotificationResponse>? ?? []);
       });
     } catch (e) {
       setState(() {
-        _error = '设备获取失败: $e';
+        _error = '通知获取失败: $e';
       });
     } finally {
       setState(() {
@@ -45,12 +46,12 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     }
   }
 
-  void _showDeviceDetail(DeviceResponse device) {
+  void _showNotificationDetail(NotificationResponse notification) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('设备详情'),
-        content: SingleChildScrollView(child: Text(device.toString())),
+        title: Text('通知详情'),
+        content: SingleChildScrollView(child: Text(notification.toString())),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -64,32 +65,32 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('设备管理')),
+      appBar: AppBar(title: const Text('通知管理')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
           ? Center(child: Text(_error!))
-          : AdminDataTable<DeviceResponse>(
-              data: _devices ?? [],
+          : AdminDataTable<NotificationResponse>(
+              data: _notifications ?? [],
               columns: const [
                 DataColumn(label: Text('ID')),
-                DataColumn(label: Text('设备标识')),
-                DataColumn(label: Text('绑定用户')),
-                DataColumn(label: Text('最后在线')),
+                DataColumn(label: Text('标题')),
+                DataColumn(label: Text('内容')),
+                DataColumn(label: Text('状态')),
                 DataColumn(label: Text('操作')),
               ],
               buildRows: (data) => data
                   .map(
-                    (device) => DataRow(
+                    (n) => DataRow(
                       cells: [
-                        DataCell(Text('${device.id}')),
-                        DataCell(Text(device.deviceIdentifier)),
-                        DataCell(Text('${device.userId}')),
-                        DataCell(Text('${device.lastSeen ?? '从未'}')),
+                        DataCell(Text('${n.id}')),
+                        DataCell(Text(n.title ?? '')),
+                        DataCell(Text(n.content ?? '')),
+                        DataCell(Text(n.status?.name ?? '')),
                         DataCell(
                           IconButton(
                             icon: const Icon(Icons.info_outline),
-                            onPressed: () => _showDeviceDetail(device),
+                            onPressed: () => _showNotificationDetail(n),
                           ),
                         ),
                       ],
@@ -98,9 +99,9 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                   .toList(),
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _fetchDevices,
+        onPressed: _fetchNotifications,
         child: const Icon(Icons.refresh),
-        tooltip: '刷新设备',
+        tooltip: '刷新通知',
       ),
     );
   }

@@ -2,6 +2,8 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import '../../core/core.dart';
 import 'pages/admin_pages.dart';
+import 'pages/admin_log_page.dart';
+import 'pages/notification_management_page.dart';
 
 /// 管理端路由配置
 final GoRouter adminRouter = GoRouter(
@@ -72,11 +74,16 @@ final GoRouter adminRouter = GoRouter(
         //   builder: (context, state) => const MessageManagementPage(),
         //   redirect: _requireAuth,
         // ),
-        // GoRoute(
-        //   path: 'notifications',
-        //   builder: (context, state) => const NotificationManagementPage(),
-        //   redirect: _requireAuth,
-        // ),
+        GoRoute(
+          path: 'notifications',
+          builder: (context, state) => const NotificationManagementPage(),
+          redirect: _requireAuth,
+        ),
+        GoRoute(
+          path: 'admin-logs',
+          builder: (context, state) => const AdminLogPage(),
+          redirect: _requireAuth,
+        ),
       ],
     ),
   ],

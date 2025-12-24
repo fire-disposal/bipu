@@ -25,7 +25,7 @@ class AppConfig {
   final LogLevel logLevel;
 
   const AppConfig({
-    this.baseUrl = 'http://localhost:8848/api',
+    this.baseUrl = 'http://localhost:8848',
     this.connectionTimeout = 30,
     this.receiveTimeout = 30,
     this.appType = AppType.user,

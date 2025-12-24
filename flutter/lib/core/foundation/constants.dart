@@ -3,7 +3,7 @@ library;
 
 /// API相关常量
 class ApiConstants {
-  static const String defaultBaseUrl = 'http://localhost:8848/api';
+  static const String defaultBaseUrl = 'http://localhost:8848';
   static const int defaultConnectionTimeout = 30;
   static const int defaultReceiveTimeout = 30;
   static const String contentType = 'application/json';

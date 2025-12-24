@@ -95,6 +95,7 @@ class _AdminMainPageContent extends StatelessWidget {
 
   String _getPageTitle(int index) {
     const titles = ['仪表盘', '用户管理', '设备管理', '消息管理', '通知管理', '数据分析', '系统设置'];
+    if (index < 0 || index >= titles.length) return '仪表盘';
     return titles[index];
   }
 

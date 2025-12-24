@@ -1,42 +1,42 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:openapi/openapi.dart';
 import '../widgets/admin_data_table.dart';
+import '../widgets/admin_form_builder.dart';
 
-/// 管理端-设备管理页面
-class DeviceManagementPage extends StatefulWidget {
-  const DeviceManagementPage({Key? key}) : super(key: key);
+/// 管理端-日志管理页面
+class AdminLogPage extends StatefulWidget {
+  const AdminLogPage({Key? key}) : super(key: key);
 
   @override
-  State<DeviceManagementPage> createState() => _DeviceManagementPageState();
+  State<AdminLogPage> createState() => _AdminLogPageState();
 }
 
-class _DeviceManagementPageState extends State<DeviceManagementPage> {
-  late final DevicesApi _api;
-  List<DeviceResponse>? _devices;
+class _AdminLogPageState extends State<AdminLogPage> {
+  late final AdminLogsApi _api;
+  List<AdminLogResponse>? _logs;
   bool _loading = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _api = Openapi().getDevicesApi();
-    _fetchDevices();
+    _api = Openapi().getAdminLogsApi();
+    _fetchLogs();
   }
 
-  Future<void> _fetchDevices() async {
+  Future<void> _fetchLogs() async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final res = await _api.getDevicesApiDevicesGet();
+      final res = await _api.getAdminLogsApiAdminLogsGet();
       setState(() {
-        _devices = (res.data as List<DeviceResponse>? ?? []);
+        _logs = (res.data as List<AdminLogResponse>? ?? []);
       });
     } catch (e) {
       setState(() {
-        _error = '设备获取失败: $e';
+        _error = '日志获取失败: $e';
       });
     } finally {
       setState(() {
@@ -45,12 +45,12 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     }
   }
 
-  void _showDeviceDetail(DeviceResponse device) {
+  void _showLogDetail(AdminLogResponse log) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('设备详情'),
-        content: SingleChildScrollView(child: Text(device.toString())),
+        title: Text('日志详情'),
+        content: SingleChildScrollView(child: Text(log.toString())),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -64,32 +64,32 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('设备管理')),
+      appBar: AppBar(title: const Text('日志管理')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
           ? Center(child: Text(_error!))
-          : AdminDataTable<DeviceResponse>(
-              data: _devices ?? [],
+          : AdminDataTable<AdminLogResponse>(
+              data: _logs ?? [],
               columns: const [
                 DataColumn(label: Text('ID')),
-                DataColumn(label: Text('设备标识')),
-                DataColumn(label: Text('绑定用户')),
-                DataColumn(label: Text('最后在线')),
+                DataColumn(label: Text('管理员ID')),
                 DataColumn(label: Text('操作')),
+                DataColumn(label: Text('时间')),
+                DataColumn(label: Text('详情')),
               ],
               buildRows: (data) => data
                   .map(
-                    (device) => DataRow(
+                    (log) => DataRow(
                       cells: [
-                        DataCell(Text('${device.id}')),
-                        DataCell(Text(device.deviceIdentifier)),
-                        DataCell(Text('${device.userId}')),
-                        DataCell(Text('${device.lastSeen ?? '从未'}')),
+                        DataCell(Text('${log.id}')),
+                        DataCell(Text('${log.adminId}')),
+                        DataCell(Text('${log.action}')),
+                        DataCell(Text('${log.timestamp ?? ''}')),
                         DataCell(
                           IconButton(
                             icon: const Icon(Icons.info_outline),
-                            onPressed: () => _showDeviceDetail(device),
+                            onPressed: () => _showLogDetail(log),
                           ),
                         ),
                       ],
@@ -98,9 +98,9 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                   .toList(),
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _fetchDevices,
+        onPressed: _fetchLogs,
         child: const Icon(Icons.refresh),
-        tooltip: '刷新设备',
+        tooltip: '刷新日志',
       ),
     );
   }

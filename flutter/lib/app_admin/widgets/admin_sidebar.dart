@@ -69,6 +69,11 @@ class AdminSidebar extends StatelessWidget {
           label: Text('数据分析'),
         ),
         NavigationRailDestination(
+          icon: Icon(Icons.list_alt_outlined),
+          selectedIcon: Icon(Icons.list_alt),
+          label: Text('日志管理'),
+        ),
+        NavigationRailDestination(
           icon: Icon(Icons.settings_outlined),
           selectedIcon: Icon(Icons.settings),
           label: Text('系统设置'),
