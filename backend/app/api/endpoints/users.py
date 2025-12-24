@@ -1,20 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
+from datetime import timedelta
 
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.user import (
-    UserCreate, UserResponse, UserUpdate, UserLogin, Token
+    UserCreate, UserResponse, UserUpdate, UserLogin, Token, TokenRefresh, UserProfile
 )
 from app.core.security import (
     get_password_hash, verify_password, create_access_token, create_refresh_token,
-    get_current_active_user, get_current_superuser
+    get_current_active_user, get_current_superuser, decode_token
 )
 from app.core.exceptions import NotFoundException, ValidationException
 from app.core.logging import get_logger
 from app.core.config import settings
-from datetime import timedelta
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -80,11 +80,71 @@ async def login(
     )
     
     logger.info(f"User logged in: {user.email}")
+    
+    # 创建刷新令牌
+    refresh_token = create_refresh_token(data={"sub": str(user.id)})
+    
     return {
         "access_token": access_token,
+        "refresh_token": refresh_token,
         "token_type": "bearer",
-        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "nickname": user.nickname,
+            "is_active": user.is_active,
+            "is_superuser": user.is_superuser
+        }
     }
+
+
+@router.post("/refresh", response_model=Token)
+async def refresh_token(
+    token_refresh: TokenRefresh,
+    db: Session = Depends(get_db)
+):
+    """刷新访问令牌"""
+    try:
+        payload = decode_token(token_refresh.refresh_token)
+        if payload is None or payload.get("type") != "refresh":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        user_id: int = int(payload.get("sub"))
+        user = db.query(User).filter(User.id == user_id).first()
+        
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid user",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # 创建新的访问令牌
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": str(user.id)}, expires_delta=access_token_expires
+        )
+        
+        logger.info(f"Token refreshed for user: {user.email}")
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        }
+        
+    except Exception as e:
+        logger.error(f"Token refresh error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 @router.get("/me", response_model=UserResponse)
@@ -199,3 +259,147 @@ async def delete_user(
     
     logger.info(f"User deleted: {user.email}")
     return {"message": "User deleted successfully"}
+
+
+@router.post("/logout")
+async def logout(
+    current_user: User = Depends(get_current_active_user)
+):
+    """用户登出"""
+    logger.info(f"User logged out: {current_user.email}")
+    return {"message": "Logged out successfully"}
+
+
+@router.get("/profile", response_model=UserProfile)
+async def get_user_profile(
+    current_user: User = Depends(get_current_active_user)
+):
+    """获取用户详细资料"""
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "nickname": current_user.nickname,
+        "full_name": current_user.full_name,
+        "is_active": current_user.is_active,
+        "is_superuser": current_user.is_superuser,
+        "role": current_user.role,
+        "last_active": current_user.last_active,
+        "created_at": current_user.created_at,
+        "updated_at": current_user.updated_at
+    }
+
+
+@router.put("/profile", response_model=UserProfile)
+async def update_user_profile(
+    user_update: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """更新用户详细资料"""
+    return await update_current_user(user_update, current_user, db)
+
+
+@router.put("/online-status")
+async def update_online_status(
+    is_online: bool,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """更新用户在线状态"""
+    from datetime import datetime
+    current_user.last_active = datetime.utcnow()
+    db.commit()
+    
+    status_text = "online" if is_online else "offline"
+    logger.info(f"User {current_user.username} is now {status_text}")
+    return {"message": f"User is now {status_text}"}
+
+
+# 管理端API
+@router.get("/admin/all", response_model=List[UserResponse])
+async def admin_get_all_users(
+    skip: int = 0,
+    limit: int = 100,
+    is_active: Optional[bool] = None,
+    is_superuser: Optional[bool] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """管理端：获取所有用户（需要超级用户权限）"""
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    
+    query = db.query(User)
+    
+    if is_active is not None:
+        query = query.filter(User.is_active == is_active)
+    if is_superuser is not None:
+        query = query.filter(User.is_superuser == is_superuser)
+    
+    users = query.offset(skip).limit(limit).all()
+    return users
+
+
+@router.put("/admin/{user_id}/status")
+async def admin_update_user_status(
+    user_id: int,
+    is_active: bool,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """管理端：更新用户状态（需要超级用户权限）"""
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise NotFoundException("User not found")
+    
+    user.is_active = is_active
+    db.commit()
+    db.refresh(user)
+    
+    status_text = "activated" if is_active else "deactivated"
+    logger.info(f"Admin {current_user.username} {status_text} user {user.username}")
+    return {"message": f"User {status_text} successfully"}
+
+
+@router.get("/admin/stats")
+async def admin_get_user_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """管理端：获取用户统计（需要超级用户权限）"""
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    
+    from sqlalchemy import func
+    from datetime import date, datetime, timedelta
+    
+    total_users = db.query(User).count()
+    active_users = db.query(User).filter(User.is_active == True).count()
+    inactive_users = db.query(User).filter(User.is_active == False).count()
+    superusers = db.query(User).filter(User.is_superuser == True).count()
+    
+    # 今日注册用户
+    today = date.today()
+    today_users = db.query(User).filter(
+        func.date(User.created_at) == today
+    ).count()
+    
+    # 最近7天活跃用户
+    week_ago = datetime.utcnow() - timedelta(days=7)
+    recent_active_users = db.query(User).filter(
+        User.last_active >= week_ago
+    ).count()
+    
+    return {
+        "total_users": total_users,
+        "active_users": active_users,
+        "inactive_users": inactive_users,
+        "superusers": superusers,
+        "today_new_users": today_users,
+        "recent_active_users_7d": recent_active_users,
+        "activation_rate": active_users / total_users if total_users > 0 else 0
+    }

@@ -985,14 +985,6 @@ packages:
       url: "https://mirrors.tuna.tsinghua.edu.cn/dart-pub/"
     source: hosted
     version: "1.4.1"
-  swagger_parser:
-    dependency: "direct dev"
-    description:
-      name: swagger_parser
-      sha256: d53fae6c433f9051d00577e340218763574855d83a7c1cf0f62c105b72437e4b
-      url: "https://mirrors.tuna.tsinghua.edu.cn/dart-pub/"
-    source: hosted
-    version: "1.37.0"
   syncfusion_flutter_core:
     dependency: transitive
     description:

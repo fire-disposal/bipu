@@ -59,10 +59,32 @@ class UserLogin(BaseModel):
 class Token(BaseModel):
     """令牌响应模式"""
     access_token: str
+    refresh_token: Optional[str] = None
     token_type: str = "bearer"
     expires_in: int
+    user: Optional[dict] = None
+
+
+class TokenRefresh(BaseModel):
+    """刷新令牌模式"""
+    refresh_token: str
 
 
 class TokenData(BaseModel):
     """令牌数据模式"""
     username: Optional[str] = None
+
+
+class UserProfile(BaseModel):
+    """用户详细资料模式"""
+    id: int
+    username: str
+    email: EmailStr
+    nickname: Optional[str]
+    full_name: Optional[str]
+    is_active: bool
+    is_superuser: bool
+    role: str
+    last_active: Optional[datetime]
+    created_at: datetime
+    updated_at: Optional[datetime]

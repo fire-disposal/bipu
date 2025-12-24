@@ -28,10 +28,11 @@ class Settings(BaseSettings):
     ALLOWED_HOSTS: List[str] = ["*"]
     
     # JWT配置
-    SECRET_KEY: str = "your-secret-key-here"
+    SECRET_KEY: str = "your-super-secret-jwt-key-change-this-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    JWT_TOKEN_PREFIX: str = "Bearer"
     
     # 安全配置
     PASSWORD_HASH_ALGORITHM: str = "bcrypt"

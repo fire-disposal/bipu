@@ -1,4 +1,4 @@
-"""通知管理端点"""
+"""站内信管理端点"""
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -6,15 +6,14 @@ from typing import List, Optional
 from datetime import datetime
 
 from app.db.database import get_db
-from app.models.notification import Notification, NotificationType, NotificationStatus
+from app.models.notification import Notification, NotificationStatus
 from app.models.user import User
 from app.models.message import Message
 from app.schemas.notification import (
-    NotificationCreate, NotificationUpdate, NotificationResponse, 
-    NotificationList, NotificationStats, EmailNotification, 
-    PushNotification, SMSNotification, WebhookNotification
+    NotificationCreate, NotificationUpdate, NotificationResponse,
+    NotificationList, NotificationStats
 )
-from app.core.security import get_current_active_user, get_current_superuser
+from app.core.security import get_current_active_user
 from app.core.exceptions import NotFoundException, ValidationException
 from app.core.logging import get_logger
 
@@ -28,7 +27,7 @@ async def create_notification(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """创建通知"""
+    """创建站内信"""
     # 验证消息是否存在且属于当前用户
     if notification.message_id:
         message = db.query(Message).filter(
@@ -39,7 +38,7 @@ async def create_notification(
         if not message:
             raise ValidationException("Message not found or not owned by user")
     
-    # 创建通知
+    # 创建站内信
     notification_data = notification.dict()
     notification_data["user_id"] = current_user.id
     
@@ -48,7 +47,7 @@ async def create_notification(
     db.commit()
     db.refresh(db_notification)
     
-    logger.info(f"Notification created: {notification.title} for user {current_user.email}")
+    logger.info(f"站内信创建: {notification.title} 用户 {current_user.email}")
     return db_notification
 
 
@@ -56,17 +55,14 @@ async def create_notification(
 async def get_notifications(
     skip: int = 0,
     limit: int = 100,
-    notification_type: Optional[NotificationType] = None,
     status: Optional[NotificationStatus] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """获取通知列表"""
+    """获取站内信列表"""
     query = db.query(Notification).filter(Notification.user_id == current_user.id)
     
     # 应用过滤条件
-    if notification_type:
-        query = query.filter(Notification.notification_type == notification_type)
     if status:
         query = query.filter(Notification.status == status)
     
@@ -86,28 +82,19 @@ async def get_notification_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """获取通知统计信息"""
+    """获取站内信统计信息"""
     query = db.query(Notification).filter(Notification.user_id == current_user.id)
     
     total = query.count()
-    pending = query.filter(Notification.status == NotificationStatus.PENDING).count()
-    sent = query.filter(Notification.status == NotificationStatus.SENT).count()
-    failed = query.filter(Notification.status == NotificationStatus.FAILED).count()
-    cancelled = query.filter(Notification.status == NotificationStatus.CANCELLED).count()
-    
-    # 按类型统计
-    by_type = {}
-    for notif_type in NotificationType:
-        count = query.filter(Notification.notification_type == notif_type).count()
-        by_type[notif_type.value] = count
+    unread = query.filter(Notification.status == NotificationStatus.UNREAD).count()
+    read = query.filter(Notification.status == NotificationStatus.READ).count()
+    deleted = query.filter(Notification.status == NotificationStatus.DELETED).count()
     
     return NotificationStats(
         total=total,
-        pending=pending,
-        sent=sent,
-        failed=failed,
-        cancelled=cancelled,
-        by_type=by_type
+        unread=unread,
+        read=read,
+        deleted=deleted
     )
 
 
@@ -117,7 +104,7 @@ async def get_notification(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """获取指定通知"""
+    """获取指定站内信"""
     notification = db.query(Notification).filter(
         Notification.id == notification_id,
         Notification.user_id == current_user.id
@@ -136,7 +123,7 @@ async def update_notification(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """更新通知"""
+    """更新站内信"""
     notification = db.query(Notification).filter(
         Notification.id == notification_id,
         Notification.user_id == current_user.id
@@ -145,31 +132,29 @@ async def update_notification(
     if not notification:
         raise NotFoundException("Notification not found")
     
-    # 已发送的通知不能修改某些字段
-    if notification.status == NotificationStatus.SENT:
-        restricted_fields = ["notification_type", "target", "scheduled_at"]
-        for field in restricted_fields:
-            if field in notification_update.dict(exclude_unset=True):
-                raise ValidationException(f"Cannot modify {field} for sent notification")
-    
     update_data = notification_update.dict(exclude_unset=True)
+    
+    # 如果标记为已读，设置阅读时间
+    if "status" in update_data and update_data["status"] == NotificationStatus.READ and notification.status == NotificationStatus.UNREAD:
+        update_data["read_at"] = datetime.utcnow()
+    
     for key, value in update_data.items():
         setattr(notification, key, value)
     
     db.commit()
     db.refresh(notification)
     
-    logger.info(f"Notification updated: {notification.title} by user {current_user.email}")
+    logger.info(f"站内信更新: {notification.title} 用户 {current_user.email}")
     return notification
 
 
-@router.post("/{notification_id}/send")
-async def send_notification(
+@router.put("/{notification_id}/read")
+async def mark_notification_as_read(
     notification_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """发送通知"""
+    """标记站内信为已读"""
     notification = db.query(Notification).filter(
         Notification.id == notification_id,
         Notification.user_id == current_user.id
@@ -178,44 +163,34 @@ async def send_notification(
     if not notification:
         raise NotFoundException("Notification not found")
     
-    if notification.status != NotificationStatus.PENDING:
-        raise ValidationException("Notification is not in pending status")
+    if notification.status == NotificationStatus.UNREAD:
+        notification.status = NotificationStatus.READ
+        notification.read_at = datetime.utcnow()
+        db.commit()
+        
+        logger.info(f"站内信标记为已读: {notification.title}")
     
-    # 这里应该调用实际的通知发送服务
-    # 现在只是模拟发送成功
-    notification.status = NotificationStatus.SENT
-    notification.sent_at = datetime.utcnow()
-    notification.result = "Notification sent successfully"
-    
-    db.commit()
-    
-    logger.info(f"Notification sent: {notification.title} to {notification.target}")
-    return {"message": "Notification sent successfully"}
+    return {"message": "Notification marked as read"}
 
 
-@router.post("/{notification_id}/cancel")
-async def cancel_notification(
-    notification_id: int,
+@router.put("/read-all")
+async def mark_all_notifications_as_read(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """取消通知"""
-    notification = db.query(Notification).filter(
-        Notification.id == notification_id,
-        Notification.user_id == current_user.id
-    ).first()
+    """标记所有站内信为已读"""
+    updated_count = db.query(Notification).filter(
+        Notification.user_id == current_user.id,
+        Notification.status == NotificationStatus.UNREAD
+    ).update({
+        "status": NotificationStatus.READ,
+        "read_at": datetime.utcnow()
+    })
     
-    if not notification:
-        raise NotFoundException("Notification not found")
-    
-    if notification.status != NotificationStatus.PENDING:
-        raise ValidationException("Only pending notifications can be cancelled")
-    
-    notification.status = NotificationStatus.CANCELLED
     db.commit()
     
-    logger.info(f"Notification cancelled: {notification.title}")
-    return {"message": "Notification cancelled successfully"}
+    logger.info(f"所有站内信标记为已读 用户 {current_user.email}: {updated_count} 封")
+    return {"message": f"{updated_count} notifications marked as read"}
 
 
 @router.delete("/{notification_id}")
@@ -224,7 +199,7 @@ async def delete_notification(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """删除通知"""
+    """删除站内信（软删除）"""
     notification = db.query(Notification).filter(
         Notification.id == notification_id,
         Notification.user_id == current_user.id
@@ -233,82 +208,9 @@ async def delete_notification(
     if not notification:
         raise NotFoundException("Notification not found")
     
-    db.delete(notification)
+    # 软删除，只改变状态
+    notification.status = NotificationStatus.DELETED
     db.commit()
     
-    logger.info(f"Notification deleted: {notification.title} by user {current_user.email}")
+    logger.info(f"站内信删除: {notification.title} 用户 {current_user.email}")
     return {"message": "Notification deleted successfully"}
-
-
-# 批量操作端点
-@router.post("/batch/send")
-async def send_pending_notifications(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_superuser)
-):
-    """批量发送待处理通知（需要超级用户权限）"""
-    pending_notifications = db.query(Notification).filter(
-        Notification.status == NotificationStatus.PENDING
-    ).all()
-    
-    sent_count = 0
-    failed_count = 0
-    
-    for notification in pending_notifications:
-        try:
-            # 这里应该调用实际的通知发送服务
-            notification.status = NotificationStatus.SENT
-            notification.sent_at = datetime.utcnow()
-            notification.result = "Notification sent successfully"
-            sent_count += 1
-        except Exception as e:
-            notification.status = NotificationStatus.FAILED
-            notification.error_message = str(e)
-            notification.retry_count += 1
-            failed_count += 1
-            logger.error(f"Failed to send notification {notification.id}: {str(e)}")
-    
-    db.commit()
-    
-    return {
-        "message": f"Batch send completed",
-        "sent": sent_count,
-        "failed": failed_count
-    }
-
-
-# 特定类型的通知端点
-@router.post("/email", response_model=NotificationResponse)
-async def create_email_notification(
-    email_data: EmailNotification,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """创建邮件通知"""
-    notification_data = NotificationCreate(
-        title=email_data.subject,
-        content=email_data.body,
-        notification_type=NotificationType.EMAIL,
-        target=email_data.to_email,
-        config={"html_body": email_data.html_body} if email_data.html_body else None
-    )
-    
-    return await create_notification(notification_data, db, current_user)
-
-
-@router.post("/push", response_model=NotificationResponse)
-async def create_push_notification(
-    push_data: PushNotification,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """创建推送通知"""
-    notification_data = NotificationCreate(
-        title=push_data.title,
-        content=push_data.body,
-        notification_type=NotificationType.PUSH,
-        target=push_data.device_token,
-        config={"data": push_data.data} if push_data.data else None
-    )
-    
-    return await create_notification(notification_data, db, current_user)

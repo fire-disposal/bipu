@@ -1,14 +1,15 @@
-"""消息管理端点"""
+"""消息管理端点 - IM系统核心功能"""
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, and_
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.db.database import get_db
 from app.models.message import Message, MessageType, MessageStatus
 from app.models.user import User
 from app.models.device import Device
+from app.models.friendship import Friendship, FriendshipStatus
 from app.schemas.message import (
     MessageCreate, MessageUpdate, MessageResponse, MessageList, MessageStats
 )
@@ -26,7 +27,12 @@ async def create_message(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """创建消息"""
+    """创建消息 - IM核心功能"""
+    # 验证接收者是否存在
+    receiver = db.query(User).filter(User.id == message.receiver_id).first()
+    if not receiver:
+        raise NotFoundException("Receiver user not found")
+    
     # 验证设备是否存在且属于当前用户
     if message.device_id:
         device = db.query(Device).filter(
@@ -37,16 +43,29 @@ async def create_message(
         if not device:
             raise ValidationException("Device not found or not owned by user")
     
+    # 验证好友关系（如果是用户间消息）
+    if message.message_type == MessageType.USER:
+        friendship = db.query(Friendship).filter(
+            or_(
+                (Friendship.user_id == current_user.id) & (Friendship.friend_id == message.receiver_id),
+                (Friendship.user_id == message.receiver_id) & (Friendship.friend_id == current_user.id)
+            ),
+            Friendship.status == FriendshipStatus.ACCEPTED
+        ).first()
+        
+        if not friendship:
+            raise ValidationException("Can only send messages to friends")
+    
     # 创建消息
     message_data = message.dict()
-    message_data["user_id"] = current_user.id
+    message_data["sender_id"] = current_user.id
     
     db_message = Message(**message_data)
     db.add(db_message)
     db.commit()
     db.refresh(db_message)
     
-    logger.info(f"Message created: {message.title} for user {current_user.email}")
+    logger.info(f"IM消息创建: {message.title} 从 {current_user.username} 到 {receiver.username}")
     return db_message
 
 
@@ -57,11 +76,18 @@ async def get_messages(
     message_type: Optional[MessageType] = None,
     status: Optional[MessageStatus] = None,
     is_read: Optional[bool] = None,
+    sender_id: Optional[int] = None,
+    receiver_id: Optional[int] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """获取消息列表"""
-    query = db.query(Message).filter(Message.user_id == current_user.id)
+    """获取消息列表 - 支持IM会话查询"""
+    # 用户只能查看自己发送或接收的消息
+    query = db.query(Message).filter(
+        or_(Message.sender_id == current_user.id, Message.receiver_id == current_user.id)
+    )
     
     # 应用过滤条件
     if message_type:
@@ -70,9 +96,17 @@ async def get_messages(
         query = query.filter(Message.status == status)
     if is_read is not None:
         query = query.filter(Message.is_read == is_read)
+    if sender_id:
+        query = query.filter(Message.sender_id == sender_id)
+    if receiver_id:
+        query = query.filter(Message.receiver_id == receiver_id)
+    if start_date:
+        query = query.filter(Message.created_at >= start_date)
+    if end_date:
+        query = query.filter(Message.created_at <= end_date)
     
     total = query.count()
-    unread_count = query.filter(Message.is_read == False).count()
+    unread_count = query.filter(Message.is_read == False, Message.receiver_id == current_user.id).count()
     messages = query.order_by(Message.created_at.desc()).offset(skip).limit(limit).all()
     
     return MessageList(
@@ -81,6 +115,115 @@ async def get_messages(
         page=skip // limit + 1,
         size=limit,
         unread_count=unread_count
+    )
+
+
+@router.get("/conversations/{user_id}", response_model=MessageList)
+async def get_conversation_messages(
+    user_id: int,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """获取与指定用户的会话消息 - IM核心功能"""
+    # 验证好友关系
+    friendship = db.query(Friendship).filter(
+        or_(
+            (Friendship.user_id == current_user.id) & (Friendship.friend_id == user_id),
+            (Friendship.user_id == user_id) & (Friendship.friend_id == current_user.id)
+        ),
+        Friendship.status == FriendshipStatus.ACCEPTED
+    ).first()
+    
+    if not friendship:
+        raise ValidationException("Can only view messages with friends")
+    
+    # 获取双方的消息
+    query = db.query(Message).filter(
+        or_(
+            (Message.sender_id == current_user.id) & (Message.receiver_id == user_id),
+            (Message.sender_id == user_id) & (Message.receiver_id == current_user.id)
+        )
+    )
+    
+    total = query.count()
+    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(limit).all()
+    
+    # 标记未读消息为已读
+    unread_messages = db.query(Message).filter(
+        Message.sender_id == user_id,
+        Message.receiver_id == current_user.id,
+        Message.is_read == False
+    ).all()
+    
+    for msg in unread_messages:
+        msg.is_read = True
+        msg.status = MessageStatus.READ
+        msg.read_at = datetime.utcnow()
+    
+    if unread_messages:
+        db.commit()
+    
+    return MessageList(
+        items=messages,
+        total=total,
+        page=skip // limit + 1,
+        size=limit,
+        unread_count=0  # 已标记为已读
+    )
+
+
+@router.get("/unread", response_model=MessageList)
+async def get_unread_messages(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """获取未读消息 - IM轮询接口"""
+    query = db.query(Message).filter(
+        Message.receiver_id == current_user.id,
+        Message.is_read == False
+    )
+    
+    total = query.count()
+    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(limit).all()
+    
+    return MessageList(
+        items=messages,
+        total=total,
+        page=skip // limit + 1,
+        size=limit,
+        unread_count=total
+    )
+
+
+@router.get("/recent", response_model=MessageList)
+async def get_recent_messages(
+    hours: int = 24,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """获取最近消息 - IM实时同步"""
+    since = datetime.utcnow() - timedelta(hours=hours)
+    
+    query = db.query(Message).filter(
+        or_(Message.sender_id == current_user.id, Message.receiver_id == current_user.id),
+        Message.created_at >= since
+    )
+    
+    total = query.count()
+    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(limit).all()
+    
+    return MessageList(
+        items=messages,
+        total=total,
+        page=skip // limit + 1,
+        size=limit,
+        unread_count=query.filter(Message.is_read == False, Message.receiver_id == current_user.id).count()
     )
 
 
@@ -247,3 +390,105 @@ async def delete_read_messages(
     
     logger.info(f"Read messages deleted for user {current_user.email}: {deleted_count} messages")
     return {"message": f"{deleted_count} read messages deleted"}
+
+
+# 管理端API
+@router.get("/admin/all", response_model=MessageList)
+async def admin_get_all_messages(
+    skip: int = 0,
+    limit: int = 100,
+    message_type: Optional[MessageType] = None,
+    status: Optional[MessageStatus] = None,
+    sender_id: Optional[int] = None,
+    receiver_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """管理端：获取所有消息（需要超级用户权限）"""
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    
+    query = db.query(Message)
+    
+    if message_type:
+        query = query.filter(Message.message_type == message_type)
+    if status:
+        query = query.filter(Message.status == status)
+    if sender_id:
+        query = query.filter(Message.sender_id == sender_id)
+    if receiver_id:
+        query = query.filter(Message.receiver_id == receiver_id)
+    
+    total = query.count()
+    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(limit).all()
+    
+    return MessageList(
+        items=messages,
+        total=total,
+        page=skip // limit + 1,
+        size=limit,
+        unread_count=query.filter(Message.is_read == False).count()
+    )
+
+
+@router.delete("/admin/{message_id}")
+async def admin_delete_message(
+    message_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """管理端：删除消息（需要超级用户权限）"""
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    
+    message = db.query(Message).filter(Message.id == message_id).first()
+    if not message:
+        raise NotFoundException("Message not found")
+    
+    db.delete(message)
+    db.commit()
+    
+    logger.info(f"Admin deleted message: {message_id} by {current_user.username}")
+    return {"message": "Message deleted by admin"}
+
+
+@router.get("/admin/stats")
+async def admin_get_message_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """管理端：获取系统消息统计（需要超级用户权限）"""
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    
+    total_messages = db.query(Message).count()
+    unread_messages = db.query(Message).filter(Message.is_read == False).count()
+    read_messages = db.query(Message).filter(Message.is_read == True).count()
+    
+    # 按类型统计
+    by_type = {}
+    for msg_type in MessageType:
+        count = db.query(Message).filter(Message.message_type == msg_type).count()
+        by_type[msg_type.value] = count
+    
+    # 按状态统计
+    by_status = {}
+    for msg_status in MessageStatus:
+        count = db.query(Message).filter(Message.status == msg_status).count()
+        by_status[msg_status.value] = count
+    
+    # 今日消息统计
+    today = datetime.utcnow().date()
+    today_messages = db.query(Message).filter(
+        func.date(Message.created_at) == today
+    ).count()
+    
+    return {
+        "total_messages": total_messages,
+        "unread_messages": unread_messages,
+        "read_messages": read_messages,
+        "today_messages": today_messages,
+        "by_type": by_type,
+        "by_status": by_status,
+        "read_rate": read_messages / total_messages if total_messages > 0 else 0
+    }

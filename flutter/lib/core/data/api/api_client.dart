@@ -20,7 +20,7 @@ class ApiConfig {
 
   /// 创建默认配置
   factory ApiConfig.defaultConfig() {
-    return const ApiConfig(baseUrl: 'http://localhost:8848/api');
+    return const ApiConfig(baseUrl: 'http://localhost:8848');
   }
 
   /// 复制配置
