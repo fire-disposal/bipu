@@ -45,7 +45,7 @@ class _ConnectedDeviceStatus extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.bluetooth_connected,
                     color: Colors.green,
                     size: 24,
@@ -84,7 +84,7 @@ class _ConnectedDeviceStatus extends StatelessWidget {
           children: [
             Text('电池电量: ${deviceInfo?.batteryLevel ?? '--'}%'),
             Text('设备温度: ${deviceInfo?.temperature ?? '--'}°C'),
-            Text('连接状态: 已连接'),
+            const Text('连接状态: 已连接'),
             Text('最后同步: ${deviceInfo?.lastSyncTime ?? '--'}'),
           ],
         ),
@@ -122,7 +122,7 @@ class _DeviceStatusRow extends StatelessWidget {
           value: '${deviceInfo?.temperature ?? '--'}°C',
           color: _getTemperatureColor(deviceInfo?.temperature),
         ),
-        _StatusItem(
+        const _StatusItem(
           icon: Icons.signal_wifi_4_bar,
           label: '信号',
           value: '良好',

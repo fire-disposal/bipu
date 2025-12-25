@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:openapi/openapi.dart';
+import '../../core/state/state.dart' as app_state;
 import '../widgets/admin_data_table.dart';
-import '../state/user_management_cubit.dart';
+import '../state/admin_state.dart';
 
 /// 管理端-用户管理页面
 class UserManagementPage extends StatefulWidget {
-  const UserManagementPage({Key? key}) : super(key: key);
+  const UserManagementPage({super.key});
 
   @override
   State<UserManagementPage> createState() => _UserManagementPageState();
@@ -19,7 +20,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
   void initState() {
     super.initState();
     _cubit = UserManagementCubit();
-    _cubit.loadUsers();
+    _cubit.loadData();
   }
 
   @override
@@ -155,62 +156,45 @@ class _UserManagementPageState extends State<UserManagementPage> {
           ),
         ],
       ),
-      body: BlocBuilder<UserManagementCubit, UserManagementState>(
+      body: BlocBuilder<UserManagementCubit, app_state.ListState<UserResponse>>(
         bloc: _cubit,
         builder: (context, state) {
-          if (state.loading) {
+          if (state.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
           if (state.error != null) {
             return Center(child: Text(state.error!));
           }
           return AdminDataTable<UserResponse>(
-            data: state.users,
+            data: state.items,
             columns: const [
               DataColumn(label: Text('ID')),
               DataColumn(label: Text('用户名')),
               DataColumn(label: Text('邮箱')),
               DataColumn(label: Text('状态')),
-              DataColumn(label: Text('操作')),
             ],
             buildRows: (data) => data
                 .map(
                   (user) => DataRow(
                     cells: [
                       DataCell(Text('${user.id}')),
+                      DataCell(Text(user.username)),
+                      DataCell(Text(user.email)),
                       DataCell(Text(user.isActive == true ? '激活' : '禁用')),
-                      DataCell(
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.visibility),
-                              tooltip: '查看',
-                              onPressed: () => _showUserDetail(user),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.edit),
-                              tooltip: '编辑',
-                              onPressed: () => _showUserForm(user: user),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete),
-                              tooltip: '删除',
-                              onPressed: () => _confirmDelete(user),
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
                   ),
                 )
                 .toList(),
+            onView: (_, user) => _showUserDetail(user),
+            onEdit: (_, user) => _showUserForm(user: user),
+            onDelete: (_, user) => _confirmDelete(user),
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _cubit.loadUsers(),
-        child: const Icon(Icons.refresh),
+        onPressed: () => _cubit.refreshData(),
         tooltip: '刷新用户',
+        child: const Icon(Icons.refresh),
       ),
     );
   }

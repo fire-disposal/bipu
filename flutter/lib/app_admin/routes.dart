@@ -64,16 +64,6 @@ final GoRouter adminRouter = GoRouter(
           builder: (context, state) => const MessageManagementPage(),
           redirect: _requireAuth,
         ),
-        // GoRoute(
-        //   path: 'messages',
-        //   builder: (context, state) => const MessageManagementPage(),
-        //   redirect: _requireAuth,
-        // ),
-        // GoRoute(
-        //   path: 'messages',
-        //   builder: (context, state) => const MessageManagementPage(),
-        //   redirect: _requireAuth,
-        // ),
         GoRoute(
           path: 'notifications',
           builder: (context, state) => const NotificationManagementPage(),

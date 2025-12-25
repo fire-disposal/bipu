@@ -38,13 +38,13 @@ class CoreCard extends StatelessWidget {
     VoidCallback? onTap,
   }) {
     return CoreCard(
-      child: child,
       type: CoreCardType.elevated,
       elevation: elevation,
       padding: padding,
       borderRadius: borderRadius,
       backgroundColor: backgroundColor,
       onTap: onTap,
+      child: child,
     );
   }
 
@@ -56,13 +56,13 @@ class CoreCard extends StatelessWidget {
     VoidCallback? onTap,
   }) {
     return CoreCard(
-      child: child,
       type: CoreCardType.outlined,
       padding: padding,
       borderRadius: borderRadius,
       backgroundColor: backgroundColor,
       onTap: onTap,
       hasShadow: false,
+      child: child,
     );
   }
 
@@ -74,13 +74,13 @@ class CoreCard extends StatelessWidget {
     VoidCallback? onTap,
   }) {
     return CoreCard(
-      child: child,
       type: CoreCardType.filled,
       padding: padding,
       borderRadius: borderRadius,
       backgroundColor: backgroundColor,
       onTap: onTap,
       hasShadow: false,
+      child: child,
     );
   }
 
@@ -119,7 +119,7 @@ class CoreCard extends StatelessWidget {
       case CoreCardType.outlined:
         return theme.colorScheme.surface;
       case CoreCardType.filled:
-        return theme.colorScheme.surfaceVariant;
+        return theme.colorScheme.surfaceContainerHighest;
     }
   }
 

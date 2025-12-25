@@ -180,7 +180,7 @@ class DeviceStatus {
   @override
   String toString() {
     return 'DeviceStatus{batteryLevel: $batteryLevel%, '
-        'isCharging: $isCharging, temperature: ${temperature}°C, '
+        'isCharging: $isCharging, temperature: $temperature°C, '
         'lastSyncTime: $lastSyncTime, isConnected: $isConnected}';
   }
 }

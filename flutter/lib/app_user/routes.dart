@@ -17,24 +17,22 @@ final GoRouter router = GoRouter(
       path: '/',
       builder: (context, state) => const MainNavigationPage(),
       redirect: (context, state) async {
-        // 检查认证状态
-        final authService = ServiceLocatorConfig.get<AuthService>();
-        if (!authService.isAuthenticated()) {
-          return '/login';
-        }
-        return null; // 不重定向，允许访问
+        // 允许未登录用户访问主页面，但限制某些功能
+        // 蓝牙连接和本地发送功能对未登录用户开放
+        return null; // 不重定向，允许所有用户访问
       },
     ),
     // 其他需要认证的路由可以放在这里
   ],
   redirect: (context, state) async {
-    // 全局认证检查 - 排除登录和注册页面
+    // 全局认证检查 - 排除登录、注册和主页面
     if (state.matchedLocation == '/login' ||
-        state.matchedLocation == '/register') {
-      return null; // 允许访问登录和注册页面
+        state.matchedLocation == '/register' ||
+        state.matchedLocation == '/') {
+      return null; // 允许访问登录、注册和主页面
     }
 
-    // 检查认证状态
+    // 对于其他需要认证的功能页面，检查认证状态
     final authService = ServiceLocatorConfig.get<AuthService>();
     if (!authService.isAuthenticated()) {
       return '/login';

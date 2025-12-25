@@ -2,47 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:openapi/openapi.dart';
 import '../widgets/admin_data_table.dart';
+import '../state/device_management_cubit.dart';
 
 /// 管理端-设备管理页面
 class DeviceManagementPage extends StatefulWidget {
-  const DeviceManagementPage({Key? key}) : super(key: key);
+  const DeviceManagementPage({super.key});
 
   @override
   State<DeviceManagementPage> createState() => _DeviceManagementPageState();
 }
 
 class _DeviceManagementPageState extends State<DeviceManagementPage> {
-  late final DevicesApi _api;
-  List<DeviceResponse>? _devices;
-  bool _loading = false;
-  String? _error;
+  late final DeviceManagementCubit _cubit;
 
   @override
   void initState() {
     super.initState();
-    _api = Openapi().getDevicesApi();
-    _fetchDevices();
+    _cubit = DeviceManagementCubit();
+    _cubit.loadDevices();
   }
 
-  Future<void> _fetchDevices() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final res = await _api.getDevicesApiDevicesGet();
-      setState(() {
-        _devices = (res.data as List<DeviceResponse>? ?? []);
-      });
-    } catch (e) {
-      setState(() {
-        _error = '设备获取失败: $e';
-      });
-    } finally {
-      setState(() {
-        _loading = false;
-      });
-    }
+  @override
+  void dispose() {
+    _cubit.close();
+    super.dispose();
   }
 
   void _showDeviceDetail(DeviceResponse device) {
@@ -65,42 +48,49 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('设备管理')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(child: Text(_error!))
-          : AdminDataTable<DeviceResponse>(
-              data: _devices ?? [],
-              columns: const [
-                DataColumn(label: Text('ID')),
-                DataColumn(label: Text('设备标识')),
-                DataColumn(label: Text('绑定用户')),
-                DataColumn(label: Text('最后在线')),
-                DataColumn(label: Text('操作')),
-              ],
-              buildRows: (data) => data
-                  .map(
-                    (device) => DataRow(
-                      cells: [
-                        DataCell(Text('${device.id}')),
-                        DataCell(Text(device.deviceIdentifier)),
-                        DataCell(Text('${device.userId}')),
-                        DataCell(Text('${device.lastSeen ?? '从未'}')),
-                        DataCell(
-                          IconButton(
-                            icon: const Icon(Icons.info_outline),
-                            onPressed: () => _showDeviceDetail(device),
-                          ),
+      body: BlocBuilder<DeviceManagementCubit, DeviceManagementState>(
+        bloc: _cubit,
+        builder: (context, state) {
+          if (state.loading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (state.error != null) {
+            return Center(child: Text(state.error!));
+          }
+          return AdminDataTable<DeviceResponse>(
+            data: state.devices,
+            columns: const [
+              DataColumn(label: Text('ID')),
+              DataColumn(label: Text('设备标识')),
+              DataColumn(label: Text('绑定用户')),
+              DataColumn(label: Text('最后在线')),
+              DataColumn(label: Text('操作')),
+            ],
+            buildRows: (data) => data
+                .map(
+                  (device) => DataRow(
+                    cells: [
+                      DataCell(Text('${device.id}')),
+                      DataCell(Text(device.deviceIdentifier)),
+                      DataCell(Text('${device.userId}')),
+                      DataCell(Text('${device.lastSeen ?? '从未'}')),
+                      DataCell(
+                        IconButton(
+                          icon: const Icon(Icons.info_outline),
+                          onPressed: () => _showDeviceDetail(device),
                         ),
-                      ],
-                    ),
-                  )
-                  .toList(),
-            ),
+                      ),
+                    ],
+                  ),
+                )
+                .toList(),
+          );
+        },
+      ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _fetchDevices,
-        child: const Icon(Icons.refresh),
+        onPressed: () => _cubit.loadDevices(),
         tooltip: '刷新设备',
+        child: const Icon(Icons.refresh),
       ),
     );
   }

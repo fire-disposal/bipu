@@ -49,7 +49,6 @@ class MessageSent extends DeviceControlState {
 
   const MessageSent(this.message);
 
-  @override
   List<Object?> get props => [message];
 }
 

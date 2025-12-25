@@ -65,6 +65,5 @@ class MessageTooLargeException extends BleException {
 
 /// 设备控制异常
 class DeviceControlException extends BleException {
-  const DeviceControlException(String message, [String? deviceId])
-    : super(message, deviceId);
+  const DeviceControlException(super.message, [super.deviceId]);
 }

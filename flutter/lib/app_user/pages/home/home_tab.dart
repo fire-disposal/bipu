@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../widgets/status_dashboard.dart';
 import '../../widgets/device_info_card.dart';
-import '../../state/device_control_state.dart';
+import '../../state/user_state.dart';
 import '../../../core/domain/ble/ble.dart';
 
 /// 首页 (A) - 现代蓝牙寻呼机Dashboard主页
@@ -199,66 +199,19 @@ class HomeTab extends StatelessWidget {
   }
 
   void _sendMessage(BuildContext context) {
-    final cubit = context.read<DeviceControlCubit>();
-    if (cubit.isConnected) {
-      cubit.sendSimpleNotification(text: '快速测试消息');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('测试消息已发送')));
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请先连接设备')));
-    }
+    context.read<HomeCubit>().executeQuickAction('send_message');
   }
 
   void _testVibration(BuildContext context) {
-    final cubit = context.read<DeviceControlCubit>();
-    if (cubit.isConnected) {
-      cubit.sendSimpleNotification(
-        text: '震动测试',
-        vibration: VibrationPattern.medium,
-      );
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('震动测试已发送')));
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请先连接设备')));
-    }
+    context.read<HomeCubit>().executeQuickAction('test_vibration');
   }
 
   void _testLed(BuildContext context) {
-    final cubit = context.read<DeviceControlCubit>();
-    if (cubit.isConnected) {
-      cubit.sendRgbSequence(
-        colors: [RgbColor.colorRed, RgbColor.colorGreen, RgbColor.colorBlue],
-        text: 'LED测试',
-        duration: 2000,
-      );
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('LED测试已发送')));
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请先连接设备')));
-    }
+    context.read<HomeCubit>().executeQuickAction('test_led');
   }
 
   void _sendEmergency(BuildContext context) {
-    final cubit = context.read<DeviceControlCubit>();
-    if (cubit.isConnected) {
-      cubit.sendUrgentNotification('紧急呼叫测试');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('紧急呼叫已发送')));
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请先连接设备')));
-    }
+    context.read<HomeCubit>().executeQuickAction('emergency');
   }
 
   void _viewAllMessages(BuildContext context) {

@@ -7,8 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../core/core.dart';
 import 'routes.dart';
-import 'state/user_data_cubit.dart' as user_data;
-import 'state/device_control_state.dart';
+import 'state/user_state.dart';
+import 'services/services.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,11 +52,11 @@ class UserApp extends StatelessWidget {
     // 优化依赖注入写法，避免未注册异常
     return MultiBlocProvider(
       providers: [
-        BlocProvider<user_data.UserDataCubit>(
+        BlocProvider<UserDataCubit>(
           create: (context) =>
-              ServiceLocatorConfig.isRegistered<user_data.UserDataCubit>()
-              ? ServiceLocatorConfig.get<user_data.UserDataCubit>()
-              : user_data.UserDataCubit(),
+              ServiceLocatorConfig.isRegistered<UserDataCubit>()
+              ? ServiceLocatorConfig.get<UserDataCubit>()
+              : UserDataCubit(),
         ),
         BlocProvider<DeviceControlCubit>(
           create: (context) =>
@@ -64,21 +64,97 @@ class UserApp extends StatelessWidget {
               ? ServiceLocatorConfig.get<DeviceControlCubit>()
               : DeviceControlCubit(),
         ),
+        BlocProvider<HomeCubit>(
+          create: (context) => HomeCubit(
+            deviceControlCubit: context.read<DeviceControlCubit>(),
+            userDataCubit: context.read<UserDataCubit>(),
+          ),
+        ),
+        BlocProvider<CallCubit>(
+          create: (context) =>
+              CallCubit(deviceControlCubit: context.read<DeviceControlCubit>()),
+        ),
+        BlocProvider<MessageCubit>(
+          create: (context) =>
+              MessageCubit(userDataCubit: context.read<UserDataCubit>()),
+        ),
+        BlocProvider<ProfileCubit>(
+          create: (context) => ProfileCubit(
+            authService: ServiceLocatorConfig.get<AuthService>(),
+            userDataCubit: context.read<UserDataCubit>(),
+          ),
+        ),
       ],
-      child: MaterialApp.router(
-        title: 'Bipupu 寻呼机',
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.system,
-        debugShowCheckedModeBanner: false,
-        routerConfig: router,
-        builder: (context, child) {
-          return GestureDetector(
-            onTap: () => FocusScope.of(context).unfocus(),
-            child: child ?? const SizedBox.shrink(),
-          );
-        },
+      child: _UserAppWithServices(
+        child: MaterialApp.router(
+          title: 'Bipupu 寻呼机',
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: ThemeMode.system,
+          debugShowCheckedModeBanner: false,
+          routerConfig: router,
+          builder: (context, child) {
+            return GestureDetector(
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
+        ),
       ),
     );
+  }
+}
+
+/// 包含服务的用户应用包装器
+class _UserAppWithServices extends StatefulWidget {
+  final Widget child;
+
+  const _UserAppWithServices({required this.child});
+
+  @override
+  State<_UserAppWithServices> createState() => _UserAppWithServicesState();
+}
+
+class _UserAppWithServicesState extends State<_UserAppWithServices> {
+  late final LocalBleService _localBleService;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeServices();
+  }
+
+  Future<void> _initializeServices() async {
+    try {
+      // 获取必要的服务
+      final deviceControlService =
+          ServiceLocatorConfig.get<DeviceControlService>();
+      final userDataCubit = context.read<UserDataCubit>();
+
+      // 创建本地蓝牙服务
+      _localBleService = LocalBleService(
+        deviceControlService: deviceControlService,
+        userDataCubit: userDataCubit,
+      );
+
+      // 初始化本地蓝牙服务
+      await _localBleService.initialize();
+
+      Logger.info('用户端服务初始化完成');
+    } catch (e) {
+      Logger.error('用户端服务初始化失败: $e');
+      // 不阻止应用启动，蓝牙功能将在需要时初始化
+    }
+  }
+
+  @override
+  void dispose() {
+    _localBleService.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }

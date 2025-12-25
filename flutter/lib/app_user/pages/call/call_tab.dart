@@ -1,38 +1,52 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../state/user_state.dart';
 
 /// 传呼台 (B) - 四态切换，支持巨型按钮、声波动画、解锁卡片、图鉴列表
-class CallTab extends StatefulWidget {
+class CallTab extends StatelessWidget {
   const CallTab({super.key});
 
   @override
-  State<CallTab> createState() => _CallTabState();
-}
-
-enum CallState { initial, connecting, success, gallery }
-
-class _CallTabState extends State<CallTab> {
-  CallState _state = CallState.initial;
-
-  void _toConnecting() => setState(() => _state = CallState.connecting);
-  void _toSuccess() => setState(() => _state = CallState.success);
-  void _toGallery() => setState(() => _state = CallState.gallery);
-  void _toInitial() => setState(() => _state = CallState.initial);
-
-  @override
   Widget build(BuildContext context) {
-    switch (_state) {
-      case CallState.initial:
-        return _buildInitial();
-      case CallState.connecting:
-        return _buildConnecting();
-      case CallState.success:
-        return _buildSuccess();
-      case CallState.gallery:
-        return _buildGallery();
-    }
+    return BlocBuilder<CallCubit, CallState>(
+      builder: (context, state) {
+        switch (state.runtimeType) {
+          case CallInitial:
+          case CallOperatorSelection:
+          case CallMessageCustomization:
+            return _buildInitial(context, state);
+          case CallConnecting:
+            return _buildConnecting(context, state as CallConnecting);
+          case CallSuccess:
+            return _buildSuccess(context, state as CallSuccess);
+          case CallGallery:
+            return _buildGallery(context, state as CallGallery);
+          case CallError:
+            return _buildError(context, state as CallError);
+          default:
+            return _buildInitial(context, state);
+        }
+      },
+    );
   }
 
-  Widget _buildInitial() {
+  Widget _buildInitial(BuildContext context, CallState state) {
+    final cubit = context.read<CallCubit>();
+    String? selectedOperatorId;
+    String? customMessage;
+    bool enableLightEffect = false;
+    bool enableVibration = true;
+    bool enableSpecialEffect = false;
+
+    if (state is CallOperatorSelection) {
+      selectedOperatorId = state.selectedOperatorId;
+    } else if (state is CallMessageCustomization) {
+      selectedOperatorId = state.selectedOperatorId;
+      customMessage = state.customMessage;
+      enableLightEffect = state.enableLightEffect;
+      enableVibration = state.enableVibration;
+      enableSpecialEffect = state.enableSpecialEffect;
+    }
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -47,10 +61,17 @@ class _CallTabState extends State<CallTab> {
                   itemCount: 5,
                   separatorBuilder: (_, __) => const SizedBox(width: 12),
                   itemBuilder: (context, index) {
+                    final operators = state is CallOperatorSelection
+                        ? state.operators
+                        : [];
+                    if (index >= operators.length)
+                      return const SizedBox.shrink();
+
+                    final operator = operators[index];
                     return ChoiceChip(
-                      label: Text('接线员${index + 1}'),
-                      selected: index == 0,
-                      onSelected: (_) {},
+                      label: Text(operator.name),
+                      selected: selectedOperatorId == operator.id,
+                      onSelected: (_) => cubit.selectOperator(operator.id),
                     );
                   },
                 ),
@@ -81,28 +102,45 @@ class _CallTabState extends State<CallTab> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        const TextField(
-                          decoration: InputDecoration(
+                        TextField(
+                          decoration: const InputDecoration(
                             hintText: '请输入要发送的消息',
                             border: OutlineInputBorder(),
                           ),
                           maxLines: 2,
+                          controller: TextEditingController(
+                            text: customMessage,
+                          ),
+                          onChanged: (value) =>
+                              cubit.updateCustomMessage(value),
                         ),
                         const SizedBox(height: 16),
-                        const Row(
+                        Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _EffectButton(icon: Icons.light_mode, label: '光效'),
-                            _EffectButton(icon: Icons.vibration, label: '震动'),
+                            _EffectButton(
+                              icon: Icons.light_mode,
+                              label: '光效',
+                              isEnabled: enableLightEffect,
+                              onTap: () => cubit.toggleLightEffect(),
+                            ),
+                            _EffectButton(
+                              icon: Icons.vibration,
+                              label: '震动',
+                              isEnabled: enableVibration,
+                              onTap: () => cubit.toggleVibration(),
+                            ),
                             _EffectButton(
                               icon: Icons.auto_awesome,
                               label: '特效',
+                              isEnabled: enableSpecialEffect,
+                              onTap: () => cubit.toggleSpecialEffect(),
                             ),
                           ],
                         ),
                         const Spacer(),
                         ElevatedButton.icon(
-                          onPressed: () {},
+                          onPressed: () => cubit.sendMessage(),
                           icon: const Icon(Icons.send),
                           label: const Text('发送消息'),
                           style: ElevatedButton.styleFrom(
@@ -122,7 +160,7 @@ class _CallTabState extends State<CallTab> {
             Padding(
               padding: const EdgeInsets.only(bottom: 24, top: 8),
               child: GestureDetector(
-                onLongPress: _toConnecting,
+                onLongPress: () => cubit.startVoiceInput(),
                 child: Container(
                   width: 100,
                   height: 100,
@@ -147,7 +185,7 @@ class _CallTabState extends State<CallTab> {
     );
   }
 
-  Widget _buildConnecting() {
+  Widget _buildConnecting(BuildContext context, CallConnecting state) {
     return Scaffold(
       body: Stack(
         children: [
@@ -168,9 +206,22 @@ class _CallTabState extends State<CallTab> {
               children: [
                 _WaveformAnimation(),
                 const SizedBox(height: 32),
+                Text(
+                  state.message ?? '正在连接...',
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: _toSuccess,
-                  child: const Text('模拟连接成功'),
+                  onPressed: () {
+                    final cubit = context.read<CallCubit>();
+                    if (state.isVoiceMode) {
+                      cubit.backToMessageCustomization();
+                    } else {
+                      // 模拟成功
+                      cubit.sendMessage();
+                    }
+                  },
+                  child: Text(state.isVoiceMode ? '停止录音' : '模拟成功'),
                 ),
               ],
             ),
@@ -180,7 +231,7 @@ class _CallTabState extends State<CallTab> {
     );
   }
 
-  Widget _buildSuccess() {
+  Widget _buildSuccess(BuildContext context, CallSuccess state) {
     return Scaffold(
       backgroundColor: Colors.black.withValues(alpha: 0.2),
       body: Center(
@@ -200,22 +251,31 @@ class _CallTabState extends State<CallTab> {
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
-                const CircleAvatar(
+                CircleAvatar(
                   radius: 36,
                   backgroundColor: Colors.grey,
-                  child: Icon(Icons.person, size: 40, color: Colors.white),
+                  child: Text(
+                    state.unlockedPartnerName?.substring(0, 1) ?? '新',
+                    style: const TextStyle(fontSize: 24, color: Colors.white),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  '解锁新搭档: ${state.unlockedPartnerName ?? "新搭档"}',
+                  style: const TextStyle(fontSize: 18),
                 ),
                 const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     OutlinedButton(
-                      onPressed: _toGallery,
+                      onPressed: () => context.read<CallCubit>().viewGallery(),
                       child: const Text('查看图鉴'),
                     ),
                     ElevatedButton(
-                      onPressed: _toGallery,
-                      child: const Text('加入图鉴 ∨'),
+                      onPressed: () =>
+                          context.read<CallCubit>().backToInitial(),
+                      child: const Text('继续'),
                     ),
                   ],
                 ),
@@ -227,13 +287,13 @@ class _CallTabState extends State<CallTab> {
     );
   }
 
-  Widget _buildGallery() {
+  Widget _buildGallery(BuildContext context, CallGallery state) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('接收及图鉴'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: _toInitial,
+          onPressed: () => context.read<CallCubit>().backToInitial(),
         ),
       ),
       body: Padding(
@@ -245,8 +305,9 @@ class _CallTabState extends State<CallTab> {
             crossAxisSpacing: 12,
             childAspectRatio: 0.9,
           ),
-          itemCount: 12,
+          itemCount: state.partners.length,
           itemBuilder: (context, index) {
+            final partner = state.partners[index];
             return Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -263,14 +324,31 @@ class _CallTabState extends State<CallTab> {
                 children: [
                   CircleAvatar(
                     radius: 28,
-                    backgroundColor: Colors.blue[100],
-                    child: Icon(Icons.person, color: Colors.blue[700]),
+                    backgroundColor: partner.isUnlocked
+                        ? Colors.blue[100]
+                        : Colors.grey[300],
+                    child: Icon(
+                      Icons.person,
+                      color: partner.isUnlocked
+                          ? Colors.blue[700]
+                          : Colors.grey[600],
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'ID #${1000 + index}',
-                    style: const TextStyle(fontSize: 13, color: Colors.black54),
+                    partner.name,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: partner.isUnlocked
+                          ? Colors.black87
+                          : Colors.grey[600],
+                    ),
                   ),
+                  if (partner.isUnlocked && partner.unlockTime != null)
+                    Text(
+                      _formatUnlockTime(partner.unlockTime!),
+                      style: const TextStyle(fontSize: 11, color: Colors.green),
+                    ),
                 ],
               ),
             );
@@ -281,32 +359,86 @@ class _CallTabState extends State<CallTab> {
   }
 }
 
+Widget _buildError(BuildContext context, CallError state) {
+  return Scaffold(
+    body: Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+          const SizedBox(height: 16),
+          Text(
+            '出错了: ${state.message}',
+            style: const TextStyle(fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () => context.read<CallCubit>().backToInitial(),
+            child: const Text('返回'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+String _formatUnlockTime(DateTime unlockTime) {
+  final now = DateTime.now();
+  final difference = now.difference(unlockTime);
+
+  if (difference.inDays > 0) {
+    return '${difference.inDays}天前';
+  } else if (difference.inHours > 0) {
+    return '${difference.inHours}小时前';
+  } else if (difference.inMinutes > 0) {
+    return '${difference.inMinutes}分钟前';
+  } else {
+    return '刚刚';
+  }
+}
+
 class _EffectButton extends StatelessWidget {
   final IconData icon;
   final String label;
+  final bool isEnabled;
+  final VoidCallback? onTap;
 
-  const _EffectButton({required this.icon, required this.label});
+  const _EffectButton({
+    required this.icon,
+    required this.label,
+    this.isEnabled = false,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         Material(
-          color: Colors.blue.shade50,
+          color: isEnabled ? Colors.blue.shade100 : Colors.blue.shade50,
           shape: const CircleBorder(),
           child: InkWell(
             customBorder: const CircleBorder(),
-            onTap: () {},
+            onTap: onTap,
             child: Padding(
               padding: const EdgeInsets.all(14),
-              child: Icon(icon, color: Colors.blueAccent, size: 28),
+              child: Icon(
+                icon,
+                color: isEnabled ? Colors.blueAccent : Colors.blue[400],
+                size: 28,
+              ),
             ),
           ),
         ),
         const SizedBox(height: 4),
         Text(
           label,
-          style: const TextStyle(fontSize: 13, color: Colors.black87),
+          style: TextStyle(
+            fontSize: 13,
+            color: isEnabled ? Colors.blueAccent : Colors.black87,
+            fontWeight: isEnabled ? FontWeight.bold : FontWeight.normal,
+          ),
         ),
       ],
     );
@@ -322,17 +454,20 @@ class _WaveformAnimation extends StatelessWidget {
       height: 90,
       child: Stack(
         alignment: Alignment.center,
-        children: List.generate(3, (i) {
-          return AnimatedContainer(
-            duration: Duration(milliseconds: 800 + i * 200),
-            width: 60.0 + i * 20,
-            height: 60.0 + i * 20,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.blue.withValues(alpha: 0.2 - i * 0.05),
-            ),
-          );
-        })..add(const Icon(Icons.mic, color: Colors.blue, size: 40)),
+        children: [
+          ...List.generate(3, (i) {
+            return AnimatedContainer(
+              duration: Duration(milliseconds: 800 + i * 200),
+              width: 60.0 + i * 20,
+              height: 60.0 + i * 20,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.blue.withValues(alpha: 0.2 - i * 0.05),
+              ),
+            );
+          }),
+          const Icon(Icons.mic, color: Colors.blue, size: 40),
+        ],
       ),
     );
   }

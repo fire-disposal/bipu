@@ -4,8 +4,16 @@ import 'package:go_router/go_router.dart';
 import '../../core/core.dart';
 import '../widgets/admin_scaffold.dart';
 import '../state/admin_state.dart';
+import '../state/dashboard_cubit.dart';
+import '../state/device_management_cubit.dart';
+import '../state/message_management_cubit.dart';
+import '../state/notification_management_cubit.dart';
+import '../state/user_management_cubit.dart';
 import 'dashboard_page.dart';
 import 'user_management_page.dart';
+import 'device_management_page.dart';
+import 'message_management_page.dart';
+import 'notification_management_page.dart';
 
 /// 管理端主页面，包含侧边栏导航和内容区域
 class AdminMainPage extends StatefulWidget {
@@ -70,10 +78,7 @@ class _AdminMainPageState extends State<AdminMainPage> {
       return const SizedBox.shrink(); // 等待跳转
     }
 
-    return BlocProvider(
-      create: (context) => AdminNavigationCubit(),
-      child: const _AdminMainPageContent(),
-    );
+    return const _AdminMainPageContent();
   }
 }
 
@@ -82,14 +87,14 @@ class _AdminMainPageContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final navigationCubit = context.watch<AdminNavigationCubit>();
-
     return AdminScaffold(
-      title: _getPageTitle(navigationCubit.selectedIndex),
-      selectedIndex: navigationCubit.selectedIndex,
-      onNavigationChanged: navigationCubit.changeIndex,
-      body: _buildCurrentPage(context, navigationCubit.selectedIndex),
-      actions: _buildPageActions(context, navigationCubit.selectedIndex),
+      title: '仪表盘',
+      selectedIndex: 0,
+      onNavigationChanged: (index) {
+        // 导航逻辑待实现
+      },
+      body: _buildCurrentPage(context, 0),
+      actions: _buildPageActions(context, 0),
     );
   }
 
@@ -102,21 +107,39 @@ class _AdminMainPageContent extends StatelessWidget {
   Widget _buildCurrentPage(BuildContext context, int selectedIndex) {
     switch (selectedIndex) {
       case 0:
-        return const DashboardPage();
+        return BlocProvider(
+          create: (context) => DashboardCubit(),
+          child: const DashboardPage(),
+        );
       case 1:
-        return const UserManagementPage();
+        return BlocProvider(
+          create: (context) => UserManagementCubit(),
+          child: const UserManagementPage(),
+        );
       case 2:
-        return _buildPlaceholderPage(context, '设备管理');
+        return BlocProvider(
+          create: (context) => DeviceManagementCubit(),
+          child: const DeviceManagementPage(),
+        );
       case 3:
-        return _buildPlaceholderPage(context, '消息管理');
+        return BlocProvider(
+          create: (context) => MessageManagementCubit(),
+          child: const MessageManagementPage(),
+        );
       case 4:
-        return _buildPlaceholderPage(context, '通知管理');
+        return BlocProvider(
+          create: (context) => NotificationManagementCubit(),
+          child: const NotificationManagementPage(),
+        );
       case 5:
         return _buildAnalyticsPage(context);
       case 6:
         return _buildSettingsPage(context);
       default:
-        return const DashboardPage();
+        return BlocProvider(
+          create: (context) => DashboardCubit(),
+          child: const DashboardPage(),
+        );
     }
   }
 
@@ -168,35 +191,6 @@ class _AdminMainPageContent extends StatelessWidget {
   Widget _buildSettingsPage(BuildContext context) {
     return Center(
       child: Text('系统设置页面开发中...', style: Theme.of(context).textTheme.bodyLarge),
-    );
-  }
-
-  Widget _buildPlaceholderPage(BuildContext context, String pageName) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.construction,
-            size: 64,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '$pageName页面开发中...',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '功能正在开发中，敬请期待',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.6),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

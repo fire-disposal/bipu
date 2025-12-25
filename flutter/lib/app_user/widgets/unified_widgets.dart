@@ -191,7 +191,7 @@ class UnifiedSuccessWidget extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.check_circle_outline, size: 64, color: Colors.green),
+            const Icon(Icons.check_circle_outline, size: 64, color: Colors.green),
             const SizedBox(height: 16),
             Text(
               '成功',

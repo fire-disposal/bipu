@@ -4,7 +4,6 @@ library;
 import 'dart:async';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' as blue_plus;
 import '../../foundation/foundation.dart';
-import 'ble_models.dart';
 import 'ble_exceptions.dart';
 
 /// BLE服务接口
