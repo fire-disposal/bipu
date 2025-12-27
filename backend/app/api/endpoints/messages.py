@@ -10,11 +10,13 @@ from app.models.message import Message, MessageType, MessageStatus
 from app.models.user import User
 from app.models.friendship import Friendship, FriendshipStatus
 from app.schemas.message import (
-    MessageCreate, MessageUpdate, MessageResponse, MessageList, MessageStats
+    MessageCreate, MessageUpdate, MessageResponse, MessageStats
 )
+from app.schemas.common import PaginatedResponse
 from app.core.security import get_current_active_user
 from app.core.exceptions import NotFoundException, ValidationException
 from app.core.logging import get_logger
+import math
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -70,10 +72,10 @@ async def create_message(
     return db_message
 
 
-@router.get("/", response_model=MessageList)
+@router.get("/", response_model=PaginatedResponse[MessageResponse])
 async def get_messages(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    size: int = 20,
     message_type: Optional[MessageType] = None,
     status: Optional[MessageStatus] = None,
     is_read: Optional[bool] = None,
@@ -85,6 +87,7 @@ async def get_messages(
     current_user: User = Depends(get_current_active_user)
 ):
     """获取消息列表 - 支持IM会话查询"""
+    skip = (page - 1) * size
     # 用户只能查看自己发送或接收的消息
     query = db.query(Message).filter(
         (Message.sender_id == current_user.id) | (Message.receiver_id == current_user.id)
@@ -107,27 +110,28 @@ async def get_messages(
         query = query.filter(Message.created_at <= end_date)
     
     total = query.count()
-    unread_count = query.filter(Message.is_read == False, Message.receiver_id == current_user.id).count()
-    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(limit).all()
+    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(size).all()
+    pages = math.ceil(total / size) if size > 0 else 0
     
-    return MessageList(
-        items=messages,
-        total=total,
-        page=skip // limit + 1,
-        size=limit,
-        unread_count=unread_count
-    )
+    return {
+        "items": messages,
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": pages
+    }
 
 
-@router.get("/conversations/{user_id}", response_model=MessageList)
+@router.get("/conversations/{user_id}", response_model=PaginatedResponse[MessageResponse])
 async def get_conversation_messages(
     user_id: int,
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    size: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """获取与指定用户的会话消息 - IM核心功能"""
+    skip = (page - 1) * size
     # 验证好友关系
     friendship = db.query(Friendship).filter(
         or_(
@@ -147,7 +151,8 @@ async def get_conversation_messages(
     )
     
     total = query.count()
-    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(limit).all()
+    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(size).all()
+    pages = math.ceil(total / size) if size > 0 else 0
     
     # 标记未读消息为已读
     unread_messages = db.query(Message).filter(
@@ -164,49 +169,52 @@ async def get_conversation_messages(
     if unread_messages:
         db.commit()
     
-    return MessageList(
-        items=messages,
-        total=total,
-        page=skip // limit + 1,
-        size=limit,
-        unread_count=0  # 已标记为已读
-    )
+    return {
+        "items": messages,
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": pages
+    }
 
 
-@router.get("/unread", response_model=MessageList)
+@router.get("/unread", response_model=PaginatedResponse[MessageResponse])
 async def get_unread_messages(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    size: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """获取未读消息 - IM轮询接口"""
+    skip = (page - 1) * size
     query = db.query(Message).filter(
         Message.receiver_id == current_user.id,
         Message.is_read == False
     )
     
     total = query.count()
-    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(limit).all()
+    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(size).all()
+    pages = math.ceil(total / size) if size > 0 else 0
     
-    return MessageList(
-        items=messages,
-        total=total,
-        page=skip // limit + 1,
-        size=limit,
-        unread_count=total
-    )
+    return {
+        "items": messages,
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": pages
+    }
 
 
-@router.get("/recent", response_model=MessageList)
+@router.get("/recent", response_model=PaginatedResponse[MessageResponse])
 async def get_recent_messages(
     hours: int = 24,
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    size: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """获取最近消息 - IM实时同步"""
+    skip = (page - 1) * size
     since = datetime.utcnow() - timedelta(hours=hours)
     
     query = db.query(Message).filter(
@@ -215,15 +223,16 @@ async def get_recent_messages(
     )
     
     total = query.count()
-    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(limit).all()
+    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(size).all()
+    pages = math.ceil(total / size) if size > 0 else 0
     
-    return MessageList(
-        items=messages,
-        total=total,
-        page=skip // limit + 1,
-        size=limit,
-        unread_count=query.filter(Message.is_read == False, Message.receiver_id == current_user.id).count()
-    )
+    return {
+        "items": messages,
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": pages
+    }
 
 
 @router.get("/stats", response_model=MessageStats)
@@ -394,10 +403,10 @@ async def delete_read_messages(
 
 
 # 管理端API
-@router.get("/admin/all", response_model=MessageList)
+@router.get("/admin/all", response_model=PaginatedResponse[MessageResponse])
 async def admin_get_all_messages(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    size: int = 20,
     message_type: Optional[MessageType] = None,
     status: Optional[MessageStatus] = None,
     sender_id: Optional[int] = None,
@@ -409,6 +418,7 @@ async def admin_get_all_messages(
     if not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Not enough permissions")
     
+    skip = (page - 1) * size
     query = db.query(Message)
     
     if message_type:
@@ -421,15 +431,16 @@ async def admin_get_all_messages(
         query = query.filter(Message.receiver_id == receiver_id)
     
     total = query.count()
-    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(limit).all()
+    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(size).all()
+    pages = math.ceil(total / size) if size > 0 else 0
     
-    return MessageList(
-        items=messages,
-        total=total,
-        page=skip // limit + 1,
-        size=limit,
-        unread_count=query.filter(Message.is_read == False).count()
-    )
+    return {
+        "items": messages,
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": pages
+    }
 
 
 @router.delete("/admin/{message_id}")

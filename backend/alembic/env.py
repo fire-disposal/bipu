@@ -14,6 +14,12 @@ from app.core.config import settings
 # 导入所有模型以确保它们被Alembic识别
 from app.models.user import User
 from app.models.message import Message
+from app.models.adminlog import AdminLog
+from app.models.friendship import Friendship
+from app.models.message_favorite import MessageFavorite
+from app.models.messageackevent import MessageAckEvent
+from app.models.subscription import SubscriptionType, UserSubscription
+from app.models.user_block import UserBlock
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -27,6 +33,7 @@ if config.config_file_name is not None:
 # add your model's MetaData object here
 # for 'autogenerate' support
 target_metadata = Base.metadata
+print(f"DEBUG: Tables in metadata: {target_metadata.tables.keys()}")
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

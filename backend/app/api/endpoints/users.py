@@ -2,12 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import timedelta
+import math
 
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.user import (
     UserCreate, UserResponse, UserUpdate, UserLogin, Token, TokenRefresh, UserProfile
 )
+from app.schemas.common import PaginatedResponse
 from app.core.security import (
     get_password_hash, verify_password, create_access_token, create_refresh_token,
     get_current_active_user, get_current_superuser, decode_token
@@ -15,6 +17,7 @@ from app.core.security import (
 from app.core.exceptions import NotFoundException, ValidationException
 from app.core.logging import get_logger
 from app.core.config import settings
+from app.api.endpoints.admin_logs import log_admin_action
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -184,16 +187,27 @@ async def update_current_user(
     return current_user
 
 
-@router.get("/", response_model=List[UserResponse])
+@router.get("/", response_model=PaginatedResponse[UserResponse])
 async def get_users(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    size: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_superuser)
 ):
     """获取用户列表（需要超级用户权限）"""
-    users = db.query(User).offset(skip).limit(limit).all()
-    return users
+    skip = (page - 1) * size
+    total = db.query(User).count()
+    users = db.query(User).offset(skip).limit(size).all()
+    
+    pages = math.ceil(total / size) if size > 0 else 0
+    
+    return {
+        "items": users,
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": pages
+    }
 
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -240,6 +254,15 @@ async def update_user(
     db.refresh(user)
     
     logger.info(f"User updated by admin: {user.email}")
+    
+    # 记录管理员操作
+    log_admin_action(
+        db, 
+        current_user.id, 
+        "update_user", 
+        {"target_user_id": user.id, "updates": str(update_data)}
+    )
+    
     return user
 
 
@@ -258,6 +281,15 @@ async def delete_user(
     db.commit()
     
     logger.info(f"User deleted: {user.email}")
+    
+    # 记录管理员操作
+    log_admin_action(
+        db, 
+        current_user.id, 
+        "delete_user", 
+        {"target_user_id": user_id, "target_email": user.email}
+    )
+    
     return {"message": "User deleted successfully"}
 
 

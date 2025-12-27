@@ -9,17 +9,20 @@ from app.db.database import get_db
 from app.models.user import User
 from app.models.message import Message, MessageType, MessageStatus
 from app.schemas.message import (
-    MessageCreate, MessageResponse, MessageList, MessageStats
+    MessageCreate, MessageResponse, MessageStats
 )
+from app.schemas.common import PaginatedResponse
 from app.core.security import get_current_active_user, get_current_superuser
 from app.core.exceptions import NotFoundException, ValidationException
 from app.core.logging import get_logger
+from app.api.endpoints.admin_logs import log_admin_action
+import math
 
 router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.post("/", response_model=MessageResponse)
+@router.post("/", response_model=Dict[str, Any])
 async def create_system_notification(
     title: str,
     content: str,
@@ -90,6 +93,18 @@ async def create_system_notification(
     
     logger.info(f"系统通知创建完成: 管理员 {current_user.username} 创建了 {len(created_messages)} 条系统通知")
     
+    # 记录管理员操作
+    log_admin_action(
+        db, 
+        current_user.id, 
+        "create_system_notification", 
+        {
+            "title": title, 
+            "target_count": len(created_messages),
+            "priority": priority
+        }
+    )
+    
     return {
         "message": f"成功创建 {len(created_messages)} 条系统通知",
         "created_count": len(created_messages),
@@ -97,10 +112,10 @@ async def create_system_notification(
     }
 
 
-@router.get("/", response_model=MessageList)
+@router.get("/", response_model=PaginatedResponse[MessageResponse])
 async def get_system_notifications(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    size: int = 20,
     status: Optional[str] = None,
     priority_min: Optional[int] = None,
     priority_max: Optional[int] = None,
@@ -110,6 +125,7 @@ async def get_system_notifications(
     current_user: User = Depends(get_current_active_user)
 ):
     """获取系统通知列表"""
+    skip = (page - 1) * size
     query = db.query(Message).filter(
         Message.message_type == MessageType.NOTIFICATION,
         Message.receiver_id == current_user.id,
@@ -129,24 +145,22 @@ async def get_system_notifications(
         query = query.filter(Message.created_at <= date_to)
     
     total = query.count()
-    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(limit).all()
+    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(size).all()
+    pages = math.ceil(total / size) if size > 0 else 0
     
-    # 计算未读数量
-    unread_count = query.filter(Message.is_read == False).count()
-    
-    return MessageList(
-        items=messages,
-        total=total,
-        page=skip // limit + 1,
-        size=limit,
-        unread_count=unread_count
-    )
+    return {
+        "items": messages,
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": pages
+    }
 
 
-@router.get("/admin/all", response_model=MessageList)
+@router.get("/admin/all", response_model=PaginatedResponse[MessageResponse])
 async def admin_get_all_system_notifications(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    size: int = 20,
     status: Optional[str] = None,
     priority_min: Optional[int] = None,
     priority_max: Optional[int] = None,
@@ -156,6 +170,7 @@ async def admin_get_all_system_notifications(
     current_user: User = Depends(get_current_superuser)
 ):
     """管理端：获取所有系统通知（需要超级用户权限）"""
+    skip = (page - 1) * size
     query = db.query(Message).filter(
         Message.message_type == MessageType.NOTIFICATION,
         Message.pattern.contains({"source_type": "system"})
@@ -174,18 +189,16 @@ async def admin_get_all_system_notifications(
         query = query.filter(Message.created_at <= date_to)
     
     total = query.count()
-    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(limit).all()
+    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(size).all()
+    pages = math.ceil(total / size) if size > 0 else 0
     
-    # 计算未读数量
-    unread_count = query.filter(Message.is_read == False).count()
-    
-    return MessageList(
-        items=messages,
-        total=total,
-        page=skip // limit + 1,
-        size=limit,
-        unread_count=unread_count
-    )
+    return {
+        "items": messages,
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": pages
+    }
 
 
 @router.get("/stats")

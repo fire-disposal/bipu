@@ -279,23 +279,23 @@
         ],
         "parameters": [
           {
-            "name": "skip",
+            "name": "page",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 0,
-              "title": "Skip"
+              "default": 1,
+              "title": "Page"
             }
           },
           {
-            "name": "limit",
+            "name": "size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 100,
-              "title": "Limit"
+              "default": 20,
+              "title": "Size"
             }
           }
         ],
@@ -305,11 +305,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/UserResponse"
-                  },
-                  "title": "Response Get Users Api Users  Get"
+                  "$ref": "#/components/schemas/PaginatedResponse_UserResponse_"
                 }
               }
             }
@@ -853,23 +849,23 @@
         ],
         "parameters": [
           {
-            "name": "skip",
+            "name": "page",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 0,
-              "title": "Skip"
+              "default": 1,
+              "title": "Page"
             }
           },
           {
-            "name": "limit",
+            "name": "size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 100,
-              "title": "Limit"
+              "default": 20,
+              "title": "Size"
             }
           },
           {
@@ -993,7 +989,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MessageList"
+                  "$ref": "#/components/schemas/PaginatedResponse_MessageResponse_"
                 }
               }
             }
@@ -1058,23 +1054,23 @@
             }
           },
           {
-            "name": "skip",
+            "name": "page",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 0,
-              "title": "Skip"
+              "default": 1,
+              "title": "Page"
             }
           },
           {
-            "name": "limit",
+            "name": "size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 100,
-              "title": "Limit"
+              "default": 20,
+              "title": "Size"
             }
           }
         ],
@@ -1084,7 +1080,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MessageList"
+                  "$ref": "#/components/schemas/PaginatedResponse_MessageResponse_"
                 }
               }
             }
@@ -1117,23 +1113,23 @@
         ],
         "parameters": [
           {
-            "name": "skip",
+            "name": "page",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 0,
-              "title": "Skip"
+              "default": 1,
+              "title": "Page"
             }
           },
           {
-            "name": "limit",
+            "name": "size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 100,
-              "title": "Limit"
+              "default": 20,
+              "title": "Size"
             }
           }
         ],
@@ -1143,7 +1139,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MessageList"
+                  "$ref": "#/components/schemas/PaginatedResponse_MessageResponse_"
                 }
               }
             }
@@ -1186,23 +1182,23 @@
             }
           },
           {
-            "name": "skip",
+            "name": "page",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 0,
-              "title": "Skip"
+              "default": 1,
+              "title": "Page"
             }
           },
           {
-            "name": "limit",
+            "name": "size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 100,
-              "title": "Limit"
+              "default": 20,
+              "title": "Size"
             }
           }
         ],
@@ -1212,7 +1208,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MessageList"
+                  "$ref": "#/components/schemas/PaginatedResponse_MessageResponse_"
                 }
               }
             }
@@ -1491,23 +1487,23 @@
         ],
         "parameters": [
           {
-            "name": "skip",
+            "name": "page",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 0,
-              "title": "Skip"
+              "default": 1,
+              "title": "Page"
             }
           },
           {
-            "name": "limit",
+            "name": "size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 100,
-              "title": "Limit"
+              "default": 20,
+              "title": "Size"
             }
           },
           {
@@ -1581,7 +1577,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MessageList"
+                  "$ref": "#/components/schemas/PaginatedResponse_MessageResponse_"
                 }
               }
             }
@@ -1728,7 +1724,9 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MessageResponse"
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Create System Notification Api System Notifications  Post"
                 }
               }
             }
@@ -1759,23 +1757,23 @@
         ],
         "parameters": [
           {
-            "name": "skip",
+            "name": "page",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 0,
-              "title": "Skip"
+              "default": 1,
+              "title": "Page"
             }
           },
           {
-            "name": "limit",
+            "name": "size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 100,
-              "title": "Limit"
+              "default": 20,
+              "title": "Size"
             }
           },
           {
@@ -1867,7 +1865,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MessageList"
+                  "$ref": "#/components/schemas/PaginatedResponse_MessageResponse_"
                 }
               }
             }
@@ -1900,23 +1898,23 @@
         ],
         "parameters": [
           {
-            "name": "skip",
+            "name": "page",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 0,
-              "title": "Skip"
+              "default": 1,
+              "title": "Page"
             }
           },
           {
-            "name": "limit",
+            "name": "size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 100,
-              "title": "Limit"
+              "default": 20,
+              "title": "Size"
             }
           },
           {
@@ -2008,7 +2006,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MessageList"
+                  "$ref": "#/components/schemas/PaginatedResponse_MessageResponse_"
                 }
               }
             }
@@ -2345,23 +2343,23 @@
         ],
         "parameters": [
           {
-            "name": "skip",
+            "name": "page",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 0,
-              "title": "Skip"
+              "default": 1,
+              "title": "Page"
             }
           },
           {
-            "name": "limit",
+            "name": "size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 100,
-              "title": "Limit"
+              "default": 20,
+              "title": "Size"
             }
           },
           {
@@ -2387,7 +2385,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FriendshipList"
+                  "$ref": "#/components/schemas/PaginatedResponse_FriendshipResponse_"
                 }
               }
             }
@@ -2420,23 +2418,23 @@
         ],
         "parameters": [
           {
-            "name": "skip",
+            "name": "page",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 0,
-              "title": "Skip"
+              "default": 1,
+              "title": "Page"
             }
           },
           {
-            "name": "limit",
+            "name": "size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 100,
-              "title": "Limit"
+              "default": 20,
+              "title": "Size"
             }
           }
         ],
@@ -2446,7 +2444,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FriendshipList"
+                  "$ref": "#/components/schemas/PaginatedResponse_FriendshipResponse_"
                 }
               }
             }
@@ -2472,27 +2470,55 @@
         "summary": "Get Friends",
         "description": "获取好友列表",
         "operationId": "get_friends_api_friendships_friends_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Size"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/UserResponse"
-                  },
-                  "type": "array",
-                  "title": "Response Get Friends Api Friendships Friends Get"
+                  "$ref": "#/components/schemas/PaginatedResponse_UserResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/friendships/{friendship_id}/accept": {
@@ -2652,23 +2678,23 @@
         ],
         "parameters": [
           {
-            "name": "skip",
+            "name": "page",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 0,
-              "title": "Skip"
+              "default": 1,
+              "title": "Page"
             }
           },
           {
-            "name": "limit",
+            "name": "size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 100,
-              "title": "Limit"
+              "default": 20,
+              "title": "Size"
             }
           },
           {
@@ -2694,7 +2720,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FriendshipList"
+                  "$ref": "#/components/schemas/PaginatedResponse_FriendshipResponse_"
                 }
               }
             }
@@ -2960,23 +2986,23 @@
         ],
         "parameters": [
           {
-            "name": "skip",
+            "name": "page",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 0,
-              "title": "Skip"
+              "default": 1,
+              "title": "Page"
             }
           },
           {
-            "name": "limit",
+            "name": "size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 100,
-              "title": "Limit"
+              "default": 20,
+              "title": "Size"
             }
           },
           {
@@ -3052,11 +3078,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AdminLogResponse"
-                  },
-                  "title": "Response Get Admin Logs Api Admin Logs  Get"
+                  "$ref": "#/components/schemas/PaginatedResponse_AdminLogResponse_"
                 }
               }
             }
@@ -4006,23 +4028,23 @@
         ],
         "parameters": [
           {
-            "name": "skip",
+            "name": "page",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 0,
-              "title": "Skip"
+              "default": 1,
+              "title": "Page"
             }
           },
           {
-            "name": "limit",
+            "name": "size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 100,
-              "title": "Limit"
+              "default": 20,
+              "title": "Size"
             }
           }
         ],
@@ -4031,7 +4053,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_MessageResponse_"
+                }
               }
             }
           },
@@ -4063,23 +4087,23 @@
         ],
         "parameters": [
           {
-            "name": "skip",
+            "name": "page",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 0,
-              "title": "Skip"
+              "default": 1,
+              "title": "Page"
             }
           },
           {
-            "name": "limit",
+            "name": "size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 100,
-              "title": "Limit"
+              "default": 20,
+              "title": "Size"
             }
           },
           {
@@ -4122,7 +4146,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_MessageResponse_"
+                }
               }
             }
           },
@@ -4154,23 +4180,23 @@
         ],
         "parameters": [
           {
-            "name": "skip",
+            "name": "page",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 0,
-              "title": "Skip"
+              "default": 1,
+              "title": "Page"
             }
           },
           {
-            "name": "limit",
+            "name": "size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 100,
-              "title": "Limit"
+              "default": 20,
+              "title": "Size"
             }
           },
           {
@@ -4213,7 +4239,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_MessageResponse_"
+                }
               }
             }
           },
@@ -4545,6 +4573,26 @@
         "operationId": "get_subscription_types_api_subscriptions_subscription_types_get",
         "parameters": [
           {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Size"
+            }
+          },
+          {
             "name": "category",
             "in": "query",
             "required": false,
@@ -4583,7 +4631,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_SubscriptionTypeResponse_"
+                }
               }
             }
           },
@@ -4917,21 +4967,55 @@
         "summary": "Get User Subscriptions",
         "description": "获取当前用户的订阅",
         "operationId": "get_user_subscriptions_api_subscriptions_user_subscriptions_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Size"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/subscriptions/user-subscriptions/{subscription_type_id}": {
@@ -5693,37 +5777,6 @@
         ],
         "title": "FriendshipCreate"
       },
-      "FriendshipList": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/FriendshipResponse"
-            },
-            "type": "array",
-            "title": "Items"
-          },
-          "total": {
-            "type": "integer",
-            "title": "Total"
-          },
-          "page": {
-            "type": "integer",
-            "title": "Page"
-          },
-          "size": {
-            "type": "integer",
-            "title": "Size"
-          }
-        },
-        "type": "object",
-        "required": [
-          "items",
-          "total",
-          "page",
-          "size"
-        ],
-        "title": "FriendshipList"
-      },
       "FriendshipResponse": {
         "properties": {
           "user_id": {
@@ -5907,43 +5960,6 @@
         ],
         "title": "MessageCreate",
         "description": "创建消息模式"
-      },
-      "MessageList": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/MessageResponse"
-            },
-            "type": "array",
-            "title": "Items"
-          },
-          "total": {
-            "type": "integer",
-            "title": "Total"
-          },
-          "page": {
-            "type": "integer",
-            "title": "Page"
-          },
-          "size": {
-            "type": "integer",
-            "title": "Size"
-          },
-          "unread_count": {
-            "type": "integer",
-            "title": "Unread Count"
-          }
-        },
-        "type": "object",
-        "required": [
-          "items",
-          "total",
-          "page",
-          "size",
-          "unread_count"
-        ],
-        "title": "MessageList",
-        "description": "消息列表响应模式"
       },
       "MessageResponse": {
         "properties": {
@@ -6244,6 +6260,223 @@
         "title": "MessageUpdate",
         "description": "更新消息模式"
       },
+      "PaginatedResponse_AdminLogResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminLogResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[AdminLogResponse]"
+      },
+      "PaginatedResponse_FriendshipResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FriendshipResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[FriendshipResponse]"
+      },
+      "PaginatedResponse_MessageResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MessageResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[MessageResponse]"
+      },
+      "PaginatedResponse_SubscriptionTypeResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionTypeResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[SubscriptionTypeResponse]"
+      },
+      "PaginatedResponse_UserResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/UserResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[UserResponse]"
+      },
+      "PaginatedResponse_dict_": {
+        "properties": {
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size",
+          "pages"
+        ],
+        "title": "PaginatedResponse[dict]"
+      },
       "PasswordChange": {
         "properties": {
           "current_password": {
@@ -6333,6 +6566,69 @@
         "type": "object",
         "title": "SubscriptionSettings",
         "description": "订阅设置"
+      },
+      "SubscriptionTypeResponse": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          },
+          "default_settings": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Default Settings",
+            "default": {}
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "category",
+          "id",
+          "created_at"
+        ],
+        "title": "SubscriptionTypeResponse"
       },
       "TermsAcceptance": {
         "properties": {

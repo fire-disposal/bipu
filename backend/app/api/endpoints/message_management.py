@@ -13,9 +13,12 @@ from app.schemas.user_settings import (
     MessageStatsRequest, MessageStatsResponse, ExportMessagesRequest,
     ExportMessagesResponse
 )
+from app.schemas.message import MessageResponse
+from app.schemas.common import PaginatedResponse
 from app.core.security import get_current_active_user
 from app.core.exceptions import NotFoundException, ValidationException
 from app.core.logging import get_logger
+import math
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -80,14 +83,15 @@ async def unfavorite_message(
     return {"message": "已取消收藏"}
 
 
-@router.get("/messages/favorites")
+@router.get("/messages/favorites", response_model=PaginatedResponse[MessageResponse])
 async def get_favorite_messages(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    size: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """获取收藏的消息列表"""
+    skip = (page - 1) * size
     query = db.query(Message).join(
         MessageFavorite,
         and_(
@@ -97,26 +101,29 @@ async def get_favorite_messages(
     )
     
     total = query.count()
-    messages = query.order_by(MessageFavorite.created_at.desc()).offset(skip).limit(limit).all()
+    messages = query.order_by(MessageFavorite.created_at.desc()).offset(skip).limit(size).all()
+    pages = math.ceil(total / size) if size > 0 else 0
     
     return {
         "items": messages,
         "total": total,
-        "page": skip // limit + 1,
-        "size": limit
+        "page": page,
+        "size": size,
+        "pages": pages
     }
 
 
-@router.get("/messages/sent")
+@router.get("/messages/sent", response_model=PaginatedResponse[MessageResponse])
 async def get_sent_messages(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    size: int = 20,
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """获取已发送消息"""
+    skip = (page - 1) * size
     query = db.query(Message).filter(Message.sender_id == current_user.id)
     
     if date_from:
@@ -125,26 +132,29 @@ async def get_sent_messages(
         query = query.filter(Message.created_at <= date_to)
     
     total = query.count()
-    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(limit).all()
+    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(size).all()
+    pages = math.ceil(total / size) if size > 0 else 0
     
     return {
         "items": messages,
         "total": total,
-        "page": skip // limit + 1,
-        "size": limit
+        "page": page,
+        "size": size,
+        "pages": pages
     }
 
 
-@router.get("/messages/received")
+@router.get("/messages/received", response_model=PaginatedResponse[MessageResponse])
 async def get_received_messages(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    size: int = 20,
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """获取已接收消息"""
+    skip = (page - 1) * size
     query = db.query(Message).filter(Message.receiver_id == current_user.id)
     
     if date_from:
@@ -153,13 +163,15 @@ async def get_received_messages(
         query = query.filter(Message.created_at <= date_to)
     
     total = query.count()
-    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(limit).all()
+    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(size).all()
+    pages = math.ceil(total / size) if size > 0 else 0
     
     return {
         "items": messages,
         "total": total,
-        "page": skip // limit + 1,
-        "size": limit
+        "page": page,
+        "size": size,
+        "pages": pages
     }
 
 

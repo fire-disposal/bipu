@@ -1,103 +1,83 @@
-# Core 模块使用说明
+# Core 模块
 
-## 📋 概述
-
-Core 模块是 Bipupu Flutter 应用的核心功能库，为 `app_user`（用户端）和 `app_admin`（管理端）提供共享的基础功能。采用分层架构设计，确保代码的可维护性、可测试性和可扩展性。
+Core 模块是 Bipupu Flutter 应用的核心基础设施库，为 `apps/user_app`（用户端）和 `apps/admin_app`（管理端）提供共享的基础功能。
 
 ## 🏗️ 架构设计
 
-### 分层架构
+采用扁平化、无依赖注入（No-DI）的架构设计，强调简单、直观和可控。
+
+### 目录结构
 
 ```
 core/
-├── foundation/          # 基础工具层 - 纯工具类，不依赖其他业务模块
-├── data/               # 数据访问层 - 数据模型、存储、API客户端
-├── domain/            # 业务逻辑层 - 认证、BLE等核心业务服务
-├── injection/         # 依赖注入 - 服务定位器配置
-├── app_initializer.dart  # 应用初始化器
-├── app_theme.dart     # 主题配置
-└── core.dart          # 主入口，统一导出所有功能
+├── config/          # 环境配置与常量
+│   └── app_config.dart
+├── network/         # 网络层
+│   ├── api_client.dart      # Dio 封装单例
+│   ├── auth_interceptor.dart # JWT 自动注入与刷新
+│   └── api_endpoints.dart   # API 路径常量
+├── services/        # 全局业务服务
+│   ├── auth_service.dart    # 认证状态管理
+│   └── ble/                 # 蓝牙服务模块
+├── storage/         # 本地存储
+│   └── token_storage.dart   # Token 安全存储
+├── utils/           # 工具类
+│   ├── logger.dart
+│   ├── validators.dart
+│   └── constants.dart
+└── widgets/         # 核心共享组件
+    └── auth_wrapper.dart    # 认证状态路由守卫
 ```
 
-### 依赖关系
+## 🚀 核心原则
 
-```
-foundation ← data ← domain
-     ↑        ↑       ↑
-     └───────┴───────┘
-        injection
-```
+1.  **单例模式 (Singleton)**: 核心服务如 `ApiClient`, `AuthService` 使用单例模式，无需复杂的依赖注入框架。
+2.  **手动模型 (Manual Models)**: 数据模型在 `lib/models/` 下手动维护，不依赖自动生成代码，更灵活可控。
+3.  **统一入口**: `main.dart` 统一初始化核心服务（如 Hive），然后根据环境参数启动不同的 App。
 
-## 🚀 快速开始
+## 📦 关键模块说明
 
-### 1. 基础初始化
+### Network (网络层)
+
+*   **ApiClient**: 封装了 `Dio` 实例，配置了 BaseURL 和超时时间。
+*   **AuthInterceptor**: 
+    *   请求时自动从 `TokenStorage` 读取 Access Token 并添加到 Header。
+    *   响应 401 时自动触发登出（未来可扩展 Token 刷新逻辑）。
+
+### Services (服务层)
+
+*   **AuthService**: 
+    *   管理登录 (`login`)、登出 (`logout`)。
+    *   暴露 `authState` (ValueNotifier) 供 UI 监听认证状态变化。
+    *   维护 `currentUser` 信息。
+
+### Storage (存储层)
+
+*   **TokenStorage**: 使用 `flutter_secure_storage` 安全存储 JWT Token。
+
+## 📱 使用示例
+
+### 监听认证状态
 
 ```dart
-import 'package:your_app/core/core.dart';
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // 初始化核心服务
-  await AppInitializer.initialize(
-    enableBluetooth: true,    // 是否启用蓝牙功能
-    validateAuth: true,       // 是否验证认证状态
-    baseUrl: 'http://api.example.com', // 可选：自定义API地址
-  );
-  
-  runApp(const MyApp());
-}
-```
-
-### 2. 双入口配置
-
-#### 用户端配置（app_user）
-```dart
-// main.dart
-await AppInitializer.initialize(
-  enableBluetooth: true,   // 用户端需要蓝牙功能
-  validateAuth: true,
+ValueListenableBuilder<AuthStatus>(
+  valueListenable: AuthService().authState,
+  builder: (context, status, child) {
+    if (status == AuthStatus.authenticated) {
+      return HomePage();
+    } else {
+      return LoginPage();
+    }
+  },
 );
 ```
 
-#### 管理端配置（app_admin）
+### 发起网络请求
+
 ```dart
-// main.dart
-await AppInitializer.initialize(
-  enableBluetooth: false,  // 管理端不需要蓝牙功能
-  validateAuth: true,
-);
+// 在 Repository 中
+final response = await ApiClient().dio.get(ApiEndpoints.users);
 ```
-
-### 3. 使用核心服务
-
-```dart
-import 'package:your_app/core/core.dart';
-
-// 获取认证服务
-final authService = ServiceLocatorConfig.get<AuthService>();
-
-// 用户登录
-final result = await authService.login(
-  username: 'user@example.com',
-  password: 'password123',
-);
-
-// 获取蓝牙服务（如果已启用）
-if (ServiceLocatorConfig.isRegistered<BleService>()) {
-  final bleService = ServiceLocatorConfig.get<BleService>();
-  await bleService.startScan();
-}
-```
-
-## 📦 功能模块
-
-### Foundation（基础工具）
-
-```dart
-// 日志记录
-Logger.info('应用启动');
-Logger.debug('调试信息');
 Logger.warning('警告信息');
 Logger.error('错误信息', error, stackTrace);
 

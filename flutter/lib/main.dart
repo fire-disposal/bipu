@@ -1,18 +1,34 @@
-import 'app_user/main.dart' as app_user;
-import 'app_admin/main.dart' as app_admin;
+import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'apps/admin_app.dart';
+import 'apps/user_app.dart';
+import 'core/services/background_service.dart';
+import 'core/services/theme_service.dart';
 
-/// 应用启动选择器
-/// 根据运行参数决定启动用户端还是管理端
-void main() {
-  // 获取启动参数
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive
+  await Hive.initFlutter();
+
+  // Initialize Theme Service
+  await ThemeService().loadTheme();
+
+  // Determine which app to run based on environment variable
+  // Run with: flutter run --dart-define=APP_TYPE=admin
   const String appType = String.fromEnvironment(
     'APP_TYPE',
     defaultValue: 'user',
   );
 
+  // Initialize background service only for user app
+  if (appType == 'user') {
+    await AppBackgroundService().initialize();
+  }
+
   if (appType == 'admin') {
-    app_admin.main();
+    runApp(const AdminApp());
   } else {
-    app_user.main();
+    runApp(const UserApp());
   }
 }

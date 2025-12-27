@@ -41,6 +41,9 @@ class Message(Base):
     # 主键
     id = Column(Integer, primary_key=True, index=True)
     
+    # 标题
+    title = Column(String(200), nullable=False, index=True)
+
     # 消息内容
     content = Column(Text, nullable=False)
     

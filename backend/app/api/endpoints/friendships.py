@@ -9,12 +9,14 @@ from app.db.database import get_db
 from app.models.friendship import Friendship, FriendshipStatus
 from app.models.user import User
 from app.schemas.friendship import (
-    FriendshipCreate, FriendshipUpdate, FriendshipResponse, FriendshipList
+    FriendshipCreate, FriendshipUpdate, FriendshipResponse
 )
+from app.schemas.common import PaginatedResponse
 from app.core.security import get_current_active_user
 from app.core.exceptions import NotFoundException, ValidationException
 from app.core.logging import get_logger
 from app.schemas.user import UserResponse
+import math
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -66,15 +68,16 @@ async def create_friend_request(
     return friend_request
 
 
-@router.get("/", response_model=FriendshipList)
+@router.get("/", response_model=PaginatedResponse[FriendshipResponse])
 async def get_friendships(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    size: int = 20,
     status: Optional[FriendshipStatus] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """获取好友关系列表"""
+    skip = (page - 1) * size
     query = db.query(Friendship).filter(
         or_(Friendship.user_id == current_user.id, Friendship.friend_id == current_user.id)
     )
@@ -83,42 +86,49 @@ async def get_friendships(
         query = query.filter(Friendship.status == status)
     
     total = query.count()
-    friendships = query.offset(skip).limit(limit).all()
+    friendships = query.offset(skip).limit(size).all()
+    pages = math.ceil(total / size) if size > 0 else 0
     
-    return FriendshipList(
-        items=friendships,
-        total=total,
-        page=skip // limit + 1,
-        size=limit
-    )
+    return {
+        "items": friendships,
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": pages
+    }
 
 
-@router.get("/requests", response_model=FriendshipList)
+@router.get("/requests", response_model=PaginatedResponse[FriendshipResponse])
 async def get_friend_requests(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    size: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """获取待处理的好友请求"""
+    skip = (page - 1) * size
     query = db.query(Friendship).filter(
         Friendship.friend_id == current_user.id,
         Friendship.status == FriendshipStatus.PENDING
     )
     
     total = query.count()
-    requests = query.offset(skip).limit(limit).all()
+    requests = query.offset(skip).limit(size).all()
+    pages = math.ceil(total / size) if size > 0 else 0
     
-    return FriendshipList(
-        items=requests,
-        total=total,
-        page=skip // limit + 1,
-        size=limit
-    )
+    return {
+        "items": requests,
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": pages
+    }
 
 
-@router.get("/friends", response_model=List[UserResponse])
+@router.get("/friends", response_model=PaginatedResponse[UserResponse])
 async def get_friends(
+    page: int = 1,
+    size: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -141,7 +151,21 @@ async def get_friends(
     
     # 合并并去重
     all_friends = list(set(sent_friends + received_friends))
-    return all_friends
+    
+    # 手动分页
+    total = len(all_friends)
+    start = (page - 1) * size
+    end = start + size
+    items = all_friends[start:end]
+    pages = math.ceil(total / size) if size > 0 else 0
+    
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": pages
+    }
 
 
 @router.put("/{friendship_id}/accept", response_model=FriendshipResponse)
@@ -218,10 +242,10 @@ async def delete_friend(
 
 
 # 管理端API
-@router.get("/admin/all", response_model=FriendshipList)
+@router.get("/admin/all", response_model=PaginatedResponse[FriendshipResponse])
 async def admin_get_all_friendships(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    size: int = 20,
     status: Optional[FriendshipStatus] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -230,19 +254,22 @@ async def admin_get_all_friendships(
     if not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Not enough permissions")
     
+    skip = (page - 1) * size
     query = db.query(Friendship)
     if status:
         query = query.filter(Friendship.status == status)
     
     total = query.count()
-    friendships = query.offset(skip).limit(limit).all()
+    friendships = query.offset(skip).limit(size).all()
+    pages = math.ceil(total / size) if size > 0 else 0
     
-    return FriendshipList(
-        items=friendships,
-        total=total,
-        page=skip // limit + 1,
-        size=limit
-    )
+    return {
+        "items": friendships,
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": pages
+    }
 
 
 @router.delete("/admin/{friendship_id}")

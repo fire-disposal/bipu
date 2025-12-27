@@ -9,21 +9,30 @@ from app.db.database import get_db
 from app.models.user import User
 from app.models.subscription import SubscriptionType, UserSubscription
 from app.schemas.user_settings import SubscriptionSettings
+from app.schemas.subscription import (
+    SubscriptionTypeResponse, UserSubscriptionResponse,
+    SubscriptionTypeCreate, SubscriptionTypeUpdate
+)
+from app.schemas.common import PaginatedResponse
 from app.core.security import get_current_active_user
 from app.core.exceptions import NotFoundException, ValidationException
 from app.core.logging import get_logger
+import math
 
 router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.get("/subscription-types")
+@router.get("/subscription-types", response_model=PaginatedResponse[SubscriptionTypeResponse])
 async def get_subscription_types(
+    page: int = 1,
+    size: int = 20,
     category: Optional[str] = None,
     is_active: Optional[bool] = True,
     db: Session = Depends(get_db)
 ):
     """获取订阅类型列表"""
+    skip = (page - 1) * size
     query = db.query(SubscriptionType)
     
     if category:
@@ -31,11 +40,16 @@ async def get_subscription_types(
     if is_active is not None:
         query = query.filter(SubscriptionType.is_active == is_active)
     
-    subscription_types = query.all()
+    total = query.count()
+    subscription_types = query.offset(skip).limit(size).all()
+    pages = math.ceil(total / size) if size > 0 else 0
     
     return {
         "items": subscription_types,
-        "total": len(subscription_types)
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": pages
     }
 
 
@@ -178,8 +192,10 @@ async def delete_subscription_type(
 
 
 # 用户订阅管理
-@router.get("/user-subscriptions")
+@router.get("/user-subscriptions", response_model=PaginatedResponse[dict])
 async def get_user_subscriptions(
+    page: int = 1,
+    size: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -227,9 +243,19 @@ async def get_user_subscriptions(
     
     db.commit()
     
+    # 手动分页
+    total = len(result)
+    start = (page - 1) * size
+    end = start + size
+    items = result[start:end]
+    pages = math.ceil(total / size) if size > 0 else 0
+    
     return {
-        "items": result,
-        "total": len(result)
+        "items": items,
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": pages
     }
 
 

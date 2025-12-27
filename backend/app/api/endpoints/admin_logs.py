@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, date
+import math
 
 from app.db.database import get_db
 from app.models.adminlog import AdminLog
@@ -10,6 +11,7 @@ from app.models.user import User
 from app.schemas.adminlog import (
     AdminLogCreate, AdminLogResponse
 )
+from app.schemas.common import PaginatedResponse
 from app.core.security import get_current_superuser
 from app.core.exceptions import NotFoundException
 from app.core.logging import get_logger
@@ -36,10 +38,10 @@ def create_admin_log(
     return log
 
 
-@router.get("/", response_model=List[AdminLogResponse])
+@router.get("/", response_model=PaginatedResponse[AdminLogResponse])
 async def get_admin_logs(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    size: int = 20,
     admin_id: Optional[int] = None,
     action: Optional[str] = None,
     start_date: Optional[date] = None,
@@ -59,8 +61,19 @@ async def get_admin_logs(
     if end_date:
         query = query.filter(AdminLog.timestamp <= end_date)
     
-    logs = query.order_by(AdminLog.timestamp.desc()).offset(skip).limit(limit).all()
-    return logs
+    total = query.count()
+    skip = (page - 1) * size
+    logs = query.order_by(AdminLog.timestamp.desc()).offset(skip).limit(size).all()
+    
+    pages = math.ceil(total / size) if size > 0 else 0
+    
+    return {
+        "items": logs,
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": pages
+    }
 
 
 @router.get("/stats")
