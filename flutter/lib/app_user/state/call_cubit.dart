@@ -301,7 +301,7 @@ class CallCubit extends Cubit<CallState> {
     if (state is! CallMessageCustomization) return;
 
     final currentState = state as CallMessageCustomization;
-    emit(CallConnecting(message: '正在听取语音...', isVoiceMode: true));
+    emit(const CallConnecting(message: '正在听取语音...', isVoiceMode: true));
 
     // 模拟语音识别
     Future.delayed(const Duration(seconds: 3), () {
@@ -338,7 +338,7 @@ class CallCubit extends Cubit<CallState> {
         isUnlocked: true,
         unlockTime: DateTime.now().subtract(const Duration(days: 1)),
       ),
-      PartnerInfo(id: 'partner_003', name: '神秘人', isUnlocked: false),
+      const PartnerInfo(id: 'partner_003', name: '神秘人', isUnlocked: false),
       PartnerInfo(
         id: 'partner_004',
         name: '小伙伴',

@@ -144,28 +144,28 @@ class HomeCubit extends Cubit<HomeState> {
   /// 获取快速操作列表
   List<QuickAction> _getQuickActions() {
     return [
-      QuickAction(
+      const QuickAction(
         id: 'send_message',
         title: '发送消息',
         subtitle: '向设备发送通知',
         icon: Icons.message,
         color: Colors.blue,
       ),
-      QuickAction(
+      const QuickAction(
         id: 'test_vibration',
         title: '震动测试',
         subtitle: '测试设备震动',
         icon: Icons.vibration,
         color: Colors.orange,
       ),
-      QuickAction(
+      const QuickAction(
         id: 'test_led',
         title: 'LED测试',
         subtitle: '测试设备LED',
         icon: Icons.lightbulb,
         color: Colors.yellow,
       ),
-      QuickAction(
+      const QuickAction(
         id: 'emergency',
         title: '紧急呼叫',
         subtitle: '发送紧急通知',
@@ -178,21 +178,21 @@ class HomeCubit extends Cubit<HomeState> {
   /// 获取最近消息列表
   List<MessageInfo> _getRecentMessages() {
     return [
-      MessageInfo(
+      const MessageInfo(
         id: '1',
         title: '设备连接成功',
         content: '您的设备已成功连接，可以开始使用了',
         time: '刚刚',
         isRead: true,
       ),
-      MessageInfo(
+      const MessageInfo(
         id: '2',
         title: '欢迎使用BiPuPu',
         content: '欢迎使用BiPuPu寻呼机，开始您的智能体验',
         time: '5分钟前',
         isRead: true,
       ),
-      MessageInfo(
+      const MessageInfo(
         id: '3',
         title: '新功能更新',
         content: '我们添加了新的LED效果，快来试试吧',
@@ -234,7 +234,7 @@ class HomeCubit extends Cubit<HomeState> {
 
     final currentState = state as HomeLoaded;
     if (!currentState.isDeviceConnected) {
-      emit(HomeError('请先连接设备'));
+      emit(const HomeError('请先连接设备'));
       return;
     }
 

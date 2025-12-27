@@ -37,20 +37,17 @@ class ApiException extends AppException {
 
 /// 认证异常
 class AuthException extends AppException {
-  const AuthException(String message, [String? code, dynamic originalError])
-    : super(message, code, originalError);
+  const AuthException(super.message, [super.code, super.originalError]);
 }
 
 /// 网络异常
 class NetworkException extends AppException {
-  const NetworkException(String message, [String? code, dynamic originalError])
-    : super(message, code, originalError);
+  const NetworkException(super.message, [super.code, super.originalError]);
 }
 
 /// 数据异常
 class DataException extends AppException {
-  const DataException(String message, [String? code, dynamic originalError])
-    : super(message, code, originalError);
+  const DataException(super.message, [super.code, super.originalError]);
 }
 
 /// 验证异常
@@ -68,14 +65,13 @@ class ValidationException extends AppException {
 /// 权限异常
 class PermissionException extends AppException {
   const PermissionException(
-    String message, [
-    String? code,
-    dynamic originalError,
-  ]) : super(message, code, originalError);
+    super.message, [
+    super.code,
+    super.originalError,
+  ]);
 }
 
 /// 服务异常
 class ServiceException extends AppException {
-  const ServiceException(String message, [String? code, dynamic originalError])
-    : super(message, code, originalError);
+  const ServiceException(super.message, [super.code, super.originalError]);
 }

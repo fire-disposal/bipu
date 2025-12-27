@@ -4,7 +4,6 @@ from sqlalchemy import and_
 from celery import shared_task
 from app.db.database import SessionLocal
 from app.models.message import Message, MessageStatus
-from app.models.notification import Notification, NotificationStatus
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -40,58 +39,60 @@ def cleanup_old_messages():
 
 
 @shared_task
-def cleanup_old_notifications():
-    """清理旧通知（保留7天）"""
+def cleanup_old_system_notifications():
+    """清理旧的系统通知（保留7天）"""
     try:
         db = SessionLocal()
         
         # 计算7天前的日期
         cutoff_date = datetime.utcnow() - timedelta(days=7)
         
-        # 删除7天前已发送或已取消的通知
-        deleted_count = db.query(Notification).filter(
+        # 删除7天前的系统通知（source_type为system的）
+        deleted_count = db.query(Message).filter(
             and_(
-                Notification.status.in_([NotificationStatus.SENT, NotificationStatus.CANCELLED]),
-                Notification.created_at < cutoff_date
+                Message.message_type == 'notification',
+                Message.pattern.contains({"source_type": "system"}),
+                Message.created_at < cutoff_date
             )
         ).delete()
         
         db.commit()
-        logger.info(f"清理了 {deleted_count} 条旧通知")
+        logger.info(f"清理了 {deleted_count} 条旧系统通知")
         
-        return {"deleted_notifications": deleted_count}
+        return {"deleted_system_notifications": deleted_count}
         
     except Exception as e:
-        logger.error(f"清理旧通知失败: {e}")
+        logger.error(f"清理旧系统通知失败: {e}")
         raise
     finally:
         db.close()
 
 
 @shared_task
-def cleanup_failed_notifications():
-    """清理失败的通知（保留3天）"""
+def cleanup_old_subscription_messages():
+    """清理旧的订阅消息（保留7天）"""
     try:
         db = SessionLocal()
         
-        # 计算3天前的日期
-        cutoff_date = datetime.utcnow() - timedelta(days=3)
+        # 计算7天前的日期
+        cutoff_date = datetime.utcnow() - timedelta(days=7)
         
-        # 删除3天前失败的通知
-        deleted_count = db.query(Notification).filter(
+        # 删除7天前的订阅消息（source_type为subscription的）
+        deleted_count = db.query(Message).filter(
             and_(
-                Notification.status == NotificationStatus.FAILED,
-                Notification.created_at < cutoff_date
+                Message.message_type == 'notification',
+                Message.pattern.contains({"source_type": "subscription"}),
+                Message.created_at < cutoff_date
             )
         ).delete()
         
         db.commit()
-        logger.info(f"清理了 {deleted_count} 条失败通知")
+        logger.info(f"清理了 {deleted_count} 条旧订阅消息")
         
-        return {"deleted_failed_notifications": deleted_count}
+        return {"deleted_subscription_messages": deleted_count}
         
     except Exception as e:
-        logger.error(f"清理失败通知失败: {e}")
+        logger.error(f"清理旧订阅消息失败: {e}")
         raise
     finally:
         db.close()

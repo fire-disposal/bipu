@@ -1,14 +1,13 @@
 """消息管理端点 - IM系统核心功能"""
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
+from sqlalchemy import func, and_, or_
 from typing import List, Optional
 from datetime import datetime, timedelta
 
 from app.db.database import get_db
 from app.models.message import Message, MessageType, MessageStatus
 from app.models.user import User
-from app.models.device import Device
 from app.models.friendship import Friendship, FriendshipStatus
 from app.schemas.message import (
     MessageCreate, MessageUpdate, MessageResponse, MessageList, MessageStats
@@ -33,15 +32,17 @@ async def create_message(
     if not receiver:
         raise NotFoundException("Receiver user not found")
     
-    # 验证设备是否存在且属于当前用户
-    if message.device_id:
-        device = db.query(Device).filter(
-            Device.id == message.device_id,
-            Device.user_id == current_user.id
-        ).first()
+    # 消息来源验证 - 支持多种来源类型
+    if message.pattern and isinstance(message.pattern, dict):
+        source_type = message.pattern.get("source_type")
+        source_id = message.pattern.get("source_id")
         
-        if not device:
-            raise ValidationException("Device not found or not owned by user")
+        if source_type == "user":
+            # 验证用户来源
+            source_user = db.query(User).filter(User.id == source_id).first()
+            if not source_user:
+                raise ValidationException("Source user not found")
+        # 可以扩展其他来源类型验证
     
     # 验证好友关系（如果是用户间消息）
     if message.message_type == MessageType.USER:
@@ -86,7 +87,7 @@ async def get_messages(
     """获取消息列表 - 支持IM会话查询"""
     # 用户只能查看自己发送或接收的消息
     query = db.query(Message).filter(
-        or_(Message.sender_id == current_user.id, Message.receiver_id == current_user.id)
+        (Message.sender_id == current_user.id) | (Message.receiver_id == current_user.id)
     )
     
     # 应用过滤条件
@@ -141,10 +142,8 @@ async def get_conversation_messages(
     
     # 获取双方的消息
     query = db.query(Message).filter(
-        or_(
-            (Message.sender_id == current_user.id) & (Message.receiver_id == user_id),
-            (Message.sender_id == user_id) & (Message.receiver_id == current_user.id)
-        )
+        ((Message.sender_id == current_user.id) & (Message.receiver_id == user_id)) |
+        ((Message.sender_id == user_id) & (Message.receiver_id == current_user.id))
     )
     
     total = query.count()
@@ -211,8 +210,8 @@ async def get_recent_messages(
     since = datetime.utcnow() - timedelta(hours=hours)
     
     query = db.query(Message).filter(
-        or_(Message.sender_id == current_user.id, Message.receiver_id == current_user.id),
-        Message.created_at >= since
+        ((Message.sender_id == current_user.id) | (Message.receiver_id == current_user.id)) &
+        (Message.created_at >= since)
     )
     
     total = query.count()
@@ -233,7 +232,9 @@ async def get_message_stats(
     current_user: User = Depends(get_current_active_user)
 ):
     """获取消息统计信息"""
-    query = db.query(Message).filter(Message.user_id == current_user.id)
+    query = db.query(Message).filter(
+        (Message.sender_id == current_user.id) | (Message.receiver_id == current_user.id)
+    )
     
     total = query.count()
     unread = query.filter(Message.is_read == False).count()
@@ -264,7 +265,7 @@ async def get_message(
     """获取指定消息"""
     message = db.query(Message).filter(
         Message.id == message_id,
-        Message.user_id == current_user.id
+        (Message.sender_id == current_user.id) | (Message.receiver_id == current_user.id)
     ).first()
     
     if not message:
@@ -283,7 +284,7 @@ async def update_message(
     """更新消息"""
     message = db.query(Message).filter(
         Message.id == message_id,
-        Message.user_id == current_user.id
+        (Message.sender_id == current_user.id) | (Message.receiver_id == current_user.id)
     ).first()
     
     if not message:
@@ -339,7 +340,7 @@ async def mark_all_messages_as_read(
 ):
     """标记所有消息为已读"""
     updated_count = db.query(Message).filter(
-        Message.user_id == current_user.id,
+        (Message.sender_id == current_user.id) | (Message.receiver_id == current_user.id),
         Message.is_read == False
     ).update({
         "is_read": True,
@@ -362,7 +363,7 @@ async def delete_message(
     """删除消息"""
     message = db.query(Message).filter(
         Message.id == message_id,
-        Message.user_id == current_user.id
+        (Message.sender_id == current_user.id) | (Message.receiver_id == current_user.id)
     ).first()
     
     if not message:
@@ -382,7 +383,7 @@ async def delete_read_messages(
 ):
     """删除所有已读消息"""
     deleted_count = db.query(Message).filter(
-        Message.user_id == current_user.id,
+        (Message.sender_id == current_user.id) | (Message.receiver_id == current_user.id),
         Message.is_read == True
     ).delete()
     

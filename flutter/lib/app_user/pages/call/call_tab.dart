@@ -64,8 +64,9 @@ class CallTab extends StatelessWidget {
                     final operators = state is CallOperatorSelection
                         ? state.operators
                         : [];
-                    if (index >= operators.length)
+                    if (index >= operators.length) {
                       return const SizedBox.shrink();
+                    }
 
                     final operator = operators[index];
                     return ChoiceChip(

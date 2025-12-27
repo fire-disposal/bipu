@@ -3,7 +3,6 @@ library;
 
 import 'package:openapi/openapi.dart';
 import '../core.dart';
-import '../injection/service_locator.dart';
 
 /// 基础Repository接口
 abstract class BaseRepository<T, ID> {

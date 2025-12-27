@@ -333,6 +333,7 @@ class AdminLoginState extends FormState {
   @override
   List<Object?> get props => [...super.props, isLoggedIn, isAdmin];
 
+  @override
   AdminLoginState copyWith({
     bool? isSubmitting,
     String? error,
@@ -416,7 +417,7 @@ abstract class AdminLoginCubit extends AppCubit<AdminLoginState> {
   /// 检查登录状态
   Future<void> checkLoginStatus() async {
     try {
-      final isLoggedIn = await _authService.isAuthenticated();
+      final isLoggedIn = _authService.isAuthenticated();
       if (isLoggedIn) {
         final adminValidation = await _authService.validateAdminAccess();
         emit(

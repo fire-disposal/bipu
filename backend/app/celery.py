@@ -34,13 +34,21 @@ celery_app.conf.update(
             "task": "app.tasks.cleanup.cleanup_old_messages",
             "schedule": 3600.0,  # 每小时执行一次
         },
-        "cleanup-old-notifications": {
-            "task": "app.tasks.cleanup.cleanup_old_notifications",
+        "cleanup-old-system-notifications": {
+            "task": "app.tasks.cleanup.cleanup_old_system_notifications",
             "schedule": 3600.0,  # 每小时执行一次
         },
-        "update-device-status": {
-            "task": "app.tasks.device.update_device_status",
-            "schedule": 300.0,  # 每5分钟执行一次
+        "generate-weather-subscription": {
+            "task": "app.tasks.subscription.generate_weather_subscription",
+            "schedule": 3600.0,  # 每小时执行一次，检查是否需要发送天气
+        },
+        "generate-fortune-subscription": {
+            "task": "app.tasks.subscription.generate_fortune_subscription",
+            "schedule": 3600.0,  # 每小时执行一次，检查是否需要发送运势
+        },
+        "cleanup-old-subscription-messages": {
+            "task": "app.tasks.subscription.cleanup_old_subscription_messages",
+            "schedule": 86400.0,  # 每天执行一次，清理旧订阅消息
         },
     }
 )

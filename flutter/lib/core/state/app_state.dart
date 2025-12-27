@@ -137,7 +137,7 @@ class FormState extends AppState {
 
 /// 统一的Cubit基类
 abstract class AppCubit<T extends AppState> extends Cubit<T> {
-  AppCubit(T initialState) : super(initialState);
+  AppCubit(super.initialState);
 
   /// 处理异步操作的标准化方法
   Future<void> handleAsyncOperation({

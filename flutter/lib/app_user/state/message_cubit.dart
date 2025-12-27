@@ -173,7 +173,7 @@ class MessageCubit extends Cubit<MessageState> {
   /// 获取消息分类
   List<MessageCategory> _getMessageCategories() {
     return [
-      MessageCategory(
+      const MessageCategory(
         id: 'received',
         icon: Icons.mark_email_unread_outlined,
         title: '收到的消息',
@@ -181,7 +181,7 @@ class MessageCubit extends Cubit<MessageState> {
         unreadCount: 3,
         type: MessageType.received,
       ),
-      MessageCategory(
+      const MessageCategory(
         id: 'sent',
         icon: Icons.send_outlined,
         title: '发出的消息',
@@ -189,7 +189,7 @@ class MessageCubit extends Cubit<MessageState> {
         unreadCount: 0,
         type: MessageType.sent,
       ),
-      MessageCategory(
+      const MessageCategory(
         id: 'subscription',
         icon: Icons.subscriptions_outlined,
         title: '订阅消息',
@@ -197,7 +197,7 @@ class MessageCubit extends Cubit<MessageState> {
         unreadCount: 1,
         type: MessageType.subscription,
       ),
-      MessageCategory(
+      const MessageCategory(
         id: 'management',
         icon: Icons.settings_outlined,
         title: '消息管理',
@@ -365,7 +365,7 @@ class MessageCubit extends Cubit<MessageState> {
     final currentState = state as MessageLoaded;
 
     // 更新所有消息列表
-    final updateFavorite = (List<MessageInfo> messages) {
+    List<MessageInfo> updateFavorite(List<MessageInfo> messages) {
       return messages.map((message) {
         if (message.id == messageId) {
           return MessageInfo(
@@ -383,7 +383,7 @@ class MessageCubit extends Cubit<MessageState> {
         }
         return message;
       }).toList();
-    };
+    }
 
     emit(
       MessageLoaded(
@@ -403,9 +403,9 @@ class MessageCubit extends Cubit<MessageState> {
     final currentState = state as MessageLoaded;
 
     // 从所有列表中删除消息
-    final deleteFromList = (List<MessageInfo> messages) {
+    List<MessageInfo> deleteFromList(List<MessageInfo> messages) {
       return messages.where((message) => message.id != messageId).toList();
-    };
+    }
 
     emit(
       MessageLoaded(

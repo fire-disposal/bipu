@@ -793,418 +793,6 @@
         ]
       }
     },
-    "/api/devices/": {
-      "post": {
-        "tags": [
-          "devices"
-        ],
-        "summary": "Create Device",
-        "description": "创建设备",
-        "operationId": "create_device_api_devices__post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DeviceCreate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeviceResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "devices"
-        ],
-        "summary": "Get Devices",
-        "description": "获取设备列表",
-        "operationId": "get_devices_api_devices__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "skip",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 0,
-              "title": "Skip"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 100,
-              "title": "Limit"
-            }
-          },
-          {
-            "name": "status_filter",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Status Filter"
-            }
-          },
-          {
-            "name": "device_type",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Device Type"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeviceList"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/devices/stats": {
-      "get": {
-        "tags": [
-          "devices"
-        ],
-        "summary": "Get Device Stats",
-        "description": "获取设备统计信息",
-        "operationId": "get_device_stats_api_devices_stats_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeviceStats"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/api/devices/{device_id}": {
-      "get": {
-        "tags": [
-          "devices"
-        ],
-        "summary": "Get Device",
-        "description": "获取指定设备",
-        "operationId": "get_device_api_devices__device_id__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "device_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Device Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeviceResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "devices"
-        ],
-        "summary": "Update Device",
-        "description": "更新设备信息",
-        "operationId": "update_device_api_devices__device_id__put",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "device_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Device Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DeviceUpdate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeviceResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "devices"
-        ],
-        "summary": "Delete Device",
-        "description": "删除设备",
-        "operationId": "delete_device_api_devices__device_id__delete",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "device_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Device Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/devices/{device_id}/heartbeat": {
-      "post": {
-        "tags": [
-          "devices"
-        ],
-        "summary": "Device Heartbeat",
-        "description": "设备心跳（更新最后在线时间）",
-        "operationId": "device_heartbeat_api_devices__device_id__heartbeat_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "device_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Device Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/devices/{device_id}/status": {
-      "post": {
-        "tags": [
-          "devices"
-        ],
-        "summary": "Update Device Status",
-        "description": "更新设备状态",
-        "operationId": "update_device_status_api_devices__device_id__status_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "device_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Device Id"
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Status"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/messages/": {
       "post": {
         "tags": [
@@ -1291,7 +879,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/app__schemas__message__MessageType"
+                  "$ref": "#/components/schemas/app__models__message__MessageType"
                 },
                 {
                   "type": "null"
@@ -1929,7 +1517,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/app__schemas__message__MessageType"
+                  "$ref": "#/components/schemas/app__models__message__MessageType"
                 },
                 {
                   "type": "null"
@@ -2082,25 +1670,54 @@
         ]
       }
     },
-    "/api/notifications/": {
+    "/api/system-notifications/": {
       "post": {
         "tags": [
-          "notifications"
+          "system-notifications"
         ],
-        "summary": "Create Notification",
-        "description": "创建站内信",
-        "operationId": "create_notification_api_notifications__post",
+        "summary": "Create System Notification",
+        "description": "创建系统通知（管理员功能）",
+        "operationId": "create_system_notification_api_system_notifications__post",
         "security": [
           {
             "HTTPBearer": []
           }
         ],
+        "parameters": [
+          {
+            "name": "title",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Title"
+            }
+          },
+          {
+            "name": "content",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Content"
+            }
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 5,
+              "title": "Priority"
+            }
+          }
+        ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NotificationCreate"
+                "$ref": "#/components/schemas/Body_create_system_notification_api_system_notifications__post"
               }
             }
           }
@@ -2111,7 +1728,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotificationResponse"
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
@@ -2130,11 +1747,11 @@
       },
       "get": {
         "tags": [
-          "notifications"
+          "system-notifications"
         ],
-        "summary": "Get Notifications",
-        "description": "获取站内信列表",
-        "operationId": "get_notifications_api_notifications__get",
+        "summary": "Get System Notifications",
+        "description": "获取系统通知列表",
+        "operationId": "get_system_notifications_api_system_notifications__get",
         "security": [
           {
             "HTTPBearer": []
@@ -2168,13 +1785,79 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/app__schemas__notification__NotificationStatus"
+                  "type": "string"
                 },
                 {
                   "type": "null"
                 }
               ],
               "title": "Status"
+            }
+          },
+          {
+            "name": "priority_min",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Priority Min"
+            }
+          },
+          {
+            "name": "priority_max",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Priority Max"
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
             }
           }
         ],
@@ -2184,7 +1867,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotificationList"
+                  "$ref": "#/components/schemas/MessageList"
                 }
               }
             }
@@ -2202,22 +1885,161 @@
         }
       }
     },
-    "/api/notifications/stats": {
+    "/api/system-notifications/admin/all": {
       "get": {
         "tags": [
-          "notifications"
+          "system-notifications"
         ],
-        "summary": "Get Notification Stats",
-        "description": "获取站内信统计信息",
-        "operationId": "get_notification_stats_api_notifications_stats_get",
+        "summary": "Admin Get All System Notifications",
+        "description": "管理端：获取所有系统通知（需要超级用户权限）",
+        "operationId": "admin_get_all_system_notifications_api_system_notifications_admin_all_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "priority_min",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Priority Min"
+            }
+          },
+          {
+            "name": "priority_max",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Priority Max"
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotificationStats"
+                  "$ref": "#/components/schemas/MessageList"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/system-notifications/stats": {
+      "get": {
+        "tags": [
+          "system-notifications"
+        ],
+        "summary": "Get System Notification Stats",
+        "description": "获取系统通知统计信息",
+        "operationId": "get_system_notification_stats_api_system_notifications_stats_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           }
@@ -2229,93 +2051,62 @@
         ]
       }
     },
-    "/api/notifications/{notification_id}": {
+    "/api/system-notifications/admin/stats": {
       "get": {
         "tags": [
-          "notifications"
+          "system-notifications"
         ],
-        "summary": "Get Notification",
-        "description": "获取指定站内信",
-        "operationId": "get_notification_api_notifications__notification_id__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "notification_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Notification Id"
-            }
-          }
-        ],
+        "summary": "Admin Get System Notification Stats",
+        "description": "管理端：获取系统通知统计（需要超级用户权限）",
+        "operationId": "admin_get_system_notification_stats_api_system_notifications_admin_stats_get",
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotificationResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "notifications"
-        ],
-        "summary": "Update Notification",
-        "description": "更新站内信",
-        "operationId": "update_notification_api_notifications__notification_id__put",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "notification_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Notification Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NotificationUpdate"
+                "schema": {}
               }
             }
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/system-notifications/{notification_id}": {
+      "get": {
+        "tags": [
+          "system-notifications"
+        ],
+        "summary": "Get System Notification",
+        "description": "获取指定系统通知",
+        "operationId": "get_system_notification_api_system_notifications__notification_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notification_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notification Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotificationResponse"
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
@@ -2334,11 +2125,11 @@
       },
       "delete": {
         "tags": [
-          "notifications"
+          "system-notifications"
         ],
-        "summary": "Delete Notification",
-        "description": "删除站内信（软删除）",
-        "operationId": "delete_notification_api_notifications__notification_id__delete",
+        "summary": "Delete System Notification",
+        "description": "删除系统通知（软删除）",
+        "operationId": "delete_system_notification_api_system_notifications__notification_id__delete",
         "security": [
           {
             "HTTPBearer": []
@@ -2377,14 +2168,14 @@
         }
       }
     },
-    "/api/notifications/{notification_id}/read": {
+    "/api/system-notifications/{notification_id}/read": {
       "put": {
         "tags": [
-          "notifications"
+          "system-notifications"
         ],
-        "summary": "Mark Notification As Read",
-        "description": "标记站内信为已读",
-        "operationId": "mark_notification_as_read_api_notifications__notification_id__read_put",
+        "summary": "Mark System Notification As Read",
+        "description": "标记系统通知为已读",
+        "operationId": "mark_system_notification_as_read_api_system_notifications__notification_id__read_put",
         "security": [
           {
             "HTTPBearer": []
@@ -2423,14 +2214,14 @@
         }
       }
     },
-    "/api/notifications/read-all": {
+    "/api/system-notifications/read-all": {
       "put": {
         "tags": [
-          "notifications"
+          "system-notifications"
         ],
-        "summary": "Mark All Notifications As Read",
-        "description": "标记所有站内信为已读",
-        "operationId": "mark_all_notifications_as_read_api_notifications_read_all_put",
+        "summary": "Mark All System Notifications As Read",
+        "description": "标记所有系统通知为已读",
+        "operationId": "mark_all_system_notifications_as_read_api_system_notifications_read_all_put",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2446,6 +2237,52 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/api/system-notifications/admin/{notification_id}": {
+      "delete": {
+        "tags": [
+          "system-notifications"
+        ],
+        "summary": "Admin Delete System Notification",
+        "description": "管理端：删除系统通知（需要超级用户权限）",
+        "operationId": "admin_delete_system_notification_api_system_notifications_admin__notification_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notification_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notification Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/friendships/": {
@@ -3354,6 +3191,2076 @@
         }
       }
     },
+    "/api/user-settings/profile": {
+      "get": {
+        "tags": [
+          "user-settings"
+        ],
+        "summary": "Get User Profile",
+        "description": "获取用户个人资料",
+        "operationId": "get_user_profile_api_user_settings_profile_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "user-settings"
+        ],
+        "summary": "Update User Profile",
+        "description": "更新用户个人资料",
+        "operationId": "update_user_profile_api_user_settings_profile_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserProfileUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/user-settings/settings": {
+      "put": {
+        "tags": [
+          "user-settings"
+        ],
+        "summary": "Update User Settings",
+        "description": "更新用户设置",
+        "operationId": "update_user_settings_api_user_settings_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/user-settings/password": {
+      "put": {
+        "tags": [
+          "user-settings"
+        ],
+        "summary": "Change Password",
+        "description": "修改密码",
+        "operationId": "change_password_api_user_settings_password_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/user-settings/terms/accept": {
+      "put": {
+        "tags": [
+          "user-settings"
+        ],
+        "summary": "Accept Terms",
+        "description": "接受用户协议",
+        "operationId": "accept_terms_api_user_settings_terms_accept_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TermsAcceptance"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/user-settings/terms/status": {
+      "get": {
+        "tags": [
+          "user-settings"
+        ],
+        "summary": "Get Terms Status",
+        "description": "获取用户协议状态",
+        "operationId": "get_terms_status_api_user_settings_terms_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/user-settings/blocks": {
+      "post": {
+        "tags": [
+          "user-settings"
+        ],
+        "summary": "Block User",
+        "description": "拉黑用户",
+        "operationId": "block_user_api_user_settings_blocks_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlockUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "user-settings"
+        ],
+        "summary": "Get Blocked Users",
+        "description": "获取黑名单列表",
+        "operationId": "get_blocked_users_api_user_settings_blocks_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserBlockList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user-settings/blocks/{user_id}": {
+      "delete": {
+        "tags": [
+          "user-settings"
+        ],
+        "summary": "Unblock User",
+        "description": "解除拉黑",
+        "operationId": "unblock_user_api_user_settings_blocks__user_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user-settings/messages/export": {
+      "post": {
+        "tags": [
+          "user-settings"
+        ],
+        "summary": "Export Messages",
+        "description": "导出消息",
+        "operationId": "export_messages_api_user_settings_messages_export_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportMessagesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportMessagesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/user-settings/messages/stats": {
+      "get": {
+        "tags": [
+          "user-settings"
+        ],
+        "summary": "Get Message Stats",
+        "description": "获取消息统计",
+        "operationId": "get_message_stats_api_user_settings_messages_stats_get",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageStatsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageStatsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/user-settings/subscriptions": {
+      "get": {
+        "tags": [
+          "user-settings"
+        ],
+        "summary": "Get User Subscriptions",
+        "description": "获取用户订阅",
+        "operationId": "get_user_subscriptions_api_user_settings_subscriptions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/user-settings/subscriptions/{subscription_type_id}": {
+      "put": {
+        "tags": [
+          "user-settings"
+        ],
+        "summary": "Update Subscription",
+        "description": "更新订阅设置",
+        "operationId": "update_subscription_api_user_settings_subscriptions__subscription_type_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "subscription_type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Subscription Type Id"
+            }
+          },
+          {
+            "name": "is_enabled",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "boolean",
+              "title": "Is Enabled"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Custom Settings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user-settings/privacy-settings": {
+      "get": {
+        "tags": [
+          "user-settings"
+        ],
+        "summary": "Get Privacy Settings",
+        "description": "获取隐私设置",
+        "operationId": "get_privacy_settings_api_user_settings_privacy_settings_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "user-settings"
+        ],
+        "summary": "Update Privacy Settings",
+        "description": "更新隐私设置",
+        "operationId": "update_privacy_settings_api_user_settings_privacy_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivacySettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/user-settings/subscription-settings": {
+      "get": {
+        "tags": [
+          "user-settings"
+        ],
+        "summary": "Get Subscription Settings",
+        "description": "获取订阅设置",
+        "operationId": "get_subscription_settings_api_user_settings_subscription_settings_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "user-settings"
+        ],
+        "summary": "Update Subscription Settings",
+        "description": "更新订阅设置",
+        "operationId": "update_subscription_settings_api_user_settings_subscription_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/message-management/messages/{message_id}/favorite": {
+      "post": {
+        "tags": [
+          "message-management"
+        ],
+        "summary": "Favorite Message",
+        "description": "收藏消息",
+        "operationId": "favorite_message_api_message_management_messages__message_id__favorite_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Message Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "message-management"
+        ],
+        "summary": "Unfavorite Message",
+        "description": "取消收藏消息",
+        "operationId": "unfavorite_message_api_message_management_messages__message_id__favorite_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Message Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/message-management/messages/favorites": {
+      "get": {
+        "tags": [
+          "message-management"
+        ],
+        "summary": "Get Favorite Messages",
+        "description": "获取收藏的消息列表",
+        "operationId": "get_favorite_messages_api_message_management_messages_favorites_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/message-management/messages/sent": {
+      "get": {
+        "tags": [
+          "message-management"
+        ],
+        "summary": "Get Sent Messages",
+        "description": "获取已发送消息",
+        "operationId": "get_sent_messages_api_message_management_messages_sent_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/message-management/messages/received": {
+      "get": {
+        "tags": [
+          "message-management"
+        ],
+        "summary": "Get Received Messages",
+        "description": "获取已接收消息",
+        "operationId": "get_received_messages_api_message_management_messages_received_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/message-management/messages/batch": {
+      "delete": {
+        "tags": [
+          "message-management"
+        ],
+        "summary": "Batch Delete Messages",
+        "description": "批量删除消息",
+        "operationId": "batch_delete_messages_api_message_management_messages_batch_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array",
+                "title": "Message Ids"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/message-management/messages/{message_id}/archive": {
+      "put": {
+        "tags": [
+          "message-management"
+        ],
+        "summary": "Archive Message",
+        "description": "归档消息",
+        "operationId": "archive_message_api_message_management_messages__message_id__archive_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Message Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/message-management/messages/stats": {
+      "get": {
+        "tags": [
+          "message-management"
+        ],
+        "summary": "Get Message Management Stats",
+        "description": "获取消息管理统计",
+        "operationId": "get_message_management_stats_api_message_management_messages_stats_get",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageStatsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageStatsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/message-management/messages/export": {
+      "post": {
+        "tags": [
+          "message-management"
+        ],
+        "summary": "Export Messages Advanced",
+        "description": "高级消息导出功能",
+        "operationId": "export_messages_advanced_api_message_management_messages_export_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportMessagesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportMessagesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/message-management/messages/search": {
+      "get": {
+        "tags": [
+          "message-management"
+        ],
+        "summary": "Search Messages",
+        "description": "搜索消息",
+        "operationId": "search_messages_api_message_management_messages_search_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Keyword"
+            }
+          },
+          {
+            "name": "message_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Message Type"
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscriptions/subscription-types": {
+      "get": {
+        "tags": [
+          "subscriptions"
+        ],
+        "summary": "Get Subscription Types",
+        "description": "获取订阅类型列表",
+        "operationId": "get_subscription_types_api_subscriptions_subscription_types_get",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": true,
+              "title": "Is Active"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "subscriptions"
+        ],
+        "summary": "Create Subscription Type",
+        "description": "创建订阅类型（管理员功能）",
+        "operationId": "create_subscription_type_api_subscriptions_subscription_types_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          },
+          {
+            "name": "description",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Description"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "general",
+              "title": "Category"
+            }
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Is Active"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Default Settings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscriptions/subscription-types/{subscription_type_id}": {
+      "get": {
+        "tags": [
+          "subscriptions"
+        ],
+        "summary": "Get Subscription Type",
+        "description": "获取订阅类型详情",
+        "operationId": "get_subscription_type_api_subscriptions_subscription_types__subscription_type_id__get",
+        "parameters": [
+          {
+            "name": "subscription_type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Subscription Type Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "subscriptions"
+        ],
+        "summary": "Update Subscription Type",
+        "description": "更新订阅类型（管理员功能）",
+        "operationId": "update_subscription_type_api_subscriptions_subscription_types__subscription_type_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "subscription_type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Subscription Type Id"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Name"
+            }
+          },
+          {
+            "name": "description",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Description"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Active"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Default Settings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "subscriptions"
+        ],
+        "summary": "Delete Subscription Type",
+        "description": "删除订阅类型（管理员功能）",
+        "operationId": "delete_subscription_type_api_subscriptions_subscription_types__subscription_type_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "subscription_type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Subscription Type Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscriptions/user-subscriptions": {
+      "get": {
+        "tags": [
+          "subscriptions"
+        ],
+        "summary": "Get User Subscriptions",
+        "description": "获取当前用户的订阅",
+        "operationId": "get_user_subscriptions_api_subscriptions_user_subscriptions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/subscriptions/user-subscriptions/{subscription_type_id}": {
+      "put": {
+        "tags": [
+          "subscriptions"
+        ],
+        "summary": "Update User Subscription",
+        "description": "更新用户订阅设置",
+        "operationId": "update_user_subscription_api_subscriptions_user_subscriptions__subscription_type_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "subscription_type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Subscription Type Id"
+            }
+          },
+          {
+            "name": "is_enabled",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "boolean",
+              "title": "Is Enabled"
+            }
+          },
+          {
+            "name": "notification_time_start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Notification Time Start"
+            }
+          },
+          {
+            "name": "notification_time_end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Notification Time End"
+            }
+          },
+          {
+            "name": "timezone",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Timezone"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Custom Settings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "subscriptions"
+        ],
+        "summary": "Unsubscribe",
+        "description": "取消订阅",
+        "operationId": "unsubscribe_api_subscriptions_user_subscriptions__subscription_type_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "subscription_type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Subscription Type Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscriptions/subscription-stats": {
+      "get": {
+        "tags": [
+          "subscriptions"
+        ],
+        "summary": "Get Subscription Stats",
+        "description": "获取订阅统计",
+        "operationId": "get_subscription_stats_api_subscriptions_subscription_stats_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/subscriptions/cosmic-messaging/status": {
+      "get": {
+        "tags": [
+          "subscriptions"
+        ],
+        "summary": "Get Cosmic Messaging Status",
+        "description": "获取宇宙传讯订阅状态",
+        "operationId": "get_cosmic_messaging_status_api_subscriptions_cosmic_messaging_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/subscriptions/cosmic-messaging/settings": {
+      "put": {
+        "tags": [
+          "subscriptions"
+        ],
+        "summary": "Update Cosmic Messaging Settings",
+        "description": "更新宇宙传讯设置",
+        "operationId": "update_cosmic_messaging_settings_api_subscriptions_cosmic_messaging_settings_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "is_enabled",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "boolean",
+              "title": "Is Enabled"
+            }
+          },
+          {
+            "name": "notification_time_start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Notification Time Start"
+            }
+          },
+          {
+            "name": "notification_time_end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Notification Time End"
+            }
+          },
+          {
+            "name": "timezone",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Timezone"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Custom Settings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -3421,209 +5328,122 @@
         "title": "AdminLogResponse",
         "description": "管理员操作日志响应模式"
       },
-      "DeviceCreate": {
+      "BirthChart": {
         "properties": {
-          "device_identifier": {
-            "type": "string",
-            "maxLength": 100,
-            "minLength": 1,
-            "title": "Device Identifier",
-            "description": "设备唯一标识（BLE MAC/UUID/序列号）"
-          },
-          "user_id": {
-            "type": "integer",
-            "title": "User Id",
-            "description": "绑定用户ID，强制1:1"
-          },
-          "last_seen": {
+          "year": {
             "anyOf": [
               {
                 "type": "string",
-                "format": "date-time"
+                "maxLength": 10
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Last Seen",
-            "description": "最后在线时间"
+            "title": "Year"
+          },
+          "month": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Month"
+          },
+          "day": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day"
+          },
+          "hour": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hour"
+          },
+          "element": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Element"
+          },
+          "animal": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Animal"
+          }
+        },
+        "type": "object",
+        "title": "BirthChart",
+        "description": "生辰八字"
+      },
+      "BlockUserRequest": {
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
           }
         },
         "type": "object",
         "required": [
-          "device_identifier",
           "user_id"
         ],
-        "title": "DeviceCreate",
-        "description": "创建设备模式"
+        "title": "BlockUserRequest",
+        "description": "拉黑用户请求"
       },
-      "DeviceList": {
+      "BlockedUserResponse": {
         "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/DeviceResponse"
-            },
-            "type": "array",
-            "title": "Items"
-          },
-          "total": {
-            "type": "integer",
-            "title": "Total"
-          },
-          "page": {
-            "type": "integer",
-            "title": "Page"
-          },
-          "size": {
-            "type": "integer",
-            "title": "Size"
-          }
-        },
-        "type": "object",
-        "required": [
-          "items",
-          "total",
-          "page",
-          "size"
-        ],
-        "title": "DeviceList",
-        "description": "设备列表响应模式"
-      },
-      "DeviceResponse": {
-        "properties": {
-          "device_identifier": {
-            "type": "string",
-            "maxLength": 100,
-            "minLength": 1,
-            "title": "Device Identifier",
-            "description": "设备唯一标识（BLE MAC/UUID/序列号）"
-          },
-          "user_id": {
-            "type": "integer",
-            "title": "User Id",
-            "description": "绑定用户ID，强制1:1"
-          },
-          "last_seen": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Seen",
-            "description": "最后在线时间"
-          },
           "id": {
             "type": "integer",
             "title": "Id"
           },
-          "created_at": {
+          "username": {
             "type": "string",
-            "format": "date-time",
-            "title": "Created At"
+            "title": "Username"
           },
-          "updated_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Updated At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "device_identifier",
-          "user_id",
-          "id",
-          "created_at"
-        ],
-        "title": "DeviceResponse",
-        "description": "设备响应模式"
-      },
-      "DeviceStats": {
-        "properties": {
-          "total": {
-            "type": "integer",
-            "title": "Total"
-          },
-          "online": {
-            "type": "integer",
-            "title": "Online"
-          },
-          "offline": {
-            "type": "integer",
-            "title": "Offline"
-          },
-          "error": {
-            "type": "integer",
-            "title": "Error"
-          },
-          "maintenance": {
-            "type": "integer",
-            "title": "Maintenance"
-          }
-        },
-        "type": "object",
-        "required": [
-          "total",
-          "online",
-          "offline",
-          "error",
-          "maintenance"
-        ],
-        "title": "DeviceStats",
-        "description": "设备统计信息"
-      },
-      "DeviceUpdate": {
-        "properties": {
-          "name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100,
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
-          },
-          "device_type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 50,
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Device Type"
-          },
-          "device_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100,
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Device Id"
-          },
-          "description": {
+          "nickname": {
             "anyOf": [
               {
                 "type": "string"
@@ -3632,21 +5452,53 @@
                 "type": "null"
               }
             ],
-            "title": "Description"
+            "title": "Nickname"
           },
-          "status": {
+          "avatar_url": {
             "anyOf": [
               {
-                "type": "string",
-                "pattern": "^(online|offline|error|maintenance)$"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Status"
+            "title": "Avatar Url"
           },
-          "config": {
+          "blocked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Blocked At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "nickname",
+          "avatar_url",
+          "blocked_at"
+        ],
+        "title": "BlockedUserResponse",
+        "description": "被拉黑用户响应"
+      },
+      "Body_create_system_notification_api_system_notifications__post": {
+        "properties": {
+          "target_users": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Users"
+          },
+          "pattern": {
             "anyOf": [
               {
                 "additionalProperties": true,
@@ -3656,32 +5508,95 @@
                 "type": "null"
               }
             ],
-            "title": "Config"
-          },
-          "location": {
+            "title": "Pattern"
+          }
+        },
+        "type": "object",
+        "title": "Body_create_system_notification_api_system_notifications__post"
+      },
+      "CosmicProfile": {
+        "properties": {
+          "energy_type": {
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 200
+                "maxLength": 50
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Location"
+            "title": "Energy Type"
           },
-          "is_active": {
+          "life_path": {
             "anyOf": [
               {
-                "type": "boolean"
+                "type": "string",
+                "maxLength": 50
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Is Active"
+            "title": "Life Path"
           },
-          "last_seen_at": {
+          "soul_urge": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Soul Urge"
+          },
+          "destiny_number": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 9.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destiny Number"
+          },
+          "personal_year": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 9.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personal Year"
+          }
+        },
+        "type": "object",
+        "title": "CosmicProfile",
+        "description": "宇宙传讯信息"
+      },
+      "ExportMessagesRequest": {
+        "properties": {
+          "message_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Type"
+          },
+          "date_from": {
             "anyOf": [
               {
                 "type": "string",
@@ -3691,12 +5606,70 @@
                 "type": "null"
               }
             ],
-            "title": "Last Seen At"
+            "title": "Date From"
+          },
+          "date_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date To"
+          },
+          "format": {
+            "type": "string",
+            "pattern": "^(json|csv|txt)$",
+            "title": "Format",
+            "default": "json"
+          },
+          "include_content": {
+            "type": "boolean",
+            "title": "Include Content",
+            "default": true
+          },
+          "include_metadata": {
+            "type": "boolean",
+            "title": "Include Metadata",
+            "default": true
           }
         },
         "type": "object",
-        "title": "DeviceUpdate",
-        "description": "更新设备模式"
+        "title": "ExportMessagesRequest",
+        "description": "导出消息请求"
+      },
+      "ExportMessagesResponse": {
+        "properties": {
+          "download_url": {
+            "type": "string",
+            "title": "Download Url"
+          },
+          "file_size": {
+            "type": "integer",
+            "title": "File Size"
+          },
+          "record_count": {
+            "type": "integer",
+            "title": "Record Count"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "download_url",
+          "file_size",
+          "record_count",
+          "expires_at"
+        ],
+        "title": "ExportMessagesResponse",
+        "description": "导出消息响应"
       },
       "FriendshipCreate": {
         "properties": {
@@ -3891,17 +5864,6 @@
             "title": "Priority",
             "default": 0
           },
-          "device_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Device Id"
-          },
           "pattern": {
             "anyOf": [
               {
@@ -4005,17 +5967,6 @@
             "minimum": 0.0,
             "title": "Priority",
             "default": 0
-          },
-          "device_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Device Id"
           },
           "pattern": {
             "anyOf": [
@@ -4140,6 +6091,83 @@
         "title": "MessageStats",
         "description": "消息统计信息"
       },
+      "MessageStatsRequest": {
+        "properties": {
+          "date_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date From"
+          },
+          "date_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date To"
+          },
+          "group_by": {
+            "type": "string",
+            "pattern": "^(day|week|month)$",
+            "title": "Group By",
+            "default": "day"
+          }
+        },
+        "type": "object",
+        "title": "MessageStatsRequest",
+        "description": "消息统计请求"
+      },
+      "MessageStatsResponse": {
+        "properties": {
+          "total_sent": {
+            "type": "integer",
+            "title": "Total Sent"
+          },
+          "total_received": {
+            "type": "integer",
+            "title": "Total Received"
+          },
+          "total_favorites": {
+            "type": "integer",
+            "title": "Total Favorites"
+          },
+          "by_type": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "By Type"
+          },
+          "by_date": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "By Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_sent",
+          "total_received",
+          "total_favorites",
+          "by_type",
+          "by_date"
+        ],
+        "title": "MessageStatsResponse",
+        "description": "消息统计响应"
+      },
       "MessageUpdate": {
         "properties": {
           "title": {
@@ -4216,245 +6244,129 @@
         "title": "MessageUpdate",
         "description": "更新消息模式"
       },
-      "NotificationCreate": {
+      "PasswordChange": {
         "properties": {
-          "title": {
+          "current_password": {
             "type": "string",
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "Title"
+            "maxLength": 128,
+            "minLength": 6,
+            "title": "Current Password"
           },
-          "content": {
+          "new_password": {
             "type": "string",
-            "minLength": 1,
-            "title": "Content"
-          },
-          "priority": {
-            "type": "integer",
-            "maximum": 10.0,
-            "minimum": 0.0,
-            "title": "Priority",
-            "default": 0
-          },
-          "message_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Message Id"
+            "maxLength": 128,
+            "minLength": 6,
+            "title": "New Password"
           }
         },
         "type": "object",
         "required": [
-          "title",
-          "content"
+          "current_password",
+          "new_password"
         ],
-        "title": "NotificationCreate",
-        "description": "创建站内信模式"
+        "title": "PasswordChange",
+        "description": "密码修改"
       },
-      "NotificationList": {
+      "PrivacySettings": {
         "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/NotificationResponse"
-            },
-            "type": "array",
-            "title": "Items"
+          "profile_visibility": {
+            "$ref": "#/components/schemas/ProfileVisibility",
+            "default": "friends"
           },
-          "total": {
-            "type": "integer",
-            "title": "Total"
+          "message_protection": {
+            "type": "boolean",
+            "title": "Message Protection",
+            "default": true
           },
-          "page": {
-            "type": "integer",
-            "title": "Page"
+          "cooldown_enabled": {
+            "type": "boolean",
+            "title": "Cooldown Enabled",
+            "default": true
           },
-          "size": {
+          "cooldown_duration": {
             "type": "integer",
-            "title": "Size"
+            "maximum": 3600.0,
+            "minimum": 60.0,
+            "title": "Cooldown Duration",
+            "default": 300
           }
         },
         "type": "object",
-        "required": [
-          "items",
-          "total",
-          "page",
-          "size"
-        ],
-        "title": "NotificationList",
-        "description": "站内信列表响应模式"
+        "title": "PrivacySettings",
+        "description": "隐私设置"
       },
-      "NotificationResponse": {
+      "ProfileVisibility": {
+        "type": "string",
+        "enum": [
+          "public",
+          "friends",
+          "private"
+        ],
+        "title": "ProfileVisibility",
+        "description": "个人资料可见性"
+      },
+      "SubscriptionSettings": {
         "properties": {
-          "title": {
+          "cosmic_messaging": {
+            "type": "boolean",
+            "title": "Cosmic Messaging",
+            "default": true
+          },
+          "notification_time_start": {
             "type": "string",
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "Title"
+            "pattern": "^([01]\\d|2[0-3]):([0-5]\\d)$",
+            "title": "Notification Time Start",
+            "default": "09:00"
           },
-          "content": {
+          "notification_time_end": {
             "type": "string",
-            "minLength": 1,
-            "title": "Content"
+            "pattern": "^([01]\\d|2[0-3]):([0-5]\\d)$",
+            "title": "Notification Time End",
+            "default": "22:00"
           },
-          "priority": {
-            "type": "integer",
-            "maximum": 10.0,
-            "minimum": 0.0,
-            "title": "Priority",
-            "default": 0
-          },
-          "message_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Message Id"
-          },
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "user_id": {
-            "type": "integer",
-            "title": "User Id"
-          },
-          "status": {
-            "$ref": "#/components/schemas/app__schemas__notification__NotificationStatus"
-          },
-          "created_at": {
+          "timezone": {
             "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Updated At"
-          },
-          "read_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Read At"
+            "title": "Timezone",
+            "default": "Asia/Shanghai"
           }
         },
         "type": "object",
-        "required": [
-          "title",
-          "content",
-          "id",
-          "user_id",
-          "status",
-          "created_at"
-        ],
-        "title": "NotificationResponse",
-        "description": "站内信响应模式"
+        "title": "SubscriptionSettings",
+        "description": "订阅设置"
       },
-      "NotificationStats": {
+      "TermsAcceptance": {
         "properties": {
-          "total": {
-            "type": "integer",
-            "title": "Total"
+          "accepted": {
+            "type": "boolean",
+            "title": "Accepted",
+            "default": true
           },
-          "unread": {
-            "type": "integer",
-            "title": "Unread"
+          "ip_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Address"
           },
-          "read": {
-            "type": "integer",
-            "title": "Read"
-          },
-          "deleted": {
-            "type": "integer",
-            "title": "Deleted"
+          "user_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Agent"
           }
         },
         "type": "object",
-        "required": [
-          "total",
-          "unread",
-          "read",
-          "deleted"
-        ],
-        "title": "NotificationStats",
-        "description": "站内信统计信息"
-      },
-      "NotificationUpdate": {
-        "properties": {
-          "title": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 200,
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Title"
-          },
-          "content": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Content"
-          },
-          "priority": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "maximum": 10.0,
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Priority"
-          },
-          "status": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/app__schemas__notification__NotificationStatus"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "title": "NotificationUpdate",
-        "description": "更新站内信模式"
+        "title": "TermsAcceptance",
+        "description": "用户协议接受"
       },
       "Token": {
         "properties": {
@@ -4516,6 +6428,38 @@
         ],
         "title": "TokenRefresh",
         "description": "刷新令牌模式"
+      },
+      "UserBlockList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BlockedUserResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size"
+        ],
+        "title": "UserBlockList",
+        "description": "用户黑名单列表"
       },
       "UserCreate": {
         "properties": {
@@ -4710,6 +6654,312 @@
         "title": "UserProfile",
         "description": "用户详细资料模式"
       },
+      "UserProfileResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "nickname": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nickname"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "birth_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Date"
+          },
+          "zodiac_sign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zodiac Sign"
+          },
+          "mbti_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mbti Type"
+          },
+          "birth_chart": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BirthChart"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cosmic_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CosmicProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "privacy_settings": {
+            "$ref": "#/components/schemas/PrivacySettings"
+          },
+          "subscription_settings": {
+            "$ref": "#/components/schemas/SubscriptionSettings"
+          },
+          "terms_accepted": {
+            "type": "boolean",
+            "title": "Terms Accepted"
+          },
+          "terms_accepted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Terms Accepted At"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "last_active": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "username",
+          "nickname",
+          "full_name",
+          "avatar_url",
+          "birth_date",
+          "zodiac_sign",
+          "mbti_type",
+          "birth_chart",
+          "cosmic_profile",
+          "privacy_settings",
+          "subscription_settings",
+          "terms_accepted",
+          "terms_accepted_at",
+          "is_active",
+          "role",
+          "last_active",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "UserProfileResponse",
+        "description": "用户资料响应"
+      },
+      "UserProfileUpdate": {
+        "properties": {
+          "nickname": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nickname"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "birth_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Date"
+          },
+          "zodiac_sign": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zodiac Sign"
+          },
+          "mbti_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mbti Type"
+          },
+          "birth_chart": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BirthChart"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cosmic_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CosmicProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "privacy_settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PrivacySettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "subscription_settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SubscriptionSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "UserProfileUpdate",
+        "description": "用户资料更新"
+      },
       "UserResponse": {
         "properties": {
           "email": {
@@ -4803,6 +7053,33 @@
         ],
         "title": "UserResponse",
         "description": "用户响应模式"
+      },
+      "UserSettingsUpdate": {
+        "properties": {
+          "privacy_settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PrivacySettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "subscription_settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SubscriptionSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "UserSettingsUpdate",
+        "description": "用户设置更新"
       },
       "UserUpdate": {
         "properties": {
@@ -4924,6 +7201,17 @@
         ],
         "title": "ValidationError"
       },
+      "app__models__message__MessageType": {
+        "type": "string",
+        "enum": [
+          "system",
+          "user",
+          "alert",
+          "notification"
+        ],
+        "title": "MessageType",
+        "description": "消息类型"
+      },
       "app__schemas__friendship__FriendshipStatus": {
         "type": "string",
         "enum": [
@@ -4954,16 +7242,6 @@
         ],
         "title": "MessageType",
         "description": "消息类型"
-      },
-      "app__schemas__notification__NotificationStatus": {
-        "type": "string",
-        "enum": [
-          "unread",
-          "read",
-          "deleted"
-        ],
-        "title": "NotificationStatus",
-        "description": "站内信状态"
       }
     },
     "securitySchemes": {
