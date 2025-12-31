@@ -14,11 +14,10 @@
 - 📊 **SQLAlchemy** - ORM 框架，简化数据库操作
 - 📝 **Pydantic** - 数据验证和序列化
 
-### 移动端
-- 📱 **Flutter** - 跨平台移动应用开发
-- 🔵 **BLE 蓝牙** - 寻呼机设备连接和消息传输
-- 🎨 **Material Design** - 现代化 UI 设计
-- 🌐 **REST API** - 与后端服务无缝集成
+### 移动端与前端 (Flutter)
+- 📱 **Flutter User App** - 面向普通用户的移动端应用 (Android/iOS)，集成蓝牙寻呼与 AI 语音功能。
+- 🖥️ **Flutter Admin App** - 面向管理员的管理端应用 (Windows/Web)，提供数据管理与监控面板。
+- 📦 **Flutter Core** - 共享核心库，包含通用的数据模型、API 客户端与基础服务。
 
 ## 📁 项目结构
 
@@ -34,13 +33,20 @@ bipupu/
 │   │   └── tasks/            # Celery 任务
 │   ├── alembic/              # 数据库迁移
 │   └── Dockerfile           # Docker 镜像配置
-├── flutter/                   # Flutter 移动端应用
-│   ├── lib/                  # Dart 源代码
-│   │   ├── core/             # 核心功能
-│   │   ├── features/         # 功能模块
-│   │   ├── app_user/         # 用户端应用
-│   │   └── app_admin/        # 管理端应用
-│   └── pubspec.yaml         # Flutter 依赖配置
+├── flutter_core/              # [核心库] Flutter 共享代码包
+│   ├── lib/
+│   │   ├── models/           # 通用数据模型
+│   │   ├── repositories/     # 数据仓库
+│   │   ├── core/             # 基础服务 (Auth, Theme, Network)
+│   │   └── utils/            # 工具类
+├── flutter_user/              # [用户端] Flutter 移动应用 (Android/iOS)
+│   ├── lib/
+│   │   ├── features/         # 用户端业务模块
+│   │   └── services/         # 硬件相关服务 (Bluetooth, Speech, Background)
+│   └── assets/               # AI 模型与资源文件
+├── flutter_admin/             # [管理端] Flutter 桌面/Web 应用 (Windows/Web)
+│   ├── lib/
+│   │   └── features/         # 管理端业务模块
 ├── deployment/                # 部署配置
 │   ├── docker/               # Docker Compose 配置
 │   ├── nginx/                # Nginx 反向代理配置
@@ -53,10 +59,10 @@ bipupu/
 ### 环境要求
 
 - **Docker** 20.10+ 和 **Docker Compose** 2.0+
-- **Flutter** 3.0+ (移动端开发)
+- **Flutter** 3.10+ (移动端开发)
 - **Python** 3.11+ (本地后端开发)
 
-### 一键部署
+### 一键部署 (后端)
 
 ```bash
 # 1. 克隆项目
@@ -72,9 +78,6 @@ docker-compose -f deployment/docker/docker-compose.yml up -d
 
 # 4. 查看服务状态
 docker-compose -f deployment/docker/docker-compose.yml ps
-
-# 5. 查看日志
-docker-compose -f deployment/docker/docker-compose.yml logs -f
 ```
 
 ### 服务访问
@@ -84,19 +87,54 @@ docker-compose -f deployment/docker/docker-compose.yml logs -f
 - **健康检查**: http://localhost:8084/health
 - **pgAdmin** (可选): http://localhost:8085 (需要启用 tools 配置)
 
-### 可选服务启动
+## 🔧 Flutter 开发指南
+
+本项目采用 **Monorepo** 风格的多包架构，分为核心库、用户端和管理端。
+
+### 1. 核心库 (flutter_core)
+包含所有通用的业务逻辑、数据模型和 API 封装。
 
 ```bash
-# 启动包含 pgAdmin 的所有服务
-docker-compose -f deployment/docker/docker-compose.yml --profile tools up -d
-
-# 仅启动后端、数据库、Redis（最小化部署）
-docker-compose -f deployment/docker/docker-compose.yml up backend db redis -d
+cd flutter_core
+flutter pub get
+flutter analyze
 ```
 
-## 🔧 开发指南
+### 2. 用户端 (flutter_user)
+面向 C 端用户，包含蓝牙通信、语音识别等重型功能。支持 Android 和 iOS。
 
-### 后端开发
+```bash
+cd flutter_user
+flutter pub get
+
+# 运行 (连接真机或模拟器)
+flutter run
+
+# 构建 APK
+flutter build apk --release
+```
+
+### 3. 管理端 (flutter_admin)
+面向 B 端管理员，轻量级，移除不必要的原生依赖。支持 Windows 和 Web。
+
+```bash
+cd flutter_admin
+flutter pub get
+
+# 运行 Windows 版
+flutter run -d windows
+
+# 运行 Web 版
+flutter run -d chrome
+
+# 构建 Windows 安装包
+flutter build windows
+
+# 构建 Web 产物
+flutter build web
+```
+
+## 🔧 后端开发指南
 
 ```bash
 # 进入后端目录
@@ -113,43 +151,8 @@ cp .env.example .env
 # 数据库迁移
 alembic upgrade head
 
-# 创建新的迁移
-alembic revision --autogenerate -m "描述"
-
 # 启动开发服务器
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-### 移动端开发
-
-```bash
-# 进入 Flutter 目录
-cd flutter
-
-# 安装依赖
-flutter pub get
-
-# 运行用户端应用
-flutter run -t lib/main_user.dart
-
-# 运行管理端应用  
-flutter run -t lib/main_admin.dart
-
-# 构建 APK
-flutter build apk --target-platform android-arm64
-```
-
-### 数据库管理
-
-```bash
-# 进入数据库容器
-docker exec -it bipupu-db psql -U postgres -d bipupu
-
-# 备份数据库
-docker exec bipupu-db pg_dump -U postgres bipupu > backup.sql
-
-# 恢复数据库
-docker exec -i bipupu-db psql -U postgres -d bipupu < backup.sql
 ```
 
 ## 📊 环境变量配置
@@ -185,114 +188,6 @@ docker-compose -f deployment/docker/docker-compose.yml restart backend
 
 # 停止所有服务
 docker-compose -f deployment/docker/docker-compose.yml down
-
-# 清理数据卷（谨慎操作）
-docker-compose -f deployment/docker/docker-compose.yml down -v
-
-# 查看资源使用
-docker stats
 ```
 
-## 📱 Flutter 多端构建
-
-### Android 构建
-```bash
-cd flutter
-
-# 构建 release APK
-flutter build apk --release
-
-# 构建 app bundle (Google Play)
-flutter build appbundle --release
-
-# 构建特定架构
-flutter build apk --target-platform android-arm64 --release
-```
-
-### iOS 构建 (需要 macOS + Xcode)
-```bash
-cd flutter
-
-# 构建 release 版本
-flutter build ios --release
-
-# 构建并打包
-flutter build ipa --release
-```
-
-### Web 构建
-```bash
-cd flutter
-
-# 构建 web 版本
-flutter build web --release
-
-# 构建结果在 build/web 目录
-```
-
-## 🔍 监控和调试
-
-### 健康检查
-```bash
-# 检查后端服务
-curl http://localhost:8084/health
-
-# 检查数据库连接
-curl http://localhost:8084/health/db
-
-# 检查 Redis 连接
-curl http://localhost:8084/health/redis
-```
-
-### 日志查看
-```bash
-# 查看所有服务日志
-docker-compose -f deployment/docker/docker-compose.yml logs -f
-
-# 查看特定服务日志
-docker-compose -f deployment/docker/docker-compose.yml logs -f backend
-
-# 查看最近 100 行日志
-docker-compose -f deployment/docker/docker-compose.yml logs --tail=100 backend
-```
-
-## 🔧 常见问题
-
-### 数据库连接失败
-1. 检查 PostgreSQL 是否启动：`docker ps | grep bipupu-db`
-2. 检查环境变量中的密码是否正确
-3. 查看数据库日志：`docker logs bipupu-db`
-
-### Redis 连接失败
-1. 检查 Redis 是否启动：`docker ps | grep bipupu-redis`
-2. 检查 REDIS_PASSWORD 是否正确设置
-3. 查看 Redis 日志：`docker logs bipupu-redis`
-
-### Flutter 构建失败
-1. 检查 Flutter 版本：`flutter --version`
-2. 清理构建缓存：`flutter clean`
-3. 重新安装依赖：`flutter pub get`
-4. 检查 Dart SDK 版本
-
-## 🤝 贡献指南
-
-1. Fork 项目
-2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add some amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 创建 Pull Request
-
-## 📄 许可证
-
-MIT License - 详见 [LICENSE](LICENSE) 文件
-
-## 🆘 支持
-
-如有问题，请在 GitHub Issues 中提交，或联系开发团队。
-
----
-
-**快速链接**:
-[API 文档](http://localhost:8084/docs) |
-[数据库管理](http://localhost:8085) |
-[Flutter 构建指南](./flutter/README.md)
+- **pgAdmin** (可选): http://localhost:8085 (需要启用 tools 配置)
