@@ -284,16 +284,16 @@ class DashboardView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return const Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text(
+          Text(
             'Welcome to Admin Panel',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 20),
-          const Card(
+          SizedBox(height: 20),
+          Card(
             child: Padding(
               padding: EdgeInsets.all(16.0),
               child: Column(

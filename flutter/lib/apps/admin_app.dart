@@ -17,6 +17,7 @@ class AdminApp extends StatelessWidget {
           darkTheme: AppTheme.adminDarkTheme,
           themeMode: ThemeService().themeMode,
           routerConfig: AdminRouter.router,
+          debugShowCheckedModeBanner: false,
         );
       },
     );

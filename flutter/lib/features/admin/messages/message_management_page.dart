@@ -68,8 +68,8 @@ class _MessageManagementPageState extends State<MessageManagementPage> {
             MaterialPageRoute(builder: (_) => const SendSystemMessagePage()),
           ).then((_) => _loadMessages());
         },
-        child: const Icon(Icons.campaign),
         tooltip: 'Send System Message',
+        child: const Icon(Icons.campaign),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

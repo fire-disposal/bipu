@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import '../config/app_config.dart';
 import '../storage/token_storage.dart';
 import 'auth_interceptor.dart';
+import 'logging_interceptor.dart';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -40,7 +41,7 @@ class ApiClient {
     );
 
     // Add logger interceptor
-    dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
+    dio.interceptors.add(GlobalHttpInterceptor());
   }
 
   // Helper to update the unauthorized callback

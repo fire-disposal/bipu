@@ -17,6 +17,7 @@ class UserApp extends StatelessWidget {
           darkTheme: AppTheme.darkTheme,
           themeMode: ThemeService().themeMode,
           routerConfig: UserRouter.router,
+          debugShowCheckedModeBanner: false,
         );
       },
     );

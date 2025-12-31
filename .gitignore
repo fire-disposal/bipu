@@ -83,3 +83,5 @@ flutter/windows/flutter/generated_config.cmake
 *.tmp
 
 node_modules/
+
+flutter/assets/

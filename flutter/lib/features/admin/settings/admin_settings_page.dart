@@ -44,10 +44,10 @@ class AdminSettingsPage extends StatelessWidget {
                   },
                 ),
                 const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.info),
-                  title: const Text('About'),
-                  subtitle: const Text('Bipupu Admin Panel v1.0.0'),
+                const ListTile(
+                  leading: Icon(Icons.info),
+                  title: Text('About'),
+                  subtitle: Text('Bipupu Admin Panel v1.0.0'),
                 ),
               ],
             ),

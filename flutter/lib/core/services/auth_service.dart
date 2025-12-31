@@ -20,30 +20,32 @@ class AuthService {
     return _instance;
   }
 
-  AuthService._internal() {
-    _initialize();
-  }
+  AuthService._internal();
 
   ValueNotifier<AuthStatus> get authState => _authStateController;
   User? get currentUser => _currentUser;
 
-  Future<void> _initialize() async {
-    // Set up the unauthorized callback in ApiClient
-    _apiClient.setUnauthorizedCallback(() {
-      logout();
-    });
+  Future<void> initialize() async {
+    try {
+      // Set up the unauthorized callback in ApiClient
+      _apiClient.setUnauthorizedCallback(() {
+        logout();
+      });
 
-    final token = await _tokenStorage.getAccessToken();
-    if (token != null) {
-      try {
-        await fetchCurrentUser();
-        _authStateController.value = AuthStatus.authenticated;
-      } catch (e) {
-        // If fetching user fails, we assume token is invalid or server issue
-        // For now, we fallback to unauthenticated to be safe
+      final token = await _tokenStorage.getAccessToken();
+      if (token != null) {
+        try {
+          await fetchCurrentUser();
+          _authStateController.value = AuthStatus.authenticated;
+        } catch (e) {
+          debugPrint('Error fetching user: $e');
+          _authStateController.value = AuthStatus.unauthenticated;
+        }
+      } else {
         _authStateController.value = AuthStatus.unauthenticated;
       }
-    } else {
+    } catch (e) {
+      debugPrint('AuthService initialization failed: $e');
       _authStateController.value = AuthStatus.unauthenticated;
     }
   }

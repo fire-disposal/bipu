@@ -1,11 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Permissions for Bluetooth and Location -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     
     <!-- Permissions for Background Service -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -20,10 +22,9 @@
         
         <!-- Flutter Background Service -->
         <service
-            android:name="id.flutter.flutter_background_service.BackgroundService"
+            android:name="com.pravera.flutter_background_service.BackgroundService"
             android:foregroundServiceType="connectedDevice"
-            android:permission="android.permission.BIND_JOB_SERVICE"
-            android:exported="true"
+            android:exported="false"
         />
 
         <activity

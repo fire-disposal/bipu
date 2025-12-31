@@ -2369,7 +2369,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/app__schemas__friendship__FriendshipStatus"
+                  "$ref": "#/components/schemas/app__models__friendship__FriendshipStatus"
                 },
                 {
                   "type": "null"
@@ -2704,7 +2704,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/app__schemas__friendship__FriendshipStatus"
+                  "$ref": "#/components/schemas/app__models__friendship__FriendshipStatus"
                 },
                 {
                   "type": "null"
@@ -5766,7 +5766,7 @@
             "title": "Friend Id"
           },
           "status": {
-            "$ref": "#/components/schemas/app__schemas__friendship__FriendshipStatus",
+            "$ref": "#/components/schemas/app__models__friendship__FriendshipStatus",
             "default": "pending"
           }
         },
@@ -5788,7 +5788,7 @@
             "title": "Friend Id"
           },
           "status": {
-            "$ref": "#/components/schemas/app__schemas__friendship__FriendshipStatus",
+            "$ref": "#/components/schemas/app__models__friendship__FriendshipStatus",
             "default": "pending"
           },
           "id": {
@@ -7497,6 +7497,15 @@
         ],
         "title": "ValidationError"
       },
+      "app__models__friendship__FriendshipStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "accepted",
+          "blocked"
+        ],
+        "title": "FriendshipStatus"
+      },
       "app__models__message__MessageType": {
         "type": "string",
         "enum": [
@@ -7507,15 +7516,6 @@
         ],
         "title": "MessageType",
         "description": "消息类型"
-      },
-      "app__schemas__friendship__FriendshipStatus": {
-        "type": "string",
-        "enum": [
-          "pending",
-          "accepted",
-          "blocked"
-        ],
-        "title": "FriendshipStatus"
       },
       "app__schemas__message__MessageStatus": {
         "type": "string",
