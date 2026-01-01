@@ -10,11 +10,16 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 # 创建SQLAlchemy引擎
+connect_args = {}
+if settings.DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+
 engine = create_engine(
     settings.DATABASE_URL,
     poolclass=StaticPool,
     pool_pre_ping=True,
     echo=settings.DEBUG,
+    connect_args=connect_args,
 )
 
 # 创建SessionLocal类

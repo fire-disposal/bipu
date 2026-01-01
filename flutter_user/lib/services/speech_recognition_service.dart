@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
-import 'package:flutter_core/core/utils/logger.dart';
+import '../core/utils/logger.dart';
 
 class SpeechRecognitionService {
   sherpa.OnlineRecognizer? _recognizer;

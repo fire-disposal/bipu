@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import '../config/app_config.dart';
 import '../storage/token_storage.dart';
 import 'auth_interceptor.dart';
 import 'logging_interceptor.dart';
@@ -7,7 +6,7 @@ import 'logging_interceptor.dart';
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
   late final Dio dio;
-  final TokenStorage _tokenStorage = TokenStorage();
+  late final TokenStorage _tokenStorage;
 
   factory ApiClient() {
     return _instance;
@@ -16,15 +15,32 @@ class ApiClient {
   ApiClient._internal() {
     dio = Dio(
       BaseOptions(
-        baseUrl: AppConfig.apiBaseUrl,
-        connectTimeout: const Duration(milliseconds: AppConfig.connectTimeout),
-        receiveTimeout: const Duration(milliseconds: AppConfig.receiveTimeout),
+        baseUrl: '', // 默认为空，需调用 init 初始化
+        connectTimeout: const Duration(milliseconds: 5000),
+        receiveTimeout: const Duration(milliseconds: 3000),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
       ),
     );
+    // Interceptors will be added in init() because they need tokenStorage
+  }
+
+  /// 初始化 API 客户端配置
+  void init({
+    required String baseUrl,
+    required TokenStorage tokenStorage,
+    int connectTimeout = 5000,
+    int receiveTimeout = 3000,
+  }) {
+    _tokenStorage = tokenStorage;
+    dio.options.baseUrl = baseUrl;
+    dio.options.connectTimeout = Duration(milliseconds: connectTimeout);
+    dio.options.receiveTimeout = Duration(milliseconds: receiveTimeout);
+
+    // Clear existing interceptors to avoid duplicates if init is called multiple times
+    dio.interceptors.clear();
 
     dio.interceptors.add(
       AuthInterceptor(
@@ -32,10 +48,6 @@ class ApiClient {
         tokenStorage: _tokenStorage,
         onUnauthorized: () {
           // This callback will be set by AuthService or handled via a stream
-          // For now, we can print or use a global key if needed,
-          // but ideally AuthService should listen to this.
-          // Since this is a singleton, we might need a way to notify listeners.
-          // We'll implement a simple stream controller in AuthService instead.
         },
       ),
     );

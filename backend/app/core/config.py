@@ -1,6 +1,8 @@
 from pydantic_settings import BaseSettings
 from typing import List, Optional
 import os
+from urllib.parse import quote_plus
+import warnings
 
 
 class Settings(BaseSettings):
@@ -13,16 +15,84 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     
     # 数据库配置
-    POSTGRES_PASSWORD: str = "1919810"
-    DATABASE_URL: str = os.getenv(
-        "DATABASE_URL",
-        "sqlite:///./bipupu.db"
-    )
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_SERVER: str = "db"
+    POSTGRES_PORT: str = "5432"
+    POSTGRES_DB: str = "bipupu"
     
+    @property
+    def DATABASE_URL(self) -> str:
+        """
+        如果环境变量中设置了 DATABASE_URL，则直接使用。
+        否则根据 POSTGRES_* 变量构建。
+        在本地开发环境(localhost)下，如果无法连接 PostgreSQL，自动回退到 SQLite。
+        """
+        if os.getenv("DATABASE_URL"):
+            return os.getenv("DATABASE_URL")
+        
+        password = quote_plus(self.POSTGRES_PASSWORD)
+        pg_url = f"postgresql://{self.POSTGRES_USER}:{password}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+
+        # 自动回退逻辑：仅在本地开发且开启DEBUG时尝试
+        if self.POSTGRES_SERVER in ["localhost", "127.0.0.1"] and self.DEBUG:
+            import socket
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(0.2)  # 快速超时检测
+                sock.connect((self.POSTGRES_SERVER, int(self.POSTGRES_PORT)))
+                sock.close()
+            except Exception:
+                import warnings
+                warnings.warn(
+                    f"⚠️ 无法连接到 PostgreSQL ({self.POSTGRES_SERVER}:{self.POSTGRES_PORT})，"
+                    "自动回退到 SQLite (sqlite:///./bipupu.db)。", 
+                    UserWarning
+                )
+                return "sqlite:///./bipupu.db"
+        
+        return pg_url
+
     # Redis配置
-    REDIS_URL: str = f"redis://:114514@redis:6379/0"
-    CELERY_BROKER_URL: str = f"redis://:114514@redis:6379/1"
-    CELERY_RESULT_BACKEND: str = f"redis://:114514@redis:6379/2"
+    REDIS_PASSWORD: Optional[str] = None
+    REDIS_HOST: str = "redis"
+    REDIS_PORT: str = "6379"
+    
+    @property
+    def REDIS_URL(self) -> str:
+        if os.getenv("REDIS_URL"):
+            return os.getenv("REDIS_URL")
+        
+        auth = ""
+        if self.REDIS_PASSWORD:
+            password = quote_plus(self.REDIS_PASSWORD)
+            auth = f":{password}@"
+            
+        return f"redis://{auth}{self.REDIS_HOST}:{self.REDIS_PORT}/0"
+
+    @property
+    def CELERY_BROKER_URL(self) -> str:
+        if os.getenv("CELERY_BROKER_URL"):
+            return os.getenv("CELERY_BROKER_URL")
+            
+        auth = ""
+        if self.REDIS_PASSWORD:
+            password = quote_plus(self.REDIS_PASSWORD)
+            auth = f":{password}@"
+            
+        return f"redis://{auth}{self.REDIS_HOST}:{self.REDIS_PORT}/1"
+
+    @property
+    def CELERY_RESULT_BACKEND(self) -> str:
+        if os.getenv("CELERY_RESULT_BACKEND"):
+            return os.getenv("CELERY_RESULT_BACKEND")
+            
+        auth = ""
+        if self.REDIS_PASSWORD:
+            password = quote_plus(self.REDIS_PASSWORD)
+            auth = f":{password}@"
+            
+        return f"redis://{auth}{self.REDIS_HOST}:{self.REDIS_PORT}/2"
     
     # CORS配置
     ALLOWED_HOSTS: List[str] = ["*"]
@@ -59,3 +129,11 @@ class Settings(BaseSettings):
 
 # 创建配置实例
 settings = Settings()
+
+# 安全检查
+if not settings.DEBUG and settings.SECRET_KEY == "your-super-secret-jwt-key-change-this-in-production":
+    warnings.warn(
+        "WARNING: You are using the default SECRET_KEY in a non-debug environment. "
+        "Please set a secure SECRET_KEY in your environment variables or .env file.",
+        UserWarning
+    )

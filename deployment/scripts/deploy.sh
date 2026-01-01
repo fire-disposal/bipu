@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 
 # 项目根目录
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-DOCKER_COMPOSE_FILE="${PROJECT_ROOT}/deployment/docker/docker-compose.yml"
+DOCKER_COMPOSE_FILE="${PROJECT_ROOT}/docker/docker-compose.yml"
 
 # 帮助信息
 show_help() {
@@ -37,13 +37,13 @@ show_help() {
 
 # 检查环境
 check_env() {
-    if [ ! -f "${PROJECT_ROOT}/.env" ]; then
-        echo -e "${YELLOW}警告: .env 文件不存在，将使用 .env.example${NC}"
-        if [ -f "${PROJECT_ROOT}/.env.example" ]; then
-            cp "${PROJECT_ROOT}/.env.example" "${PROJECT_ROOT}/.env"
-            echo -e "${GREEN}已创建 .env 文件，请根据需要修改配置${NC}"
+    if [ ! -f "${PROJECT_ROOT}/docker/.env" ]; then
+        echo -e "${YELLOW}警告: docker/.env 文件不存在，将使用 docker/.env.example${NC}"
+        if [ -f "${PROJECT_ROOT}/docker/.env.example" ]; then
+            cp "${PROJECT_ROOT}/docker/.env.example" "${PROJECT_ROOT}/docker/.env"
+            echo -e "${GREEN}已创建 docker/.env 文件，请根据需要修改配置${NC}"
         else
-            echo -e "${RED}错误: .env.example 文件也不存在${NC}"
+            echo -e "${RED}错误: docker/.env.example 文件也不存在${NC}"
             exit 1
         fi
     fi

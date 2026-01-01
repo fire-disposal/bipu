@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_core/core/services/auth_service.dart';
+import '../../core/services/auth_service.dart';
 
 /// Admin Shell Page - 提供侧边栏导航框架
 class AdminShellPage extends StatelessWidget {

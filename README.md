@@ -74,10 +74,10 @@ cp .env.example .env
 # 编辑 .env 文件，设置必要的配置（数据库密码、JWT密钥等）
 
 # 3. 一键启动所有服务
-docker-compose -f deployment/docker/docker-compose.yml up -d
+docker-compose -f docker/docker-compose.yml up -d
 
 # 4. 查看服务状态
-docker-compose -f deployment/docker/docker-compose.yml ps
+docker-compose -f docker/docker-compose.yml ps
 ```
 
 ### 服务访问
@@ -184,10 +184,10 @@ docker build -t bipupu-backend ./backend
 docker logs -f bipupu-backend
 
 # 重启服务
-docker-compose -f deployment/docker/docker-compose.yml restart backend
+docker-compose -f docker/docker-compose.yml restart backend
 
 # 停止所有服务
-docker-compose -f deployment/docker/docker-compose.yml down
+docker-compose -f docker/docker-compose.yml down
 ```
 
 - **pgAdmin** (可选): http://localhost:8085 (需要启用 tools 配置)

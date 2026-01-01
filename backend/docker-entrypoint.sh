@@ -9,17 +9,29 @@ NC='\033[0m' # No Color
 
 echo -e "${GREEN}开始启动 Bipupu Backend...${NC}"
 
+# 设置默认值
+DB_HOST=${POSTGRES_SERVER:-db}
+DB_PORT=${POSTGRES_PORT:-5432}
+DB_USER=${POSTGRES_USER:-postgres}
+REDIS_HOST=${REDIS_HOST:-redis}
+REDIS_PORT=${REDIS_PORT:-6379}
+
 # 等待数据库就绪
-echo -e "${YELLOW}等待数据库连接...${NC}"
-timeout 60 bash -c 'until pg_isready -h db -p 5432 -U postgres; do sleep 1; done' || {
+echo -e "${YELLOW}等待数据库连接 (${DB_HOST}:${DB_PORT})...${NC}"
+export PGPASSWORD="${POSTGRES_PASSWORD}"
+timeout 60 bash -c "until pg_isready -h $DB_HOST -p $DB_PORT -U $DB_USER; do sleep 1; done" || {
     echo -e "${RED}数据库连接失败${NC}"
     exit 1
 }
+unset PGPASSWORD
 echo -e "${GREEN}数据库连接成功${NC}"
 
 # 等待Redis就绪
-echo -e "${YELLOW}等待Redis连接...${NC}"
-timeout 60 bash -c 'until redis-cli -h redis -p 6379 -a ${REDIS_PASSWORD} ping; do sleep 1; done' || {
+echo -e "${YELLOW}等待Redis连接 (${REDIS_HOST}:${REDIS_PORT})...${NC}"
+if [ -n "$REDIS_PASSWORD" ]; then
+    export REDISCLI_AUTH="$REDIS_PASSWORD"
+fi
+timeout 60 bash -c "until redis-cli -h $REDIS_HOST -p $REDIS_PORT ping; do sleep 1; done" || {
     echo -e "${RED}Redis连接失败${NC}"
     exit 1
 }
@@ -44,18 +56,33 @@ asyncio.run(init_default_data())
             echo -e "${YELLOW}数据库初始化跳过（可能没有初始化脚本）${NC}"
         }
         
-        echo -e "${GREEN}启动FastAPI应用...${NC}"
-        exec uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 3 --timeout-keep-alive 5
+        if [ -n "$OVERRIDE_CMD" ]; then
+            echo -e "${GREEN}执行自定义启动命令: $OVERRIDE_CMD${NC}"
+            exec $OVERRIDE_CMD
+        else
+            echo -e "${GREEN}启动FastAPI应用...${NC}"
+            exec uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 3 --timeout-keep-alive 5
+        fi
         ;;
         
     worker)
-        echo -e "${GREEN}启动Celery Worker...${NC}"
-        exec uv run celery -A app.celery worker --loglevel=info -Q default -c 4
+        if [ -n "$OVERRIDE_CMD" ]; then
+            echo -e "${GREEN}执行自定义启动命令: $OVERRIDE_CMD${NC}"
+            exec $OVERRIDE_CMD
+        else
+            echo -e "${GREEN}启动Celery Worker...${NC}"
+            exec uv run celery -A app.celery worker --loglevel=info -Q default -c 4
+        fi
         ;;
         
     beat)
-        echo -e "${GREEN}启动Celery Beat...${NC}"
-        exec uv run celery -A app.celery beat -l info --pidfile=/app/logs/celerybeat.pid --schedule=/app/logs/celerybeat-schedule
+        if [ -n "$OVERRIDE_CMD" ]; then
+            echo -e "${GREEN}执行自定义启动命令: $OVERRIDE_CMD${NC}"
+            exec $OVERRIDE_CMD
+        else
+            echo -e "${GREEN}启动Celery Beat...${NC}"
+            exec uv run celery -A app.celery beat -l info --pidfile=/app/logs/celerybeat.pid --schedule=/app/logs/celerybeat-schedule
+        fi
         ;;
         
     *)

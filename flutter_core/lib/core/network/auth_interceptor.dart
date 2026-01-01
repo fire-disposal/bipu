@@ -57,13 +57,9 @@ class AuthInterceptor extends Interceptor {
         // 使用独立的 Dio 实例进行刷新，避免拦截器循环
         _refreshDio ??= Dio(
           BaseOptions(
-            baseUrl: AppConfig.apiBaseUrl,
-            connectTimeout: const Duration(
-              milliseconds: AppConfig.connectTimeout,
-            ),
-            receiveTimeout: const Duration(
-              milliseconds: AppConfig.receiveTimeout,
-            ),
+            baseUrl: dio.options.baseUrl,
+            connectTimeout: dio.options.connectTimeout,
+            receiveTimeout: dio.options.receiveTimeout,
           ),
         );
 
