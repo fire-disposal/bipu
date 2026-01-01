@@ -8,18 +8,10 @@ import sys
 # 添加项目根目录到Python路径
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from app.db.database import Base
 from app.core.config import settings
 
-# 导入所有模型以确保它们被Alembic识别
-from app.models.user import User
-from app.models.message import Message
-from app.models.adminlog import AdminLog
-from app.models.friendship import Friendship
-from app.models.message_favorite import MessageFavorite
-from app.models.messageackevent import MessageAckEvent
-from app.models.subscription import SubscriptionType, UserSubscription
-from app.models.user_block import UserBlock
+# 导入所有模型以确保它们被Alembic识别 - 使用通配符导入避免遗漏
+from app.models import *
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

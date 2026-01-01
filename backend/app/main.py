@@ -18,6 +18,17 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     logger.info("🚀 服务启动中")
+    
+    # 显示当前使用的数据库信息
+    db_url = settings.DATABASE_URL
+    if "sqlite" in db_url:
+        db_name = db_url.split("///")[-1] if "///" in db_url else "SQLite"
+        logger.info(f"🗄️  使用 SQLite 数据库: {db_name}")
+    elif "postgresql" in db_url:
+        db_name = db_url.split("/")[-1] if "/" in db_url else "PostgreSQL"
+        logger.info(f"🐘 使用 PostgreSQL 数据库: {db_name}")
+    else:
+        logger.info(f"📊 使用数据库: {db_url}")
     # logger.info(
     #     "\n"
     #     "██████╗ ██╗██████╗ ██╗   ██╗██████╗ ██╗   ██╗██████╗ ██╗   ██╗\n"
@@ -40,6 +51,7 @@ async def lifespan(app: FastAPI):
         # await init_redis()
         # logger.info("✅ Redis initialized")
         # 生成 OpenAPI.json 文件
+
         try:
             export_openapi_json(app)
             logger.info("✅ OpenAPI.json 文件已生成")

@@ -1,11 +1,13 @@
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from typing import AsyncGenerator
 import redis.asyncio as redis
 from app.core.config import settings
 from app.core.logging import get_logger
+
+# 使用独立的base模块，避免循环依赖
+from app.models.base import Base
 
 logger = get_logger(__name__)
 
@@ -18,7 +20,7 @@ engine = create_engine(
     settings.DATABASE_URL,
     poolclass=StaticPool,
     pool_pre_ping=True,
-    echo=settings.DEBUG,
+    echo=False,  # 强制关闭 SQLAlchemy 的 SQL 日志输出
     connect_args=connect_args,
 )
 
@@ -29,8 +31,6 @@ SessionLocal = sessionmaker(
     bind=engine
 )
 
-# 创建Base类
-Base = declarative_base()
 
 # Redis连接池
 redis_client = None
@@ -60,6 +60,14 @@ async def get_redis():
 async def init_db():
     """初始化数据库"""
     try:
+        # 在函数内部导入模型，确保它们被注册到 Base.metadata
+        # 这样可以避免循环导入问题
+        from app.models import (
+            User, Message, MessageFavorite, UserBlock,
+            SubscriptionType, UserSubscription, MessageAckEvent,
+            Friendship, AdminLog
+        )
+        
         # 创建所有表
         Base.metadata.create_all(bind=engine)
         logger.info("🌳 数据库表创建成功")

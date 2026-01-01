@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum
 from sqlalchemy.sql import func
-from app.db.database import Base
+from app.models.base import Base
 import enum
 
 class FriendshipStatus(str, enum.Enum):

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON
 from sqlalchemy.sql import func
-from app.db.database import Base
+from app.models.base import Base
 
 class AdminLog(Base):
     """管理员操作日志模型"""

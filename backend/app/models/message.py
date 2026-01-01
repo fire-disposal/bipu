@@ -3,7 +3,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, T
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
-from app.db.database import Base
+from app.models.base import Base
 
 
 class MessageType(str, enum.Enum):

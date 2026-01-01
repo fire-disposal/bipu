@@ -1,7 +1,7 @@
 """用户黑名单模型"""
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, UniqueConstraint
 from sqlalchemy.sql import func
-from app.db.database import Base
+from app.models.base import Base
 
 
 class UserBlock(Base):

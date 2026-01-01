@@ -891,7 +891,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/app__models__message__MessageStatus"
+                  "$ref": "#/components/schemas/app__schemas__message__MessageStatus"
                 },
                 {
                   "type": "null"
@@ -1529,7 +1529,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/app__models__message__MessageStatus"
+                  "$ref": "#/components/schemas/app__schemas__message__MessageStatus"
                 },
                 {
                   "type": "null"
@@ -2369,7 +2369,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/app__schemas__friendship__FriendshipStatus"
+                  "$ref": "#/components/schemas/app__models__friendship__FriendshipStatus"
                 },
                 {
                   "type": "null"
@@ -2704,7 +2704,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/app__schemas__friendship__FriendshipStatus"
+                  "$ref": "#/components/schemas/app__models__friendship__FriendshipStatus"
                 },
                 {
                   "type": "null"
@@ -5766,7 +5766,7 @@
             "title": "Friend Id"
           },
           "status": {
-            "$ref": "#/components/schemas/app__schemas__friendship__FriendshipStatus",
+            "$ref": "#/components/schemas/app__models__friendship__FriendshipStatus",
             "default": "pending"
           }
         },
@@ -5788,7 +5788,7 @@
             "title": "Friend Id"
           },
           "status": {
-            "$ref": "#/components/schemas/app__schemas__friendship__FriendshipStatus",
+            "$ref": "#/components/schemas/app__models__friendship__FriendshipStatus",
             "default": "pending"
           },
           "id": {
@@ -6009,7 +6009,7 @@
             "title": "Id"
           },
           "status": {
-            "$ref": "#/components/schemas/app__models__message__MessageStatus"
+            "$ref": "#/components/schemas/app__schemas__message__MessageStatus"
           },
           "is_read": {
             "type": "boolean",
@@ -6237,7 +6237,7 @@
           "status": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/app__models__message__MessageStatus"
+                "$ref": "#/components/schemas/app__schemas__message__MessageStatus"
               },
               {
                 "type": "null"
@@ -7497,15 +7497,14 @@
         ],
         "title": "ValidationError"
       },
-      "app__models__message__MessageStatus": {
+      "app__models__friendship__FriendshipStatus": {
         "type": "string",
         "enum": [
-          "unread",
-          "read",
-          "archived"
+          "pending",
+          "accepted",
+          "blocked"
         ],
-        "title": "MessageStatus",
-        "description": "消息状态"
+        "title": "FriendshipStatus"
       },
       "app__models__message__MessageType": {
         "type": "string",
@@ -7518,14 +7517,15 @@
         "title": "MessageType",
         "description": "消息类型"
       },
-      "app__schemas__friendship__FriendshipStatus": {
+      "app__schemas__message__MessageStatus": {
         "type": "string",
         "enum": [
-          "pending",
-          "accepted",
-          "blocked"
+          "unread",
+          "read",
+          "archived"
         ],
-        "title": "FriendshipStatus"
+        "title": "MessageStatus",
+        "description": "消息状态"
       },
       "app__schemas__message__MessageType": {
         "type": "string",

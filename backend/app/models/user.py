@@ -1,10 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, JSON, Date
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from app.db.database import Base
-from app.models.user_block import UserBlock
-from app.models.message_favorite import MessageFavorite
-from app.models.subscription import UserSubscription
+from app.models.base import Base
 
 
 class User(Base):

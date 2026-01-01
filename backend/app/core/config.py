@@ -26,7 +26,7 @@ class Settings(BaseSettings):
         """
         如果环境变量中设置了 DATABASE_URL，则直接使用。
         否则根据 POSTGRES_* 变量构建。
-        在本地开发环境(localhost)下，如果无法连接 PostgreSQL，自动回退到 SQLite。
+        在无法连接 PostgreSQL 时，自动回退到 SQLite。
         """
         if os.getenv("DATABASE_URL"):
             return os.getenv("DATABASE_URL")
@@ -34,22 +34,15 @@ class Settings(BaseSettings):
         password = quote_plus(self.POSTGRES_PASSWORD)
         pg_url = f"postgresql://{self.POSTGRES_USER}:{password}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
-        # 自动回退逻辑：仅在本地开发且开启DEBUG时尝试
-        if self.POSTGRES_SERVER in ["localhost", "127.0.0.1"] and self.DEBUG:
-            import socket
-            try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(0.2)  # 快速超时检测
-                sock.connect((self.POSTGRES_SERVER, int(self.POSTGRES_PORT)))
-                sock.close()
-            except Exception:
-                import warnings
-                warnings.warn(
-                    f"⚠️ 无法连接到 PostgreSQL ({self.POSTGRES_SERVER}:{self.POSTGRES_PORT})，"
-                    "自动回退到 SQLite (sqlite:///./bipupu.db)。", 
-                    UserWarning
-                )
-                return "sqlite:///./bipupu.db"
+        # 更果断的自动回退逻辑：尝试连接 PostgreSQL，失败则回退到 SQLite
+        import socket
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(1.0)  # 给足时间检测
+            sock.connect((self.POSTGRES_SERVER, int(self.POSTGRES_PORT)))
+            sock.close()
+        except Exception:
+            return "sqlite:///./bipupu.db"
         
         return pg_url
 
@@ -129,11 +122,3 @@ class Settings(BaseSettings):
 
 # 创建配置实例
 settings = Settings()
-
-# 安全检查
-if not settings.DEBUG and settings.SECRET_KEY == "your-super-secret-jwt-key-change-this-in-production":
-    warnings.warn(
-        "WARNING: You are using the default SECRET_KEY in a non-debug environment. "
-        "Please set a secure SECRET_KEY in your environment variables or .env file.",
-        UserWarning
-    )

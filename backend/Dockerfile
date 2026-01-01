@@ -10,11 +10,12 @@ ENV PYTHONUNBUFFERED=1 \
     PORT=8000
 
 # 系统依赖
-RUN apt-get update && apt-get install -y \
-    curl \
-    postgresql-client \
-    redis-tools \
-    && rm -rf /var/lib/apt/lists/*
+# 移除 apt-get install，改用 Python 脚本检测服务状态，加快构建速度
+# RUN apt-get update && apt-get install -y \
+#     curl \
+#     postgresql-client \
+#     redis-tools \
+#     && rm -rf /var/lib/apt/lists/*
 
 # 复制依赖声明文件
 COPY pyproject.toml uv.lock ./

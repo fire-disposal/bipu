@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.sql import func
-from app.db.database import Base
+from app.models.base import Base
 
 class MessageAckEvent(Base):
     """消息回执事件模型"""
