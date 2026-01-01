@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import '../storage/token_storage.dart';
-import '../config/app_config.dart';
 import 'api_endpoints.dart';
 import '../utils/logger.dart';
 
@@ -52,14 +51,14 @@ class AuthInterceptor extends Interceptor {
 
       try {
         _isRefreshing = true;
-        Logger.info('Access Token expired, attempting to refresh...');
+        logger.i('Access Token expired, attempting to refresh...');
 
         // 使用独立的 Dio 实例进行刷新，避免拦截器循环
         _refreshDio ??= Dio(
           BaseOptions(
-            baseUrl: dio.options.baseUrl,
-            connectTimeout: dio.options.connectTimeout,
-            receiveTimeout: dio.options.receiveTimeout,
+            baseUrl: _dio.options.baseUrl,
+            connectTimeout: _dio.options.connectTimeout,
+            receiveTimeout: _dio.options.receiveTimeout,
           ),
         );
 
@@ -78,7 +77,7 @@ class AuthInterceptor extends Interceptor {
             refreshToken: newRefreshToken ?? refreshToken,
           );
 
-          Logger.info('Token refresh successful');
+          logger.i('Token refresh successful');
 
           // 重试原请求
           final opts = err.requestOptions;
@@ -92,7 +91,7 @@ class AuthInterceptor extends Interceptor {
           await _performLogout();
         }
       } catch (e) {
-        Logger.error('Token refresh failed: $e');
+        logger.e('Token refresh failed: $e');
         await _performLogout();
       } finally {
         _isRefreshing = false;

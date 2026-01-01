@@ -4,27 +4,25 @@ import '../utils/logger.dart';
 class GlobalHttpInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    Logger.info(
+    logger.i(
       "🛜 [HTTP Request] | METHOD: ${options.method} | PATH: ${options.path}",
     );
-    // 如果你想看更详细的 data，可以加上：
-    if (options.data != null) {
-      Logger.debug("Payload: ${options.data}");
-    }
-    super.onRequest(options, handler);
+    handler.next(options);
   }
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    Logger.info(
-      "✅ [HTTP Response] | STATUS: ${response.statusCode} | DATA: ${response.data}",
+    logger.i(
+      "✅ [HTTP Response] | STATUS: ${response.statusCode} | PATH: ${response.requestOptions.path}",
     );
-    super.onResponse(response, handler);
+    handler.next(response);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    Logger.error("❌ [HTTP Error] | MESSAGE: ${err.message}");
-    super.onError(err, handler);
+    logger.e(
+      "❌ [HTTP Error] | STATUS: ${err.response?.statusCode} | PATH: ${err.requestOptions.path} | MSG: ${err.message}",
+    );
+    handler.next(err);
   }
 }
