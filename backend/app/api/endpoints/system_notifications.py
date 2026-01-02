@@ -22,76 +22,80 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
+from pydantic import BaseModel
+
+class SystemNotificationCreate(BaseModel):
+    title: str
+    content: str
+    priority: int = 5
+    target_users: Optional[List[int]] = None
+    pattern: Optional[Dict[str, Any]] = None
+
 @router.post("/", response_model=Dict[str, Any])
 async def create_system_notification(
-    title: str,
-    content: str,
-    priority: int = 5,
-    target_users: Optional[List[int]] = None,
-    pattern: Optional[Dict[str, Any]] = None,
+    notification: SystemNotificationCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_superuser)
 ):
     """创建系统通知（管理员功能）"""
-    if priority < 0 or priority > 10:
+    if notification.priority < 0 or notification.priority > 10:
         raise ValidationException("优先级必须在0-10之间")
     
     # 获取目标用户列表
-    if target_users:
-        users = db.query(User).filter(User.id.in_(target_users)).all()
-        if len(users) != len(target_users):
+    if notification.target_users:
+        users = db.query(User).filter(User.id.in_(notification.target_users)).all()
+        if len(users) != len(notification.target_users):
             raise ValidationException("部分目标用户不存在")
     else:
         # 如果没有指定目标用户，则发送给所有活跃用户
+        # 警告：用户量大时需优化为分批处理
         users = db.query(User).filter(User.is_active == True).all()
     
-    created_messages = []
+    messages_to_create = []
     
     # 为每个目标用户创建系统通知消息
     for user in users:
         try:
             # 创建复合信息模式
-            notification_pattern = pattern or {}
+            notification_pattern = notification.pattern or {}
             notification_pattern.update({
                 "source_type": "system",
                 "source_id": current_user.id,
                 "notification_type": "system_broadcast",
                 "rgb": {
-                    "r": 255 if priority >= 7 else 100,
-                    "g": 100 if priority >= 7 else 150,
-                    "b": 100 if priority >= 7 else 255
+                    "r": 255 if notification.priority >= 7 else 100,
+                    "g": 100 if notification.priority >= 7 else 150,
+                    "b": 100 if notification.priority >= 7 else 255
                 },
                 "vibe": {
-                    "intensity": min(priority * 10, 80),
+                    "intensity": min(notification.priority * 10, 80),
                     "duration": 2000
                 }
             })
             
             message = Message(
-                title=title,
-                content=content,
+                title=notification.title,
+                content=notification.content,
                 message_type=MessageType.NOTIFICATION,
                 status=MessageStatus.UNREAD,
-                priority=priority,
-                sender_id=1,  # 系统用户ID
+                priority=notification.priority,
+                sender_id=current_user.id,  # 使用当前管理员ID作为发送者
                 receiver_id=user.id,
                 pattern=notification_pattern
             )
             
-            db.add(message)
-            created_messages.append(message)
+            messages_to_create.append(message)
             
         except Exception as e:
-            logger.error(f"为用户 {user.id} 创建系统通知失败: {e}")
+            logger.error(f"准备用户 {user.id} 的系统通知失败: {e}")
             continue
     
-    db.commit()
+    # 批量插入优化
+    if messages_to_create:
+        db.bulk_save_objects(messages_to_create)
+        db.commit()
     
-    # 刷新所有创建的消息
-    for message in created_messages:
-        db.refresh(message)
-    
-    logger.info(f"系统通知创建完成: 管理员 {current_user.username} 创建了 {len(created_messages)} 条系统通知")
+    logger.info(f"系统通知创建完成: 管理员 {current_user.username} 创建了 {len(messages_to_create)} 条系统通知")
     
     # 记录管理员操作
     log_admin_action(

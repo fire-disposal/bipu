@@ -16,6 +16,7 @@ from app.schemas.common import PaginatedResponse
 from app.core.security import get_current_active_user
 from app.core.exceptions import NotFoundException, ValidationException
 from app.core.logging import get_logger
+from app.services.redis_service import RedisService
 import math
 
 router = APIRouter()
@@ -67,6 +68,10 @@ async def create_message(
     db.add(db_message)
     db.commit()
     db.refresh(db_message)
+    
+    # Redis集成：发布消息并更新未读计数
+    await RedisService.publish_message(db_message)
+    await RedisService.increment_unread_count(receiver.id)
     
     logger.info(f"IM消息创建: {message.title} 从 {current_user.username} 到 {receiver.username}")
     return db_message
@@ -168,6 +173,13 @@ async def get_conversation_messages(
     
     if unread_messages:
         db.commit()
+        # 同步Redis未读计数
+        # 为了保证准确性，从数据库重新计算
+        total_unread = db.query(Message).filter(
+            Message.receiver_id == current_user.id,
+            Message.is_read == False
+        ).count()
+        await RedisService.set_unread_count(current_user.id, total_unread)
     
     return {
         "items": messages,
@@ -176,6 +188,14 @@ async def get_conversation_messages(
         "size": size,
         "pages": pages
     }
+
+
+@router.get("/unread/count", response_model=int)
+async def get_unread_count(
+    current_user: User = Depends(get_current_active_user)
+):
+    """获取未读消息数量 - Redis缓存"""
+    return await RedisService.get_unread_count(current_user.id)
 
 
 @router.get("/unread", response_model=PaginatedResponse[MessageResponse])

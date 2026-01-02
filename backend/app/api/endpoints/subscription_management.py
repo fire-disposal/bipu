@@ -53,7 +53,7 @@ async def get_subscription_types(
     }
 
 
-@router.get("/subscription-types/{subscription_type_id}")
+@router.get("/subscription-types/{subscription_type_id}", response_model=SubscriptionTypeResponse)
 async def get_subscription_type(
     subscription_type_id: int,
     db: Session = Depends(get_db)
@@ -69,13 +69,9 @@ async def get_subscription_type(
     return subscription_type
 
 
-@router.post("/subscription-types")
+@router.post("/subscription-types", response_model=SubscriptionTypeResponse)
 async def create_subscription_type(
-    name: str,
-    description: Optional[str] = None,
-    category: str = "general",
-    is_active: bool = True,
-    default_settings: Optional[Dict[str, Any]] = None,
+    subscription_type_in: SubscriptionTypeCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -85,18 +81,18 @@ async def create_subscription_type(
     
     # 检查名称是否已存在
     existing = db.query(SubscriptionType).filter(
-        SubscriptionType.name == name
+        SubscriptionType.name == subscription_type_in.name
     ).first()
     
     if existing:
         raise ValidationException("订阅类型名称已存在")
     
     subscription_type = SubscriptionType(
-        name=name,
-        description=description,
-        category=category,
-        is_active=is_active,
-        default_settings=default_settings or {}
+        name=subscription_type_in.name,
+        description=subscription_type_in.description,
+        category=subscription_type_in.category,
+        is_active=subscription_type_in.is_active,
+        default_settings=subscription_type_in.default_settings or {}
     )
     
     db.add(subscription_type)

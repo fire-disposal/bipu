@@ -80,7 +80,12 @@ async def update_user_settings(
     return current_user
 
 
-@router.put("/password")
+from pydantic import BaseModel
+
+class StatusResponse(BaseModel):
+    message: str
+
+@router.put("/password", response_model=StatusResponse)
 async def change_password(
     password_change: PasswordChange,
     db: Session = Depends(get_db),

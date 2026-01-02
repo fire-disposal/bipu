@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+import os
 from app.api.router import api_router
 from app.core.config import settings
 from app.db.database import init_db, init_redis, close_redis
@@ -47,9 +48,9 @@ async def lifespan(app: FastAPI):
         await init_default_data()
         logger.info("✅ 默认数据初始化完成")
         
-        # # 初始化Redis
-        # await init_redis()
-        # logger.info("✅ Redis initialized")
+        # 初始化Redis
+        await init_redis()
+        logger.info("✅ Redis initialized")
         # 生成 OpenAPI.json 文件
 
         try:
@@ -58,9 +59,10 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"❌ OpenAPI.json 生成失败: {e}")
 
+        port = os.getenv("PORT", "8000")
         logger.info("✅ 服务启动完成 ")
-        logger.info("📚 API文档地址:    http://localhost:8848/api/docs")
-        logger.info("📋 OpenAPI.json 地址: http://localhost:8848/api/openapi.json")
+        logger.info(f"📚 API文档地址:    http://localhost:{port}/api/docs")
+        logger.info(f"📋 OpenAPI.json 地址: http://localhost:{port}/api/openapi.json")
 
  
     
@@ -110,4 +112,5 @@ def create_app() -> FastAPI:
 app = create_app()
 
 if __name__ == "__main__":
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8848, reload=True)
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=True)

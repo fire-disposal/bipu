@@ -24,7 +24,12 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.post("/messages/{message_id}/favorite")
+from pydantic import BaseModel
+
+class StatusResponse(BaseModel):
+    message: str
+
+@router.post("/messages/{message_id}/favorite", response_model=StatusResponse)
 async def favorite_message(
     message_id: int,
     db: Session = Depends(get_db),
@@ -61,7 +66,7 @@ async def favorite_message(
     return {"message": "消息已收藏"}
 
 
-@router.delete("/messages/{message_id}/favorite")
+@router.delete("/messages/{message_id}/favorite", response_model=StatusResponse)
 async def unfavorite_message(
     message_id: int,
     db: Session = Depends(get_db),

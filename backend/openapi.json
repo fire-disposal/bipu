@@ -891,7 +891,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/app__schemas__message__MessageStatus"
+                  "$ref": "#/components/schemas/app__models__message__MessageStatus"
                 },
                 {
                   "type": "null"
@@ -1096,6 +1096,34 @@
             }
           }
         }
+      }
+    },
+    "/api/messages/unread/count": {
+      "get": {
+        "tags": [
+          "messages"
+        ],
+        "summary": "Get Unread Count",
+        "description": "获取未读消息数量 - Redis缓存",
+        "operationId": "get_unread_count_api_messages_unread_count_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "integer",
+                  "title": "Response Get Unread Count Api Messages Unread Count Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/messages/unread": {
@@ -1529,7 +1557,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/app__schemas__message__MessageStatus"
+                  "$ref": "#/components/schemas/app__models__message__MessageStatus"
                 },
                 {
                   "type": "null"
@@ -1679,41 +1707,12 @@
             "HTTPBearer": []
           }
         ],
-        "parameters": [
-          {
-            "name": "title",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Title"
-            }
-          },
-          {
-            "name": "content",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Content"
-            }
-          },
-          {
-            "name": "priority",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 5,
-              "title": "Priority"
-            }
-          }
-        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Body_create_system_notification_api_system_notifications__post"
+                "$ref": "#/components/schemas/SystemNotificationCreate"
               }
             }
           }
@@ -2369,7 +2368,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/app__models__friendship__FriendshipStatus"
+                  "$ref": "#/components/schemas/app__schemas__friendship__FriendshipStatus"
                 },
                 {
                   "type": "null"
@@ -2704,7 +2703,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/app__models__friendship__FriendshipStatus"
+                  "$ref": "#/components/schemas/app__schemas__friendship__FriendshipStatus"
                 },
                 {
                   "type": "null"
@@ -3355,7 +3354,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/app__api__endpoints__message_management__StatusResponse"
+                }
               }
             }
           },
@@ -3952,7 +3953,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/app__api__endpoints__message_management__StatusResponse"
+                }
               }
             }
           },
@@ -3996,7 +3999,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/app__api__endpoints__message_management__StatusResponse"
+                }
               }
             }
           },
@@ -4661,67 +4666,12 @@
             "HTTPBearer": []
           }
         ],
-        "parameters": [
-          {
-            "name": "name",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Name"
-            }
-          },
-          {
-            "name": "description",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Description"
-            }
-          },
-          {
-            "name": "category",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "general",
-              "title": "Category"
-            }
-          },
-          {
-            "name": "is_active",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "default": true,
-              "title": "Is Active"
-            }
-          }
-        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "anyOf": [
-                  {
-                    "type": "object",
-                    "additionalProperties": true
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Default Settings"
+                "$ref": "#/components/schemas/SubscriptionTypeCreate"
               }
             }
           }
@@ -4731,7 +4681,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionTypeResponse"
+                }
               }
             }
           },
@@ -4772,7 +4724,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionTypeResponse"
+                }
               }
             }
           },
@@ -5566,38 +5520,6 @@
         "title": "BlockedUserResponse",
         "description": "被拉黑用户响应"
       },
-      "Body_create_system_notification_api_system_notifications__post": {
-        "properties": {
-          "target_users": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "integer"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Target Users"
-          },
-          "pattern": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Pattern"
-          }
-        },
-        "type": "object",
-        "title": "Body_create_system_notification_api_system_notifications__post"
-      },
       "CosmicProfile": {
         "properties": {
           "energy_type": {
@@ -5766,7 +5688,7 @@
             "title": "Friend Id"
           },
           "status": {
-            "$ref": "#/components/schemas/app__models__friendship__FriendshipStatus",
+            "$ref": "#/components/schemas/app__schemas__friendship__FriendshipStatus",
             "default": "pending"
           }
         },
@@ -5788,7 +5710,7 @@
             "title": "Friend Id"
           },
           "status": {
-            "$ref": "#/components/schemas/app__models__friendship__FriendshipStatus",
+            "$ref": "#/components/schemas/app__schemas__friendship__FriendshipStatus",
             "default": "pending"
           },
           "id": {
@@ -6009,7 +5931,7 @@
             "title": "Id"
           },
           "status": {
-            "$ref": "#/components/schemas/app__schemas__message__MessageStatus"
+            "$ref": "#/components/schemas/app__models__message__MessageStatus"
           },
           "is_read": {
             "type": "boolean",
@@ -6237,7 +6159,7 @@
           "status": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/app__schemas__message__MessageStatus"
+                "$ref": "#/components/schemas/app__models__message__MessageStatus"
               },
               {
                 "type": "null"
@@ -6567,6 +6489,46 @@
         "title": "SubscriptionSettings",
         "description": "订阅设置"
       },
+      "SubscriptionTypeCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          },
+          "default_settings": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Default Settings",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "category"
+        ],
+        "title": "SubscriptionTypeCreate"
+      },
       "SubscriptionTypeResponse": {
         "properties": {
           "name": {
@@ -6629,6 +6591,55 @@
           "created_at"
         ],
         "title": "SubscriptionTypeResponse"
+      },
+      "SystemNotificationCreate": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "priority": {
+            "type": "integer",
+            "title": "Priority",
+            "default": 5
+          },
+          "target_users": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Users"
+          },
+          "pattern": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pattern"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "content"
+        ],
+        "title": "SystemNotificationCreate"
       },
       "TermsAcceptance": {
         "properties": {
@@ -7497,14 +7508,28 @@
         ],
         "title": "ValidationError"
       },
-      "app__models__friendship__FriendshipStatus": {
+      "app__api__endpoints__message_management__StatusResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "StatusResponse"
+      },
+      "app__models__message__MessageStatus": {
         "type": "string",
         "enum": [
-          "pending",
-          "accepted",
-          "blocked"
+          "unread",
+          "read",
+          "archived"
         ],
-        "title": "FriendshipStatus"
+        "title": "MessageStatus",
+        "description": "消息状态"
       },
       "app__models__message__MessageType": {
         "type": "string",
@@ -7517,15 +7542,14 @@
         "title": "MessageType",
         "description": "消息类型"
       },
-      "app__schemas__message__MessageStatus": {
+      "app__schemas__friendship__FriendshipStatus": {
         "type": "string",
         "enum": [
-          "unread",
-          "read",
-          "archived"
+          "pending",
+          "accepted",
+          "blocked"
         ],
-        "title": "MessageStatus",
-        "description": "消息状态"
+        "title": "FriendshipStatus"
       },
       "app__schemas__message__MessageType": {
         "type": "string",

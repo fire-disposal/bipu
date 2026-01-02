@@ -76,6 +76,8 @@ async def get_admin_logs(
     }
 
 
+from sqlalchemy import func
+
 @router.get("/stats")
 async def get_admin_log_stats(
     db: Session = Depends(get_db),
@@ -84,19 +86,29 @@ async def get_admin_log_stats(
     """获取管理员操作日志统计（需要超级用户权限）"""
     total_logs = db.query(AdminLog).count()
     
-    # 按操作类型统计
-    action_stats = {}
-    actions = db.query(AdminLog.action).distinct().all()
-    for action in actions:
-        action_name = action[0]
-        count = db.query(AdminLog).filter(AdminLog.action == action_name).count()
-        action_stats[action_name] = count
+    # 按操作类型统计 - 优化为单次聚合查询
+    action_stats_query = db.query(
+        AdminLog.action, 
+        func.count(AdminLog.id)
+    ).group_by(AdminLog.action).all()
     
-    # 按管理员统计
-    admin_stats = {}
-    admin_logs = db.query(AdminLog.admin_id, User.username).join(
+    action_stats = {action: count for action, count in action_stats_query}
+    
+    # 按管理员统计 - 优化为单次聚合查询
+    admin_stats_query = db.query(
+        User.username, 
+        func.count(AdminLog.id)
+    ).join(
         User, AdminLog.admin_id == User.id
-    ).distinct().all()
+    ).group_by(User.username).all()
+    
+    admin_stats = {username: count for username, count in admin_stats_query}
+    
+    return {
+        "total_logs": total_logs,
+        "action_stats": action_stats,
+        "admin_stats": admin_stats
+    }
     
     for admin_id, username in admin_logs:
         count = db.query(AdminLog).filter(AdminLog.admin_id == admin_id).count()
