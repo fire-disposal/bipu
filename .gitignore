@@ -84,5 +84,3 @@ flutter/windows/flutter/generated_config.cmake
 *.onnx
 
 node_modules/
-
-flutter/assets/
