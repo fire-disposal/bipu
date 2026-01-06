@@ -9,8 +9,8 @@ on:
         default: 'Manual deploy'
 
 env:
-  IMAGE_BASE: ghcr.io/${{ github.repository }}/fastapi-backend
-  NGINX_IMAGE_BASE: ghcr.io/${{ github.repository }}/fastapi-nginx
+  IMAGE_BASE: ghcr.io/${{ github.repository }}/bipupu-backend
+  NGINX_IMAGE_BASE: ghcr.io/${{ github.repository }}/bipupu-nginx
 
 jobs:
   deploy:
@@ -88,13 +88,14 @@ jobs:
         run: |
           set -euo pipefail
           
-          sed "s|fastapi-backend:local|${{ steps.ver.outputs.IMAGE }}|g; s|bipupu-nginx:local|${{ steps.nginx_ver.outputs.IMAGE }}|g" \
+          sed "s|bipupu-backend:local|${{ steps.ver.outputs.IMAGE }}|g; s|bipupu-nginx:local|${{ steps.nginx_ver.outputs.IMAGE }}|g" \
             docker/docker-compose.yml > docker/docker-compose.rendered.yml
 
           cat > docker/.env <<EOF
           SECRET_KEY=${{ secrets.SECRET_KEY }}
           REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
           POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          PGADMIN_PASSWORD=${{ secrets.PGADMIN_PASSWORD }}
           COMPOSE_BAKE=true
           EOF
 
@@ -116,7 +117,7 @@ jobs:
             docker compose -f ~/docker-compose.yml --env-file ~/.env pull
             
             echo "🔍 验证镜像:"
-            docker images | grep fastapi || echo "⚠️ 未找到fastapi镜像"
+            docker images | grep bipupu || echo "⚠️ 未找到bipupu镜像"
 
             echo "🚀 停止旧容器..."
             docker compose -f ~/docker-compose.yml --env-file ~/.env down --remove-orphans
@@ -128,7 +129,7 @@ jobs:
             sleep 10
             
             echo "📋 检查容器状态:"
-            docker ps -a | grep fastapi || true
+            docker ps -a | grep bipupu || true
 
             echo "📋 检查端口监听:"
             ss -tlnp | grep :8000 || true
@@ -136,7 +137,7 @@ jobs:
             echo "🔍 开始健康检查 (Max 20 attempts, 5s interval)..."
             health_check_passed=false
             for i in {1..20}; do
-              if docker exec fastapi-backend curl -fsS http://localhost:8000/health; then
+              if docker exec bipupu-backend curl -fsS http://localhost:8000/health; then
                 echo "✅ 健康检查通过"
                 health_check_passed=true
                 break
@@ -144,7 +145,7 @@ jobs:
               echo "⏳ Health check $i/20 failed, waiting 5 seconds..."
               if [ $i -eq 5 ] || [ $i -eq 10 ] || [ $i -eq 15 ]; then
                 echo "--- 诊断信息 ---"
-                docker ps -a | grep fastapi
+                docker ps -a | grep bipupu
                 docker compose logs backend --tail 50
                 echo "----------------"
               fi
@@ -162,7 +163,7 @@ jobs:
             
             echo "📦 记录成功部署的版本..."
             echo "${{ steps.ver.outputs.TAG }}" > ~/last_successful_version.txt
-            echo "✅ FastAPI Backend Deploy OK"
+            echo "✅ Bipupu Backend Deploy OK"
             echo "✅ Deploy OK"
           EOF
       - name: ✅ Finish Deployment

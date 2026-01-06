@@ -3,7 +3,7 @@ services:
   # 1. FastAPI Backend Service
   # ----------------------------------------------------
   backend:
-    image: fastapi-backend:local
+    image: bipupu-backend:local
     build:
       context: ../backend
       dockerfile: Dockerfile
@@ -34,7 +34,7 @@ services:
   # 2. Celery Worker Service
   # ----------------------------------------------------
   celery-worker:
-    image: fastapi-backend:local
+    image: bipupu-backend:local
     build:
       context: ../backend
       dockerfile: Dockerfile
@@ -58,7 +58,7 @@ services:
   # 3. Celery Beat Service
   # ----------------------------------------------------
   celery-beat:
-    image: fastapi-backend:local
+    image: bipupu-backend:local
     build:
       context: ../backend
       dockerfile: Dockerfile
