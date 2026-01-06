@@ -89,9 +89,9 @@ jobs:
           set -euo pipefail
           
           sed "s|fastapi-backend:local|${{ steps.ver.outputs.IMAGE }}|g; s|fastapi-nginx:local|${{ steps.nginx_ver.outputs.IMAGE }}|g" \
-            docker-compose.yml > docker-compose.rendered.yml
+            docker/docker-compose.yml > docker/docker-compose.rendered.yml
 
-          cat > .env <<EOF
+          cat > docker/.env <<EOF
           SECRET_KEY=${{ secrets.SECRET_KEY }}
           REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
           POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
@@ -99,9 +99,9 @@ jobs:
           EOF
 
           echo "📤 Uploading files to server..."
-          scp -i ~/.ssh/id_rsa docker-compose.rendered.yml \
+          scp -i ~/.ssh/id_rsa docker/docker-compose.rendered.yml \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/docker-compose.yml
-          scp -i ~/.ssh/id_rsa .env \
+          scp -i ~/.ssh/id_rsa docker/.env \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/.env
 
       - name: Deploy Stack via SSH
