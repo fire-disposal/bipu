@@ -24,14 +24,14 @@ async def health_check(db: Session = Depends(get_db)):
             "status": "healthy",
             "database": "connected",
             "redis": "connected",
-            "service": "fastapi-backend"
+            "service": "bipupu-backend"
         }
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         return {
             "status": "unhealthy",
             "error": str(e),
-            "service": "fastapi-backend"
+            "service": "bipupu-backend"
         }
 
 
