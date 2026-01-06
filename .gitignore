@@ -81,6 +81,7 @@ flutter/windows/flutter/generated_config.cmake
 # ==============================================================================
 *.log
 *.tmp
+*.onnx
 
 node_modules/
 
