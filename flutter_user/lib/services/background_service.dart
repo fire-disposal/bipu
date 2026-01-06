@@ -1,7 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 // import 'package:flutter_background_service/flutter_background_service.dart'; // 暂时注释后台服务
 // import 'package:flutter_local_notifications/flutter_local_notifications.dart'; // 暂时注释通知服务
 import 'package:logger/logger.dart';

@@ -73,15 +73,6 @@ case "${CONTAINER_ROLE:-backend}" in
             exit 1
         }
         echo -e "${GREEN}数据库迁移完成${NC}"
-
-        echo -e "${YELLOW}初始化数据库数据...${NC}"
-        uv run python -c "
-import asyncio
-from app.db.init_data import init_default_data
-asyncio.run(init_default_data())
-" || {
-            echo -e "${YELLOW}数据库初始化跳过（可能没有初始化脚本）${NC}"
-        }
         
         if [ -n "$OVERRIDE_CMD" ]; then
             echo -e "${GREEN}执行自定义启动命令: $OVERRIDE_CMD${NC}"

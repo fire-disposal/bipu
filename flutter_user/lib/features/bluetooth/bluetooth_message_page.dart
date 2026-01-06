@@ -254,7 +254,7 @@ class _BluetoothMessagePageState extends State<BluetoothMessagePage> {
 
         // Vibration Controls
         DropdownButtonFormField<VibrationType>(
-          value: _vibrationType,
+          initialValue: _vibrationType,
           decoration: const InputDecoration(
             labelText: 'Vibration Pattern',
             border: OutlineInputBorder(),
@@ -270,7 +270,7 @@ class _BluetoothMessagePageState extends State<BluetoothMessagePage> {
 
         // Screen Effect Controls
         DropdownButtonFormField<ScreenEffect>(
-          value: _screenEffect,
+          initialValue: _screenEffect,
           decoration: const InputDecoration(
             labelText: 'Screen Effect',
             border: OutlineInputBorder(),
