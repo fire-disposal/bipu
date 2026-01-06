@@ -88,7 +88,7 @@ jobs:
         run: |
           set -euo pipefail
           
-          sed "s|fastapi-backend:local|${{ steps.ver.outputs.IMAGE }}|g; s|fastapi-nginx:local|${{ steps.nginx_ver.outputs.IMAGE }}|g" \
+          sed "s|fastapi-backend:local|${{ steps.ver.outputs.IMAGE }}|g; s|bipupu-nginx:local|${{ steps.nginx_ver.outputs.IMAGE }}|g" \
             docker/docker-compose.yml > docker/docker-compose.rendered.yml
 
           cat > docker/.env <<EOF
