@@ -93,7 +93,8 @@ jobs:
 
           cat > .env <<EOF
           SECRET_KEY=${{ secrets.SECRET_KEY }}
-          DEBUG=${{ secrets.DEBUG || 'false' }}
+          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
           COMPOSE_BAKE=true
           EOF
 
