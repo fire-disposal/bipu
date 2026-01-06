@@ -9,9 +9,9 @@ class Settings(BaseSettings):
     """应用配置"""
     
     # 项目基本信息
-    PROJECT_NAME: str = "FastAPI Backend"
-    VERSION: str = "1.0.0"
-    DESCRIPTION: str = "FastAPI + PostgreSQL + Redis + Celery Backend"
+    PROJECT_NAME: str = "BIPU Backend"
+    VERSION: str = "1.5.0"
+    DESCRIPTION: str = "BIPU,an BLE bp message platform"
     DEBUG: bool = False
     
     # 数据库配置
