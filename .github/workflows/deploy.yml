@@ -1,0 +1,163 @@
+name: Build & Deploy Backend Stack
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual deployment'
+        required: false
+        default: 'Manual deploy'
+
+env:
+  IMAGE_BASE: ghcr.io/${{ github.repository }}/bipupu-backend
+  NGINX_IMAGE_BASE: ghcr.io/${{ github.repository }}/bipupu-nginx
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute Tag Once
+        id: ver
+        run: |
+          set -euo pipefail
+          TAG_SHORT="${GITHUB_SHA:0:8}"
+          TAG_FINAL="${TAG_SHORT:-latest}"
+          echo "BACKEND_IMAGE=${{ env.IMAGE_BASE }}:$TAG_FINAL" >> "$GITHUB_OUTPUT"
+          echo "NGINX_IMAGE=${{ env.NGINX_IMAGE_BASE }}:$TAG_FINAL" >> "$GITHUB_OUTPUT"
+          echo "TAG=$TAG_FINAL" >> "$GITHUB_OUTPUT"
+
+      - name: Build & Push Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.ver.outputs.BACKEND_IMAGE }}
+            ${{ env.IMAGE_BASE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & Push Nginx Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker/nginx
+          file: ./docker/nginx/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.ver.outputs.NGINX_IMAGE }}
+            ${{ env.NGINX_IMAGE_BASE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Setup SSH Key
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo -e "Host *\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null" >> ~/.ssh/config
+
+      - name: Render & Upload Stack Files
+        run: |
+          set -euo pipefail
+          
+          sed "s|bipupu-backend:local|${{ steps.ver.outputs.BACKEND_IMAGE }}|g; s|bipupu-nginx:local|${{ steps.ver.outputs.NGINX_IMAGE }}|g" \
+            docker/docker-compose.yml > docker/docker-compose.rendered.yml
+
+          cat > docker/.env <<EOF
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+          ADMIN_USERNAME=${{ secrets.ADMIN_USERNAME }}
+          COMPOSE_BAKE=true
+          EOF
+
+          echo "📤 Uploading files to server..."
+          scp -i ~/.ssh/id_rsa docker/docker-compose.rendered.yml \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/docker-compose.yml
+          scp -i ~/.ssh/id_rsa docker/.env \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/.env
+
+      - name: Deploy Stack via SSH
+        run: |
+          ssh -i ~/.ssh/id_rsa -T ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            set -euo pipefail
+
+            echo "🔑 Docker登录..."
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            echo "📥 拉取镜像..."
+            docker compose -f ~/docker-compose.yml --env-file ~/.env pull
+            
+            echo "🔍 验证镜像:"
+            docker images | grep bipupu || echo "⚠️ 未找到bipupu镜像"
+
+            echo "🚀 停止旧容器..."
+            docker compose -f ~/docker-compose.yml --env-file ~/.env down --remove-orphans
+            
+            echo "🚀 启动新容器..."
+            docker compose -f ~/docker-compose.yml --env-file ~/.env up -d
+            
+            echo "⏳ 等待容器初始化..."
+            sleep 10
+            
+            echo "📋 检查容器状态:"
+            docker ps -a | grep bipupu || true
+
+            echo "📋 检查端口监听:"
+            ss -tlnp | grep :8000 || true
+
+            echo "🔍 开始健康检查 (Max 20 attempts, 5s interval)..."
+            health_check_passed=false
+            for i in {1..20}; do
+              if docker exec bipupu-backend uv run python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"; then
+                echo "✅ 健康检查通过"
+                health_check_passed=true
+                break
+              fi
+              echo "⏳ Health check $i/20 failed, waiting 5 seconds..."
+              if [ $i -eq 5 ] || [ $i -eq 10 ] || [ $i -eq 15 ]; then
+                echo "--- 诊断信息 ---"
+                docker ps -a | grep bipupu
+                docker compose logs backend --tail 50
+                echo "----------------"
+              fi
+              sleep 5
+            done
+
+            if [ "$health_check_passed" != "true" ]; then
+              echo "❌ 健康检查失败，收集最终诊断信息:"
+              docker ps -a
+              docker compose logs backend --tail 50
+              docker compose logs db --tail 20
+              docker compose logs redis --tail 20
+              exit 1
+            fi
+            
+            echo "📦 记录成功部署的版本..."
+            echo "${{ steps.ver.outputs.TAG }}" > ~/last_successful_version.txt
+            echo "✅ bipupu Backend Deploy OK"
+            echo "✅ Deploy OK"
+          EOF
+      - name: ✅ Finish Deployment
+        run: "echo \"🚀 Deploy finished — Backend: ${{ steps.ver.outputs.BACKEND_IMAGE }} — Nginx: ${{ steps.ver.outputs.NGINX_IMAGE }}\""
