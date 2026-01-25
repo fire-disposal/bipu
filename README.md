@@ -174,7 +174,27 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | `PGADMIN_EMAIL` | pgAdmin 登录邮箱 | `admin@bipupu.com` |
 | `PGADMIN_PASSWORD` | pgAdmin 登录密码 | 必填 |
 
-## 🐳 Docker 命令参考
+## � GitHub Secrets 配置
+
+如果使用本项目自带的 GitHub Actions CI/CD 工作流 (`.github/workflows/deploy.yml`)，需要在 GitHub 仓库的 **Settings > Secrets and variables > Actions** 中添加以下 Secrets：
+
+### 📡 服务器连接
+| Secret 名称 | 说明 | 示例值 |
+|-------------|------|-------|
+| `SERVER_HOST` | 部署目标服务器的 IP 或域名 | `123.45.67.89` |
+| `SERVER_USER` | SSH 登录用户名 | `root` 或 `ubuntu` |
+| `SERVER_SSH_KEY` | SSH 私钥内容 (OpenSSH 格式) | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
+
+### ⚙️ 应用环境变量
+| Secret 名称 | 说明 | 对应环境变量 |
+|-------------|------|-------------|
+| `SECRET_KEY` | FastAPI 加密密钥 | (生成随机字符串) |
+| `POSTGRES_PASSWORD` | 数据库主密码 | `DbP@ssw0rd!` |
+| `ADMIN_EMAIL` | 初始超级管理员邮箱 | `admin@example.com` |
+| `ADMIN_USERNAME` | 初始超级管理员用户名 | `admin` |
+| `ADMIN_PASSWORD` | 初始超级管理员密码 | `AdminP@ssw0rd!` |
+
+## �🐳 Docker 命令参考
 
 ```bash
 # 构建镜像

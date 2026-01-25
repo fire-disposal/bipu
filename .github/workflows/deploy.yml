@@ -64,15 +64,23 @@ jobs:
           # 扫描并信任服务器指纹
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
+
+          # 配置 SSH Config 以确保 Docker 命令也能使用正确的 SSH 参数
+          echo "Host remote-server" >> ~/.ssh/config
+          echo "  HostName ${{ secrets.SERVER_HOST }}" >> ~/.ssh/config
+          echo "  User ${{ secrets.SERVER_USER }}" >> ~/.ssh/config
+          echo "  IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
+          echo "  StrictHostKeyChecking no" >> ~/.ssh/config
           
-          # 测试连接（可选 debug）
+          # 测试连接（去掉 || true 以便出错时立即停止）
           echo "Testing SSH Connection..."
-          ssh -T -o StrictHostKeyChecking=accept-new ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "echo '✅ SSH Connection OK'" || true
+          ssh remote-server "echo '✅ SSH Connection OK'"
 
       - name: 🌐 激活远程 Docker 上下文
         run: |
-          docker context create remote-server --docker "host=ssh://${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}"
-          docker context use remote-server
+          # 使用 config 中定义的 Host 别名
+          docker context create remote-context --docker "host=ssh://remote-server"
+          docker context use remote-context
 
       - name: 🚀 执行远程滚动部署
         env:
