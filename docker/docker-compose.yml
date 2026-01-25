@@ -126,25 +126,13 @@ services:
       retries: 10
       start_period: 10s
 
-  # ----------------------------------------------------
-  # 5. Redis Init (Fix overcommit warning)
-  # ----------------------------------------------------
-  redis-init:
-    image: alpine
-    container_name: bipupu-redis-init
-    command: ["sysctl", "-w", "vm.overcommit_memory=1"]
-    privileged: true
-    restart: "no"
 
   # ----------------------------------------------------
-  # 6. Redis Cache/Broker
+  # 5. Redis Cache/Broker
   # ----------------------------------------------------
   redis:
     image: redis:7-alpine
     container_name: bipupu-redis
-    depends_on:
-      redis-init:
-        condition: service_completed_successfully
     #restart: unless-stopped
     volumes:
       - redis_data:/data
