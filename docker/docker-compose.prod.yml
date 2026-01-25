@@ -1,0 +1,6 @@
+# docker/docker-compose.prod.yml (生产环境专用)
+services:
+  backend:
+    restart: unless-stopped
+    # 生产环境不需要 build 块，因为我们拉取镜像
+    # 生产环境不需要本地目录挂载

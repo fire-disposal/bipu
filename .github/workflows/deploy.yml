@@ -1,18 +1,19 @@
-name: Build & Deploy Backend Stack
+name: 🚀 生产环境后端部署 (Modern Context)
 
 on:
   workflow_dispatch:
     inputs:
       reason:
-        description: 'Reason for manual deployment'
+        description: "部署原因"
         required: false
-        default: 'Manual deploy'
+        default: "手动触发部署"
 
 env:
   IMAGE_BASE: ghcr.io/${{ github.repository }}/bipupu-backend
 
 jobs:
   deploy:
+    name: 🏗️ 编译并部署
     runs-on: ubuntu-latest
     environment: dev
     permissions:
@@ -20,29 +21,27 @@ jobs:
       packages: write
 
     steps:
-      - name: Checkout Repository
+      - name: 📥 获取源代码
         uses: actions/checkout@v4
 
-      - name: Setup Docker Buildx
+      - name: 🛠️ 设置 Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to GitHub Container Registry (GHCR)
+      - name: 🔐 登录 GitHub 镜像仓库
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Compute Tag Once
+      - name: 🏷️ 生成版本标签
         id: ver
         run: |
-          set -euo pipefail
-          TAG_SHORT="${GITHUB_SHA:0:8}"
-          TAG_FINAL="${TAG_SHORT:-latest}"
+          TAG_FINAL="${GITHUB_SHA:0:8}"
           echo "BACKEND_IMAGE=${{ env.IMAGE_BASE }}:$TAG_FINAL" >> "$GITHUB_OUTPUT"
           echo "TAG=$TAG_FINAL" >> "$GITHUB_OUTPUT"
 
-      - name: Build & Push Image
+      - name: 📦 构建并推送镜像
         uses: docker/build-push-action@v5
         with:
           context: ./backend
@@ -54,96 +53,67 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Setup SSH Key
+      - name: 🔑 配置 SSH 代理
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
+
+      - name: 🛡️ 扫描主机指纹
         run: |
-          set -euo pipefail
           mkdir -p ~/.ssh
-          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          echo -e "Host *\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null" >> ~/.ssh/config
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Render & Upload Stack Files
+      - name: 🌐 激活远程 Docker 上下文
         run: |
-          set -euo pipefail
-          
-          sed "s|bipupu-backend:local|${{ steps.ver.outputs.BACKEND_IMAGE }}|g" \
-            docker/docker-compose.yml > docker/docker-compose.rendered.yml
+          docker context create remote-server --docker "host=ssh://${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}"
+          docker context use remote-server
 
-          cat > docker/.env <<EOF
-          SECRET_KEY=${{ secrets.SECRET_KEY }}
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-          ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
-          ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
-          ADMIN_USERNAME=${{ secrets.ADMIN_USERNAME }}
-          COMPOSE_BAKE=true
-          EOF
-
-          echo "📤 Uploading files to server..."
-          scp -i ~/.ssh/id_rsa docker/docker-compose.rendered.yml \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/docker-compose.yml
-          scp -i ~/.ssh/id_rsa docker/.env \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/.env
-
-      - name: Deploy Stack via SSH
+      - name: 🚀 执行远程滚动部署
+        env:
+          # 敏感信息通过环境变量注入内存，不生成物理文件
+          BACKEND_IMAGE: ${{ steps.ver.outputs.BACKEND_IMAGE }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
         run: |
-          ssh -i ~/.ssh/id_rsa -T ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-            set -euo pipefail
+          echo "🔑 刷新远程登录状态..."
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            echo "🔑 Docker登录..."
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            
-            echo "📥 拉取镜像..."
-            docker compose -f ~/docker-compose.yml --env-file ~/.env pull
-            
-            echo "🔍 验证镜像:"
-            docker images | grep bipupu || echo "⚠️ 未找到bipupu镜像"
+          echo "📡 拉取新镜像并启动服务..."
+          docker compose \
+            -f docker/docker-compose.yml \
+            -f docker/docker-compose.prod.yml \
+            up -d --remove-orphans
 
-            echo "🚀 停止旧容器..."
-            docker compose -f ~/docker-compose.yml --env-file ~/.env down --remove-orphans
-            
-            echo "🚀 启动新容器..."
-            docker compose -f ~/docker-compose.yml --env-file ~/.env up -d
-            
-            echo "⏳ 等待容器初始化..."
-            sleep 10
-            
-            echo "📋 检查容器状态:"
-            docker ps -a | grep bipupu || true
-
-            echo "📋 检查端口监听:"
-            ss -tlnp | grep :8000 || true
-
-            echo "🔍 开始健康检查 (Max 20 attempts, 5s interval)..."
-            health_check_passed=false
-            for i in {1..20}; do
-              if docker exec bipupu-backend uv run python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"; then
-                echo "✅ 健康检查通过"
-                health_check_passed=true
-                break
-              fi
-              echo "⏳ Health check $i/20 failed, waiting 5 seconds..."
-              if [ $i -eq 5 ] || [ $i -eq 10 ] || [ $i -eq 15 ]; then
-                echo "--- 诊断信息 ---"
-                docker ps -a | grep bipupu
-                docker compose logs backend --tail 50
-                echo "----------------"
-              fi
-              sleep 5
-            done
-
-            if [ "$health_check_passed" != "true" ]; then
-              echo "❌ 健康检查失败，收集最终诊断信息:"
-              docker ps -a
-              docker compose logs backend --tail 50
-              docker compose logs db --tail 20
-              docker compose logs redis --tail 20
-              exit 1
+      - name: 🩺 运行远程健康检查
+        run: |
+          echo "🔍 正在确认服务可用性..."
+          success=false
+          for i in {1..10}; do
+            # 直接在远程容器中通过 uv 运行健康检查
+            if docker exec bipupu-backend uv run python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" 2>/dev/null; then
+              echo "✅ 服务已就绪！"
+              success=true
+              break
             fi
-            
-            echo "📦 记录成功部署的版本..."
-            echo "${{ steps.ver.outputs.TAG }}" > ~/last_successful_version.txt
-            echo "✅ bipupu Backend Deploy OK"
-            echo "✅ Deploy OK"
-          EOF
-      - name: ✅ Finish Deployment
-        run: "echo \"🚀 Deploy finished — Backend: ${{ steps.ver.outputs.BACKEND_IMAGE }}\""
+            echo "⏳ 检查中 ($i/10)..."
+            sleep 6
+          done
+
+          if [ "$success" != "true" ]; then
+            echo "❌ 健康检查失败，输出异常日志："
+            docker compose -f docker/docker-compose.yml -f docker/docker-compose.prod.yml logs --tail 50
+            exit 1
+          fi
+
+      - name: 🧹 清理旧镜像
+        run: |
+          # 自动删除服务器上超过 24 小时的无用镜像，释放磁盘空间
+          docker image prune -f --filter "until=24h"
+
+      - name: 🎉 部署完成通知
+        run: |
+          echo "🚀 成功部署版本: ${{ steps.ver.outputs.TAG }}"
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "echo ${{ steps.ver.outputs.TAG }} > ~/last_version.txt"
