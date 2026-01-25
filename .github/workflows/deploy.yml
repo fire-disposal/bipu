@@ -20,6 +20,14 @@ jobs:
       contents: read
       packages: write
 
+    env:
+      # 全局注入敏感配置，确保部署、健康检查和日志查看的所有步骤都能访问
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+      ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
+
     steps:
       - name: 📥 获取源代码
         uses: actions/checkout@v4
@@ -56,23 +64,22 @@ jobs:
       - name: 🔑 配置 SSH 密钥 (直接文件模式)
         run: |
           mkdir -p ~/.ssh
-          # 为了最大化兼容性（解决 docker context 读取 ssh-agent 失败的问题），
-          # 也就是恢复到将私钥写入临时文件的传统方式。Runner 结束后会自动清理。
           echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           
-          # 扫描并信任服务器指纹
+          # 扫描指纹
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
-
-          # 配置 SSH Config 以确保 Docker 命令也能使用正确的 SSH 参数
-          echo "Host remote-server" >> ~/.ssh/config
-          echo "  HostName ${{ secrets.SERVER_HOST }}" >> ~/.ssh/config
-          echo "  User ${{ secrets.SERVER_USER }}" >> ~/.ssh/config
-          echo "  IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
-          echo "  StrictHostKeyChecking no" >> ~/.ssh/config
           
-          # 测试连接（去掉 || true 以便出错时立即停止）
+          # 使用 EOF 语法一次性写入 config，更整洁
+          cat >> ~/.ssh/config <<EOF
+          Host remote-server
+              HostName ${{ secrets.SERVER_HOST }}
+              User ${{ secrets.SERVER_USER }}
+              IdentityFile ~/.ssh/id_rsa
+              StrictHostKeyChecking no
+              ServerAliveInterval 60
+          EOF
+          
           echo "Testing SSH Connection..."
           ssh remote-server "echo '✅ SSH Connection OK'"
 
@@ -80,17 +87,23 @@ jobs:
         run: |
           # 使用 config 中定义的 Host 别名
           docker context create remote-context --docker "host=ssh://remote-server"
-          docker context use remote-context
+          # 持久化上下文选择到环境变量，确保后续步骤生效
+          echo "DOCKER_CONTEXT=remote-context" >> $GITHUB_ENV
+
+      - name: 🔍 预检查 Secrets 配置
+        run: |
+          # 检查关键变量是否为空（不打印值）
+          if [[ -z "$SECRET_KEY" || -z "$POSTGRES_PASSWORD" || -z "$ADMIN_EMAIL" ]]; then
+            echo "::error::关键 Secrets 未设置！请检查 GitHub 仓库 Settings -> Secrets -> Actions"
+            echo "缺少: SECRET_KEY, POSTGRES_PASSWORD 或 ADMIN_EMAIL"
+            exit 1
+          fi
+          echo "✅ Secrets 格式检查通过"
 
       - name: 🚀 执行远程滚动部署
         env:
-          # 敏感信息通过环境变量注入内存，不生成物理文件
+          # 只需要注入动态生成的镜像 tag，其他 secrets 已在全局 env 中
           BACKEND_IMAGE: ${{ steps.ver.outputs.BACKEND_IMAGE }}
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
-          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
-          ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
         run: |
           echo "🔑 刷新远程登录状态..."
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -128,6 +141,8 @@ jobs:
           docker image prune -f --filter "until=24h"
 
       - name: 🎉 部署完成通知
+        if: success() # 确保只有成功时才记录
         run: |
           echo "🚀 成功部署版本: ${{ steps.ver.outputs.TAG }}"
-          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "echo ${{ steps.ver.outputs.TAG }} > ~/last_version.txt"
+          # 直接使用别名远程写入
+          ssh remote-server "echo ${{ steps.ver.outputs.TAG }} > ~/last_version.txt"
