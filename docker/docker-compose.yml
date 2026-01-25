@@ -73,7 +73,14 @@ services:
   # ----------------------------------------------------
   # 3. Celery Beat Service
   # ----------------------------------------------------
-  celerironment:
+  celery-beat:
+    image: ${BACKEND_IMAGE:-bipupu-backend:local}
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: bipupu-celery-beat
+    #restart: unless-stopped
+    environment:
       - CONTAINER_ROLE=beat
       - SECRET_KEY=${SECRET_KEY}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -84,13 +91,6 @@ services:
       - ADMIN_EMAIL=${ADMIN_EMAIL}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - ADMIN_USERNAME=${ADMIN_USERNAME}
-      dockerfile: Dockerfile
-    container_name: bipupu-celery-beat
-    #restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      CONTAINER_ROLE: beat
     depends_on:
       db:
         condition: service_healthy
