@@ -53,15 +53,21 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: 🔑 配置 SSH 代理
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
-
-      - name: 🛡️ 扫描主机指纹
+      - name: 🔑 配置 SSH 密钥 (直接文件模式)
         run: |
           mkdir -p ~/.ssh
+          # 为了最大化兼容性（解决 docker context 读取 ssh-agent 失败的问题），
+          # 也就是恢复到将私钥写入临时文件的传统方式。Runner 结束后会自动清理。
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          
+          # 扫描并信任服务器指纹
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          
+          # 测试连接（可选 debug）
+          echo "Testing SSH Connection..."
+          ssh -T -o StrictHostKeyChecking=accept-new ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "echo '✅ SSH Connection OK'" || true
 
       - name: 🌐 激活远程 Docker 上下文
         run: |
