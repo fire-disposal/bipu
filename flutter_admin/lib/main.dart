@@ -12,7 +12,7 @@ void main() async {
 
   // Initialize ApiClient
   ApiClient().init(
-    baseUrl: 'https://firedisposal.fun/api',
+    baseUrl: 'http://38.147.187.207:8000/api',
     tokenStorage: AdminTokenStorage(),
     connectTimeout: 15000,
     receiveTimeout: 15000,
