@@ -102,6 +102,7 @@ jobs:
           export FLUTTER_ADMIN_IMAGE=${FLUTTER_ADMIN_IMAGE}
           docker compose \
             -f docker/docker-compose.flutter-admin.yml \
+            -p bipupu-flutter-admin \
             up -d --remove-orphans
 
       - name: 🩺 运行远程健康检查
@@ -120,7 +121,7 @@ jobs:
 
           if [ "$success" != "true" ]; then
             echo "❌ 健康检查失败，输出异常日志："
-            docker compose -f docker/docker-compose.flutter-admin.yml logs --tail 50
+            docker compose -f docker/docker-compose.flutter-admin.yml -p bipupu-flutter-admin logs --tail 50
             exit 1
           fi
 

@@ -12,4 +12,4 @@ services:
 networks:
   bipupu-net:
     external: true
-    name: docker_bipupu-net
+    name: bipupu-net

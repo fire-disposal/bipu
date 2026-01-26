@@ -161,3 +161,4 @@ volumes:
 networks:
   bipupu-net:
     driver: bridge
+    name: bipupu-net

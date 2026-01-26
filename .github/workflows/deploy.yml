@@ -112,6 +112,7 @@ jobs:
           docker compose \
             -f docker/docker-compose.yml \
             -f docker/docker-compose.prod.yml \
+            -p bipupu-backend \
             up -d --remove-orphans
 
       - name: 🩺 运行远程健康检查
@@ -131,7 +132,7 @@ jobs:
 
           if [ "$success" != "true" ]; then
             echo "❌ 健康检查失败，输出异常日志："
-            docker compose -f docker/docker-compose.yml -f docker/docker-compose.prod.yml logs --tail 50
+            docker compose -f docker/docker-compose.yml -f docker/docker-compose.prod.yml -p bipupu-backend logs --tail 50
             exit 1
           fi
 
