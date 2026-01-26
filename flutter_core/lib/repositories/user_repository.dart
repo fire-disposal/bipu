@@ -1,56 +1,40 @@
 import '../core/network/api_client.dart';
-import '../core/network/api_endpoints.dart';
 import '../models/user_model.dart';
 import '../models/paginated_response.dart';
 
 class UserRepository {
-  final ApiClient _apiClient = ApiClient();
+  final _client = ApiClient().restClient;
+  // Warning: Retaining Dio for complex logic if needed
+  final _dio = ApiClient().dio;
 
   // Auth
   Future<AuthResponse> login(String username, String password) async {
-    final response = await _apiClient.dio.post(
-      ApiEndpoints.login,
-      data: {'username': username, 'password': password},
-    );
-    return AuthResponse.fromJson(response.data);
+    return _client.login({'username': username, 'password': password});
   }
 
   Future<User> register(Map<String, dynamic> userData) async {
-    final response = await _apiClient.dio.post(
-      ApiEndpoints.register,
-      data: userData,
-    );
-    return User.fromJson(response.data);
+    return _client.register(userData);
   }
 
   Future<AuthResponse> refreshToken(String refreshToken) async {
-    final response = await _apiClient.dio.post(
-      ApiEndpoints.refreshToken,
-      data: {'refresh_token': refreshToken},
-    );
-    return AuthResponse.fromJson(response.data);
+    return _client.refreshToken({'refresh_token': refreshToken});
   }
 
   Future<void> logout() async {
-    await _apiClient.dio.post(ApiEndpoints.logout);
+    await _client.logout();
   }
 
   // Current User
   Future<User> getMe() async {
-    final response = await _apiClient.dio.get(ApiEndpoints.me);
-    return User.fromJson(response.data);
+    return _client.getMe();
   }
 
   Future<User> updateMe(Map<String, dynamic> userData) async {
-    final response = await _apiClient.dio.put(ApiEndpoints.me, data: userData);
-    return User.fromJson(response.data);
+    return _client.updateMe(userData);
   }
 
   Future<void> updateOnlineStatus(bool isOnline) async {
-    await _apiClient.dio.put(
-      ApiEndpoints.onlineStatus,
-      queryParameters: {'is_online': isOnline},
-    );
+    await _client.updateOnlineStatus(isOnline);
   }
 
   // User Management
@@ -60,8 +44,16 @@ class UserRepository {
     String? search,
   }) async {
     try {
-      final response = await _apiClient.dio.get(
-        ApiEndpoints.users,
+      // Trying to use Retrofit, but keeping the manual logic in mind.
+      // If the backend is consistent, we should use _client.getUsers.
+      // However, the original code handled List response manually.
+      // To be safe and "fully verify" later, we might want to stick to Dio for this ONE method
+      // OR assume strict contract.
+      // Let's stick to the previous robust implementation using _dio because Retrofit
+      // doesn't handle conditional return types (List vs Map) easily.
+
+      final response = await _dio.get(
+        '/users',
         queryParameters: {
           'page': page,
           'size': size,
@@ -90,17 +82,12 @@ class UserRepository {
   }
 
   Future<User> getUser(int id) async {
-    final response = await _apiClient.dio.get(ApiEndpoints.userDetails(id));
-    return User.fromJson(response.data);
+    return _client.getUserDetails(id);
   }
 
   Future<User> updateUser(int id, Map<String, dynamic> userData) async {
     try {
-      final response = await _apiClient.dio.put(
-        ApiEndpoints.userDetails(id),
-        data: userData,
-      );
-      return User.fromJson(response.data);
+      return await _client.updateUser(id, userData);
     } catch (e) {
       rethrow;
     }
@@ -108,7 +95,7 @@ class UserRepository {
 
   Future<void> deleteUser(int id) async {
     try {
-      await _apiClient.dio.delete(ApiEndpoints.userDetails(id));
+      await _client.deleteUser(id);
     } catch (e) {
       rethrow;
     }
@@ -122,28 +109,17 @@ class UserRepository {
     String? role,
     bool? isActive,
   }) async {
-    final response = await _apiClient.dio.get(
-      ApiEndpoints.adminUsersAll,
-      queryParameters: {
-        'page': page,
-        'size': size,
-        if (search != null) 'search': search,
-        if (role != null) 'role': role,
-        if (isActive != null) 'is_active': isActive,
-      },
-    );
-    return PaginatedResponse.fromJson(
-      response.data,
-      (json) => User.fromJson(json),
+    return _client.adminGetAllUsers(
+      page: page,
+      size: size,
+      search: search,
+      role: role,
+      isActive: isActive,
     );
   }
 
   Future<User> adminUpdateUserStatus(int id, bool isActive) async {
-    final response = await _apiClient.dio.put(
-      ApiEndpoints.adminUserStatus(id),
-      data: {'is_active': isActive},
-    );
-    return User.fromJson(response.data);
+    return _client.adminUpdateUserStatus(id, {'is_active': isActive});
   }
 
   // Create User (Admin) - Using Register endpoint as proxy

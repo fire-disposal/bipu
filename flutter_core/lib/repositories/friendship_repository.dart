@@ -1,19 +1,14 @@
 import '../core/network/api_client.dart';
-import '../core/network/api_endpoints.dart';
 import '../models/friendship_model.dart';
 import '../models/paginated_response.dart';
 import '../models/user_model.dart';
 
 class FriendshipRepository {
-  final ApiClient _apiClient = ApiClient();
+  final _client = ApiClient().restClient;
 
   // Create Request
-  Future<Friendship> sendFriendRequest(int friendId) async {
-    final response = await _apiClient.dio.post(
-      ApiEndpoints.friendships,
-      data: {'friend_id': friendId},
-    );
-    return Friendship.fromJson(response.data);
+  Future<Friendship> sendFriendRequest(int friendId) {
+    return _client.sendFriendRequest({'friend_id': friendId});
   }
 
   // Get Friendships (All statuses, usually filterable)
@@ -21,18 +16,11 @@ class FriendshipRepository {
     int page = 1,
     int size = 20,
     FriendshipStatus? status,
-  }) async {
-    final response = await _apiClient.dio.get(
-      ApiEndpoints.friendships,
-      queryParameters: {
-        'page': page,
-        'size': size,
-        if (status != null) 'status': status.toString().split('.').last,
-      },
-    );
-    return PaginatedResponse.fromJson(
-      response.data,
-      (json) => Friendship.fromJson(json),
+  }) {
+    return _client.getFriendships(
+      page: page,
+      size: size,
+      status: status?.toString().split('.').last,
     );
   }
 
@@ -40,70 +28,37 @@ class FriendshipRepository {
   Future<PaginatedResponse<Friendship>> getFriendRequests({
     int page = 1,
     int size = 20,
-  }) async {
-    final response = await _apiClient.dio.get(
-      ApiEndpoints.friendRequests,
-      queryParameters: {'page': page, 'size': size},
-    );
-    return PaginatedResponse.fromJson(
-      response.data,
-      (json) => Friendship.fromJson(json),
-    );
+  }) {
+    return _client.getFriendRequests(page: page, size: size);
   }
 
   // Get Friends (Accepted) - Returns User objects
-  Future<PaginatedResponse<User>> getFriends({
-    int page = 1,
-    int size = 20,
-  }) async {
-    final response = await _apiClient.dio.get(
-      ApiEndpoints.friends,
-      queryParameters: {'page': page, 'size': size},
-    );
-    // Verified against openapi.json: returns PaginatedResponse[UserResponse]
-    return PaginatedResponse.fromJson(
-      response.data,
-      (json) => User.fromJson(json),
-    );
+  Future<PaginatedResponse<User>> getFriends({int page = 1, int size = 20}) {
+    return _client.getFriends(page: page, size: size);
   }
 
   // Actions
-  Future<Friendship> acceptFriendRequest(int friendshipId) async {
-    final response = await _apiClient.dio.put(
-      ApiEndpoints.acceptFriendRequest(friendshipId),
-    );
-    return Friendship.fromJson(response.data);
+  Future<Friendship> acceptFriendRequest(int friendshipId) {
+    return _client.acceptFriendRequest(friendshipId);
   }
 
-  Future<Friendship> rejectFriendRequest(int friendshipId) async {
-    final response = await _apiClient.dio.put(
-      ApiEndpoints.rejectFriendRequest(friendshipId),
-    );
-    return Friendship.fromJson(response.data);
+  Future<Friendship> rejectFriendRequest(int friendshipId) {
+    return _client.rejectFriendRequest(friendshipId);
   }
 
-  Future<void> deleteFriendship(int friendshipId) async {
-    await _apiClient.dio.delete(ApiEndpoints.friendshipDetails(friendshipId));
+  Future<void> deleteFriendship(int friendshipId) {
+    return _client.deleteFriendship(friendshipId);
   }
 
   // Admin
   Future<PaginatedResponse<Friendship>> adminGetAllFriendships({
     int page = 1,
     int size = 20,
-  }) async {
-    final response = await _apiClient.dio.get(
-      ApiEndpoints.adminFriendshipsAll,
-      queryParameters: {'page': page, 'size': size},
-    );
-    return PaginatedResponse.fromJson(
-      response.data,
-      (json) => Friendship.fromJson(json),
-    );
+  }) {
+    return _client.adminGetAllFriendships(page: page, size: size);
   }
 
-  Future<void> adminDeleteFriendship(int friendshipId) async {
-    await _apiClient.dio.delete(
-      ApiEndpoints.adminFriendshipDetails(friendshipId),
-    );
+  Future<void> adminDeleteFriendship(int friendshipId) {
+    return _client.adminDeleteFriendship(friendshipId);
   }
 }

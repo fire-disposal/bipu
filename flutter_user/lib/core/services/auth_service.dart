@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_core/core/network/api_client.dart';
-import 'package:flutter_core/core/network/api_endpoints.dart';
 import 'package:flutter_core/core/storage/token_storage.dart';
+import 'package:flutter_core/repositories/user_repository.dart';
 import '../storage/mobile_token_storage.dart';
 import 'package:flutter_core/models/user_model.dart';
 
@@ -13,7 +13,7 @@ class AuthService {
 
   final _authStateController = ValueNotifier<AuthStatus>(AuthStatus.unknown);
   final TokenStorage _tokenStorage = MobileTokenStorage();
-  final ApiClient _apiClient = ApiClient();
+  final UserRepository _userRepository = UserRepository();
 
   User? _currentUser;
   bool _isGuest = false;
@@ -30,8 +30,9 @@ class AuthService {
 
   Future<void> initialize() async {
     try {
-      // Set up the unauthorized callback in ApiClient
-      _apiClient.setUnauthorizedCallback(() {
+      // Set up the unauthorized callback in ApiClient if needed
+      // ApiClient(). setUnauthorizedCallback ... (this is usually global)
+      ApiClient().setUnauthorizedCallback(() {
         if (!_isGuest) logout();
       });
 
@@ -55,8 +56,7 @@ class AuthService {
 
   Future<void> fetchCurrentUser() async {
     try {
-      final response = await _apiClient.dio.get('${ApiEndpoints.users}/me');
-      _currentUser = User.fromJson(response.data);
+      _currentUser = await _userRepository.getMe();
     } catch (e) {
       rethrow;
     }
@@ -69,15 +69,12 @@ class AuthService {
     String? nickname,
   }) async {
     try {
-      await _apiClient.dio.post(
-        ApiEndpoints.register,
-        data: {
-          'username': username,
-          'email': email,
-          'password': password,
-          if (nickname != null) 'nickname': nickname,
-        },
-      );
+      await _userRepository.register({
+        'username': username,
+        'email': email,
+        'password': password,
+        if (nickname != null) 'nickname': nickname,
+      });
     } catch (e) {
       rethrow;
     }
@@ -85,19 +82,20 @@ class AuthService {
 
   Future<void> login(String username, String password) async {
     try {
-      final response = await _apiClient.dio.post(
-        ApiEndpoints.login,
-        data: {'username': username, 'password': password},
-      );
-
-      final authResponse = AuthResponse.fromJson(response.data);
+      final authResponse = await _userRepository.login(username, password);
 
       await _tokenStorage.saveTokens(
         accessToken: authResponse.accessToken,
         refreshToken: authResponse.refreshToken,
       );
 
+      // Backend login might not return the full User object if the model differs,
+      // but UserRepository.login returns AuthResponse which usually contains User.
+      // If AuthResponse.user is optional or null, we might need to fetch it.
       _currentUser = authResponse.user;
+      if (_currentUser == null) {
+        await fetchCurrentUser();
+      }
       _authStateController.value = AuthStatus.authenticated;
     } catch (e) {
       rethrow;

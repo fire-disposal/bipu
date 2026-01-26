@@ -1,18 +1,13 @@
 import '../core/network/api_client.dart';
-import '../core/network/api_endpoints.dart';
 import '../models/message_model.dart';
 import '../models/paginated_response.dart';
 
 class MessageRepository {
-  final ApiClient _apiClient = ApiClient();
+  final _client = ApiClient().restClient;
 
   // Create
-  Future<Message> createMessage(Map<String, dynamic> messageData) async {
-    final response = await _apiClient.dio.post(
-      ApiEndpoints.messages,
-      data: messageData,
-    );
-    return Message.fromJson(response.data);
+  Future<Message> createMessage(Map<String, dynamic> messageData) {
+    return _client.createMessage(messageData);
   }
 
   // Get List
@@ -24,29 +19,21 @@ class MessageRepository {
     bool? isRead,
     int? senderId,
     int? receiverId,
-  }) async {
-    final response = await _apiClient.dio.get(
-      ApiEndpoints.messages,
-      queryParameters: {
-        'page': page,
-        'size': size,
-        if (messageType != null)
-          'message_type': messageType.toString().split('.').last,
-        if (status != null) 'status': status.toString().split('.').last,
-        if (isRead != null) 'is_read': isRead,
-        if (senderId != null) 'sender_id': senderId,
-        if (receiverId != null) 'receiver_id': receiverId,
-      },
-    );
-    return PaginatedResponse.fromJson(
-      response.data,
-      (json) => Message.fromJson(json),
+  }) {
+    return _client.getMessages(
+      page: page,
+      size: size,
+      messageType: messageType?.toString().split('.').last,
+      status: status?.toString().split('.').last,
+      isRead: isRead,
+      senderId: senderId,
+      receiverId: receiverId,
     );
   }
 
   // Delete All Read
-  Future<void> deleteReadMessages() async {
-    await _apiClient.dio.delete(ApiEndpoints.messages);
+  Future<void> deleteReadMessages() {
+    return _client.deleteReadMessages();
   }
 
   // Conversation
@@ -54,47 +41,28 @@ class MessageRepository {
     int userId, {
     int page = 1,
     int size = 20,
-  }) async {
-    final response = await _apiClient.dio.get(
-      ApiEndpoints.conversationMessages(userId),
-      queryParameters: {'page': page, 'size': size},
-    );
-    return PaginatedResponse.fromJson(
-      response.data,
-      (json) => Message.fromJson(json),
-    );
+  }) {
+    return _client.getConversationMessages(userId, page: page, size: size);
   }
 
   // Unread
   Future<int> getUnreadCount() async {
-    final response = await _apiClient.dio.get(ApiEndpoints.unreadCount);
-    return response.data['count'] ?? 0;
+    final res = await _client.getUnreadCount();
+    // Assuming the map key is 'count' based on API convention
+    // The previous dynamic code was response.data['count']
+    return res['count'] ?? 0;
   }
 
   Future<PaginatedResponse<Message>> getUnreadMessages({
     int page = 1,
     int size = 20,
-  }) async {
-    final response = await _apiClient.dio.get(
-      ApiEndpoints.unreadMessages,
-      queryParameters: {'page': page, 'size': size},
-    );
-    return PaginatedResponse.fromJson(
-      response.data,
-      (json) => Message.fromJson(json),
-    );
+  }) {
+    return _client.getUnreadMessages(page: page, size: size);
   }
 
   // Recent
-  Future<List<Message>> getRecentMessages({int limit = 10}) async {
-    final response = await _apiClient.dio.get(
-      ApiEndpoints.recentMessages,
-      queryParameters: {'limit': limit},
-    );
-    if (response.data is List) {
-      return (response.data as List).map((e) => Message.fromJson(e)).toList();
-    }
-    return [];
+  Future<List<Message>> getRecentMessages({int limit = 10}) {
+    return _client.getRecentMessages(limit: limit);
   }
 
   // Get Received Messages
@@ -102,24 +70,9 @@ class MessageRepository {
     int page = 1,
     int size = 20,
     int? userId,
-  }) async {
-    // If specific endpoints exist for current user, prefer them if userId is null or matches current
-    // Here we use the generic endpoint with filter if userId provided,
-    // OR we could use ApiEndpoints.receivedMessages if available.
-    // Given ApiEndpoints.receivedMessages exists:
-
-    // Note: If userId is provided and it's NOT the current user, we can't really get their received messages easily
-    // unless we are admin. But this is Client App.
-    // Let's assume this method is for "Current User's Received Messages".
-
-    final response = await _apiClient.dio.get(
-      ApiEndpoints.receivedMessages,
-      queryParameters: {'page': page, 'size': size},
-    );
-    return PaginatedResponse.fromJson(
-      response.data,
-      (json) => Message.fromJson(json),
-    );
+  }) {
+    // Note: userId param is unused in the original implementation for the API call
+    return _client.getReceivedMessages(page: page, size: size);
   }
 
   // Get Sent Messages
@@ -127,48 +80,35 @@ class MessageRepository {
     int page = 1,
     int size = 20,
     int? userId,
-  }) async {
-    final response = await _apiClient.dio.get(
-      ApiEndpoints.sentMessages,
-      queryParameters: {'page': page, 'size': size},
-    );
-    return PaginatedResponse.fromJson(
-      response.data,
-      (json) => Message.fromJson(json),
-    );
+  }) {
+    return _client.getSentMessages(page: page, size: size);
   }
 
   // Message Detail
-  Future<Message> getMessage(int id) async {
-    final response = await _apiClient.dio.get(ApiEndpoints.messageDetails(id));
-    return Message.fromJson(response.data);
+  Future<Message> getMessage(int id) {
+    return _client.getMessage(id);
   }
 
-  Future<Message> updateMessage(int id, Map<String, dynamic> data) async {
-    final response = await _apiClient.dio.put(
-      ApiEndpoints.messageDetails(id),
-      data: data,
-    );
-    return Message.fromJson(response.data);
+  Future<Message> updateMessage(int id, Map<String, dynamic> data) {
+    return _client.updateMessage(id, data);
   }
 
-  Future<void> deleteMessage(int id) async {
-    await _apiClient.dio.delete(ApiEndpoints.messageDetails(id));
+  Future<void> deleteMessage(int id) {
+    return _client.deleteMessage(id);
   }
 
   // Read Status
-  Future<void> markAsRead(int id) async {
-    await _apiClient.dio.put(ApiEndpoints.messageRead(id));
+  Future<void> markAsRead(int id) {
+    return _client.markAsRead(id);
   }
 
-  Future<void> markAllAsRead() async {
-    await _apiClient.dio.put(ApiEndpoints.readAllMessages);
+  Future<void> markAllAsRead() {
+    return _client.markAllAsRead();
   }
 
   // Stats
-  Future<Map<String, dynamic>> getMessageStats() async {
-    final response = await _apiClient.dio.get(ApiEndpoints.messageStats);
-    return response.data;
+  Future<dynamic> getMessageStats() {
+    return _client.getMessageStats();
   }
 
   // Admin
@@ -176,23 +116,15 @@ class MessageRepository {
     int page = 1,
     int size = 20,
     // Add other filters as needed
-  }) async {
-    final response = await _apiClient.dio.get(
-      ApiEndpoints.adminMessagesAll,
-      queryParameters: {'page': page, 'size': size},
-    );
-    return PaginatedResponse.fromJson(
-      response.data,
-      (json) => Message.fromJson(json),
-    );
+  }) {
+    return _client.adminGetAllMessages(page: page, size: size);
   }
 
-  Future<void> adminDeleteMessage(int id) async {
-    await _apiClient.dio.delete(ApiEndpoints.adminMessageDetails(id));
+  Future<void> adminDeleteMessage(int id) {
+    return _client.adminDeleteMessage(id);
   }
 
-  Future<Map<String, dynamic>> adminGetMessageStats() async {
-    final response = await _apiClient.dio.get(ApiEndpoints.adminMessageStats);
-    return response.data;
+  Future<dynamic> adminGetMessageStats() {
+    return _client.adminGetMessageStats();
   }
 }

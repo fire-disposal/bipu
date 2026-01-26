@@ -1,9 +1,10 @@
 import 'package:dio/dio.dart';
 import '../storage/token_storage.dart';
-import 'api_endpoints.dart';
 import '../utils/logger.dart';
 
 class AuthInterceptor extends Interceptor {
+  static const String _refreshTokenPath = '/users/refresh';
+
   final TokenStorage _tokenStorage;
   final Function() _onUnauthorized;
   final Dio _dio; // Store the Dio instance
@@ -38,7 +39,7 @@ class AuthInterceptor extends Interceptor {
     if (err.response?.statusCode == 401) {
       // 如果正在刷新，或者请求本身就是刷新Token的请求，则直接失败
       if (_isRefreshing ||
-          err.requestOptions.path.contains(ApiEndpoints.refreshToken)) {
+          err.requestOptions.path.contains(_refreshTokenPath)) {
         await _performLogout();
         return handler.next(err);
       }
@@ -63,7 +64,7 @@ class AuthInterceptor extends Interceptor {
         );
 
         final response = await _refreshDio!.post(
-          ApiEndpoints.refreshToken,
+          _refreshTokenPath,
           data: {'refresh_token': refreshToken},
         );
 

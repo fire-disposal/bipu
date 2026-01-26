@@ -112,12 +112,6 @@ class _UserLoginPageState extends State<UserLoginPage> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
               ),
-              TextButton(
-                onPressed: () {
-                  context.go('/register');
-                },
-                child: const Text('Create an account'),
-              ),
             ],
           ),
         ),

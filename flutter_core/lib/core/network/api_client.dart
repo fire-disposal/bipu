@@ -2,11 +2,13 @@ import 'package:dio/dio.dart';
 import '../storage/token_storage.dart';
 import 'auth_interceptor.dart';
 import 'logging_interceptor.dart';
+import 'rest_client.dart';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
   late final Dio dio;
   late final TokenStorage _tokenStorage;
+  late RestClient restClient;
 
   factory ApiClient() {
     return _instance;
@@ -41,6 +43,9 @@ class ApiClient {
 
     // Clear existing interceptors to avoid duplicates if init is called multiple times
     dio.interceptors.clear();
+
+    // Initialize RestClient
+    restClient = RestClient(dio, baseUrl: baseUrl);
 
     dio.interceptors.add(
       AuthInterceptor(

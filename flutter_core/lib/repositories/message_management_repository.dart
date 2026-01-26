@@ -1,32 +1,24 @@
 import '../core/network/api_client.dart';
-import '../core/network/api_endpoints.dart';
 import '../models/message_model.dart';
 import '../models/paginated_response.dart';
 
 class MessageManagementRepository {
-  final ApiClient _apiClient = ApiClient();
+  final _client = ApiClient().restClient;
 
   // Favorite (Star)
-  Future<void> favoriteMessage(int messageId) async {
-    await _apiClient.dio.post(ApiEndpoints.favoriteMessage(messageId));
+  Future<void> favoriteMessage(int messageId) {
+    return _client.favoriteMessage(messageId);
   }
 
-  Future<void> unfavoriteMessage(int messageId) async {
-    await _apiClient.dio.delete(ApiEndpoints.favoriteMessage(messageId));
+  Future<void> unfavoriteMessage(int messageId) {
+    return _client.unfavoriteMessage(messageId);
   }
 
   Future<PaginatedResponse<Message>> getFavoriteMessages({
     int page = 1,
     int size = 20,
-  }) async {
-    final response = await _apiClient.dio.get(
-      ApiEndpoints.favorites,
-      queryParameters: {'page': page, 'size': size},
-    );
-    return PaginatedResponse.fromJson(
-      response.data,
-      (json) => Message.fromJson(json),
-    );
+  }) {
+    return _client.getFavoriteMessages(page: page, size: size);
   }
 
   // Sent/Received
@@ -35,18 +27,12 @@ class MessageManagementRepository {
     int size = 20,
     DateTime? dateFrom,
     DateTime? dateTo,
-  }) async {
-    final Map<String, dynamic> queryParams = {'page': page, 'size': size};
-    if (dateFrom != null) queryParams['date_from'] = dateFrom.toIso8601String();
-    if (dateTo != null) queryParams['date_to'] = dateTo.toIso8601String();
-
-    final response = await _apiClient.dio.get(
-      ApiEndpoints.sentMessages,
-      queryParameters: queryParams,
-    );
-    return PaginatedResponse.fromJson(
-      response.data,
-      (json) => Message.fromJson(json),
+  }) {
+    return _client.getSentMessages(
+      page: page,
+      size: size,
+      dateFrom: dateFrom?.toIso8601String(),
+      dateTo: dateTo?.toIso8601String(),
     );
   }
 
@@ -55,72 +41,49 @@ class MessageManagementRepository {
     int size = 20,
     DateTime? dateFrom,
     DateTime? dateTo,
-  }) async {
-    final Map<String, dynamic> queryParams = {'page': page, 'size': size};
-    if (dateFrom != null) queryParams['date_from'] = dateFrom.toIso8601String();
-    if (dateTo != null) queryParams['date_to'] = dateTo.toIso8601String();
-
-    final response = await _apiClient.dio.get(
-      ApiEndpoints.receivedMessages,
-      queryParameters: queryParams,
-    );
-    return PaginatedResponse.fromJson(
-      response.data,
-      (json) => Message.fromJson(json),
+  }) {
+    return _client.getReceivedMessages(
+      page: page,
+      size: size,
+      dateFrom: dateFrom?.toIso8601String(),
+      dateTo: dateTo?.toIso8601String(),
     );
   }
 
   // Archive
-  Future<void> archiveMessage(int id) async {
-    await _apiClient.dio.put(ApiEndpoints.archiveMessage(id));
+  Future<void> archiveMessage(int id) {
+    return _client.archiveMessage(id);
   }
 
   // Batch
-  Future<void> batchDeleteMessages(List<int> ids) async {
-    await _apiClient.dio.delete(
-      ApiEndpoints.batchDeleteMessages,
-      data: {'ids': ids},
-    );
+  Future<void> batchDeleteMessages(List<int> ids) {
+    return _client.batchDeleteMessages({'ids': ids});
   }
 
   // Stats
-  Future<Map<String, dynamic>> getStats() async {
-    final response = await _apiClient.dio.get(
-      ApiEndpoints.messageManagementStats,
-    );
-    return response.data;
+  Future<dynamic> getStats() {
+    return _client.getMessageManagementStats();
   }
 
   // Export
-  Future<Map<String, dynamic>> exportMessagesAdvanced({
+  Future<dynamic> exportMessagesAdvanced({
     required DateTime dateFrom,
     required DateTime dateTo,
     String format = 'json',
-  }) async {
-    final response = await _apiClient.dio.post(
-      ApiEndpoints.exportMessagesAdvanced,
-      data: {
-        'date_from': dateFrom.toIso8601String(),
-        'date_to': dateTo.toIso8601String(),
-        'format': format,
-      },
-    );
-    return response.data;
+  }) {
+    return _client.exportMessagesAdvanced({
+      'date_from': dateFrom.toIso8601String(),
+      'date_to': dateTo.toIso8601String(),
+      'format': format,
+    });
   }
 
   // Search
   Future<PaginatedResponse<Message>> searchMessages({
-    required String query,
+    String? query,
     int page = 1,
     int size = 20,
-  }) async {
-    final response = await _apiClient.dio.get(
-      ApiEndpoints.searchMessages,
-      queryParameters: {'q': query, 'page': page, 'size': size},
-    );
-    return PaginatedResponse.fromJson(
-      response.data,
-      (json) => Message.fromJson(json),
-    );
+  }) {
+    return _client.searchMessages(query: query, page: page, size: size);
   }
 }

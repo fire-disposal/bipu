@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_core/core/network/api_client.dart';
-import 'package:flutter_core/core/network/api_endpoints.dart';
 import 'package:flutter_core/core/storage/token_storage.dart';
+import 'package:flutter_core/repositories/user_repository.dart';
 import '../storage/admin_token_storage.dart';
 import 'package:flutter_core/models/user_model.dart';
 
@@ -13,7 +13,7 @@ class AuthService {
 
   final _authStateController = ValueNotifier<AuthStatus>(AuthStatus.unknown);
   final TokenStorage _tokenStorage = AdminTokenStorage();
-  final ApiClient _apiClient = ApiClient();
+  final UserRepository _userRepository = UserRepository();
 
   User? _currentUser;
 
@@ -29,7 +29,7 @@ class AuthService {
   Future<void> initialize() async {
     try {
       // Set up the unauthorized callback in ApiClient
-      _apiClient.setUnauthorizedCallback(() {
+      ApiClient().setUnauthorizedCallback(() {
         logout();
       });
 
@@ -53,8 +53,7 @@ class AuthService {
 
   Future<void> fetchCurrentUser() async {
     try {
-      final response = await _apiClient.dio.get('${ApiEndpoints.users}/me');
-      _currentUser = User.fromJson(response.data);
+      _currentUser = await _userRepository.getMe();
     } catch (e) {
       rethrow;
     }
@@ -67,15 +66,12 @@ class AuthService {
     String? nickname,
   }) async {
     try {
-      await _apiClient.dio.post(
-        ApiEndpoints.register,
-        data: {
-          'username': username,
-          'email': email,
-          'password': password,
-          if (nickname != null) 'nickname': nickname,
-        },
-      );
+      await _userRepository.register({
+        'username': username,
+        'email': email,
+        'password': password,
+        if (nickname != null) 'nickname': nickname,
+      });
     } catch (e) {
       rethrow;
     }
@@ -83,12 +79,7 @@ class AuthService {
 
   Future<void> login(String username, String password) async {
     try {
-      final response = await _apiClient.dio.post(
-        ApiEndpoints.login,
-        data: {'username': username, 'password': password},
-      );
-
-      final authResponse = AuthResponse.fromJson(response.data);
+      final authResponse = await _userRepository.login(username, password);
 
       await _tokenStorage.saveTokens(
         accessToken: authResponse.accessToken,
@@ -96,6 +87,9 @@ class AuthService {
       );
 
       _currentUser = authResponse.user;
+      if (_currentUser == null) {
+        await fetchCurrentUser();
+      }
       _authStateController.value = AuthStatus.authenticated;
     } catch (e) {
       rethrow;
