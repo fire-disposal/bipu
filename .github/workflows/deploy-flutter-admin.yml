@@ -103,7 +103,7 @@ jobs:
           docker compose \
             -f docker/docker-compose.flutter-admin.yml \
             -p bipupu-flutter-admin \
-            up -d --remove-orphans
+            up -d --force-recreate --remove-orphans
 
       - name: 🩺 运行远程健康检查
         run: |
