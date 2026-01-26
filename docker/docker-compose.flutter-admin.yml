@@ -8,8 +8,8 @@ services:
     ports:
       - "8080:80"  # Assuming nginx on port 80 inside container
     networks:
-      - bipupu-network
+      - bipupu-net
 
 networks:
-  bipupu-network:
+  bipupu-net:
     external: true
