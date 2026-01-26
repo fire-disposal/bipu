@@ -106,21 +106,28 @@ jobs:
             up -d --force-recreate --remove-orphans
 
       - name: 🩺 运行远程健康检查
+        env:
+          FLUTTER_ADMIN_IMAGE: ${{ steps.ver.outputs.FLUTTER_ADMIN_IMAGE }}
         run: |
           echo "🔍 正在确认服务可用性..."
           success=false
           for i in {1..10}; do
-            if curl -f http://localhost:8080 > /dev/null 2>&1; then
-              echo "✅ 服务已就绪！"
-              success=true
-              break
+            # 检查容器是否运行
+            if docker ps --filter "name=bipupu-flutter-admin" --filter "status=running" | grep -q bipupu-flutter-admin; then
+              # 检查 nginx 进程是否在运行
+              if docker exec bipupu-flutter-admin pgrep -f nginx > /dev/null 2>&1; then
+                echo "✅ 服务已就绪！"
+                success=true
+                break
+              fi
             fi
             echo "⏳ 检查中 ($i/10)..."
-            sleep 6
+            sleep 5
           done
 
           if [ "$success" != "true" ]; then
             echo "❌ 健康检查失败，输出异常日志："
+            export FLUTTER_ADMIN_IMAGE=${FLUTTER_ADMIN_IMAGE}
             docker compose -f docker/docker-compose.flutter-admin.yml -p bipupu-flutter-admin logs --tail 50
             exit 1
           fi
