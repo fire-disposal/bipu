@@ -42,8 +42,10 @@ class SpeechRecognitionService {
   Future<void> init() async {
     if (_isInitialized) return;
 
+    sherpa.initBindings();
+
     // TODO: Extract these to a configuration file or remote config if needed
-    const modelDir = 'assets/models';
+    const modelDir = 'assets/models/asr';
     const modelFiles = {
       'tokens': '$modelDir/tokens.txt',
       'encoder': '$modelDir/encoder-epoch-99-avg-1.int8.onnx',

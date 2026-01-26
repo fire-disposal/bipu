@@ -6,6 +6,7 @@ __pycache__/
 # C extensions
 *.so
 *.onnx
+flutter_user/assets/models/
 # Distribution / packaging
 .Python
 build/

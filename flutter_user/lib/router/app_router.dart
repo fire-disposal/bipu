@@ -18,6 +18,7 @@ import '../features/pager/pages/pager_page.dart';
 import '../features/subscription/pages/subscription_page.dart';
 import '../features/common/placeholder_page.dart';
 import '../features/contacts/pages/friend_requests_page.dart';
+import '../features/tts_test/tts_test_page.dart';
 import '../features/contacts/pages/user_search_page.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -105,6 +106,10 @@ class UserRouter {
       GoRoute(
         path: '/speech_test',
         builder: (context, state) => const SpeechTestPage(),
+      ),
+      GoRoute(
+        path: '/tts_test',
+        builder: (context, state) => const TtsTestPage(),
       ),
       GoRoute(
         path: '/subscription',

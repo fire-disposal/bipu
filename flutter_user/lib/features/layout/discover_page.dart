@@ -8,7 +8,10 @@ class DiscoverPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Discover', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Discover',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       body: ListView(
         children: [
@@ -27,6 +30,14 @@ class DiscoverPage extends StatelessWidget {
             subtitle: 'Test voice recognition',
             color: Colors.red,
             route: '/speech_test',
+          ),
+          _buildDiscoverItem(
+            context,
+            icon: Icons.volume_up,
+            title: 'TTS Test',
+            subtitle: 'Test text to speech',
+            color: Colors.green,
+            route: '/tts_test',
           ),
           _buildDiscoverItem(
             context,
@@ -52,15 +63,18 @@ class DiscoverPage extends StatelessWidget {
     return ListTile(
       leading: Icon(icon, color: color, size: 28),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-      subtitle: Text(subtitle, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+      ),
       trailing: const Icon(Icons.chevron_right, color: Colors.grey),
       onTap: () {
         if (route != null) {
           context.push(route);
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Feature coming soon')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Feature coming soon')));
         }
       },
     );
