@@ -185,8 +185,18 @@ class _MainLayoutState extends State<MainLayout> {
     return GestureDetector(
       behavior: HitTestBehavior.translucent, // Improve touch area
       onTap: () => _onItemTapped(index, context),
-      onLongPress: () => _onPagerLongPressed(context),
-      onLongPressUp: () => _onPagerLongPressEnd(context),
+      onLongPress: () {
+        if (isSelected) {
+          _onPagerLongPressed(context);
+        } else {
+          _onItemTapped(index, context);
+        }
+      },
+      onLongPressUp: () {
+        if (isSelected) {
+          _onPagerLongPressEnd(context);
+        }
+      },
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,

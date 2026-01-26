@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
+import 'package:sound_stream/sound_stream.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../core/utils/logger.dart';
 
 class SpeechRecognitionService {
@@ -17,6 +19,7 @@ class SpeechRecognitionService {
   sherpa.OnlineRecognizer? _recognizer;
   sherpa.OnlineStream? _stream;
   StreamSubscription? _audioSubscription;
+  final RecorderStream _recorder = RecorderStream();
 
   bool _isInitialized = false;
   final _resultController = StreamController<String>.broadcast();
@@ -84,6 +87,10 @@ class SpeechRecognitionService {
       );
 
       _recognizer = sherpa.OnlineRecognizer(config);
+
+      // Initialize the audio recorder
+      await _recorder.initialize();
+
       _isInitialized = true;
       Logger.info('SpeechRecognitionService initialized successfully');
     } catch (e, stackTrace) {
@@ -139,6 +146,22 @@ class SpeechRecognitionService {
     }
   }
 
+  /// Starts listening to the microphone.
+  Future<void> startRecording() async {
+    if (!_isInitialized) {
+      Logger.error('SpeechService not initialized. Call init() first.');
+      return;
+    }
+
+    final status = await Permission.microphone.request();
+    if (status != PermissionStatus.granted) {
+      throw Exception('Microphone permission denied');
+    }
+
+    startListening(_recorder.audioStream);
+    await _recorder.start();
+  }
+
   /// Starts listening to the provided audio stream.
   /// The audio stream is expected to be a stream of bytes (Int16 PCM).
   void startListening(Stream<List<int>> audioStream) {
@@ -162,7 +185,8 @@ class SpeechRecognitionService {
     );
   }
 
-  void stop() {
+  Future<void> stop() async {
+    await _recorder.stop();
     _stopCurrentStream();
     _audioSubscription?.cancel();
     _audioSubscription = null;

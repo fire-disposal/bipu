@@ -161,11 +161,11 @@ class HomePage extends StatelessWidget {
                   ),
                   _buildQuickActionCard(
                     context,
-                    'Components',
-                    Icons.widgets,
+                    'Discover',
+                    Icons.explore,
                     Colors.orange,
                     () {
-                      /* Navigate to Components */
+                      context.push('/discover');
                     },
                   ),
                   _buildQuickActionCard(

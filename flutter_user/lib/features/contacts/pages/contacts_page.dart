@@ -64,8 +64,6 @@ class _ContactsPageState extends State<ContactsPage> {
                 badgeCount: requestCount,
                 onTap: () => context.go('/contacts/requests'),
               ),
-              _buildSystemItem(context, Icons.group, 'Groups', Colors.green),
-              _buildSystemItem(context, Icons.label, 'Tags', Colors.blue),
               const Divider(),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -83,12 +81,6 @@ class _ContactsPageState extends State<ContactsPage> {
                   child: Center(child: Text("No friends yet")),
                 ),
               ...friends.map((user) => _buildContactItem(user)),
-              _buildSystemItem(
-                context,
-                Icons.smart_toy,
-                'AI Assistant',
-                Colors.purple,
-              ),
             ],
           );
         },
