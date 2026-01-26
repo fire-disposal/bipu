@@ -298,7 +298,7 @@ abstract class RestClient {
   Future<void> adminDeleteFriendship(@Path('id') int id);
 
   // --- Subscriptions ---
-  @GET('/subscriptions/types')
+  @GET('/subscriptions/subscription-types')
   Future<PaginatedResponse<SubscriptionType>> getSubscriptionTypes({
     @Query('page') int page = 1,
     @Query('size') int size = 20,

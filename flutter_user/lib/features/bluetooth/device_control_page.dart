@@ -230,7 +230,7 @@ class _DeviceControlPageState extends State<DeviceControlPage> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<VibrationType>(
-                    value: _vibrationType,
+                    initialValue: _vibrationType,
                     decoration: const InputDecoration(
                       labelText: 'Vibration',
                       border: OutlineInputBorder(),
@@ -247,7 +247,7 @@ class _DeviceControlPageState extends State<DeviceControlPage> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: DropdownButtonFormField<ScreenEffect>(
-                    value: _screenEffect,
+                    initialValue: _screenEffect,
                     decoration: const InputDecoration(
                       labelText: 'Screen FX',
                       border: OutlineInputBorder(),

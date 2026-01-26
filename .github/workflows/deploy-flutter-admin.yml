@@ -101,7 +101,7 @@ jobs:
           echo "📡 拉取新镜像并启动服务..."
           export FLUTTER_ADMIN_IMAGE=${FLUTTER_ADMIN_IMAGE}
           docker compose \
-            -f docker/docker-compose.flutter-admin.yml \
+            -f flutter_admin/docker/docker-compose.flutter-admin.yml \
             -p bipupu-flutter-admin \
             up -d --force-recreate --remove-orphans
 
@@ -128,7 +128,7 @@ jobs:
           if [ "$success" != "true" ]; then
             echo "❌ 健康检查失败，输出异常日志："
             export FLUTTER_ADMIN_IMAGE=${FLUTTER_ADMIN_IMAGE}
-            docker compose -f docker/docker-compose.flutter-admin.yml -p bipupu-flutter-admin logs --tail 50
+            docker compose -f flutter_admin/docker/docker-compose.flutter-admin.yml -p bipupu-flutter-admin logs --tail 50
             exit 1
           fi
 

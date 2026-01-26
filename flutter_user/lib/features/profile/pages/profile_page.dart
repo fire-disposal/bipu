@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/theme_service.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/services/toast_service.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});

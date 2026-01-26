@@ -1,5 +1,4 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_core/models/user_model.dart';
 import 'package:flutter_core/repositories/friendship_repository.dart';
 import 'package:flutter_core/repositories/user_repository.dart';
 import 'friendship_event.dart';

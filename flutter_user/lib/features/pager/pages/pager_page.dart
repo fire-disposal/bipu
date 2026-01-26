@@ -386,7 +386,7 @@ class _PagerPageState extends State<PagerPage> {
                             prefixIcon: Icon(Icons.vibration),
                             border: OutlineInputBorder(),
                           ),
-                          value: _selectedVibration,
+                          initialValue: _selectedVibration,
                           items: _vibrationPatterns.entries.map((e) {
                             return DropdownMenuItem(
                               value: e.key,
@@ -394,8 +394,9 @@ class _PagerPageState extends State<PagerPage> {
                             );
                           }).toList(),
                           onChanged: (val) {
-                            if (val != null)
+                            if (val != null) {
                               setState(() => _selectedVibration = val);
+                            }
                           },
                         ),
                       ],

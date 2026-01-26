@@ -1699,7 +1699,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/subscriptions/types',
+            '/subscriptions/subscription-types',
             queryParameters: queryParameters,
             data: _data,
           )

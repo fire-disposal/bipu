@@ -1,4 +1,4 @@
-# docker/docker-compose.prod.yml (生产环境专用)
+# backend/docker/docker-compose.prod.yml (生产环境专用)
 services:
   backend:
     restart: unless-stopped
