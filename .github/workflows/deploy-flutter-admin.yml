@@ -1,0 +1,134 @@
+name: Flutter Admin Web部署
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "部署原因"
+        required: false
+        default: "手动触发部署"
+
+env:
+  IMAGE_BASE: ghcr.io/${{ github.repository }}/flutter-admin
+
+jobs:
+  deploy:
+    name: 🏗️ 编译并部署 Flutter Admin
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: 📥 获取源代码
+        uses: actions/checkout@v4
+
+      - name: 🛠️ 设置 Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.10.1'
+
+      - name: 📦 获取依赖
+        working-directory: flutter_admin
+        run: flutter pub get
+
+      - name: 🏗️ 构建 Web 应用
+        working-directory: flutter_admin
+        run: flutter build web --release
+
+      - name: 🛠️ 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔐 登录 GitHub 镜像仓库
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏷️ 生成版本标签
+        id: ver
+        run: |
+          TAG_FINAL="${GITHUB_SHA:0:8}"
+          echo "FLUTTER_ADMIN_IMAGE=${{ env.IMAGE_BASE }}:$TAG_FINAL" >> "$GITHUB_OUTPUT"
+          echo "TAG=$TAG_FINAL" >> "$GITHUB_OUTPUT"
+
+      - name: 📦 构建并推送镜像
+        uses: docker/build-push-action@v5
+        with:
+          context: ./flutter_admin
+          file: ./flutter_admin/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.ver.outputs.FLUTTER_ADMIN_IMAGE }}
+            ${{ env.IMAGE_BASE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 🔑 配置 SSH 密钥
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+          
+          cat >> ~/.ssh/config <<EOF
+          Host remote-server
+              HostName ${{ secrets.SERVER_HOST }}
+              User ${{ secrets.SERVER_USER }}
+              IdentityFile ~/.ssh/id_rsa
+              StrictHostKeyChecking no
+              ServerAliveInterval 60
+          EOF
+          
+          echo "Testing SSH Connection..."
+          ssh remote-server "echo '✅ SSH Connection OK'"
+
+      - name: 🌐 激活远程 Docker 上下文
+        run: |
+          docker context create remote-context --docker "host=ssh://remote-server"
+          echo "DOCKER_CONTEXT=remote-context" >> $GITHUB_ENV
+
+      - name: 🚀 执行远程滚动部署
+        env:
+          FLUTTER_ADMIN_IMAGE: ${{ steps.ver.outputs.FLUTTER_ADMIN_IMAGE }}
+        run: |
+          echo "🔑 刷新远程登录状态..."
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+          echo "📡 拉取新镜像并启动服务..."
+          docker compose \
+            -f docker/docker-compose.flutter-admin.yml \
+            up -d --remove-orphans
+
+      - name: 🩺 运行远程健康检查
+        run: |
+          echo "🔍 正在确认服务可用性..."
+          success=false
+          for i in {1..10}; do
+            if curl -f http://localhost:8080 > /dev/null 2>&1; then
+              echo "✅ 服务已就绪！"
+              success=true
+              break
+            fi
+            echo "⏳ 检查中 ($i/10)..."
+            sleep 6
+          done
+
+          if [ "$success" != "true" ]; then
+            echo "❌ 健康检查失败，输出异常日志："
+            docker compose -f docker/docker-compose.flutter-admin.yml logs --tail 50
+            exit 1
+          fi
+
+      - name: 🧹 清理旧镜像
+        run: |
+          docker image prune -f --filter "until=24h"
+
+      - name: 🎉 部署完成通知
+        if: success()
+        run: |
+          echo "🚀 成功部署 Flutter Admin 版本: ${{ steps.ver.outputs.TAG }}"
+          ssh remote-server "echo ${{ steps.ver.outputs.TAG }} > ~/last_flutter_admin_version.txt"

@@ -311,7 +311,7 @@ class _DashboardViewState extends State<DashboardView> {
     setState(() => _isLoading = true);
     try {
       final health = await _healthRepo.checkHealth();
-      final stats = await _notificationRepo.getAdminSystemNotificationStats();
+      final stats = await _notificationRepo.adminGetStats();
       // Fetch user count loosely via page 1
       final users = await _userRepo.getUsers(page: 1, size: 1);
 

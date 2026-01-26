@@ -11,7 +11,8 @@ class MessageManagementPage extends StatefulWidget {
 }
 
 class _MessageManagementPageState extends State<MessageManagementPage> {
-  final SystemNotificationRepository _notificationRepository = SystemNotificationRepository();
+  final SystemNotificationRepository _notificationRepository =
+      SystemNotificationRepository();
   List<Message> _messages = [];
   bool _isLoading = true;
   String? _error;
@@ -33,10 +34,8 @@ class _MessageManagementPageState extends State<MessageManagementPage> {
     });
 
     try {
-      final response = await _notificationRepository.getAllSystemNotifications(
-        page: _currentPage,
-        size: _pageSize,
-      );
+      final response = await _notificationRepository
+          .adminGetAllSystemNotifications(page: _currentPage, size: _pageSize);
       if (!mounted) return;
       setState(() {
         _messages = response.items;
@@ -52,12 +51,50 @@ class _MessageManagementPageState extends State<MessageManagementPage> {
     }
   }
 
+  Future<void> _deleteMessage(int id) async {
+    try {
+      await _notificationRepository.adminDeleteSystemNotification(id);
+      _loadMessages(); // Reload the list
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to delete message: $e')));
+    }
+  }
+
+  Future<void> _showStats() async {
+    try {
+      final stats = await _notificationRepository.adminGetStats();
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('System Notification Stats'),
+          content: Text('Stats: $stats'), // You can format this better
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to load stats: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('System Notifications'),
         actions: [
+          IconButton(icon: const Icon(Icons.bar_chart), onPressed: _showStats),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadMessages),
         ],
       ),
@@ -85,7 +122,16 @@ class _MessageManagementPageState extends State<MessageManagementPage> {
                       return ListTile(
                         title: Text(message.title),
                         subtitle: Text(message.content),
-                        trailing: Text(message.createdAt.toString()),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(message.createdAt.toString()),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _deleteMessage(message.id),
+                            ),
+                          ],
+                        ),
                       );
                     },
                   ),
