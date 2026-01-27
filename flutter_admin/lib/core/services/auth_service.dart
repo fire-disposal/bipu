@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_core/core/network/api_client.dart';
 import 'package:flutter_core/core/storage/token_storage.dart';
 import 'package:flutter_core/repositories/user_repository.dart';
-import '../storage/admin_token_storage.dart';
+import '../storage/token_storage_factory.dart';
 import 'package:flutter_core/models/user_model.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
@@ -12,7 +12,7 @@ class AuthService {
   static final AuthService _instance = AuthService._internal();
 
   final _authStateController = ValueNotifier<AuthStatus>(AuthStatus.unknown);
-  final TokenStorage _tokenStorage = AdminTokenStorage();
+  final TokenStorage _tokenStorage = TokenStorageFactory.create();
   final UserRepository _userRepository = UserRepository();
 
   User? _currentUser;
