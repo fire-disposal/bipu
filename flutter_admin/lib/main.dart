@@ -15,7 +15,7 @@ void main() async {
 
   // Initialize ApiClient
   ApiClient().init(
-    baseUrl: 'http://38.147.187.207:8000/api',
+    baseUrl: 'https://api.205716.xyz/api',
     tokenStorage: tokenStorage,
     connectTimeout: 15000,
     receiveTimeout: 15000,
