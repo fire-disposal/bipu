@@ -1,9 +1,16 @@
-name: Deploy Flutter User App
+name: flutter用户端Apk Release
 
 on:
   push:
     tags:
       - 'v*'
+  # 添加手动触发途径
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Manual Version Name (e.g., v1.0.0)'
+        required: false
+        default: 'manual-build'
 
 permissions:
   contents: write
@@ -18,15 +25,18 @@ jobs:
 
       - name: Setup Java
         uses: actions/setup-java@v4
-        with: # Flutter 3.10+ 需要 Java 17
+        with:
           distribution: 'zulu'
           java-version: '17'
+          # 开启缓存提高重复运行速度
+          cache: 'gradle'
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-      
+          cache: true
+
       - name: Get dependencies
         working-directory: ./flutter_user
         run: flutter pub get
@@ -35,21 +45,34 @@ jobs:
         working-directory: ./flutter_user
         run: flutter build apk --release
 
-      - name: Rename APK
-        id: rename
+      - name: Prepare Artifact
+        id: prepare
+        shell: bash
         run: |
-          # 构建产物位于 flutter_user/build/app/outputs/flutter-apk/app-release.apk
-          src="flutter_user/build/app/outputs/flutter-apk/app-release.apk"
-          dest="flutter_user/build/app/outputs/flutter-apk/flutter_user_${{ github.ref_name }}.apk"
-          echo "Renaming $src to $dest"
-          mv "$src" "$dest"
-          echo "apk_path=$dest" >> $GITHUB_OUTPUT
+          # 确定版本号：优先取 Tag 名，手动触发则取 input
+          VERSION="${{ github.ref_name }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version_name }}"
+          fi
+          
+          SRC="flutter_user/build/app/outputs/flutter-apk/app-release.apk"
+          DEST="flutter_user/build/app/outputs/flutter-apk/flutter_user_${VERSION}.apk"
+          
+          echo "Renaming $SRC to $DEST"
+          mv "$SRC" "$DEST"
+          
+          # 导出路径供下游使用
+          echo "apk_path=$DEST" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2  # 升级到 v2
         with:
-          files: ${{ steps.rename.outputs.apk_path }}
+          tag_name: ${{ steps.prepare.outputs.version }}
+          name: "Release ${{ steps.prepare.outputs.version }}"
+          files: ${{ steps.prepare.outputs.apk_path }}
           generate_release_notes: true
+          # 手动触发时设为草稿，避免直接污染正式发布
+          draft: ${{ github.event_name == 'workflow_dispatch' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
