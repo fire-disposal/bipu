@@ -5,7 +5,10 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:sound_stream/sound_stream.dart';
 import '../../core/services/toast_service.dart';
 import '../../services/speech_recognition_service.dart';
+import '../../services/ble_service.dart';
+import '../../core/bluetooth/ble_ui_components.dart';
 
+/// 重构后的主布局
 class MainLayout extends StatefulWidget {
   final Widget child;
 
@@ -18,6 +21,7 @@ class MainLayout extends StatefulWidget {
 class _MainLayoutState extends State<MainLayout> {
   final RecorderStream _recorder = RecorderStream();
   final SpeechRecognitionService _speechService = SpeechRecognitionService();
+  final BleService _bleService = BleService();
   bool _isSpeechInitialized = false;
 
   @override
@@ -30,12 +34,16 @@ class _MainLayoutState extends State<MainLayout> {
     try {
       await _recorder.initialize();
       await _speechService.init();
-      setState(() {
-        _isSpeechInitialized = true;
-      });
+      if (mounted) {
+        setState(() {
+          _isSpeechInitialized = true;
+        });
+      }
     } catch (e) {
       debugPrint('Error initializing speech service: $e');
-      ToastService().showError('Speech service init failed: $e');
+      if (mounted) {
+        ToastService().showError('Speech service init failed: $e');
+      }
     }
   }
 
@@ -67,20 +75,18 @@ class _MainLayoutState extends State<MainLayout> {
 
   Future<void> _onPagerLongPressed(BuildContext context) async {
     if (!_isSpeechInitialized) {
-      if (context.mounted) {
+      if (mounted) {
         ToastService().showWarning(
           'Speech service initializing or failed. Check logs.',
         );
-        // Retry initialization in case it was a temporary glitch or user fixed something
         _initSpeech();
       }
       return;
     }
 
-    // Check permissions
     var status = await Permission.microphone.request();
     if (status != PermissionStatus.granted) {
-      if (context.mounted) {
+      if (mounted) {
         ToastService().showWarning('Microphone permission required');
       }
       return;
@@ -90,7 +96,6 @@ class _MainLayoutState extends State<MainLayout> {
       await _recorder.start();
       _speechService.startListening(_recorder.audioStream);
 
-      // Show persistent "Listening..." toast
       ToastService().showInfo(
         'Listening...',
         duration: const Duration(minutes: 1),
@@ -102,24 +107,18 @@ class _MainLayoutState extends State<MainLayout> {
   }
 
   Future<void> _onPagerLongPressEnd(BuildContext context) async {
-    // Hide the "Listening..." toast
     ToastService().scaffoldMessengerKey.currentState?.removeCurrentSnackBar();
 
     await _recorder.stop();
-    _speechService.stop(); // Stops listening to stream, finalizing processing
+    _speechService.stop();
 
-    if (context.mounted) {
-      // Navigate to Pager if not already there
+    if (mounted) {
       context.go('/pager');
     }
   }
 
   @override
   void dispose() {
-    // _recorder.stop(); // Stop if running
-    // _recorder is not disposed here because sound_stream doesn't have explicit dispose?
-    // It has stop, but not dispose in some older versions. Checking source...
-    // Usually it's fine.
     super.dispose();
   }
 
@@ -127,9 +126,16 @@ class _MainLayoutState extends State<MainLayout> {
   Widget build(BuildContext context) {
     final currentIndex = _getCurrentIndex(context);
 
-    // Custom Bottom Navigation Bar
     return Scaffold(
-      body: widget.child,
+      body: Column(
+        children: [
+          // BLE状态指示器
+          BleStatusIndicator(stateManager: _bleService.stateManager),
+
+          // 主内容区域
+          Expanded(child: widget.child),
+        ],
+      ),
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 8,
@@ -183,7 +189,7 @@ class _MainLayoutState extends State<MainLayout> {
     final color = isSelected ? Theme.of(context).primaryColor : Colors.grey;
 
     return GestureDetector(
-      behavior: HitTestBehavior.translucent, // Improve touch area
+      behavior: HitTestBehavior.translucent,
       onTap: () => _onItemTapped(index, context),
       onLongPress: () {
         if (isSelected) {
@@ -201,7 +207,7 @@ class _MainLayoutState extends State<MainLayout> {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.mic, color: color, size: 28), // Larger icon for Pager?
+          Icon(Icons.mic, color: color, size: 28),
           Text('Pager', style: TextStyle(color: color, fontSize: 12)),
         ],
       ),

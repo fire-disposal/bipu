@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/services/toast_service.dart';
+import '../../core/bluetooth/ble_ui_components.dart';
+import '../../core/bluetooth/ble_state_manager.dart';
 import '../../services/ble_service.dart';
+import '../../core/services/toast_service.dart';
 
+/// 重构后的蓝牙扫描页面
 class BluetoothScanPage extends StatefulWidget {
   const BluetoothScanPage({super.key});
 
@@ -13,23 +16,27 @@ class BluetoothScanPage extends StatefulWidget {
 
 class _BluetoothScanPageState extends State<BluetoothScanPage> {
   final BleService _bleService = BleService();
+  late final BleStateManager _stateManager;
 
   @override
   void initState() {
     super.initState();
-    _bleService.addListener(_onBleStateChanged);
+    _stateManager = _bleService.stateManager;
+    _stateManager.addListener(_onBleStateChanged);
     _startScan();
   }
 
   @override
   void dispose() {
-    _bleService.removeListener(_onBleStateChanged);
-    _bleService.stopScan(); // Stop scanning when leaving page
+    _stateManager.removeListener(_onBleStateChanged);
+    _bleService.stopScan();
     super.dispose();
   }
 
   void _onBleStateChanged() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _startScan() async {
@@ -37,20 +44,19 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
   }
 
   Future<void> _connect(BluetoothDevice device) async {
+    if (_bleService.isConnecting) {
+      ToastService().showInfo('Connection already in progress');
+      return;
+    }
+
     try {
-      // Show loading indicator
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (c) => const Center(child: CircularProgressIndicator()),
-      );
+      _showConnectingDialog(device);
 
       await _bleService.connect(device);
 
       if (mounted) {
         Navigator.pop(context); // Close loading
         ToastService().showSuccess('Connected to ${device.platformName}');
-        // Navigate to control page after connection
         context.push('/bluetooth/control');
       }
     } catch (e) {
@@ -61,23 +67,44 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
     }
   }
 
+  void _showConnectingDialog(BluetoothDevice device) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                'Connecting to ${device.platformName}...',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Scan Devices'),
         actions: [
-          if (_bleService.isScanning)
+          if (_stateManager.isScanning)
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(16.0),
                 child: SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    // color: Colors.white, // Removed to use theme default
-                  ),
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
             )
@@ -87,7 +114,7 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
       ),
       body: Column(
         children: [
-          // Header info
+          // 状态信息
           Container(
             padding: const EdgeInsets.all(16),
             color: Colors.blue.withValues(alpha: 0.1),
@@ -100,53 +127,51 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
             ),
           ),
 
+          // 设备列表
           Expanded(
-            child: _bleService.scanResults.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.bluetooth_searching,
-                          size: 64,
-                          color: Colors.grey[300],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _bleService.isScanning
-                              ? 'Scanning...'
-                              : 'No devices found',
-                          style: TextStyle(color: Colors.grey[500]),
-                        ),
-                        if (!_bleService.isScanning)
-                          TextButton(
-                            onPressed: _startScan,
-                            child: const Text("Scan Again"),
-                          ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: _bleService.scanResults.length,
-                    itemBuilder: (context, index) {
-                      final result = _bleService.scanResults[index];
-                      return ListTile(
-                        leading: const Icon(Icons.bluetooth),
-                        title: Text(
-                          result.device.platformName.isEmpty
-                              ? 'Unknown Device'
-                              : result.device.platformName,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(result.device.remoteId.toString()),
-                        trailing: ElevatedButton(
-                          onPressed: () => _connect(result.device),
-                          child: const Text('Connect'),
-                        ),
-                      );
-                    },
-                  ),
+            child: AnimatedBuilder(
+              animation: _stateManager,
+              builder: (context, child) {
+                final devices = _stateManager.devices;
+
+                if (devices.isEmpty) {
+                  return _buildEmptyState();
+                }
+
+                return ListView.builder(
+                  itemCount: devices.length,
+                  itemBuilder: (context, index) {
+                    final deviceInfo = devices[index];
+                    return BleDeviceListItem(
+                      deviceInfo: deviceInfo,
+                      isConnecting:
+                          _stateManager.isConnecting &&
+                          deviceInfo.isLastConnected,
+                      onConnect: () => _connect(deviceInfo.device),
+                    );
+                  },
+                );
+              },
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.bluetooth_searching, size: 64, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          Text(
+            _stateManager.isScanning ? 'Scanning...' : 'No devices found',
+            style: TextStyle(color: Colors.grey[500]),
+          ),
+          if (!_stateManager.isScanning)
+            TextButton(onPressed: _startScan, child: const Text("Scan Again")),
         ],
       ),
     );
