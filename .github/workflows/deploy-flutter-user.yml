@@ -4,7 +4,7 @@ on:
   push:
     tags:
       - 'v*'
-  # 添加手动触发途径
+      - '[0-9]+.[0-9]+.[0-9]+*' # 增加对 0.0.1 这种非 v 开头格式的兼容
   workflow_dispatch:
     inputs:
       version_name:
@@ -22,13 +22,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 获取所有历史，有助于生成 release notes
 
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
-          # 开启缓存提高重复运行速度
           cache: 'gradle'
 
       - name: Setup Flutter
@@ -49,30 +50,36 @@ jobs:
         id: prepare
         shell: bash
         run: |
-          # 确定版本号：优先取 Tag 名，手动触发则取 input
-          VERSION="${{ github.ref_name }}"
+          # 逻辑优化：统一处理版本号
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             VERSION="${{ github.event.inputs.version_name }}"
+          else
+            # 去掉 ref/tags/ 前缀
+            VERSION="${GITHUB_REF#refs/tags/}"
           fi
           
           SRC="flutter_user/build/app/outputs/flutter-apk/app-release.apk"
           DEST="flutter_user/build/app/outputs/flutter-apk/flutter_user_${VERSION}.apk"
           
-          echo "Renaming $SRC to $DEST"
-          mv "$SRC" "$DEST"
-          
-          # 导出路径供下游使用
-          echo "apk_path=$DEST" >> $GITHUB_OUTPUT
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          if [ -f "$SRC" ]; then
+            mv "$SRC" "$DEST"
+            echo "apk_path=$DEST" >> $GITHUB_OUTPUT
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "Error: APK not found at $SRC"
+            exit 1
+          fi
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2  # 升级到 v2
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.prepare.outputs.version }}
           name: "Release ${{ steps.prepare.outputs.version }}"
           files: ${{ steps.prepare.outputs.apk_path }}
           generate_release_notes: true
-          # 手动触发时设为草稿，避免直接污染正式发布
+          # 只有手动触发才是草稿
           draft: ${{ github.event_name == 'workflow_dispatch' }}
+          # 如果是正式 tag，直接发布
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
