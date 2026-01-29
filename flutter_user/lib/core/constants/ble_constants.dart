@@ -11,6 +11,28 @@ class BleConstants {
   static const String batteryServiceUuid = "180F";
   static const String batteryLevelCharUuid = "2A19";
 
+  // 标准当前时间服务 (CTS - Current Time Service)
+  static const String currentTimeServiceUuid = "1805";
+  static const String currentTimeCharUuid = "2A2B";
+  static const String localTimeInfoCharUuid = "2A0F"; // 可选，用于时区信息
+
+  // CTS时间格式常量
+  static const int ctsYearOffset = 1900; // CTS年份从1900年开始计算
+  static const int ctsAdjustReasonManualUpdate = 0x01;
+  static const int ctsAdjustReasonExternalUpdate = 0x02;
+  static const int ctsAdjustReasonTimezoneChange = 0x04;
+  static const int ctsAdjustReasonDSTChange = 0x08; // 夏令时变化
+
+  // CTS星期定义 (BLE标准: 0=未知, 1=周一, 7=周日)
+  static const int ctsWeekdayUnknown = 0;
+  static const int ctsWeekdayMonday = 1;
+  static const int ctsWeekdayTuesday = 2;
+  static const int ctsWeekdayWednesday = 3;
+  static const int ctsWeekdayThursday = 4;
+  static const int ctsWeekdayFriday = 5;
+  static const int ctsWeekdaySaturday = 6;
+  static const int ctsWeekdaySunday = 7;
+
   // 设备过滤配置
   static const List<String> deviceNameFilters = ["BIPUPU", "BIPI"];
 
@@ -30,7 +52,6 @@ class BleConstants {
 
   // 命令类型
   static const int cmdMessage = 0x01;
-  static const int cmdTimeSync = 0x02;
   static const int cmdErrorResponse = 0xFF;
 
   // SharedPreferences键名
@@ -41,4 +62,7 @@ class BleConstants {
   static Guid get serviceGuid => Guid(serviceUuid);
   static Guid get writeCharGuidObj => Guid(writeCharUuid);
   static Guid get notifyCharGuidObj => Guid(notifyCharUuid);
+  static Guid get currentTimeServiceGuid => Guid(currentTimeServiceUuid);
+  static Guid get currentTimeCharGuidObj => Guid(currentTimeCharUuid);
+  static Guid get localTimeInfoCharGuidObj => Guid(localTimeInfoCharUuid);
 }

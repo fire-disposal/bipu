@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../constants/ble_constants.dart';
 import '../protocol/ble_protocol.dart';
+import '../protocol/ble_cts_protocol.dart';
 
 /// 统一的蓝牙管道接口 - 简化版蓝牙管理
 class BlePipeline extends ChangeNotifier {
@@ -23,6 +24,16 @@ class BlePipeline extends ChangeNotifier {
   int? _batteryLevel;
   List<ScanResult> _scanResults = [];
   String? _lastConnectedDeviceId;
+
+  // 时间同步状态 - 使用新的CTS协议
+  BleCtsSyncState _timeSyncState = BleCtsSyncState.none;
+  DateTime? _lastSyncTime;
+  String? _lastSyncError;
+
+  // CTS服务和特征
+  BluetoothService? _ctsService;
+  BluetoothCharacteristic? _currentTimeCharacteristic;
+  BluetoothCharacteristic? _localTimeInfoCharacteristic;
 
   // 订阅管理
   StreamSubscription? _scanSubscription;
@@ -45,6 +56,9 @@ class BlePipeline extends ChangeNotifier {
   int? get batteryLevel => _batteryLevel;
   List<ScanResult> get scanResults => _scanResults;
   String? get lastConnectedDeviceId => _lastConnectedDeviceId;
+  BleCtsSyncState get timeSyncState => _timeSyncState;
+  DateTime? get lastSyncTime => _lastSyncTime;
+  String? get lastSyncError => _lastSyncError;
 
   Future<void> _init() async {
     _prefs = await SharedPreferences.getInstance();
@@ -209,6 +223,12 @@ class BlePipeline extends ChangeNotifier {
     _isConnected = false;
     _connectedDevice = null;
     _batterySubscription?.cancel();
+
+    // 重置时间同步状态
+    _timeSyncState = BleCtsSyncState.none;
+    _lastSyncTime = null;
+    _lastSyncError = null;
+
     notifyListeners();
 
     if (_prefs?.getBool(BleConstants.autoReconnectEnabledKey) ?? true) {
@@ -244,7 +264,16 @@ class BlePipeline extends ChangeNotifier {
           await _handleCustomService(service);
         } else if (serviceUuid.contains(BleConstants.batteryServiceUuid)) {
           await _handleBatteryService(service);
+        } else if (serviceUuid ==
+            BleConstants.currentTimeServiceUuid.toUpperCase()) {
+          await _handleCtsService(service);
         }
+      }
+
+      // 连接成功后立即进行时间同步
+      if (_currentTimeCharacteristic != null) {
+        debugPrint('CTS service found, initiating time sync...');
+        await syncTime();
       }
     } catch (e) {
       debugPrint("Discover services error: $e");
@@ -291,8 +320,58 @@ class BlePipeline extends ChangeNotifier {
     }
   }
 
+  Future<void> _handleCtsService(BluetoothService service) async {
+    debugPrint('Handling CTS service...');
+    _ctsService = service;
+
+    for (final characteristic in service.characteristics) {
+      final charUuid = characteristic.uuid.toString().toUpperCase();
+
+      if (charUuid == BleConstants.currentTimeCharUuid.toUpperCase()) {
+        _currentTimeCharacteristic = characteristic;
+        debugPrint('CTS Current Time characteristic found');
+
+        // 如果特征支持通知，启用通知
+        if (characteristic.properties.notify) {
+          try {
+            await characteristic.setNotifyValue(true);
+            debugPrint('CTS Current Time notifications enabled');
+          } catch (e) {
+            debugPrint('Failed to enable CTS Current Time notifications: $e');
+          }
+        }
+      } else if (charUuid == BleConstants.localTimeInfoCharUuid.toUpperCase()) {
+        _localTimeInfoCharacteristic = characteristic;
+        debugPrint('CTS Local Time Info characteristic found');
+
+        // 如果特征支持通知，启用通知
+        if (characteristic.properties.notify) {
+          try {
+            await characteristic.setNotifyValue(true);
+            debugPrint('CTS Local Time Info notifications enabled');
+          } catch (e) {
+            debugPrint(
+              'Failed to enable CTS Local Time Info notifications: $e',
+            );
+          }
+        }
+      }
+    }
+  }
+
   void _handleNotification(List<int> value) {
     debugPrint("Received notification: $value");
+
+    // 处理CTS相关通知
+    if (_currentTimeCharacteristic != null) {
+      // 可以在这里处理CTS当前时间特征的通知
+      // 例如，设备可能主动发送时间更新
+      if (value.length == BleCtsCurrentTime.dataLength) {
+        _handleCtsTimeUpdate(value);
+      }
+    }
+
+    // 处理其他类型的通知...
   }
 
   /// 自动重连
@@ -392,34 +471,95 @@ class BlePipeline extends ChangeNotifier {
     await sendData(packet);
   }
 
-  /// 时间同步
+  /// 时间同步 - V2.0协议实现
   Future<void> syncTime() async {
     if (!_isConnected) {
       throw Exception('Device not connected');
     }
 
-    final now = DateTime.now();
-    final packet = _createTimeSyncPacket(now);
-    await sendData(packet);
-    debugPrint('Time synchronized: ${now.hour}:${now.minute}');
+    try {
+      // 设置同步状态为进行中
+      _timeSyncState = BleCtsSyncState.pending;
+      _lastSyncError = null;
+      notifyListeners();
+
+      final now = DateTime.now();
+
+      // 创建CTS当前时间数据
+      final currentTime = BleCtsProtocol.createExternalTimeUpdate(now);
+
+      // 验证时间数据
+      if (!BleCtsProtocol.validateCurrentTime(currentTime)) {
+        throw Exception('Invalid time data generated');
+      }
+
+      debugPrint('Sending CTS time sync: $currentTime');
+
+      // 获取CTS当前时间特征
+      final currentTimeChar = _currentTimeCharacteristic;
+      if (currentTimeChar == null) {
+        throw Exception('CTS Current Time characteristic not found');
+      }
+
+      // 写入当前时间数据
+      await currentTimeChar.write(
+        currentTime.toBytes(),
+        withoutResponse: false,
+      );
+
+      // 如果有本地时间信息特征，也写入时区信息
+      final localTimeInfoChar = _localTimeInfoCharacteristic;
+      if (localTimeInfoChar != null) {
+        final localTimeInfo = BleCtsProtocol.createLocalTimeInfo();
+        if (BleCtsProtocol.validateLocalTimeInfo(localTimeInfo)) {
+          await localTimeInfoChar.write(
+            localTimeInfo.toBytes(),
+            withoutResponse: false,
+          );
+          debugPrint('CTS local time info sent: $localTimeInfo');
+        }
+      }
+
+      // 同步成功
+      _timeSyncState = BleCtsSyncState.success;
+      _lastSyncTime = now;
+      debugPrint(
+        'CTS time synchronized successfully: ${now.year}-${now.month}-${now.day} ${now.hour}:${now.minute}:${now.second}',
+      );
+    } catch (e) {
+      _timeSyncState = BleCtsSyncState.failed;
+      _lastSyncError = e.toString();
+      debugPrint('CTS time synchronization failed: $e');
+      rethrow;
+    } finally {
+      notifyListeners();
+    }
   }
 
-  List<int> _createTimeSyncPacket(DateTime time) {
-    final packet = BytesBuilder();
-    packet.addByte(BleConstants.cmdTimeSync);
-    packet.addByte(time.hour);
-    packet.addByte(time.minute);
-    packet.addByte(time.second);
-    packet.addByte(time.weekday - 1);
+  /// 处理CTS时间同步响应（设备可能主动发送时间更新）
+  void _handleCtsTimeUpdate(List<int> timeData) {
+    try {
+      if (timeData.length != BleCtsCurrentTime.dataLength) {
+        throw Exception('Invalid CTS time data length');
+      }
 
-    final bytes = packet.toBytes();
-    int checksum = 0;
-    for (final byte in bytes) {
-      checksum += byte.toInt();
+      final currentTime = BleCtsCurrentTime.fromBytes(
+        Uint8List.fromList(timeData),
+      );
+      debugPrint('Received CTS time update: $currentTime');
+
+      if (!BleCtsProtocol.validateCurrentTime(currentTime)) {
+        throw Exception('Invalid CTS time data');
+      }
+
+      // 设备主动发送时间更新，可以记录或处理
+      _lastSyncTime = currentTime.toDateTime();
+      debugPrint('CTS time updated by device: $_lastSyncTime');
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error processing CTS time update: $e');
     }
-    packet.addByte(checksum & 0xFF);
-
-    return packet.toBytes();
   }
 
   /// 设置自动重连

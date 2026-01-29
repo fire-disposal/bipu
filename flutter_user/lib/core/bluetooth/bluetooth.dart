@@ -15,4 +15,10 @@ export 'ble_simple_ui.dart'
 
 // 协议相关
 export '../protocol/ble_protocol.dart'
-    show ColorData, VibrationType, ScreenEffect;
+    show ColorData, VibrationType, ScreenEffect, BleCommandType;
+export '../protocol/ble_cts_protocol.dart'
+    show
+        BleCtsSyncState,
+        BleCtsProtocol,
+        BleCtsCurrentTime,
+        BleCtsLocalTimeInfo;
