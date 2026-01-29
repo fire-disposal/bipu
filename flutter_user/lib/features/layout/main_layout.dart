@@ -5,8 +5,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:sound_stream/sound_stream.dart';
 import '../../core/services/toast_service.dart';
 import '../../services/speech_recognition_service.dart';
-import '../../services/ble_service.dart';
-import '../../core/bluetooth/ble_ui_components.dart';
+import '../../core/bluetooth/ble_pipeline.dart';
 
 /// 重构后的主布局
 class MainLayout extends StatefulWidget {
@@ -21,7 +20,7 @@ class MainLayout extends StatefulWidget {
 class _MainLayoutState extends State<MainLayout> {
   final RecorderStream _recorder = RecorderStream();
   final SpeechRecognitionService _speechService = SpeechRecognitionService();
-  final BleService _bleService = BleService();
+  final BlePipeline _blePipeline = BlePipeline();
   bool _isSpeechInitialized = false;
 
   @override
@@ -129,9 +128,6 @@ class _MainLayoutState extends State<MainLayout> {
     return Scaffold(
       body: Column(
         children: [
-          // BLE状态指示器
-          BleStatusIndicator(stateManager: _bleService.stateManager),
-
           // 主内容区域
           Expanded(child: widget.child),
         ],

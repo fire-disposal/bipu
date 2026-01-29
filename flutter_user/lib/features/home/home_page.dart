@@ -1,8 +1,143 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/bluetooth/ble_pipeline.dart';
+import '../../core/bluetooth/ble_simple_ui.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final BlePipeline _blePipeline = BlePipeline();
+  late final SimpleBleState _bleState;
+
+  @override
+  void initState() {
+    super.initState();
+    _bleState = SimpleBleState();
+    _bleState.addListener(_onBleStateChanged);
+  }
+
+  @override
+  void dispose() {
+    _bleState.removeListener(_onBleStateChanged);
+    _bleState.dispose();
+    super.dispose();
+  }
+
+  void _onBleStateChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Widget _buildConnectionStatus() {
+    if (_bleState.isConnecting) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: Colors.orange.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.orange),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Connecting',
+              style: TextStyle(
+                color: Colors.orange.shade700,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (_bleState.isConnected) {
+      final batteryLevel = _bleState.batteryLevel;
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: Colors.green.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.green),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.bluetooth_connected,
+              size: 14,
+              color: Colors.green,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Connected',
+              style: TextStyle(
+                color: Colors.green.shade700,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+            if (batteryLevel != null) ...[
+              const SizedBox(width: 8),
+              Icon(
+                batteryLevel > 20 ? Icons.battery_std : Icons.battery_alert,
+                size: 14,
+                color: batteryLevel > 20 ? Colors.green : Colors.red,
+              ),
+              Text(
+                '$batteryLevel%',
+                style: TextStyle(
+                  color: Colors.green.shade700,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    } else {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.errorContainer,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Theme.of(context).colorScheme.error),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.link_off,
+              size: 14,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Disconnected',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +152,13 @@ class HomePage extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.bluetooth),
             tooltip: 'Bluetooth',
-            onPressed: () => context.push('/bluetooth'),
+            onPressed: () {
+              if (_bleState.isConnected) {
+                context.push('/bluetooth/control');
+              } else {
+                context.push('/bluetooth/scan');
+              }
+            },
           ),
         ],
       ),
@@ -61,37 +202,7 @@ class HomePage extends StatelessWidget {
                           ),
                         ),
                         // Connection status
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.errorContainer,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.link_off,
-                                size: 14,
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Disconnected',
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.error,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        _buildConnectionStatus(),
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -105,14 +216,21 @@ class HomePage extends StatelessWidget {
                         const SizedBox(width: 16),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
+                          children: [
                             Text(
-                              'No Device Bound',
-                              style: TextStyle(fontWeight: FontWeight.w500),
+                              _bleState.isConnected
+                                  ? (_bleState.connectedDevice?.platformName ??
+                                        'Unknown Device')
+                                  : 'No Device Bound',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                             Text(
-                              'ID: --',
-                              style: TextStyle(color: Colors.grey),
+                              _bleState.isConnected
+                                  ? 'ID: ${_bleState.connectedDevice?.remoteId.str ?? '--'}'
+                                  : 'ID: --',
+                              style: const TextStyle(color: Colors.grey),
                             ),
                           ],
                         ),
@@ -121,10 +239,22 @@ class HomePage extends StatelessWidget {
                     const SizedBox(height: 20),
                     ElevatedButton.icon(
                       onPressed: () {
-                        context.push('/bluetooth');
+                        if (_bleState.isConnected) {
+                          context.push('/bluetooth/control');
+                        } else {
+                          context.push('/bluetooth/scan');
+                        }
                       },
-                      icon: const Icon(Icons.add_link),
-                      label: const Text('Connect Device'),
+                      icon: Icon(
+                        _bleState.isConnected
+                            ? Icons.settings_remote
+                            : Icons.add_link,
+                      ),
+                      label: Text(
+                        _bleState.isConnected
+                            ? 'Control Device'
+                            : 'Connect Device',
+                      ),
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size(double.infinity, 50),
                         shape: RoundedRectangleBorder(
