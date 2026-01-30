@@ -30,6 +30,10 @@ class MessageBase(BaseModel):
     pattern: Optional[dict] = None  # 复合信息格式：{"vibe": {...}, "rgb": {...}, "screen": {...}, "source_type": "user", "source_id": 123, "cosmic_data": {...}}
     sender_id: Optional[int] = None
     receiver_id: Optional[int] = None
+
+
+class MessageCreate(MessageBase):
+    """创建消息模式"""
     
     @validator('pattern')
     def validate_pattern(cls, v):
@@ -72,11 +76,6 @@ class MessageBase(BaseModel):
                     raise ValueError('星座信息无效')
         
         return v
-
-
-class MessageCreate(MessageBase):
-    """创建消息模式"""
-    pass
 
 
 class MessageUpdate(BaseModel):
