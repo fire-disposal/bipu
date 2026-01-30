@@ -32,4 +32,4 @@ api_router.include_router(message_management.router, prefix="/message-management
 # 系统管理与通知
 api_router.include_router(subscription_management.router, prefix="/subscriptions", tags=["Subscriptions"])
 api_router.include_router(system_notifications.router, prefix="/system-notifications", tags=["System Notifications"])
-api_router.include_router(admin_logs.router, prefix="/admin-logs", tags=["Admin Logs"])
+api_router.include_router(admin_logs.router, prefix="/admin/logs", tags=["Admin Logs"])

@@ -93,15 +93,6 @@ def create_app() -> FastAPI:
         redoc_url="/api/redoc",
     )
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.ALLOWED_HOSTS,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    # 安全头中间件 (替代 Nginx 功能)
     @app.middleware("http")
     async def add_security_headers(request: Request, call_next):
         response = await call_next(request)
