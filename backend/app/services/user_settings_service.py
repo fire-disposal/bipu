@@ -7,7 +7,6 @@ from app.models.user import User
 from app.models.user_block import UserBlock
 from app.models.message_favorite import MessageFavorite
 from app.models.message import Message
-from app.models.subscription import SubscriptionType, UserSubscription
 from app.schemas.user_settings import (
     UserProfileUpdate, UserSettingsUpdate, PasswordChange,
     BlockUserRequest, ExportMessagesRequest, MessageStatsRequest
@@ -201,37 +200,3 @@ class UserSettingsService:
             "by_date": by_date
         }
 
-    def get_subscriptions(self, user: User) -> List[UserSubscription]:
-        """获取用户订阅"""
-        return self.db.query(UserSubscription).filter(
-            UserSubscription.user_id == user.id
-        ).all()
-
-    def update_subscription(self, user: User, subscription_type_id: int, is_enabled: bool, custom_settings: Optional[Dict[str, Any]] = None) -> UserSubscription:
-        """更新订阅设置"""
-        subscription_type = self.db.query(SubscriptionType).filter(
-            SubscriptionType.id == subscription_type_id
-        ).first()
-        
-        if not subscription_type:
-            raise NotFoundException("订阅类型不存在")
-        
-        user_subscription = self.db.query(UserSubscription).filter(
-            UserSubscription.user_id == user.id,
-            UserSubscription.subscription_type_id == subscription_type_id
-        ).first()
-        
-        if not user_subscription:
-            user_subscription = UserSubscription(
-                user_id=user.id,
-                subscription_type_id=subscription_type_id
-            )
-            self.db.add(user_subscription)
-        
-        user_subscription.is_enabled = is_enabled
-        if custom_settings:
-            user_subscription.custom_settings = custom_settings
-        
-        self.db.commit()
-        self.db.refresh(user_subscription)
-        return user_subscription

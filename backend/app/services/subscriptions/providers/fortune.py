@@ -13,16 +13,12 @@ class FortuneProvider(BaseDataProvider):
     def get_data(self, zodiac: str, **kwargs) -> Dict[str, Any]:
         cache_key = f"fortune:{zodiac}"
         
-        # 1. 尝试从缓存获取
         cached_data = cache.get(cache_key)
         if cached_data:
             return cached_data
             
-        # 2. 缓存未命中，调用 API 获取
         data = self._fetch_from_api(zodiac)
-        
-        # 3. 写入缓存 (缓存 24 小时，因为运势通常是按天更新)
-        cache.set(cache_key, data, timeout=86400)
+        cache.set(cache_key, data, timeout=86400)  # 缓存24小时
         
         return data
 

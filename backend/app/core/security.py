@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.db.database import get_db
 from app.models.user import User
 from app.core.logging import get_logger
+from app.services.redis_service import RedisService
 
 logger = get_logger(__name__)
 
@@ -77,6 +78,11 @@ async def get_current_user(
     
     try:
         token = credentials.credentials
+        
+        # 检查令牌是否在黑名单中
+        if await RedisService.is_token_blacklisted(token):
+            raise credentials_exception
+            
         payload = decode_token(token)
         if payload is None:
             raise credentials_exception

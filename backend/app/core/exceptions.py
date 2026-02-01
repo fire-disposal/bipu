@@ -1,128 +1,125 @@
-"""自定义异常处理"""
-from typing import Any, Dict, Optional
-from fastapi import HTTPException, Request, status
+"""统一异常处理模块"""
+
+from typing import Optional, Dict, Any
+from fastapi import HTTPException, status, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
 
-class ErrorResponse(BaseModel):
-    """错误响应模型"""
-    error: str
-    message: str
-    details: Optional[Dict[str, Any]] = None
-    request_id: Optional[str] = None
+class BaseCustomException(Exception):
+    """自定义异常基类"""
+    
+    def __init__(self, message: str, code: Optional[str] = None, details: Optional[Dict[str, Any]] = None):
+        self.message = message
+        self.code = code
+        self.details = details or {}
+        super().__init__(self.message)
 
 
-class BusinessException(HTTPException):
-    """业务异常基类"""
-    def __init__(
-        self,
-        status_code: int = status.HTTP_400_BAD_REQUEST,
-        detail: str = "Business error occurred",
-        headers: Optional[Dict[str, str]] = None,
-        error_code: Optional[str] = None
-    ):
-        super().__init__(status_code=status_code, detail=detail, headers=headers)
-        self.error_code = error_code
-
-
-class NotFoundException(BusinessException):
-    """资源未找到异常"""
-    def __init__(self, detail: str = "Resource not found"):
-        super().__init__(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=detail,
-            error_code="NOT_FOUND"
-        )
-
-
-class UnauthorizedException(BusinessException):
-    """未授权异常"""
-    def __init__(self, detail: str = "Unauthorized"):
-        super().__init__(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=detail,
-            error_code="UNAUTHORIZED"
-        )
-
-
-class ForbiddenException(BusinessException):
-    """权限不足异常"""
-    def __init__(self, detail: str = "Forbidden"):
-        super().__init__(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=detail,
-            error_code="FORBIDDEN"
-        )
-
-
-class ValidationException(BusinessException):
+class ValidationException(BaseCustomException):
     """验证异常"""
-    def __init__(self, detail: str = "Validation error"):
-        super().__init__(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=detail,
-            error_code="VALIDATION_ERROR"
-        )
+    pass
 
 
-class DatabaseException(BusinessException):
-    """数据库异常"""
-    def __init__(self, detail: str = "Database error"):
-        super().__init__(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=detail,
-            error_code="DATABASE_ERROR"
-        )
+class NotFoundException(BaseCustomException):
+    """资源未找到异常"""
+    pass
 
 
-async def business_exception_handler(request: Request, exc: BusinessException) -> JSONResponse:
-    """业务异常处理器"""
-    logger.error(f"Business exception: {exc.detail}, Error code: {exc.error_code}")
+class UnauthorizedException(BaseCustomException):
+    """未授权异常"""
+    pass
+
+
+class ForbiddenException(BaseCustomException):
+    """禁止访问异常"""
+    pass
+
+
+class ConflictException(BaseCustomException):
+    """冲突异常"""
+    pass
+
+
+class InternalServerException(BaseCustomException):
+    """服务器内部错误异常"""
+    pass
+
+
+def exception_handler(exc: BaseCustomException) -> Dict[str, Any]:
+    """异常转换为HTTP响应格式"""
+    return {
+        "success": False,
+        "error": {
+            "type": exc.__class__.__name__,
+            "message": exc.message,
+            "code": exc.code,
+            "details": exc.details
+        }
+    }
+
+
+async def custom_exception_handler(request: Request, exc: BaseCustomException) -> JSONResponse:
+    """FastAPI异常处理器"""
+    logger.error(f"Exception occurred: {exc.__class__.__name__}: {exc.message}")
+    
+    # 根据异常类型返回相应的HTTP状态码
+    if isinstance(exc, ValidationException):
+        status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    elif isinstance(exc, NotFoundException):
+        status_code = status.HTTP_404_NOT_FOUND
+    elif isinstance(exc, UnauthorizedException):
+        status_code = status.HTTP_401_UNAUTHORIZED
+    elif isinstance(exc, ForbiddenException):
+        status_code = status.HTTP_403_FORBIDDEN
+    elif isinstance(exc, ConflictException):
+        status_code = status.HTTP_409_CONFLICT
+    else:
+        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
     
     return JSONResponse(
-        status_code=exc.status_code,
-        content=ErrorResponse(
-            error=exc.error_code or "BUSINESS_ERROR",
-            message=exc.detail,
-            request_id=getattr(request.state, "request_id", None)
-        ).model_dump()
+        status_code=status_code,
+        content=exception_handler(exc)
     )
 
 
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
-    """HTTP异常处理器"""
-    logger.error(f"HTTP exception: {exc.detail}, Status code: {exc.status_code}")
+    """处理HTTPException"""
+    logger.warning(f"HTTP Exception: {exc.status_code} - {exc.detail}")
+    
+    error_response = {
+        "success": False,
+        "error": {
+            "type": "HTTPException",
+            "message": str(exc.detail),
+            "code": str(exc.status_code),
+            "details": {}
+        }
+    }
     
     return JSONResponse(
         status_code=exc.status_code,
-        content=ErrorResponse(
-            error="HTTP_ERROR",
-            message=exc.detail,
-            request_id=getattr(request.state, "request_id", None)
-        ).model_dump()
+        content=error_response
     )
 
 
 async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """通用异常处理器"""
-    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    """处理一般异常"""
+    logger.error(f"General exception: {exc}", exc_info=True)
+    
+    error_response = {
+        "success": False,
+        "error": {
+            "type": "InternalServerError",
+            "message": "Internal server error",
+            "code": "INTERNAL_ERROR",
+            "details": {}
+        }
+    }
     
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=ErrorResponse(
-            error="INTERNAL_SERVER_ERROR",
-            message="An internal server error occurred",
-            request_id=getattr(request.state, "request_id", None)
-        ).model_dump()
+        content=error_response
     )
-
-
-def register_exception_handlers(app):
-    """注册异常处理器"""
-    app.add_exception_handler(BusinessException, business_exception_handler)
-    app.add_exception_handler(HTTPException, http_exception_handler)
-    app.add_exception_handler(Exception, general_exception_handler)

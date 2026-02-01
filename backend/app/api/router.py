@@ -1,35 +1,21 @@
 from fastapi import APIRouter
 
-from app.api.endpoints import (
-    admin_logs,
-    friendships,
-    health,
-    messages,
-    message_ack,
-    message_management,
-    subscription_management,
-    system_notifications,
-    users,
-    user_settings,
-)
+# 导入新的路由模块
+from app.api.routes.root import router as root_router
+from app.api.routes.public import router as public_router
+from app.api.routes.client import router as client_router  # 这会导入 client.py 文件
+from app.api.routes.admin import router as admin_router    # 这会导入 admin.py 文件
 
 api_router = APIRouter()
 
-# 包含各个模块的路由
-# 系统健康
-api_router.include_router(health.router, prefix="/health", tags=["System Health"])
+# 根目录路由 (健康检查、文档等)
+api_router.include_router(root_router)
 
-# 用户与设置
-api_router.include_router(users.router, prefix="/users", tags=["Users"])
-api_router.include_router(user_settings.router, prefix="/user-settings", tags=["User Settings"])
-api_router.include_router(friendships.router, prefix="/friendships", tags=["Friendships"])
+# 公共接口路由 (登录注册等通用功能)
+api_router.include_router(public_router, prefix="/public", tags=["Public"])
 
-# 消息系统
-api_router.include_router(messages.router, prefix="/messages", tags=["Messages"])
-api_router.include_router(message_ack.router, prefix="/message-ack", tags=["Message Acknowledgments"])
-api_router.include_router(message_management.router, prefix="/message-management", tags=["Message Management"])
+# 客户端API路由 (用户业务功能，无需管理员权限)
+api_router.include_router(client_router, prefix="/client", tags=["Client"])
 
-# 系统管理与通知
-api_router.include_router(subscription_management.router, prefix="/subscriptions", tags=["Subscriptions"])
-api_router.include_router(system_notifications.router, prefix="/system-notifications", tags=["System Notifications"])
-api_router.include_router(admin_logs.router, prefix="/admin/logs", tags=["Admin Logs"])
+# 管理员API路由 (需要管理员身份)
+api_router.include_router(admin_router, prefix="/admin", tags=["Admin"])

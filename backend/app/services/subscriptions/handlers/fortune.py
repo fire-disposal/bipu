@@ -30,5 +30,5 @@ class FortuneSubscriptionHandler(BaseSubscriptionHandler):
                 "data": data,
                 "display_mode": "card"
             },
-            "category": "fortune_subscription"
+            "category": "fortune"
         }

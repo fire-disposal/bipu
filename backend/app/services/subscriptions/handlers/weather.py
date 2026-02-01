@@ -10,15 +10,11 @@ class WeatherSubscriptionHandler(BaseSubscriptionHandler):
         self.provider = WeatherProvider()
 
     def generate_message_data(self, user_id: int, subscription: UserSubscription, db: Session) -> Optional[Dict[str, Any]]:
-        # 1. 获取用户配置
         settings = subscription.custom_settings or {}
         city = settings.get("city", "北京")
         
-        # 2. 获取数据
         weather_data = self.provider.get_data(city)
         
-        # 3. 组装消息
-        # 参考 Message 模型结构
         return {
             "title": f"{city}今日天气 - {weather_data['condition']}",
             "content": (

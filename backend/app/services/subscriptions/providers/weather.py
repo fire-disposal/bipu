@@ -14,16 +14,12 @@ class WeatherProvider(BaseDataProvider):
     def get_data(self, city: str, **kwargs) -> Dict[str, Any]:
         cache_key = f"weather:{city}"
         
-        # 1. 尝试从缓存获取
         cached_data = cache.get(cache_key)
         if cached_data:
             return cached_data
         
-        # 2. 缓存未命中，调用 API 获取
         data = self._fetch_from_api(city)
-        
-        # 3. 写入缓存 (缓存 30 分钟)
-        cache.set(cache_key, data, timeout=1800)
+        cache.set(cache_key, data, timeout=1800)  # 缓存30分钟
         
         return data
 

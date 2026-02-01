@@ -63,7 +63,6 @@ class UserProfileUpdate(BaseModel):
     """用户资料更新"""
     nickname: Optional[str] = Field(None, max_length=50)
     full_name: Optional[str] = Field(None, max_length=100)
-    avatar_url: Optional[str] = Field(None, max_length=500)
     birth_date: Optional[date] = None
     zodiac_sign: Optional[str] = Field(None, max_length=20)
     mbti_type: Optional[str] = Field(None, max_length=10)
@@ -80,7 +79,6 @@ class UserProfileResponse(BaseModel):
     username: str
     nickname: Optional[str]
     full_name: Optional[str]
-    avatar_url: Optional[str]
     birth_date: Optional[date]
     zodiac_sign: Optional[str]
     mbti_type: Optional[str]
@@ -136,7 +134,6 @@ class BlockedUserResponse(BaseModel):
     id: int
     username: str
     nickname: Optional[str]
-    avatar_url: Optional[str]
     blocked_at: datetime
 
     class Config:

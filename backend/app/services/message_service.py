@@ -65,7 +65,7 @@ class MessageService:
         
         return db_message
 
-    def get_messages(
+    async def get_messages(
         self, 
         user: User, 
         params: PaginationParams,
@@ -77,7 +77,43 @@ class MessageService:
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None
     ) -> Tuple[List[Message], int]:
-        """获取消息列表"""
+        """获取消息列表 - 带Redis缓存优化"""
+        # 构建缓存键
+        cache_key_parts = [
+            f"user:{user.id}",
+            f"page:{params.page}",
+            f"size:{params.size}"
+        ]
+        if message_type:
+            cache_key_parts.append(f"type:{message_type.value}")
+        if status:
+            cache_key_parts.append(f"status:{status.value}")
+        if is_read is not None:
+            cache_key_parts.append(f"read:{is_read}")
+        if sender_id:
+            cache_key_parts.append(f"sender:{sender_id}")
+        if receiver_id:
+            cache_key_parts.append(f"receiver:{receiver_id}")
+        if start_date:
+            cache_key_parts.append(f"start:{start_date.isoformat()}")
+        if end_date:
+            cache_key_parts.append(f"end:{end_date.isoformat()}")
+            
+        cache_key = "messages:" + ":".join(cache_key_parts)
+        
+        # 尝试从缓存获取
+        cached_result = await RedisService.get_cached_api_response(cache_key)
+        if cached_result is not None:
+            messages_data = cached_result.get("messages", [])
+            total = cached_result.get("total", 0)
+            # 重建消息对象（简化处理，实际项目中可能需要更完整的序列化）
+            messages = []
+            for msg_data in messages_data:
+                msg = Message(**msg_data)
+                messages.append(msg)
+            return messages, total
+        
+        # 从数据库查询
         query = self.db.query(Message).filter(
             (Message.sender_id == user.id) | (Message.receiver_id == user.id)
         )
@@ -100,6 +136,18 @@ class MessageService:
         total = query.count()
         # Ensure consistent ordering
         messages = query.order_by(Message.created_at.desc()).offset(params.skip).limit(params.size).all()
+        
+        # 缓存结果
+        messages_data = []
+        for msg in messages:
+            msg_dict = {column.name: getattr(msg, column.name) for column in msg.__table__.columns}
+            messages_data.append(msg_dict)
+            
+        cache_result = {
+            "messages": messages_data,
+            "total": total
+        }
+        await RedisService.cache_api_response(cache_key, cache_result, expire=60)  # 1分钟缓存
         
         return messages, total
 

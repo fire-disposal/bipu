@@ -27,38 +27,28 @@ class SubscriptionManager:
     def process_subscriptions(self, subscriptions: List[UserSubscription], db: Session) -> Dict[str, int]:
         """处理订阅列表并生成消息"""
         created_count = 0
-        
-        # 获取系统用户作为发送者 (通常是 ID 1 或第一个超级用户)
-        # 这里简化处理，假设 ID 1 是系统管理员
-        # 实际生产中建议专门创建一个 "System" 用户
-        system_sender_id = 1
+        system_sender_id = 1  # 系统用户ID
         
         for sub in subscriptions:
             try:
-                # 1. 获取对应的处理器 (通过 category)
-                category = sub.subscription_type.category
-                handler = self.handlers.get(category)
-                
+                handler = self.handlers.get(sub.subscription_type.category)
                 if not handler:
-                    logger.warning(f"未找到订阅类型处理器: {category}")
+                    logger.warning(f"未找到订阅类型处理器: {sub.subscription_type.category}")
                     continue
                 
-                # 2. 检查时间窗口
                 if not handler.is_within_notification_window(sub):
                     continue
                 
-                # 3. 生成消息数据
                 msg_data = handler.generate_message_data(sub.user_id, sub, db)
                 if not msg_data:
                     continue
                 
-                # 4. 创建消息记录
-                # 确保 pattern 中包含 source_type
+                # 构建消息模式
                 pattern = msg_data.get("pattern", {})
-                if "source_type" not in pattern:
-                    pattern["source_type"] = "subscription"
-                if "subscription_type" not in pattern:
-                    pattern["subscription_type"] = sub.subscription_type.category
+                pattern.update({
+                    "source_type": "subscription",
+                    "subscription_type": sub.subscription_type.category
+                })
                 
                 message = Message(
                     title=msg_data["title"],
@@ -66,7 +56,7 @@ class SubscriptionManager:
                     message_type=MessageType.NOTIFICATION,
                     status=MessageStatus.UNREAD,
                     pattern=pattern,
-                    category=msg_data.get("category", sub.subscription_type.category), # Default to sub category
+                    category=msg_data.get("category", sub.subscription_type.category),
                     sender_id=system_sender_id,
                     receiver_id=sub.user_id
                 )

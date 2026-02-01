@@ -55,3 +55,28 @@ class UserSubscriptionResponse(BaseModel):
     user_subscription: Optional[UserSubscriptionModelResponse] = None
     is_subscribed: bool
 
+
+class SubscribeRequest(BaseModel):
+    """订阅请求"""
+    is_enabled: bool = True
+    custom_settings: Optional[Dict[str, Any]] = None
+    notification_time_start: Optional[str] = "09:00"
+    notification_time_end: Optional[str] = "22:00"
+    timezone: Optional[str] = "Asia/Shanghai"
+
+
+class SubscribeResponse(BaseModel):
+    """订阅响应"""
+    message: str
+    subscription: Optional[UserSubscriptionModelResponse] = None
+
+
+class MySubscriptionItem(BaseModel):
+    """我的订阅列表项"""
+    subscription_type: SubscriptionTypeResponse
+    user_subscription: Optional[UserSubscriptionModelResponse] = None
+    is_subscribed: bool
+
+    class Config:
+        from_attributes = True
+

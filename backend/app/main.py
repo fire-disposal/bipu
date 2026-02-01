@@ -10,6 +10,9 @@ from app.db.init_data import init_default_data
 from app.core.logging import get_logger
 import uvicorn
 from app.core.openapi_util import export_openapi_json
+from app.core.exceptions import custom_exception_handler, http_exception_handler, general_exception_handler, BaseCustomException
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.logging import setup_logging
 setup_logging()
@@ -112,6 +115,12 @@ def create_app() -> FastAPI:
     @app.get("/health", tags=["System"])
     async def health_check():
         return {"status": "healthy"}
+
+    # 注册全局异常处理器
+    app.add_exception_handler(BaseCustomException, custom_exception_handler)
+    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+    app.add_exception_handler(RequestValidationError, http_exception_handler)
+    app.add_exception_handler(Exception, general_exception_handler)
 
     return app
 

@@ -28,23 +28,13 @@ class Settings(BaseSettings):
         """
         如果环境变量中设置了 DATABASE_URL，则直接使用。
         否则根据 POSTGRES_* 变量构建。
-        在无法连接 PostgreSQL 时，自动回退到 SQLite。
+        强制使用 PostgreSQL，不再支持 SQLite 回退。
         """
         if os.getenv("DATABASE_URL"):
             return os.getenv("DATABASE_URL")
         
         password = quote_plus(self.POSTGRES_PASSWORD)
         pg_url = f"postgresql://{self.POSTGRES_USER}:{password}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
-
-        # 更果断的自动回退逻辑：尝试连接 PostgreSQL，失败则回退到 SQLite
-        import socket
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(1.0)  # 给足时间检测
-            sock.connect((self.POSTGRES_SERVER, int(self.POSTGRES_PORT)))
-            sock.close()
-        except Exception:
-            return "sqlite:///./bipupu.db"
         
         return pg_url
 
