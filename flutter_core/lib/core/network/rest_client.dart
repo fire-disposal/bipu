@@ -16,22 +16,22 @@ abstract class RestClient {
   factory RestClient(Dio dio, {String baseUrl}) = _RestClient;
 
   // --- Auth & Users ---
-  @POST('/users/login')
+  @POST('/api/public/login')
   Future<AuthResponse> login(@Body() Map<String, dynamic> body);
 
-  @POST('/users/register')
+  @POST('/api/public/register')
   Future<User> register(@Body() Map<String, dynamic> body);
 
-  @POST('/users/refresh')
+  @POST('/api/public/refresh')
   Future<AuthResponse> refreshToken(@Body() Map<String, dynamic> body);
 
-  @POST('/users/logout')
+  @POST('/api/public/logout')
   Future<void> logout();
 
-  @GET('/users/me')
+  @GET('/api/client/profile/me')
   Future<User> getMe();
 
-  @PUT('/users/me')
+  @PUT('/api/client/profile/profile')
   Future<User> updateMe(@Body() Map<String, dynamic> body);
 
   @GET('/users')
@@ -56,8 +56,8 @@ abstract class RestClient {
   @PUT('/users/profile')
   Future<User> updateProfile(@Body() Map<String, dynamic> body);
 
-  @PUT('/users/online-status')
-  Future<void> updateOnlineStatus(@Query('is_online') bool isOnline);
+  @PUT('/api/client/profile/online-status')
+  Future<void> updateOnlineStatus(@Body() Map<String, dynamic> body);
 
   @GET('/users/online-status')
   Future<dynamic> getOnlineStatus(@Query('user_ids') List<int> userIds);
@@ -79,10 +79,10 @@ abstract class RestClient {
   );
 
   // --- Messages ---
-  @POST('/messages')
+  @POST('/api/client/messages/')
   Future<Message> createMessage(@Body() Map<String, dynamic> body);
 
-  @GET('/messages')
+  @GET('/api/client/messages/')
   Future<PaginatedResponse<Message>> getMessages({
     @Query('page') int page = 1,
     @Query('size') int size = 20,
@@ -91,75 +91,78 @@ abstract class RestClient {
     @Query('is_read') bool? isRead,
     @Query('sender_id') int? senderId,
     @Query('receiver_id') int? receiverId,
+    @Query('start_date') String? startDate,
+    @Query('end_date') String? endDate,
   });
 
-  @DELETE('/messages')
+  @DELETE('/api/client/messages/batch')
   Future<void> deleteReadMessages();
 
-  @GET('/messages/conversations/{userId}')
+  @GET('/api/client/messages/conversations/{userId}')
   Future<PaginatedResponse<Message>> getConversationMessages(
     @Path('userId') int userId, {
     @Query('page') int page = 1,
     @Query('size') int size = 20,
   });
 
-  @GET('/messages/unread/count')
-  Future<dynamic> getUnreadCount();
+  @GET('/api/client/messages/unread/count')
+  Future<int> getUnreadCount();
 
-  @GET('/messages/unread')
+  @GET('/api/client/messages/')
   Future<PaginatedResponse<Message>> getUnreadMessages({
     @Query('page') int page = 1,
     @Query('size') int size = 20,
+    @Query('is_read') bool? isRead = false,
   });
 
-  @GET('/messages/recent')
+  @GET('/api/client/messages/')
   Future<List<Message>> getRecentMessages({@Query('limit') int limit = 10});
 
-  @GET('/messages/{id}')
+  @GET('/api/client/messages/{id}')
   Future<Message> getMessage(@Path('id') int id);
 
-  @PUT('/messages/{id}')
+  @PUT('/api/client/messages/{id}')
   Future<Message> updateMessage(
     @Path('id') int id,
     @Body() Map<String, dynamic> body,
   );
 
-  @DELETE('/messages/{id}')
+  @DELETE('/api/client/messages/{id}')
   Future<void> deleteMessage(@Path('id') int id);
 
-  @POST('/message-ack')
+  @POST('/api/client/messages/ack')
   Future<MessageAckEvent> createMessageAckEvent(
     @Body() Map<String, dynamic> body,
   );
 
-  @GET('/message-ack/message/{messageId}')
+  @GET('/api/client/messages/ack/message/{messageId}')
   Future<List<MessageAckEvent>> getMessageAckEvents(
     @Path('messageId') int messageId,
   );
 
-  @GET('/message-ack/admin/all')
+  @GET('/api/admin/messages/ack')
   Future<PaginatedResponse<MessageAckEvent>> getAllAckEvents({
     @Query('page') int page = 1,
     @Query('size') int size = 100,
   });
 
-  @GET('/message-ack/admin/stats')
+  @GET('/api/admin/messages/ack/stats')
   Future<dynamic> getAckStats();
 
   // --- Message Management ---
-  @POST('/message-management/messages/{id}/favorite')
+  @POST('/api/client/messages/{id}/favorite')
   Future<void> favoriteMessage(@Path('id') int id);
 
-  @DELETE('/message-management/messages/{id}/favorite')
+  @DELETE('/api/client/messages/{id}/favorite')
   Future<void> unfavoriteMessage(@Path('id') int id);
 
-  @GET('/message-management/messages/favorites')
+  @GET('/api/client/messages/favorites')
   Future<PaginatedResponse<Message>> getFavoriteMessages({
     @Query('page') int page = 1,
     @Query('size') int size = 20,
   });
 
-  @PUT('/message-management/messages/{id}/archive')
+  @PUT('/api/client/messages/{id}/archive')
   Future<void> archiveMessage(@Path('id') int id);
 
   // Re-define getReceivedMessages/getSentMessages to support date filters if needed,
@@ -169,18 +172,16 @@ abstract class RestClient {
   // Future<PaginatedResponse<Message>> getReceivedMessages({@Query('page') int page = 1, @Query('size') int size = 20});
   // We need to update it to include date params.
 
-  @DELETE('/message-management/messages/batch')
+  @DELETE('/api/client/messages/batch')
   Future<void> batchDeleteMessages(@Body() Map<String, dynamic> body);
 
-  @GET('/message-management/messages/stats')
+  @GET('/api/client/messages/management/stats')
   Future<dynamic> getMessageManagementStats();
 
-  @POST('/message-management/messages/export')
+  @POST('/api/client/messages/export')
   Future<dynamic> exportMessagesAdvanced(@Body() Map<String, dynamic> body);
 
-  @GET(
-    '/message-management/messages/search',
-  ) // Assuming this exists based on ApiEndpoints
+  @GET('/api/client/messages/search') // 假设存在搜索端点
   Future<PaginatedResponse<Message>> searchMessages({
     @Query('q') String? query,
     @Query('page') int page = 1,
@@ -188,10 +189,10 @@ abstract class RestClient {
   });
 
   // --- System Notifications ---
-  @POST('/system-notifications')
+  @POST('/api/client/system-notifications')
   Future<Message> createSystemNotification(@Body() Map<String, dynamic> body);
 
-  @GET('/system-notifications')
+  @GET('/api/client/system-notifications')
   Future<PaginatedResponse<Message>> getSystemNotifications({
     @Query('page') int page = 1,
     @Query('size') int size = 20,
@@ -202,19 +203,19 @@ abstract class RestClient {
     @Query('date_to') String? dateTo,
   });
 
-  @GET('/system-notifications/{id}')
+  @GET('/api/client/system-notifications/{id}')
   Future<Message> getSystemNotification(@Path('id') int id);
 
-  @PUT('/system-notifications/{id}/read')
+  @PUT('/api/client/system-notifications/{id}/read')
   Future<void> markSystemNotificationAsRead(@Path('id') int id);
 
-  @PUT('/system-notifications/read-all')
+  @PUT('/api/client/system-notifications/read-all')
   Future<void> markAllSystemNotificationsAsRead();
 
-  @DELETE('/system-notifications/{id}')
+  @DELETE('/api/client/system-notifications/{id}')
   Future<void> deleteSystemNotification(@Path('id') int id);
 
-  @GET('/system-notifications/admin/all')
+  @GET('/api/admin/system-notifications')
   Future<PaginatedResponse<Message>> adminGetAllSystemNotifications({
     @Query('page') int page = 1,
     @Query('size') int size = 20,
@@ -225,80 +226,80 @@ abstract class RestClient {
     @Query('date_to') String? dateTo,
   });
 
-  @DELETE('/system-notifications/admin/{id}')
+  @DELETE('/api/admin/system-notifications/{id}')
   Future<void> adminDeleteSystemNotification(@Path('id') int id);
 
-  @GET('/system-notifications/stats')
+  @GET('/api/client/system-notifications/stats')
   Future<dynamic> getSystemNotificationStats();
 
-  @GET('/system-notifications/admin/stats')
+  @GET('/api/admin/system-notifications/stats')
   Future<dynamic> adminGetSystemNotificationStats();
 
-  @PUT('/messages/{id}/read')
+  @PUT('/api/client/messages/{id}/read')
   Future<void> markAsRead(@Path('id') int id);
 
-  @PUT('/messages/read-all')
+  @PUT('/api/client/messages/read-all')
   Future<void> markAllAsRead();
 
-  @GET('/messages/stats')
+  @GET('/api/client/messages/stats')
   Future<dynamic> getMessageStats();
 
   // -- Admin Messages --
-  @GET('/messages/admin/all')
+  @GET('/api/admin/messages')
   Future<PaginatedResponse<Message>> adminGetAllMessages({
     @Query('page') int page = 1,
     @Query('size') int size = 20,
   });
 
-  @DELETE('/messages/admin/{id}')
+  @DELETE('/api/admin/messages/{id}')
   Future<void> adminDeleteMessage(@Path('id') int id);
 
-  @GET('/messages/admin/stats')
+  @GET('/api/admin/messages/stats')
   Future<dynamic> adminGetMessageStats();
 
   // --- Friendships ---
-  @POST('/friendships')
+  @POST('/api/client/friends')
   Future<Friendship> sendFriendRequest(@Body() Map<String, dynamic> body);
 
-  @GET('/friendships')
+  @GET('/api/client/friends')
   Future<PaginatedResponse<Friendship>> getFriendships({
     @Query('page') int page = 1,
     @Query('size') int size = 20,
     @Query('status') String? status,
   });
 
-  @GET('/friendships/requests')
+  @GET('/api/client/friends/requests')
   Future<PaginatedResponse<Friendship>> getFriendRequests({
     @Query('page') int page = 1,
     @Query('size') int size = 20,
   });
 
-  @GET('/friendships/friends')
+  @GET('/api/client/friends/friends')
   Future<PaginatedResponse<User>> getFriends({
     @Query('page') int page = 1,
     @Query('size') int size = 20,
   });
 
-  @PUT('/friendships/{id}/accept')
+  @PUT('/api/client/friends/{id}/accept')
   Future<Friendship> acceptFriendRequest(@Path('id') int id);
 
-  @PUT('/friendships/{id}/reject')
+  @PUT('/api/client/friends/{id}/reject')
   Future<Friendship> rejectFriendRequest(@Path('id') int id);
 
-  @DELETE('/friendships/{id}')
+  @DELETE('/api/client/friends/{id}')
   Future<void> deleteFriendship(@Path('id') int id);
 
-  @GET('/friendships/admin/all')
+  @GET('/api/admin/friends')
   Future<PaginatedResponse<Friendship>> adminGetAllFriendships({
     @Query('page') int page = 1,
     @Query('size') int size = 20,
   });
 
-  @DELETE('/friendships/admin/{id}')
+  @DELETE('/api/admin/friends/{id}')
   Future<void> adminDeleteFriendship(@Path('id') int id);
 
   // --- Subscriptions ---
-  @GET('/subscriptions/subscription-types')
+  @GET('/api/client/subscriptions/subscription-types')
   Future<PaginatedResponse<SubscriptionType>> getSubscriptionTypes({
     @Query('page') int page = 1,
     @Query('size') int size = 20,
@@ -306,141 +307,139 @@ abstract class RestClient {
     @Query('is_active') bool? isActive,
   });
 
-  @GET('/subscriptions/types/{id}')
+  @GET('/api/client/subscriptions/types/{id}')
   Future<SubscriptionType> getSubscriptionType(@Path('id') int id);
 
-  @POST('/subscriptions/types')
+  @POST('/api/admin/subscriptions/types')
   Future<SubscriptionType> createSubscriptionType(
     @Body() Map<String, dynamic> body,
   );
 
-  @PUT('/subscriptions/types/{id}')
+  @PUT('/api/admin/subscriptions/types/{id}')
   Future<SubscriptionType> updateSubscriptionType(
     @Path('id') int id,
     @Body() Map<String, dynamic> body,
   );
 
-  @DELETE('/subscriptions/types/{id}')
+  @DELETE('/api/admin/subscriptions/types/{id}')
   Future<void> deleteSubscriptionType(@Path('id') int id);
 
-  @GET('/subscriptions/user')
+  @GET('/api/client/subscriptions/user')
   Future<PaginatedResponse<UserSubscriptionResponse>> getUserSubscriptions({
     @Query('page') int page = 1,
     @Query('size') int size = 20,
   });
 
-  @PUT('/subscriptions/user/{subscriptionTypeId}')
+  @PUT('/api/client/subscriptions/user/{subscriptionTypeId}')
   Future<UserSubscriptionResponse> updateUserSubscription(
     @Path('subscriptionTypeId') int subscriptionTypeId,
     @Body() Map<String, dynamic> body,
   );
 
-  @DELETE('/subscriptions/user/{subscriptionTypeId}')
+  @DELETE('/api/client/subscriptions/user/{subscriptionTypeId}')
   Future<void> unsubscribe(@Path('subscriptionTypeId') int subscriptionTypeId);
 
-  @GET('/subscriptions/stats')
+  @GET('/api/admin/subscriptions/stats')
   Future<dynamic> getSubscriptionStats();
 
-  @GET('/subscriptions/cosmic/status')
+  @GET('/api/client/subscriptions/cosmic/status')
   Future<dynamic> getCosmicMessagingStatus();
 
-  @PUT('/subscriptions/cosmic/settings')
+  @PUT('/api/client/subscriptions/cosmic/settings')
   Future<dynamic> updateCosmicMessagingSettings(
     @Body() Map<String, dynamic> body,
   );
 
   // --- User Settings ---
-  @GET('/users/profile')
+  @GET('/api/client/profile/profile')
   Future<UserProfile> getUserProfile();
 
-  @PUT('/users/profile/settings')
+  @PUT('/api/client/profile/profile')
   Future<UserProfile> updateUserProfileSettings(
     @Body() Map<String, dynamic> body,
   );
 
-  @PUT('/users/settings')
+  @PUT('/api/client/profile/settings')
   Future<UserProfile> updateUserSettings(@Body() Map<String, dynamic> body);
 
-  @PUT('/users/password')
+  @PUT('/api/client/profile/password')
   Future<void> changePassword(@Body() Map<String, dynamic> body);
 
-  @PUT('/users/terms/accept')
+  @PUT('/api/client/profile/terms/accept')
   Future<void> acceptTerms(@Body() Map<String, dynamic> body);
 
-  @GET('/users/terms')
+  @GET('/api/client/profile/terms')
   Future<dynamic> getTermsStatus();
 
-  @POST('/users/blocks')
+  @POST('/api/client/blocks')
   Future<void> blockUser(@Body() Map<String, dynamic> body);
 
-  @DELETE('/users/blocks/{userId}')
+  @DELETE('/api/client/blocks/{userId}')
   Future<void> unblockUser(@Path('userId') int userId);
 
-  @GET('/users/blocks')
+  @GET('/api/client/blocks')
   Future<PaginatedResponse<BlockedUser>> getBlockedUsers({
     @Query('page') int page = 1,
     @Query('size') int size = 20,
   });
 
-  @GET('/users/privacy')
+  @GET('/api/client/profile/privacy')
   Future<PrivacySettings> getPrivacySettings();
 
-  @PUT('/users/privacy')
+  @PUT('/api/client/profile/privacy')
   Future<PrivacySettings> updatePrivacySettings(
     @Body() Map<String, dynamic> body,
   );
 
-  @GET('/users/subscription-settings')
+  @GET('/api/client/profile/subscription-settings')
   Future<SubscriptionSettings> getSubscriptionSettings();
 
-  @PUT('/users/subscription-settings')
+  @PUT('/api/client/profile/subscription-settings')
   Future<SubscriptionSettings> updateSubscriptionSettings(
     @Body() Map<String, dynamic> body,
   );
 
-  @POST('/messages/export')
+  @POST('/api/client/messages/export')
   Future<dynamic> exportMessages(@Body() Map<String, dynamic> body);
 
   // --- Admin Logs ---
-  @GET('/admin/logs')
+  @GET('/api/admin/logs')
   Future<PaginatedResponse<AdminLog>> getAdminLogs({
     @Query('page') int page = 1,
     @Query('size') int size = 20,
   });
 
-  @GET('/admin/logs/{id}')
+  @GET('/api/admin/logs/{id}')
   Future<AdminLog> getAdminLog(@Path('id') int id);
 
-  @DELETE('/admin/logs/{id}')
+  @DELETE('/api/admin/logs/{id}')
   Future<void> deleteAdminLog(@Path('id') int id);
 
-  @GET('/admin/logs/stats')
+  @GET('/api/admin/logs/stats')
   Future<dynamic> getAdminLogStats();
 
   // --- Health ---
-  @GET('/health')
+  @GET('/api/health')
   Future<dynamic> checkHealth();
 
-  @GET('/health/readiness')
+  @GET('/api/ready')
   Future<dynamic> checkReadiness();
 
-  @GET('/health/liveness')
+  @GET('/api/live')
   Future<dynamic> checkLiveness();
 
   // --- Extra Message Methods ---
-  @GET('/messages/received')
+  @GET('/api/client/messages/')
   Future<PaginatedResponse<Message>> getReceivedMessages({
     @Query('page') int page = 1,
     @Query('size') int size = 20,
-    @Query('date_from') String? dateFrom,
-    @Query('date_to') String? dateTo,
+    @Query('receiver_id') int? receiverId,
   });
 
-  @GET('/messages/sent')
+  @GET('/api/client/messages/')
   Future<PaginatedResponse<Message>> getSentMessages({
     @Query('page') int page = 1,
     @Query('size') int size = 20,
-    @Query('date_from') String? dateFrom,
-    @Query('date_to') String? dateTo,
+    @Query('sender_id') int? senderId,
   });
 }

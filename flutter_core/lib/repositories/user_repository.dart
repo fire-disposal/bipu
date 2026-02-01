@@ -30,11 +30,12 @@ class UserRepository {
   }
 
   Future<User> updateMe(Map<String, dynamic> userData) async {
+    // 新API返回 UserProfile，但 User.fromJson 能够正确解析核心字段
     return _client.updateMe(userData);
   }
 
   Future<void> updateOnlineStatus(bool isOnline) async {
-    await _client.updateOnlineStatus(isOnline);
+    await _client.updateOnlineStatus({'is_online': isOnline});
   }
 
   // User Management
@@ -53,7 +54,7 @@ class UserRepository {
       // doesn't handle conditional return types (List vs Map) easily.
 
       final response = await _dio.get(
-        '/users',
+        '/api/admin/users',
         queryParameters: {
           'page': page,
           'size': size,

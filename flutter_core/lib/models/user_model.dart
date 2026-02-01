@@ -52,26 +52,28 @@ class User {
 
 class AuthResponse {
   final String accessToken;
-  final String refreshToken;
+  final String? refreshToken;
   final String tokenType;
   final int expiresIn;
-  final User user;
+  final User? user;
 
   AuthResponse({
     required this.accessToken,
-    required this.refreshToken,
-    required this.tokenType,
+    this.refreshToken,
+    this.tokenType = 'bearer',
     required this.expiresIn,
-    required this.user,
+    this.user,
   });
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) {
     return AuthResponse(
       accessToken: json['access_token'] as String,
-      refreshToken: json['refresh_token'] as String,
-      tokenType: json['token_type'] as String,
+      refreshToken: json['refresh_token'] as String?,
+      tokenType: (json['token_type'] as String?) ?? 'bearer',
       expiresIn: json['expires_in'] as int,
-      user: User.fromJson(json['user'] as Map<String, dynamic>),
+      user: json['user'] != null
+          ? User.fromJson(json['user'] as Map<String, dynamic>)
+          : null,
     );
   }
 }

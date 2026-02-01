@@ -47,10 +47,8 @@ class MessageRepository {
 
   // Unread
   Future<int> getUnreadCount() async {
-    final res = await _client.getUnreadCount();
-    // Assuming the map key is 'count' based on API convention
-    // The previous dynamic code was response.data['count']
-    return res['count'] ?? 0;
+    final count = await _client.getUnreadCount();
+    return count;
   }
 
   Future<PaginatedResponse<Message>> getUnreadMessages({

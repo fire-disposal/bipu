@@ -30,7 +30,7 @@ class _RestClient implements RestClient {
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/login',
+            '/api/public/login',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -58,7 +58,7 @@ class _RestClient implements RestClient {
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/register',
+            '/api/public/register',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -86,7 +86,7 @@ class _RestClient implements RestClient {
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/refresh',
+            '/api/public/refresh',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -113,7 +113,7 @@ class _RestClient implements RestClient {
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/logout',
+            '/api/public/logout',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -132,7 +132,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/me',
+            '/api/client/profile/me',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -160,7 +160,7 @@ class _RestClient implements RestClient {
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/me',
+            '/api/client/profile/profile',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -319,16 +319,17 @@ class _RestClient implements RestClient {
   }
 
   @override
-  Future<void> updateOnlineStatus(bool isOnline) async {
+  Future<void> updateOnlineStatus(Map<String, dynamic> body) async {
     final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{r'is_online': isOnline};
+    final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
-    const Map<String, dynamic>? _data = null;
+    final _data = <String, dynamic>{};
+    _data.addAll(body);
     final _options = _setStreamType<void>(
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/online-status',
+            '/api/client/profile/online-status',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -440,7 +441,7 @@ class _RestClient implements RestClient {
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/messages',
+            '/api/client/messages/',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -466,6 +467,8 @@ class _RestClient implements RestClient {
     bool? isRead,
     int? senderId,
     int? receiverId,
+    String? startDate,
+    String? endDate,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{
@@ -476,6 +479,8 @@ class _RestClient implements RestClient {
       r'is_read': isRead,
       r'sender_id': senderId,
       r'receiver_id': receiverId,
+      r'start_date': startDate,
+      r'end_date': endDate,
     };
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
@@ -484,7 +489,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/messages',
+            '/api/client/messages/',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -514,7 +519,7 @@ class _RestClient implements RestClient {
       Options(method: 'DELETE', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/messages',
+            '/api/client/messages/batch',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -537,7 +542,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/messages/conversations/${userId}',
+            '/api/client/messages/conversations/${userId}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -558,23 +563,29 @@ class _RestClient implements RestClient {
   }
 
   @override
-  Future<dynamic> getUnreadCount() async {
+  Future<int> getUnreadCount() async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<dynamic>(
+    final _options = _setStreamType<int>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/messages/unread/count',
+            '/api/client/messages/unread/count',
             queryParameters: queryParameters,
             data: _data,
           )
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
-    final _result = await _dio.fetch(_options);
-    final _value = _result.data;
+    final _result = await _dio.fetch<int>(_options);
+    late int _value;
+    try {
+      _value = _result.data!;
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
     return _value;
   }
 
@@ -582,16 +593,22 @@ class _RestClient implements RestClient {
   Future<PaginatedResponse<Message>> getUnreadMessages({
     int page = 1,
     int size = 20,
+    bool? isRead = false,
   }) async {
     final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{r'page': page, r'size': size};
+    final queryParameters = <String, dynamic>{
+      r'page': page,
+      r'size': size,
+      r'is_read': isRead,
+    };
+    queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
     final _options = _setStreamType<PaginatedResponse<Message>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/messages/unread',
+            '/api/client/messages/',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -621,7 +638,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/messages/recent',
+            '/api/client/messages/',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -650,7 +667,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/messages/${id}',
+            '/api/client/messages/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -678,7 +695,7 @@ class _RestClient implements RestClient {
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/messages/${id}',
+            '/api/client/messages/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -705,7 +722,7 @@ class _RestClient implements RestClient {
       Options(method: 'DELETE', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/messages/${id}',
+            '/api/client/messages/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -727,7 +744,7 @@ class _RestClient implements RestClient {
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/message-ack',
+            '/api/client/messages/ack',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -754,7 +771,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/message-ack/message/${messageId}',
+            '/api/client/messages/ack/message/${messageId}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -788,7 +805,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/message-ack/admin/all',
+            '/api/admin/messages/ack',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -818,7 +835,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/message-ack/admin/stats',
+            '/api/admin/messages/ack/stats',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -839,7 +856,7 @@ class _RestClient implements RestClient {
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/message-management/messages/${id}/favorite',
+            '/api/client/messages/${id}/favorite',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -858,7 +875,7 @@ class _RestClient implements RestClient {
       Options(method: 'DELETE', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/message-management/messages/${id}/favorite',
+            '/api/client/messages/${id}/favorite',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -880,7 +897,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/message-management/messages/favorites',
+            '/api/client/messages/favorites',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -910,7 +927,7 @@ class _RestClient implements RestClient {
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/message-management/messages/${id}/archive',
+            '/api/client/messages/${id}/archive',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -930,7 +947,7 @@ class _RestClient implements RestClient {
       Options(method: 'DELETE', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/message-management/messages/batch',
+            '/api/client/messages/batch',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -949,7 +966,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/message-management/messages/stats',
+            '/api/client/messages/management/stats',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -971,7 +988,7 @@ class _RestClient implements RestClient {
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/message-management/messages/export',
+            '/api/client/messages/export',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1001,7 +1018,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/message-management/messages/search',
+            '/api/client/messages/search',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1032,7 +1049,7 @@ class _RestClient implements RestClient {
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/system-notifications',
+            '/api/client/system-notifications',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1076,7 +1093,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/system-notifications',
+            '/api/client/system-notifications',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1106,7 +1123,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/system-notifications/${id}',
+            '/api/client/system-notifications/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1133,7 +1150,7 @@ class _RestClient implements RestClient {
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/system-notifications/${id}/read',
+            '/api/client/system-notifications/${id}/read',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1152,7 +1169,7 @@ class _RestClient implements RestClient {
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/system-notifications/read-all',
+            '/api/client/system-notifications/read-all',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1171,7 +1188,7 @@ class _RestClient implements RestClient {
       Options(method: 'DELETE', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/system-notifications/${id}',
+            '/api/client/system-notifications/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1207,7 +1224,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/system-notifications/admin/all',
+            '/api/admin/system-notifications',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1237,7 +1254,7 @@ class _RestClient implements RestClient {
       Options(method: 'DELETE', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/system-notifications/admin/${id}',
+            '/api/admin/system-notifications/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1256,7 +1273,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/system-notifications/stats',
+            '/api/client/system-notifications/stats',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1277,7 +1294,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/system-notifications/admin/stats',
+            '/api/admin/system-notifications/stats',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1298,7 +1315,7 @@ class _RestClient implements RestClient {
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/messages/${id}/read',
+            '/api/client/messages/${id}/read',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1317,7 +1334,7 @@ class _RestClient implements RestClient {
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/messages/read-all',
+            '/api/client/messages/read-all',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1336,7 +1353,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/messages/stats',
+            '/api/client/messages/stats',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1360,7 +1377,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/messages/admin/all',
+            '/api/admin/messages',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1390,7 +1407,7 @@ class _RestClient implements RestClient {
       Options(method: 'DELETE', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/messages/admin/${id}',
+            '/api/admin/messages/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1409,7 +1426,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/messages/admin/stats',
+            '/api/admin/messages/stats',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1431,7 +1448,7 @@ class _RestClient implements RestClient {
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/friendships',
+            '/api/client/friends',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1467,7 +1484,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/friendships',
+            '/api/client/friends',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1500,7 +1517,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/friendships/requests',
+            '/api/client/friends/requests',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1533,7 +1550,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/friendships/friends',
+            '/api/client/friends/friends',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1563,7 +1580,7 @@ class _RestClient implements RestClient {
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/friendships/${id}/accept',
+            '/api/client/friends/${id}/accept',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1590,7 +1607,7 @@ class _RestClient implements RestClient {
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/friendships/${id}/reject',
+            '/api/client/friends/${id}/reject',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1617,7 +1634,7 @@ class _RestClient implements RestClient {
       Options(method: 'DELETE', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/friendships/${id}',
+            '/api/client/friends/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1639,7 +1656,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/friendships/admin/all',
+            '/api/admin/friends',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1669,7 +1686,7 @@ class _RestClient implements RestClient {
       Options(method: 'DELETE', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/friendships/admin/${id}',
+            '/api/admin/friends/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1699,7 +1716,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/subscriptions/subscription-types',
+            '/api/client/subscriptions/subscription-types',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1729,7 +1746,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/subscriptions/types/${id}',
+            '/api/client/subscriptions/types/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1759,7 +1776,7 @@ class _RestClient implements RestClient {
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/subscriptions/types',
+            '/api/admin/subscriptions/types',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1790,7 +1807,7 @@ class _RestClient implements RestClient {
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/subscriptions/types/${id}',
+            '/api/admin/subscriptions/types/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1817,7 +1834,7 @@ class _RestClient implements RestClient {
       Options(method: 'DELETE', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/subscriptions/types/${id}',
+            '/api/admin/subscriptions/types/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1840,7 +1857,7 @@ class _RestClient implements RestClient {
           Options(method: 'GET', headers: _headers, extra: _extra)
               .compose(
                 _dio.options,
-                '/subscriptions/user',
+                '/api/client/subscriptions/user',
                 queryParameters: queryParameters,
                 data: _data,
               )
@@ -1877,7 +1894,7 @@ class _RestClient implements RestClient {
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/subscriptions/user/${subscriptionTypeId}',
+            '/api/client/subscriptions/user/${subscriptionTypeId}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1904,7 +1921,7 @@ class _RestClient implements RestClient {
       Options(method: 'DELETE', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/subscriptions/user/${subscriptionTypeId}',
+            '/api/client/subscriptions/user/${subscriptionTypeId}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1923,7 +1940,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/subscriptions/stats',
+            '/api/admin/subscriptions/stats',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1944,7 +1961,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/subscriptions/cosmic/status',
+            '/api/client/subscriptions/cosmic/status',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1968,7 +1985,7 @@ class _RestClient implements RestClient {
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/subscriptions/cosmic/settings',
+            '/api/client/subscriptions/cosmic/settings',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -1989,7 +2006,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/profile',
+            '/api/client/profile/profile',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2019,7 +2036,7 @@ class _RestClient implements RestClient {
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/profile/settings',
+            '/api/client/profile/profile',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2047,7 +2064,7 @@ class _RestClient implements RestClient {
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/settings',
+            '/api/client/profile/settings',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2075,7 +2092,7 @@ class _RestClient implements RestClient {
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/password',
+            '/api/client/profile/password',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2095,7 +2112,7 @@ class _RestClient implements RestClient {
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/terms/accept',
+            '/api/client/profile/terms/accept',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2114,7 +2131,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/terms',
+            '/api/client/profile/terms',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2136,7 +2153,7 @@ class _RestClient implements RestClient {
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/blocks',
+            '/api/client/blocks',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2155,7 +2172,7 @@ class _RestClient implements RestClient {
       Options(method: 'DELETE', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/blocks/${userId}',
+            '/api/client/blocks/${userId}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2177,7 +2194,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/blocks',
+            '/api/client/blocks',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2207,7 +2224,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/privacy',
+            '/api/client/profile/privacy',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2237,7 +2254,7 @@ class _RestClient implements RestClient {
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/privacy',
+            '/api/client/profile/privacy',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2264,7 +2281,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/subscription-settings',
+            '/api/client/profile/subscription-settings',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2294,7 +2311,7 @@ class _RestClient implements RestClient {
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/users/subscription-settings',
+            '/api/client/profile/subscription-settings',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2322,7 +2339,7 @@ class _RestClient implements RestClient {
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/messages/export',
+            '/api/client/messages/export',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2346,7 +2363,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/admin/logs',
+            '/api/admin/logs',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2376,7 +2393,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/admin/logs/${id}',
+            '/api/admin/logs/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2403,7 +2420,7 @@ class _RestClient implements RestClient {
       Options(method: 'DELETE', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/admin/logs/${id}',
+            '/api/admin/logs/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2422,7 +2439,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/admin/logs/stats',
+            '/api/admin/logs/stats',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2443,7 +2460,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/health',
+            '/api/health',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2464,7 +2481,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/health/readiness',
+            '/api/ready',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2485,7 +2502,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/health/liveness',
+            '/api/live',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2500,15 +2517,13 @@ class _RestClient implements RestClient {
   Future<PaginatedResponse<Message>> getReceivedMessages({
     int page = 1,
     int size = 20,
-    String? dateFrom,
-    String? dateTo,
+    int? receiverId,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{
       r'page': page,
       r'size': size,
-      r'date_from': dateFrom,
-      r'date_to': dateTo,
+      r'receiver_id': receiverId,
     };
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
@@ -2517,7 +2532,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/messages/received',
+            '/api/client/messages/',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -2541,15 +2556,13 @@ class _RestClient implements RestClient {
   Future<PaginatedResponse<Message>> getSentMessages({
     int page = 1,
     int size = 20,
-    String? dateFrom,
-    String? dateTo,
+    int? senderId,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{
       r'page': page,
       r'size': size,
-      r'date_from': dateFrom,
-      r'date_to': dateTo,
+      r'sender_id': senderId,
     };
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
@@ -2558,7 +2571,7 @@ class _RestClient implements RestClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/messages/sent',
+            '/api/client/messages/',
             queryParameters: queryParameters,
             data: _data,
           )
