@@ -6,7 +6,8 @@ from typing import List, Optional
 
 from app.db.database import get_db
 from app.models.user import User
-from app.schemas.user import UserResponse, UserUpdate
+from app.schemas.user import UserResponse, UserUpdate, UserStatusUpdate
+from app.schemas.common import StatusResponse
 from app.schemas.common import PaginatedResponse, PaginationParams
 from app.core.security import get_current_superuser
 from app.core.exceptions import ValidationException, NotFoundException
@@ -91,7 +92,7 @@ async def update_user(
         raise ValidationException("User update failed")
 
 
-@router.delete("/users/{user_id}", tags=["User Management"])
+@router.delete("/users/{user_id}", response_model=StatusResponse, tags=["User Management"])
 async def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
@@ -116,10 +117,10 @@ async def delete_user(
         raise ValidationException("User deletion failed")
 
 
-@router.put("/users/{user_id}/status", tags=["User Management"])
+@router.put("/users/{user_id}/status", response_model=StatusResponse, tags=["User Management"])
 async def update_user_status(
     user_id: int,
-    is_active: bool,
+    status_update: UserStatusUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_superuser)
 ):
@@ -130,12 +131,12 @@ async def update_user_status(
     
     try:
         # 使用用户服务层更新用户状态
-        updated_user = UserService.update_user_status(db, user, is_active)
+        updated_user = UserService.update_user_status(db, user, status_update.is_active)
         
         # 同时清除用户列表的缓存
         await RedisService.delete_cache(f"admin:users:*")
         
-        status_text = "activated" if is_active else "deactivated"
+        status_text = "activated" if status_update.is_active else "deactivated"
         logger.info(f"Admin {current_user.username} {status_text} user {updated_user.username}")
         return {"message": f"User {status_text} successfully"}
     except Exception as e:
@@ -143,7 +144,9 @@ async def update_user_status(
         raise ValidationException("User status update failed")
 
 
-@router.get("/users/stats", tags=["User Management"])
+from app.schemas.common import UserStatsResponse
+
+@router.get("/users/stats", response_model=UserStatsResponse, tags=["User Management"]) 
 async def get_user_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_superuser)

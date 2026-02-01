@@ -8,6 +8,7 @@ from datetime import timedelta
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.user import UserCreate, UserResponse, UserLogin, Token, TokenRefresh
+from app.schemas.common import StatusResponse
 from app.core.security import (
     verify_password, create_access_token, create_refresh_token,
     decode_token
@@ -162,7 +163,7 @@ async def refresh_token(
         )
 
 
-@router.post("/logout", tags=["Authentication"])
+@router.post("/logout", response_model=StatusResponse, tags=["Authentication"])
 async def logout(
     credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
 ):

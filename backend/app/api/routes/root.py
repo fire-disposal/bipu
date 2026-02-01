@@ -2,25 +2,26 @@
 
 from fastapi import APIRouter
 from app.core.config import settings
+from app.schemas.common import HealthResponse, ReadyResponse, LiveResponse, ApiInfoResponse
 
 router = APIRouter()
 
-@router.get("/health", tags=["System"])
+@router.get("/health", response_model=HealthResponse, tags=["System"])
 async def health_check():
     """系统健康检查"""
     return {"status": "healthy", "service": settings.PROJECT_NAME}
 
-@router.get("/ready", tags=["System"])
+@router.get("/ready", response_model=ReadyResponse, tags=["System"])
 async def readiness_check():
     """就绪检查端点"""
     return {"status": "ready"}
 
-@router.get("/live", tags=["System"])
+@router.get("/live", response_model=LiveResponse, tags=["System"])
 async def liveness_check():
     """存活检查端点"""
     return {"status": "alive"}
 
-@router.get("/", tags=["System"])
+@router.get("/", response_model=ApiInfoResponse, tags=["System"])
 async def root():
     """根路径 - 返回API信息"""
     return {

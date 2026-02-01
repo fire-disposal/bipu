@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.user_settings import BlockUserRequest, BlockedUserResponse
-from app.schemas.common import PaginationParams, PaginatedResponse
+from app.schemas.common import PaginationParams, PaginatedResponse, StatusResponse
 from app.core.security import get_current_active_user
 from app.services.user_settings_service import UserSettingsService
 from app.core.exceptions import ValidationException, NotFoundException
@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 def get_user_settings_service(db: Session = Depends(get_db)) -> UserSettingsService:
     return UserSettingsService(db)
 
-@router.post("/blocks", tags=["Blocks"])
+@router.post("/blocks", response_model=StatusResponse, tags=["Blocks"])
 async def block_user(
     block_request: BlockUserRequest,
     service: UserSettingsService = Depends(get_user_settings_service),
@@ -30,7 +30,7 @@ async def block_user(
     return {"message": "用户已拉黑"}
 
 
-@router.delete("/blocks/{user_id}", tags=["Blocks"])
+@router.delete("/blocks/{user_id}", response_model=StatusResponse, tags=["Blocks"])
 async def unblock_user(
     user_id: int,
     service: UserSettingsService = Depends(get_user_settings_service),

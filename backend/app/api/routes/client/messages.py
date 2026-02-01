@@ -12,7 +12,7 @@ from app.models.messageackevent import MessageAckEvent
 from app.models.user import User
 from app.schemas.message import MessageCreate, MessageResponse, MessageUpdate, MessageStats
 from app.schemas.messageackevent import MessageAckEventCreate, MessageAckEventResponse
-from app.schemas.common import PaginationParams, PaginatedResponse
+from app.schemas.common import PaginationParams, PaginatedResponse, StatusResponse
 from app.schemas.user_settings import MessageStatsRequest, MessageStatsResponse, ExportMessagesRequest, ExportMessagesResponse
 from app.core.security import get_current_active_user
 from app.services.message_service import MessageService
@@ -26,8 +26,7 @@ logger = get_logger(__name__)
 def get_message_service(db: Session = Depends(get_db)) -> MessageService:
     return MessageService(db)
 
-class StatusResponse(BaseModel):
-    message: str
+ 
 
 # 基础消息功能
 @router.post("/", response_model=MessageResponse, tags=["Messages"])
@@ -174,7 +173,7 @@ async def update_message(
     return message
 
 
-@router.put("/{message_id}/read", tags=["Messages"])
+@router.put("/{message_id}/read", response_model=StatusResponse, tags=["Messages"])
 async def mark_message_as_read(
     message_id: int,
     db: Session = Depends(get_db),
@@ -200,7 +199,7 @@ async def mark_message_as_read(
     return {"message": "Message marked as read"}
 
 
-@router.put("/read-all", tags=["Messages"])
+@router.put("/read-all", response_model=StatusResponse, tags=["Messages"])
 async def mark_all_messages_as_read(
     service: MessageService = Depends(get_message_service),
     current_user: User = Depends(get_current_active_user)
@@ -211,7 +210,7 @@ async def mark_all_messages_as_read(
     return {"message": f"{updated_count} messages marked as read"}
 
 
-@router.delete("/{message_id}", tags=["Messages"])
+@router.delete("/{message_id}", response_model=StatusResponse, tags=["Messages"])
 async def delete_message(
     message_id: int,
     db: Session = Depends(get_db),

@@ -33,3 +33,38 @@ class PaginatedResponse(GenericModel, Generic[T]):
             size=params.size,
             pages=pages
         )
+
+class StatusResponse(GenericModel):
+    """通用状态响应"""
+    message: str
+
+class HealthResponse(GenericModel):
+    """健康检查响应"""
+    status: str
+    service: str
+
+class ReadyResponse(GenericModel):
+    """就绪检查响应"""
+    status: str
+
+class LiveResponse(GenericModel):
+    """存活检查响应"""
+    status: str
+
+class ApiInfoResponse(GenericModel):
+    """根路径 API 信息响应"""
+    message: str
+    version: str
+    project: str
+    docs_url: str
+    redoc_url: str
+
+class UserStatsResponse(GenericModel):
+    """用户统计响应"""
+    total_users: int
+    active_users: int
+    inactive_users: int
+    superusers: int
+    today_new_users: int
+    recent_active_users_7d: int
+    activation_rate: float

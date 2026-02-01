@@ -15,7 +15,8 @@ from app.schemas.subscription import (
     UserSubscriptionResponse,
     SubscribeRequest,
     SubscribeResponse,
-    MySubscriptionItem
+    MySubscriptionItem,
+    UserSubscriptionUpdate
 )
 from app.schemas.common import PaginationParams, PaginatedResponse
 from app.core.security import get_current_active_user
@@ -175,11 +176,7 @@ async def unsubscribe_from_service(
 @router.put("/{subscription_type_id}/settings", response_model=UserSubscriptionModelResponse, tags=["Subscriptions"])
 async def update_subscription_settings(
     subscription_type_id: int,
-    is_enabled: Optional[bool] = None,
-    custom_settings: Optional[Dict[str, Any]] = None,
-    notification_time_start: Optional[str] = None,
-    notification_time_end: Optional[str] = None,
-    timezone: Optional[str] = None,
+    request: UserSubscriptionUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -193,17 +190,10 @@ async def update_subscription_settings(
     if not user_subscription:
         raise NotFoundException("您未订阅该服务，无法更新设置")
     
-    # 更新字段
-    if is_enabled is not None:
-        user_subscription.is_enabled = is_enabled
-    if custom_settings is not None:
-        user_subscription.custom_settings = custom_settings
-    if notification_time_start is not None:
-        user_subscription.notification_time_start = notification_time_start
-    if notification_time_end is not None:
-        user_subscription.notification_time_end = notification_time_end
-    if timezone is not None:
-        user_subscription.timezone = timezone
+    # 更新字段（仅更新提交的内容）
+    update_data = request.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(user_subscription, key, value)
     
     user_subscription.updated_at = datetime.utcnow()
     db.commit()

@@ -11,7 +11,7 @@ from app.schemas.friendship import (
     FriendshipCreate, FriendshipResponse
 )
 from app.schemas.user import UserResponse
-from app.schemas.common import PaginationParams, PaginatedResponse
+from app.schemas.common import PaginationParams, PaginatedResponse, StatusResponse
 from app.core.security import get_current_active_user
 from app.services.friendship_service import FriendshipService
 from app.core.logging import get_logger
@@ -92,7 +92,7 @@ async def reject_friend_request(
     return friendship
 
 
-@router.delete("/{friendship_id}", tags=["Friends"])
+@router.delete("/{friendship_id}", response_model=StatusResponse, tags=["Friends"])
 async def delete_friend(
     friendship_id: int,
     service: FriendshipService = Depends(get_friendship_service),

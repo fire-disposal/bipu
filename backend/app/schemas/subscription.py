@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 
 class SubscriptionTypeBase(BaseModel):
@@ -79,4 +79,26 @@ class MySubscriptionItem(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class PopularSubscriptionItem(BaseModel):
+    """热门订阅项"""
+    id: int
+    name: str
+    subscriber_count: int
+
+
+class SubscriptionStatsSummary(BaseModel):
+    """订阅统计概要"""
+    total: int
+    active: int
+    inactive: int
+
+
+class SubscriptionOverviewResponse(BaseModel):
+    """订阅系统概览响应"""
+    subscription_types: SubscriptionStatsSummary
+    user_subscriptions: SubscriptionStatsSummary
+    by_category: Dict[str, int]
+    popular_subscriptions: List[PopularSubscriptionItem]
 

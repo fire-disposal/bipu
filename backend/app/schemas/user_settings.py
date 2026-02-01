@@ -180,3 +180,8 @@ class MessageStatsResponse(BaseModel):
     total_favorites: int
     by_type: Dict[str, int]
     by_date: Dict[str, int]
+
+
+class OnlineStatusUpdate(BaseModel):
+    """在线状态更新请求"""
+    is_online: bool

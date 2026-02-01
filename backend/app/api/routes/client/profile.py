@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.user import UserResponse, UserUpdate, UserProfile
+from app.schemas.user_settings import OnlineStatusUpdate
+from app.schemas.common import StatusResponse
 from app.core.security import get_current_active_user
 from app.core.exceptions import ValidationException
 from app.core.logging import get_logger
@@ -98,9 +100,9 @@ async def update_user_profile(
         raise ValidationException("Profile update failed")
 
 
-@router.put("/online-status", tags=["User Profile"])
+@router.put("/online-status", response_model=StatusResponse, tags=["User Profile"])
 async def update_online_status(
-    is_online: bool,
+    update: OnlineStatusUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -109,7 +111,7 @@ async def update_online_status(
     db.commit()
     
     # 更新Redis中的用户状态
-    status_text = "online" if is_online else "offline"
+    status_text = "online" if update.is_online else "offline"
     await RedisService.cache_user_status(current_user.id, status_text)
     
     logger.info(f"User {current_user.username} is now {status_text}")

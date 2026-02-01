@@ -85,3 +85,7 @@ class UserProfile(BaseModel):
     last_active: Optional[datetime]
     created_at: datetime
     updated_at: Optional[datetime]
+
+class UserStatusUpdate(BaseModel):
+    """用户状态更新请求"""
+    is_active: bool

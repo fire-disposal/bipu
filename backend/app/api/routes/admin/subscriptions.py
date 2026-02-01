@@ -14,8 +14,12 @@ from app.schemas.subscription import (
     SubscriptionTypeResponse,
     SubscriptionTypeCreate,
     SubscriptionTypeUpdate,
-    UserSubscriptionModelResponse
+    UserSubscriptionModelResponse,
+    SubscriptionOverviewResponse,
+    SubscriptionStatsSummary,
+    PopularSubscriptionItem
 )
+from app.schemas.common import StatusResponse
 from app.schemas.common import PaginationParams, PaginatedResponse
 from app.schemas.user import UserResponse
 from app.core.security import get_current_superuser
@@ -233,7 +237,7 @@ async def toggle_subscription_type_status(
     return subscription_type
 
 
-@router.delete("/subscription-types/{subscription_type_id}", tags=["Subscription Management"])
+@router.delete("/subscription-types/{subscription_type_id}", response_model=StatusResponse, tags=["Subscription Management"])
 async def delete_subscription_type(
     subscription_type_id: int,
     db: Session = Depends(get_db),
@@ -340,7 +344,7 @@ async def get_subscription_subscribers(
     return PaginatedResponse.create(items, total, params)
 
 
-@router.get("/stats/overview", tags=["Subscription Management"])
+@router.get("/stats/overview", response_model=SubscriptionOverviewResponse, tags=["Subscription Management"])
 async def get_subscription_overview(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_superuser)
@@ -382,17 +386,20 @@ async def get_subscription_overview(
         for sub_id, name, count in popular_subscriptions
     ]
     
-    return {
-        "subscription_types": {
-            "total": total_types,
-            "active": active_types,
-            "inactive": inactive_types
-        },
-        "user_subscriptions": {
-            "total": total_subscriptions,
-            "active": active_subscriptions,
-            "inactive": inactive_subscriptions
-        },
-        "by_category": category_summary,
-        "popular_subscriptions": popular_list
-    }
+    return SubscriptionOverviewResponse(
+        subscription_types=SubscriptionStatsSummary(
+            total=total_types,
+            active=active_types,
+            inactive=inactive_types
+        ),
+        user_subscriptions=SubscriptionStatsSummary(
+            total=total_subscriptions,
+            active=active_subscriptions,
+            inactive=inactive_subscriptions
+        ),
+        by_category=category_summary,
+        popular_subscriptions=[
+            PopularSubscriptionItem(id=item["id"], name=item["name"], subscriber_count=item["subscriber_count"]) 
+            for item in popular_list
+        ]
+    )
