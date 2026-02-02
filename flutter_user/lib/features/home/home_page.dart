@@ -53,7 +53,7 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(width: 4),
             Text(
-              'Connecting',
+              '正在连接',
               style: TextStyle(
                 color: Colors.orange.shade700,
                 fontWeight: FontWeight.bold,
@@ -82,7 +82,7 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(width: 4),
             Text(
-              'Connected',
+              '已连接',
               style: TextStyle(
                 color: Colors.green.shade700,
                 fontWeight: FontWeight.bold,
@@ -126,7 +126,7 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(width: 4),
             Text(
-              'Disconnected',
+              '未连接',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.error,
                 fontWeight: FontWeight.bold,
@@ -145,49 +145,25 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text(
           'BIPUPU',
-          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
+          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2.0),
         ),
-        centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.bluetooth),
-            tooltip: 'Bluetooth',
-            onPressed: () {
-              if (_bleState.isConnected) {
-                context.push('/bluetooth/control');
-              } else {
-                context.push('/bluetooth/scan');
-              }
-            },
+            icon: const Icon(Icons.bluetooth_searching),
+            tooltip: '蓝牙搜索',
+            onPressed: () => context.push('/bluetooth/scan'),
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Device Information Card
             Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Container(
+              child: Padding(
                 padding: const EdgeInsets.all(20.0),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  gradient: LinearGradient(
-                    colors: [
-                      Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                      Theme.of(
-                        context,
-                      ).colorScheme.primaryContainer.withValues(alpha: 0.05),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -195,7 +171,7 @@ class _HomePageState extends State<HomePage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'Primary Device',
+                          '我的设备',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -205,39 +181,57 @@ class _HomePageState extends State<HomePage> {
                         _buildConnectionStatus(),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     Row(
                       children: [
-                        Icon(
-                          Icons.developer_board,
-                          size: 40,
-                          color: Colors.grey[600],
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.developer_board,
+                            size: 32,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
                         ),
                         const SizedBox(width: 16),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _bleState.isConnected
-                                  ? (_bleState.connectedDevice?.platformName ??
-                                        'Unknown Device')
-                                  : 'No Device Bound',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w500,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _bleState.isConnected
+                                    ? (_bleState
+                                              .connectedDevice
+                                              ?.platformName ??
+                                          '未知设备')
+                                    : '未绑定设备',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                            Text(
-                              _bleState.isConnected
-                                  ? 'ID: ${_bleState.connectedDevice?.remoteId.str ?? '--'}'
-                                  : 'ID: --',
-                              style: const TextStyle(color: Colors.grey),
-                            ),
-                          ],
+                              const SizedBox(height: 4),
+                              Text(
+                                _bleState.isConnected
+                                    ? 'ID: ${_bleState.connectedDevice?.remoteId.str ?? '--'}'
+                                    : '请先连接您的蓝牙设备',
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
-                    ElevatedButton.icon(
+                    const SizedBox(height: 24),
+                    ElevatedButton(
                       onPressed: () {
                         if (_bleState.isConnected) {
                           context.push('/bluetooth/control');
@@ -245,21 +239,28 @@ class _HomePageState extends State<HomePage> {
                           context.push('/bluetooth/scan');
                         }
                       },
-                      icon: Icon(
-                        _bleState.isConnected
-                            ? Icons.settings_remote
-                            : Icons.add_link,
-                      ),
-                      label: Text(
-                        _bleState.isConnected
-                            ? 'Control Device'
-                            : 'Connect Device',
-                      ),
                       style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 50),
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 54),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _bleState.isConnected
+                                ? Icons.settings_remote
+                                : Icons.add_link,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _bleState.isConnected ? '设备详情' : '立即连接',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -267,46 +268,50 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
 
-            // Quick Actions / Widgets
             const Text(
-              'Quick Actions',
+              '快捷操作',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1.5,
-                children: [
-                  _buildQuickActionCard(
-                    context,
-                    'Contacts',
-                    Icons.people,
-                    Colors.purple,
-                    () => context.push('/contacts'),
-                  ),
-                  _buildQuickActionCard(
-                    context,
-                    'Discover',
-                    Icons.explore,
-                    Colors.orange,
-                    () {
-                      context.push('/discover');
-                    },
-                  ),
-                  _buildQuickActionCard(
-                    context,
-                    'Subscription',
-                    Icons.card_membership,
-                    Colors.teal,
-                    () => context.push('/subscription'),
-                  ),
-                ],
-              ),
+            const SizedBox(height: 16),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 1.4,
+              children: [
+                _buildQuickActionCard(
+                  context,
+                  '好友',
+                  Icons.people_alt_rounded,
+                  Colors.blue.shade600,
+                  () => context.push('/contacts'),
+                ),
+                _buildQuickActionCard(
+                  context,
+                  '发现',
+                  Icons.explore_rounded,
+                  Colors.orange.shade700,
+                  () => context.push('/discover'),
+                ),
+                _buildQuickActionCard(
+                  context,
+                  '订阅',
+                  Icons.card_membership_rounded,
+                  Colors.teal.shade600,
+                  () => context.push('/subscription'),
+                ),
+                _buildQuickActionCard(
+                  context,
+                  '聊天',
+                  Icons.chat_bubble_rounded,
+                  Colors.indigo.shade600,
+                  () => context.push('/chat'),
+                ),
+              ],
             ),
           ],
         ),

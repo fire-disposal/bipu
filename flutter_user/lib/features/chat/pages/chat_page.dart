@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_core/api/api.dart';
 import 'package:flutter_core/core/network/rest_client.dart';
 import 'package:flutter_core/models/message_model.dart';
+import 'package:intl/intl.dart';
 import '../../../core/services/auth_service.dart';
 
 class ChatPage extends StatefulWidget {
@@ -74,12 +75,9 @@ class _ChatPageState extends State<ChatPage> {
     final content = _textController.text;
     _textController.clear();
 
-    // Optimistic update
-    // Note: We need a temporary local message object preferably
-
     try {
       final newMessage = await _api.createMessage({
-        'title': 'Chat', // Optional or specific logic
+        'title': 'Bipupu Chat',
         'content': content,
         'receiver_id': widget.userId,
         'message_type': 'user',
@@ -94,7 +92,7 @@ class _ChatPageState extends State<ChatPage> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Failed to send: $e')));
+        ).showSnackBar(SnackBar(content: Text('发送失败: $e')));
       }
     }
   }
@@ -105,90 +103,229 @@ class _ChatPageState extends State<ChatPage> {
       appBar: AppBar(
         title: Row(
           children: [
-            const CircleAvatar(child: Icon(Icons.person, size: 20)),
-            const SizedBox(width: 10),
-            Text('User ${widget.userId}'),
+            Hero(
+              tag: 'avatar_${widget.userId}',
+              child: CircleAvatar(
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                child: const Icon(Icons.person, size: 20),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '用户 ${widget.userId}',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '在线',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.call), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
+          IconButton(icon: const Icon(Icons.call_outlined), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.videocam_outlined),
+            onPressed: () {},
+          ),
         ],
       ),
-      body: _isLoading
+      body: _isLoading && _messages.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
                 Expanded(
                   child: ListView.builder(
                     controller: _scrollController,
-                    padding: const EdgeInsets.all(8.0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     itemCount: _messages.length,
                     itemBuilder: (context, index) {
                       final msg = _messages[index];
                       final isMe = msg.senderId == _currentUserId;
-                      return _buildMessageBubble(msg.content, isMe);
+                      final showTime =
+                          index == 0 ||
+                          msg.createdAt
+                                  .difference(_messages[index - 1].createdAt)
+                                  .inMinutes >
+                              5;
+
+                      return Column(
+                        children: [
+                          if (showTime)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              child: Text(
+                                _formatMessageTime(msg.createdAt),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                              ),
+                            ),
+                          _buildMessageBubble(msg, isMe),
+                        ],
+                      );
                     },
                   ),
                 ),
-                const Divider(height: 1),
                 _buildTextComposer(),
               ],
             ),
     );
   }
 
-  Widget _buildMessageBubble(String text, bool isMe) {
+  String _formatMessageTime(DateTime time) {
+    final now = DateTime.now();
+    if (now.difference(time).inDays == 0) {
+      return DateFormat('HH:mm').format(time);
+    }
+    return DateFormat('MM月dd日 HH:mm').format(time);
+  }
+
+  Widget _buildMessageBubble(Message msg, bool isMe) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDevice = msg.messageType == MessageType.device;
+
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-        decoration: BoxDecoration(
-          color: isMe ? Colors.blue[100] : Colors.grey[200],
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(12),
-            topRight: const Radius.circular(12),
-            bottomLeft: isMe
-                ? const Radius.circular(12)
-                : const Radius.circular(0),
-            bottomRight: isMe
-                ? const Radius.circular(0)
-                : const Radius.circular(12),
-          ),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
-        child: Text(text, style: TextStyle(color: Colors.black87)),
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isDevice
+              ? (isMe ? colorScheme.primary : colorScheme.secondaryContainer)
+              : (isMe
+                    ? colorScheme.primary
+                    : colorScheme.surfaceContainerHighest),
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(20),
+            topRight: const Radius.circular(20),
+            bottomLeft: Radius.circular(isMe ? 20 : 4),
+            bottomRight: Radius.circular(isMe ? 4 : 20),
+          ),
+          boxShadow: isDevice
+              ? [
+                  BoxShadow(
+                    color: (isMe ? colorScheme.primary : colorScheme.secondary)
+                        .withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          crossAxisAlignment: isMe
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
+          children: [
+            if (isDevice)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.sensors,
+                      size: 14,
+                      color: isMe ? Colors.white70 : colorScheme.primary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '传唤信号',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: isMe ? Colors.white70 : colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            Text(
+              msg.content,
+              style: TextStyle(
+                color: isMe
+                    ? (isDevice ? Colors.white : colorScheme.onPrimary)
+                    : (isDevice
+                          ? colorScheme.onSecondaryContainer
+                          : colorScheme.onSurfaceVariant),
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildTextComposer() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-      color: Theme.of(context).cardColor,
-      child: SafeArea(
-        child: Row(
-          children: [
-            IconButton(icon: const Icon(Icons.mic), onPressed: () {}),
-            Expanded(
-              child: TextField(
-                controller: _textController,
-                onSubmitted: _handleSubmitted,
-                decoration: const InputDecoration.collapsed(
-                  hintText: 'Send a message',
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 8,
+        bottom: MediaQuery.of(context).padding.bottom + 8,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline),
+            onPressed: () {},
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          Expanded(
+            child: TextField(
+              controller: _textController,
+              onSubmitted: _handleSubmitted,
+              decoration: InputDecoration(
+                hintText: '开始聊天...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
                 ),
               ),
             ),
-            IconButton(
-              icon: const Icon(Icons.emoji_emotions_outlined),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: const Icon(Icons.send),
-              onPressed: () => _handleSubmitted(_textController.text),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.send),
+            onPressed: () => _handleSubmitted(_textController.text),
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ],
       ),
     );
   }

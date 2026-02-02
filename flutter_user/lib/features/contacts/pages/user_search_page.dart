@@ -46,11 +46,7 @@ class _UserSearchPageState extends State<UserSearchPage> {
   }
 
   Future<PaginatedResponse<User>> _fetchUsers(String keyword) {
-    return _api.adminGetAllUsers(
-      page: 1,
-      size: 20,
-      search: keyword.isNotEmpty ? keyword : null,
-    );
+    return _api.adminGetUsers(page: 1, size: 20);
   }
 
   @override

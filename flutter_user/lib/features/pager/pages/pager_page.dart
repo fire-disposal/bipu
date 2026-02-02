@@ -4,7 +4,10 @@ import 'package:flutter_core/api/api.dart';
 import 'package:flutter_core/core/network/rest_client.dart';
 import 'package:flutter_core/models/paginated_response.dart';
 import 'package:flutter_core/models/user_model.dart';
+import '../../../core/utils/color_extension.dart';
+import '../../../models/dispatcher.dart';
 import '../../../services/speech_recognition_service.dart';
+import '../../common/widgets/app_button.dart';
 
 class PagerPage extends StatefulWidget {
   const PagerPage({super.key});
@@ -27,18 +30,22 @@ class _PagerPageState extends State<PagerPage> {
   List<User> _friends = [];
   bool _isLoadingFriends = false;
 
+  // Dispatcher Selection
+  Dispatcher _selectedDispatcher = mockDispatchers[0];
+
   // Attachments
   Color _selectedColor = Colors.blue;
   String _selectedVibration = 'SHORT';
   final Map<String, String> _vibrationPatterns = {
-    'SHORT': 'Short Buzz',
-    'LONG': 'Long Buzz',
-    'SOS': 'SOS Pattern',
-    'HEARTBEAT': 'Heartbeat',
-    'RAPID': 'Rapid Fire',
+    'SHORT': '短促震动',
+    'LONG': '长震动',
+    'SOS': 'SOS 模式',
+    'HEARTBEAT': '心跳模式',
+    'RAPID': '快速连发',
   };
 
   bool _isSending = false;
+  bool _isListening = false;
 
   @override
   void initState() {
@@ -65,9 +72,26 @@ class _PagerPageState extends State<PagerPage> {
 
     try {
       await _speechService.init();
-      await _speechService.startRecording();
+      // Don't start recording automatically, wait for user action
     } catch (e) {
       debugPrint('Error initializing speech service: $e');
+    }
+  }
+
+  Future<void> _toggleListening() async {
+    try {
+      if (_isListening) {
+        await _speechService.stop();
+      } else {
+        await _speechService.startRecording();
+      }
+      setState(() => _isListening = !_isListening);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('语音服务错误: $e')));
+      }
     }
   }
 
@@ -87,12 +111,10 @@ class _PagerPageState extends State<PagerPage> {
 
   Future<void> _sendMessage() async {
     final text = _textController.text.trim();
-    if (text.isEmpty && _selectedVibration.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a message or select a pattern'),
-        ),
-      );
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请输入发送内容')));
       return;
     }
 
@@ -104,7 +126,7 @@ class _PagerPageState extends State<PagerPage> {
       if (_isDirectInput) {
         final username = _usernameController.text.trim();
         if (username.isEmpty) {
-          throw Exception('Please enter a username');
+          throw Exception('请输入对方用户名');
         }
         // Search for user
         final users = await _searchUsers(username);
@@ -113,19 +135,18 @@ class _PagerPageState extends State<PagerPage> {
           (u) => u.username == username,
           orElse: () => users.items.isNotEmpty
               ? users.items.first
-              : throw Exception('User not found'),
+              : throw Exception('找不到该用户'),
         );
         receiverId = exactMatch.id;
       } else {
         if (_selectedFriend == null) {
-          throw Exception('Please select a friend');
+          throw Exception('请选择一位好友');
         }
         receiverId = _selectedFriend!.id;
       }
 
       final pattern = {
-        'rgb':
-            '#${_selectedColor.value.toRadixString(16).substring(2).toUpperCase()}',
+        'rgb': '#${_selectedColor.toHex()}',
         'vibration': _selectedVibration,
       };
 
@@ -138,9 +159,9 @@ class _PagerPageState extends State<PagerPage> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Message sent successfully!')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('传呼成功！')));
         _textController.clear();
         _speechService.clearBuffer();
       }
@@ -148,8 +169,8 @@ class _PagerPageState extends State<PagerPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error sending message: $e'),
-            backgroundColor: Colors.red,
+            content: Text('发送失败: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -159,11 +180,9 @@ class _PagerPageState extends State<PagerPage> {
   }
 
   Future<PaginatedResponse<User>> _searchUsers(String keyword) {
-    return _api.adminGetAllUsers(
-      page: 1,
-      size: 20,
-      search: keyword.isNotEmpty ? keyword : null,
-    );
+    // 暂时使用 adminGetUsers，注意这可能需要管理员权限
+    // 后续建议增加专门的公开搜索接口
+    return _api.adminGetUsers(page: 1, size: 20);
   }
 
   @override
@@ -175,46 +194,86 @@ class _PagerPageState extends State<PagerPage> {
     super.dispose();
   }
 
-  void _showFriendSelector() {
+  void _showFriendPicker() {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) {
         return Container(
-          padding: const EdgeInsets.all(16),
-          height: 400,
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
               const Text(
-                'Select Friend',
+                '选择好友',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
               ),
-              const SizedBox(height: 10),
-              Expanded(
+              const SizedBox(height: 16),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.5,
+                ),
                 child: _friends.isEmpty
-                    ? const Center(child: Text("No friends found"))
-                    : ListView.builder(
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 40),
+                        child: Text(
+                          "暂无好友",
+                          style: TextStyle(color: Colors.grey.shade500),
+                        ),
+                      )
+                    : ListView.separated(
+                        shrinkWrap: true,
                         itemCount: _friends.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
                         itemBuilder: (context, index) {
                           final friend = _friends[index];
                           return ListTile(
                             leading: CircleAvatar(
-                              child: Text(friend.username[0].toUpperCase()),
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primaryContainer,
+                              child: Text(
+                                friend.username[0].toUpperCase(),
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimaryContainer,
+                                ),
+                              ),
                             ),
-                            title: Text(friend.nickname ?? friend.username),
-                            subtitle: Text(friend.username),
+                            title: Text(
+                              friend.nickname ?? friend.username,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Text(
+                              friend.username,
+                              style: const TextStyle(fontSize: 12),
+                            ),
                             onTap: () {
-                              setState(() {
-                                _selectedFriend = friend;
-                              });
+                              setState(() => _selectedFriend = friend);
                               Navigator.pop(context);
                             },
                           );
                         },
                       ),
               ),
+              const SizedBox(height: 16),
             ],
           ),
         );
@@ -224,251 +283,608 @@ class _PagerPageState extends State<PagerPage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeColor = _selectedDispatcher.themeColor;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pager Station'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.cleaning_services),
-            tooltip: 'Clear Buffer',
-            onPressed: () {
-              _speechService.clearBuffer();
-              _textController.clear();
-            },
+      body: AnimatedContainer(
+        duration: const Duration(seconds: 1),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              themeColor.withValues(alpha: 0.1),
+              isDark ? Colors.black : Colors.white,
+              themeColor.withValues(alpha: 0.05),
+            ],
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Target Selection
-            Card(
-              margin: const EdgeInsets.all(16),
-              elevation: 4,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+        child: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              expandedHeight: 120.0,
+              floating: false,
+              pinned: true,
+              stretch: true,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              flexibleSpace: FlexibleSpaceBar(
+                title: Text(
+                  '传呼中心',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                centerTitle: true,
+                background: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'To:',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
+                    Positioned(
+                      top: -20,
+                      right: -20,
+                      child: Icon(
+                        Icons.sensors,
+                        size: 150,
+                        color: themeColor.withValues(alpha: 0.1),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.cleaning_services_outlined),
+                  tooltip: '清空内容',
+                  onPressed: () {
+                    _speechService.clearBuffer();
+                    _textController.clear();
+                  },
+                ),
+              ],
+            ),
+
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  children: [
+                    // Dispatcher Card - Show current dispatcher info
+                    _buildCurrentDispatcherCard(),
+
+                    const SizedBox(height: 16),
+
+                    // Target Selection
+                    Card(
+                      elevation: 0,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surface.withValues(alpha: 0.7),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        side: BorderSide(
+                          color: Theme.of(
+                            context,
+                          ).dividerColor.withValues(alpha: 0.1),
                         ),
-                        Row(
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Direct'),
-                            Switch(
-                              value: !_isDirectInput,
-                              onChanged: (val) {
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: themeColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    Icons.near_me,
+                                    color: themeColor,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  '发送至',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            SegmentedButton<bool>(
+                              segments: const [
+                                ButtonSegment(
+                                  value: false,
+                                  label: Text('选择好友'),
+                                  icon: Icon(Icons.people_outline),
+                                ),
+                                ButtonSegment(
+                                  value: true,
+                                  label: Text('直接输入'),
+                                  icon: Icon(Icons.edit_note),
+                                ),
+                              ],
+                              selected: {_isDirectInput},
+                              onSelectionChanged: (Set<bool> selection) {
                                 setState(() {
-                                  _isDirectInput = !val;
+                                  _isDirectInput = selection.first;
                                   _selectedFriend = null;
                                   _usernameController.clear();
                                 });
                               },
+                              showSelectedIcon: false,
+                              style: SegmentedButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.surface,
+                                selectedBackgroundColor: themeColor.withValues(
+                                  alpha: 0.2,
+                                ),
+                                selectedForegroundColor: themeColor,
+                              ),
                             ),
-                            const Text('Friend'),
+                            const SizedBox(height: 20),
+                            if (!_isDirectInput)
+                              InkWell(
+                                onTap: _showFriendPicker,
+                                borderRadius: BorderRadius.circular(16),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Theme.of(
+                                        context,
+                                      ).dividerColor.withValues(alpha: 0.2),
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.person_outline,
+                                        color: themeColor,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          _selectedFriend != null
+                                              ? (_selectedFriend!.nickname ??
+                                                    _selectedFriend!.username)
+                                              : '点击选择好友...',
+                                          style: TextStyle(
+                                            color: _selectedFriend == null
+                                                ? Colors.grey.shade600
+                                                : null,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ),
+                                      const Icon(
+                                        Icons.arrow_forward_ios,
+                                        size: 14,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            else
+                              TextField(
+                                controller: _usernameController,
+                                decoration: InputDecoration(
+                                  hintText: '输入目标用户名',
+                                  prefixIcon: Icon(
+                                    Icons.person_search_outlined,
+                                    color: themeColor,
+                                  ),
+                                  filled: true,
+                                  fillColor: Theme.of(
+                                    context,
+                                  ).colorScheme.surface,
+                                ),
+                              ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
-                    const SizedBox(height: 10),
-                    if (!_isDirectInput)
-                      InkWell(
-                        onTap: _showFriendSelector,
-                        child: InputDecorator(
-                          decoration: const InputDecoration(
-                            labelText: 'Select Friend',
-                            border: OutlineInputBorder(),
-                            suffixIcon: Icon(Icons.arrow_drop_down),
-                          ),
-                          child: Text(
-                            _selectedFriend?.username ??
-                                (_selectedFriend?.nickname ?? 'Select...'),
-                            style: TextStyle(
-                              color: _selectedFriend == null
-                                  ? Colors.grey
-                                  : Colors.black,
-                            ),
-                          ),
-                        ),
-                      )
-                    else
-                      TextField(
-                        controller: _usernameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Enter Username',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.person),
+
+                    const SizedBox(height: 16),
+
+                    // Dispatcher Selection
+                    _buildDispatcherList(),
+
+                    const SizedBox(height: 16),
+
+                    // Message Body
+                    Card(
+                      elevation: 0,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surface.withValues(alpha: 0.7),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        side: BorderSide(
+                          color: Theme.of(
+                            context,
+                          ).dividerColor.withValues(alpha: 0.1),
                         ),
                       ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Attachments
-            Card(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              elevation: 4,
-              child: ExpansionTile(
-                title: const Row(
-                  children: [
-                    Icon(Icons.settings_remote),
-                    SizedBox(width: 8),
-                    Text('Device Settings (RGB & Vibrate)'),
-                  ],
-                ),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('RGB Color'),
-                        const SizedBox(height: 8),
-                        Row(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: _selectedColor,
-                                border: Border.all(color: Colors.grey),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
+                            Row(
+                              children: [
+                                const Text(
+                                  '传呼消息',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const Spacer(),
+                                if (_textController.text.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: themeColor.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '${_textController.text.length} 字',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: themeColor,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
-                            Expanded(
-                              child: Column(
-                                children: [
-                                  _buildColorSlider(
-                                    'R',
-                                    _selectedColor.red,
-                                    Colors.red,
-                                    (val) {
-                                      setState(
-                                        () => _selectedColor = _selectedColor
-                                            .withRed(val.toInt()),
-                                      );
-                                    },
-                                  ),
-                                  _buildColorSlider(
-                                    'G',
-                                    _selectedColor.green,
-                                    Colors.green,
-                                    (val) {
-                                      setState(
-                                        () => _selectedColor = _selectedColor
-                                            .withGreen(val.toInt()),
-                                      );
-                                    },
-                                  ),
-                                  _buildColorSlider(
-                                    'B',
-                                    _selectedColor.blue,
-                                    Colors.blue,
-                                    (val) {
-                                      setState(
-                                        () => _selectedColor = _selectedColor
-                                            .withBlue(val.toInt()),
-                                      );
-                                    },
-                                  ),
-                                ],
+                            const SizedBox(height: 16),
+                            TextField(
+                              controller: _textController,
+                              maxLines: 4,
+                              onChanged: (v) => setState(() {}),
+                              decoration: InputDecoration(
+                                hintText: '键入内容或使用下方语音...',
+                                fillColor: Theme.of(
+                                  context,
+                                ).colorScheme.surface,
+                                filled: true,
                               ),
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                            const SizedBox(height: 20),
+
+                            // Voice Control
+                            Center(child: _buildVoiceButton()),
+
+                            const SizedBox(height: 24),
+
+                            // Style settings
+                            ExpansionTile(
+                              title: const Text(
+                                '传呼样式设置',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              leading: Icon(
+                                Icons.tune,
+                                size: 20,
+                                color: themeColor,
+                              ),
+                              children: [_buildStyleSettings()],
+                            ),
+
+                            const SizedBox(height: 16),
+                            AppButton(
+                              text: _isSending ? '信号传输中...' : '启动传呼',
+                              onPressed: _isSending ? null : _sendMessage,
+                              isLoading: _isSending,
+                              icon: Icons.bolt,
+                              backgroundColor: themeColor,
+                              foregroundColor: Colors.white,
                             ),
                           ],
                         ),
-                        const Divider(),
-                        DropdownButtonFormField<String>(
-                          decoration: const InputDecoration(
-                            labelText: 'Vibration Pattern',
-                            prefixIcon: Icon(Icons.vibration),
-                            border: OutlineInputBorder(),
-                          ),
-                          initialValue: _selectedVibration,
-                          items: _vibrationPatterns.entries.map((e) {
-                            return DropdownMenuItem(
-                              value: e.key,
-                              child: Text(e.value),
-                            );
-                          }).toList(),
-                          onChanged: (val) {
-                            if (val != null) {
-                              setState(() => _selectedVibration = val);
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Message Body
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'Message',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    height: 150,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: TextField(
-                      controller: _textController,
-                      maxLines: null,
-                      expands: true,
-                      decoration: const InputDecoration(
-                        hintText: 'Type or speak...',
-                        border: InputBorder.none,
-                      ),
-                      style: const TextStyle(fontSize: 18),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: _isSending ? null : _sendMessage,
-                    icon: _isSending
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.send),
-                    label: Text(_isSending ? 'Sending...' : 'SEND PAGE'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: Theme.of(context).primaryColor,
-                      foregroundColor: Colors.white,
-                      textStyle: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 30), // Bottom padding
-                ],
+                    const SizedBox(height: 48),
+                  ],
+                ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCurrentDispatcherCard() {
+    final themeColor = _selectedDispatcher.themeColor;
+    return Card(
+      elevation: 4,
+      shadowColor: themeColor.withValues(alpha: 0.2),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: LinearGradient(
+            colors: [themeColor, themeColor.withValues(alpha: 0.8)],
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                color: Colors.white24,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                _selectedDispatcher.avatar,
+                style: const TextStyle(fontSize: 40),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _selectedDispatcher.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    _selectedDispatcher.description,
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.verified, color: Colors.white70),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDispatcherList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            '切换调度员',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 100,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: mockDispatchers.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final dispatcher = mockDispatchers[index];
+              final isSelected = _selectedDispatcher.id == dispatcher.id;
+
+              return GestureDetector(
+                onTap: () {
+                  if (dispatcher.isLocked) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('${dispatcher.name} 尚未解锁')),
+                    );
+                    return;
+                  }
+                  setState(() => _selectedDispatcher = dispatcher);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 80,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? dispatcher.themeColor.withValues(alpha: 0.1)
+                        : Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isSelected
+                          ? dispatcher.themeColor
+                          : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                  child: Stack(
+                    children: [
+                      Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              dispatcher.avatar,
+                              style: TextStyle(
+                                fontSize: 32,
+                                color: dispatcher.isLocked ? Colors.grey : null,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              dispatcher.name,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: dispatcher.isLocked ? Colors.grey : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (dispatcher.isLocked)
+                        const Positioned(
+                          top: 4,
+                          right: 4,
+                          child: Icon(
+                            Icons.lock_outline,
+                            size: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVoiceButton() {
+    final themeColor = _selectedDispatcher.themeColor;
+    return GestureDetector(
+      onLongPressStart: (_) => _toggleListening(),
+      onLongPressEnd: (_) => _toggleListening(),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          color: _isListening ? themeColor : themeColor.withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+          boxShadow: _isListening
+              ? [
+                  BoxShadow(
+                    color: themeColor.withValues(alpha: 0.4),
+                    blurRadius: 20,
+                    spreadRadius: 5,
+                  ),
+                ]
+              : null,
+        ),
+        child: Icon(
+          _isListening ? Icons.graphic_eq : Icons.mic,
+          color: _isListening ? Colors.white : themeColor,
+          size: 40,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStyleSettings() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '信号灯色彩',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _selectedColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _selectedColor.withValues(alpha: 0.3),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildColorSlider(
+                      'R',
+                      _selectedColor.red,
+                      Colors.red,
+                      (v) => setState(
+                        () =>
+                            _selectedColor = _selectedColor.withRed(v.toInt()),
+                      ),
+                    ),
+                    _buildColorSlider(
+                      'G',
+                      _selectedColor.green,
+                      Colors.green,
+                      (v) => setState(
+                        () => _selectedColor = _selectedColor.withGreen(
+                          v.toInt(),
+                        ),
+                      ),
+                    ),
+                    _buildColorSlider(
+                      'B',
+                      _selectedColor.blue,
+                      Colors.blue,
+                      (v) => setState(
+                        () =>
+                            _selectedColor = _selectedColor.withBlue(v.toInt()),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            decoration: const InputDecoration(
+              labelText: '震动脉冲',
+              prefixIcon: Icon(Icons.vibration, size: 20),
+            ),
+            value: _selectedVibration,
+            items: _vibrationPatterns.entries.map((e) {
+              return DropdownMenuItem(
+                value: e.key,
+                child: Text(e.value, style: const TextStyle(fontSize: 14)),
+              );
+            }).toList(),
+            onChanged: (val) {
+              if (val != null) setState(() => _selectedVibration = val);
+            },
+          ),
+        ],
       ),
     );
   }
@@ -482,7 +898,7 @@ class _PagerPageState extends State<PagerPage> {
     return Row(
       children: [
         SizedBox(
-          width: 20,
+          width: 16,
           child: Text(
             label,
             style: TextStyle(color: color, fontWeight: FontWeight.bold),

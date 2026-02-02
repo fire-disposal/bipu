@@ -45,22 +45,31 @@ class _ConversationListPageState extends State<ConversationListPage>
         size: 50,
       );
 
+      final responseSent = await _api.getSentMessages(page: 1, size: 50);
+
       setState(() {
-        _receivedMessages = _groupMessages(responseReceived.items);
-        _sentMessages = [];
+        _receivedMessages = _groupMessages(
+          responseReceived.items,
+          bySender: true,
+        );
+        _sentMessages = _groupMessages(responseSent.items, bySender: false);
       });
     } catch (e) {
       debugPrint('Error loading messages: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  List<Message> _groupMessages(List<Message> messages) {
+  List<Message> _groupMessages(
+    List<Message> messages, {
+    required bool bySender,
+  }) {
     final Map<int, Message> conversations = {};
     for (var msg in messages) {
-      if (!conversations.containsKey(msg.senderId)) {
-        conversations[msg.senderId] = msg;
+      final targetId = bySender ? msg.senderId : msg.receiverId;
+      if (!conversations.containsKey(targetId)) {
+        conversations[targetId] = msg;
       }
     }
     return conversations.values.toList();
@@ -75,14 +84,15 @@ class _ConversationListPageState extends State<ConversationListPage>
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Messages',
+          '消息列表',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         bottom: TabBar(
           controller: _tabController,
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold),
           tabs: const [
-            Tab(text: 'Received'),
-            Tab(text: 'Sent'),
+            Tab(text: '收到的'),
+            Tab(text: '已发送'),
           ],
         ),
         actions: [IconButton(icon: const Icon(Icons.search), onPressed: () {})],
@@ -90,21 +100,28 @@ class _ConversationListPageState extends State<ConversationListPage>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildMessageList(_receivedMessages, isReceived: true),
-          _buildMessageList(_sentMessages, isReceived: false),
+          RefreshIndicator(
+            onRefresh: _loadMessages,
+            child: _buildMessageList(_receivedMessages, isReceived: true),
+          ),
+          RefreshIndicator(
+            onRefresh: _loadMessages,
+            child: _buildMessageList(_sentMessages, isReceived: false),
+          ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           context.push('/contacts');
         },
-        child: const Icon(Icons.message),
+        label: const Text('新消息'),
+        icon: const Icon(Icons.edit_outlined),
       ),
     );
   }
 
   Widget _buildMessageList(List<Message> messages, {required bool isReceived}) {
-    if (_isLoading) {
+    if (_isLoading && messages.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -113,58 +130,149 @@ class _ConversationListPageState extends State<ConversationListPage>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              isReceived ? Icons.inbox : Icons.send,
-              size: 64,
-              color: Colors.grey[300],
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primaryContainer.withOpacity(0.3),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isReceived ? Icons.inbox_outlined : Icons.send_outlined,
+                size: 48,
+                color: Theme.of(context).colorScheme.primary,
+              ),
             ),
             const SizedBox(height: 16),
-            Text('No ${isReceived ? 'received' : 'sent'} messages'),
+            Text(
+              '暂无${isReceived ? '收到的' : '发送的'}消息',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 16,
+              ),
+            ),
           ],
         ),
       );
     }
 
-    return ListView.builder(
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: messages.length,
+      separatorBuilder: (_, __) => const Divider(indent: 72, height: 1),
       itemBuilder: (context, index) {
         final message = messages[index];
+        final targetId = isReceived ? message.senderId : message.receiverId;
+
         return ListTile(
-          leading: CircleAvatar(
-            child: Text(message.senderId.toString().substring(0, 1)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
           ),
-          title: Text('User ${message.senderId}'),
-          subtitle: Text(
-            message.content,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          leading: Hero(
+            tag: 'avatar_$targetId',
+            child: CircleAvatar(
+              radius: 28,
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              child: Text(
+                'U',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                ),
+              ),
+            ),
           ),
-          trailing: Text(
-            DateFormat('MM/dd HH:mm').format(message.createdAt),
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '用户 $targetId',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              Text(
+                _formatTime(message.createdAt),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              children: [
+                if (message.messageType == MessageType.device)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Icon(
+                      Icons.sensors,
+                      size: 14,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                Expanded(
+                  child: Text(
+                    message.content,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                  ),
+                ),
+                if (isReceived && !message.isRead)
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.error,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+              ],
+            ),
           ),
           onTap: () {
-            context.push('/chat/${message.senderId}');
+            context.push('/chat/$targetId');
           },
         );
       },
     );
   }
 
+  String _formatTime(DateTime time) {
+    final now = DateTime.now();
+    final difference = now.difference(time);
+
+    if (difference.inDays == 0) {
+      return DateFormat('HH:mm').format(time);
+    } else if (difference.inDays == 1) {
+      return '昨天';
+    } else if (difference.inDays < 7) {
+      return DateFormat('EEEE').format(time);
+    } else {
+      return DateFormat('MM/dd').format(time);
+    }
+  }
+
   Widget _buildGuestView() {
     return Scaffold(
-      appBar: AppBar(title: const Text('Messages (Guest)')),
+      appBar: AppBar(title: const Text('消息 (访客)')),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.bluetooth_disabled, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
-            const Text('Guest Mode - Online Chat Unavailable'),
-            const SizedBox(height: 8),
+            const Text('访客模式 - 暂不可使用在线翻译'),
+            const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => context.go('/bluetooth'),
-              child: const Text('Go to Bluetooth Chat'),
+              child: const Text('前往蓝牙聊天'),
             ),
           ],
         ),

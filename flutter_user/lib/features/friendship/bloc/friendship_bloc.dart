@@ -67,7 +67,7 @@ class FriendshipBloc extends Bloc<FriendshipEvent, FriendshipState> {
         requestsResponse.items.map((friendship) async {
           try {
             // userId is the sender
-            final sender = await _api.getUserDetails(friendship.userId);
+            final sender = await _api.adminGetUser(friendship.userId);
             return FriendRequestItem(friendship: friendship, sender: sender);
           } catch (e) {
             // Fallback or skip

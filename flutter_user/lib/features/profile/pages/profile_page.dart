@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/theme_service.dart';
+import '../../common/widgets/setting_tile.dart';
 import 'package:go_router/go_router.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -60,85 +61,88 @@ class ProfilePage extends StatelessWidget {
           ),
           SliverList(
             delegate: SliverChildListDelegate([
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
 
-              // Device Binding Section
-              _buildSectionHeader('Device Management'),
-              _buildSettingItem(
-                context,
-                icon: Icons.bluetooth_connected,
-                title: 'Machine Binding',
-                subtitle: 'Manage connected pagers',
-                onTap: () => context.push('/bluetooth'),
-              ),
-
-              const SizedBox(height: 20),
-              // Account & Security
-              _buildSectionHeader('Account & Security'),
-              _buildSettingItem(
-                context,
-                icon: Icons.person_outline,
-                title: 'Personal Information',
-                onTap: () => context.push('/profile/personal_info'),
-              ),
-              _buildSettingItem(
-                context,
-                icon: Icons.security,
-                title: 'Account Security',
-                subtitle: 'Password, 2FA',
-                onTap: () => context.push('/profile/security'),
-              ),
-              _buildSettingItem(
-                context,
-                icon: Icons.lock_outline,
-                title: 'Privacy Settings',
-                onTap: () => context.push('/profile/privacy'),
+              SettingSection(
+                title: '设备管理',
+                children: [
+                  SettingTile(
+                    icon: Icons.bluetooth_connected,
+                    title: '设备绑定',
+                    subtitle: '管理已连接的传呼机',
+                    onTap: () => context.push('/bluetooth/scan'),
+                  ),
+                ],
               ),
 
-              const SizedBox(height: 20),
-              // App Settings
-              _buildSectionHeader('Settings'),
-              _buildSettingItem(
-                context,
-                icon: Icons.palette_outlined,
-                title: 'Appearance',
-                subtitle: 'Light, Dark, System',
-                onTap: () => _showThemeSelector(context),
-              ),
-              _buildSettingItem(
-                context,
-                icon: Icons.notifications_outlined,
-                title: 'Notifications',
-                onTap: () => context.push('/profile/notifications'),
-              ),
-              _buildSettingItem(
-                context,
-                icon: Icons.language,
-                title: 'Language',
-                onTap: () => context.push('/profile/language'),
-              ),
-              _buildSettingItem(
-                context,
-                icon: Icons.info_outline,
-                title: 'About Bipupu',
-                onTap: () => context.push('/profile/about'),
+              SettingSection(
+                title: '账户与安全',
+                children: [
+                  SettingTile(
+                    icon: Icons.person_outline,
+                    title: '个人资料',
+                    onTap: () => context.push('/profile/personal_info'),
+                  ),
+                  SettingTile(
+                    icon: Icons.edit,
+                    title: '编辑资料',
+                    onTap: () => context.push('/profile/edit'),
+                  ),
+                  SettingTile(
+                    icon: Icons.security,
+                    title: '账号安全',
+                    subtitle: '密码、二步验证',
+                    onTap: () => context.push('/profile/security'),
+                  ),
+                  SettingTile(
+                    icon: Icons.lock_outline,
+                    title: '隐私设置',
+                    onTap: () => context.push('/profile/privacy'),
+                  ),
+                ],
               ),
 
-              const SizedBox(height: 20),
-              _buildSettingItem(
-                context,
-                icon: Icons.logout,
-                title: 'Logout',
-                textColor: Colors.red,
-                iconColor: Colors.red,
-                onTap: () async {
-                  await AuthService().logout();
-                  if (context.mounted) {
-                    context.go('/login');
-                  }
-                },
+              SettingSection(
+                title: '应用设置',
+                children: [
+                  SettingTile(
+                    icon: Icons.palette_outlined,
+                    title: '外观',
+                    subtitle: '浅色、深色、跟随系统',
+                    onTap: () => _showThemeSelector(context),
+                  ),
+                  SettingTile(
+                    icon: Icons.notifications_outlined,
+                    title: '通知',
+                    onTap: () => context.push('/profile/notifications'),
+                  ),
+                  SettingTile(
+                    icon: Icons.language,
+                    title: '语言',
+                    onTap: () => context.push('/profile/language'),
+                  ),
+                  SettingTile(
+                    icon: Icons.info_outline,
+                    title: '关于 Bipupu',
+                    onTap: () => context.push('/profile/about'),
+                  ),
+                ],
               ),
-              const SizedBox(height: 40),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Card(
+                  child: SettingTile(
+                    icon: Icons.logout,
+                    title: '退出登录',
+                    textColor: Colors.red,
+                    iconColor: Colors.red,
+                    onTap: () => _showLogoutDialog(context),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
               const Center(
                 child: Text(
                   'Bipupu v1.0.1',
@@ -147,6 +151,30 @@ class ProfilePage extends StatelessWidget {
               ),
               const SizedBox(height: 20),
             ]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('退出登录'),
+        content: const Text('确定要退出当前账号吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await AuthService().logout();
+              if (context.mounted) context.go('/login');
+            },
+            child: const Text('确定', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -166,7 +194,7 @@ class ProfilePage extends StatelessWidget {
             children: [
               const SizedBox(height: 16),
               const Text(
-                'Choose Theme',
+                '选择外观',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
@@ -178,19 +206,19 @@ class ProfilePage extends StatelessWidget {
                     children: [
                       _buildThemeOption(
                         context,
-                        title: 'Device System',
+                        title: '跟随系统',
                         mode: ThemeMode.system,
                         groupValue: currentMode,
                       ),
                       _buildThemeOption(
                         context,
-                        title: 'Light Mode',
+                        title: '浅色模式',
                         mode: ThemeMode.light,
                         groupValue: currentMode,
                       ),
                       _buildThemeOption(
                         context,
-                        title: 'Dark Mode',
+                        title: '深色模式',
                         mode: ThemeMode.dark,
                         groupValue: currentMode,
                       ),
@@ -226,38 +254,5 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: Colors.grey,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSettingItem(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    String? subtitle,
-    Color iconColor = Colors.grey,
-    Color? textColor,
-    VoidCallback? onTap,
-  }) {
-    return ListTile(
-      leading: Icon(icon, color: iconColor),
-      title: Text(
-        title,
-        style: textColor != null ? TextStyle(color: textColor) : null,
-      ),
-      subtitle: subtitle != null ? Text(subtitle) : null,
-      trailing: const Icon(Icons.chevron_right, size: 20, color: Colors.grey),
-      onTap: onTap ?? () {},
-    );
-  }
+  // 旧的 Section/Tile 已替换为可复用组件
 }

@@ -13,7 +13,6 @@ from app.core.openapi_util import export_openapi_json
 from app.core.exceptions import custom_exception_handler, http_exception_handler, general_exception_handler, BaseCustomException
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from fastapi.utils import generate_unique_id
 
 from app.core.logging import setup_logging
 setup_logging()
@@ -108,7 +107,6 @@ def create_app() -> FastAPI:
         docs_url="/api/docs",
         redoc_url="/api/redoc",
         openapi_tags=tags_metadata,
-        generate_unique_id_function=generate_unique_id,
     )
     # 挂载静态文件 (替代 Nginx 功能)
     # 确保上传目录存在

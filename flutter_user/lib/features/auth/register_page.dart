@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/toast_service.dart';
+import '../common/widgets/app_button.dart';
 
 class UserRegisterPage extends StatefulWidget {
   const UserRegisterPage({super.key});

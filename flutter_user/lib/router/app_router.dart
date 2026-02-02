@@ -7,6 +7,7 @@ import '../features/chat/pages/conversation_list_page.dart';
 import '../features/chat/pages/chat_page.dart';
 import '../features/contacts/pages/contacts_page.dart';
 import '../features/profile/pages/profile_page.dart';
+import '../features/profile/pages/profile_edit_page.dart';
 import '../features/layout/main_layout.dart';
 import '../features/layout/discover_page.dart';
 import '../features/speech_test/speech_test_page.dart';
@@ -88,6 +89,10 @@ class UserRouter {
             name: 'profile',
             builder: (context, state) => const ProfilePage(),
             routes: [
+              GoRoute(
+                path: 'edit',
+                builder: (context, state) => const ProfileEditPage(),
+              ),
               GoRoute(
                 path: 'personal_info',
                 builder: (context, state) =>

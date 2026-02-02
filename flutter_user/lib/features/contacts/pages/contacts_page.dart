@@ -28,13 +28,11 @@ class _ContactsPageState extends State<ContactsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Contacts',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: const Text('联系人', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.person_add_outlined),
+            icon: const Icon(Icons.person_add_alt_1_outlined),
+            tooltip: '搜索好友',
             onPressed: () {
               context.go('/contacts/search');
             },
@@ -54,34 +52,63 @@ class _ContactsPageState extends State<ContactsPage> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          return ListView(
-            children: [
-              _buildSystemItem(
-                context,
-                Icons.group_add,
-                'New Friends',
-                Colors.orange,
-                badgeCount: requestCount,
-                onTap: () => context.go('/contacts/requests'),
-              ),
-              const Divider(),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Text(
-                  'Friends',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontWeight: FontWeight.bold,
+          return RefreshIndicator(
+            onRefresh: () async {
+              context.read<FriendshipBloc>().add(const LoadFriendships());
+              context.read<FriendshipBloc>().add(const LoadFriendRequests());
+            },
+            child: ListView(
+              children: [
+                _buildSystemItem(
+                  context,
+                  Icons.person_add_rounded,
+                  '新的朋友',
+                  Colors.orange.shade700,
+                  badgeCount: requestCount,
+                  onTap: () => context.go('/contacts/requests'),
+                ),
+                _buildSystemItem(
+                  context,
+                  Icons.group_work_rounded,
+                  '群组通知',
+                  Colors.blue.shade700,
+                  onTap: () {}, // 暂未实现
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(left: 20, top: 24, bottom: 8),
+                  child: Text(
+                    '我的好友',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
-              ),
-              if (friends.isEmpty && state is! FriendshipLoading)
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Center(child: Text("No friends yet")),
-                ),
-              ...friends.map((user) => _buildContactItem(user)),
-            ],
+                if (friends.isEmpty && state is! FriendshipLoading)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 40),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.person_off_outlined,
+                            size: 48,
+                            color: Colors.grey.shade300,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            "暂无好友，快去搜索添加吧",
+                            style: TextStyle(color: Colors.grey.shade500),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ...friends.map((user) => _buildContactItem(user)),
+                const SizedBox(height: 40),
+              ],
+            ),
           );
         },
       ),
