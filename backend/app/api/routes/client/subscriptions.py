@@ -27,7 +27,7 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.get("/available", response_model=PaginatedResponse[SubscriptionTypeResponse], tags=["Subscriptions"])
+@router.get("/available", response_model=PaginatedResponse[SubscriptionTypeResponse], tags=["订阅"])
 async def get_available_subscriptions(
     params: PaginationParams = Depends(),
     category: Optional[str] = None,
@@ -46,7 +46,7 @@ async def get_available_subscriptions(
     return PaginatedResponse.create(subscription_types, total, params)
 
 
-@router.get("/my", response_model=PaginatedResponse[MySubscriptionItem], tags=["Subscriptions"])
+@router.get("/my", response_model=PaginatedResponse[MySubscriptionItem], tags=["订阅"])
 async def get_my_subscriptions(
     params: PaginationParams = Depends(),
     db: Session = Depends(get_db),
@@ -80,7 +80,7 @@ async def get_my_subscriptions(
     return PaginatedResponse.create(items, total, params)
 
 
-@router.post("/{subscription_type_id}/subscribe", response_model=SubscribeResponse, tags=["Subscriptions"])
+@router.post("/{subscription_type_id}/subscribe", response_model=SubscribeResponse, tags=["订阅"])
 async def subscribe_to_service(
     subscription_type_id: int,
     request: SubscribeRequest,
@@ -139,7 +139,7 @@ async def subscribe_to_service(
     )
 
 
-@router.post("/{subscription_type_id}/unsubscribe", response_model=SubscribeResponse, tags=["Subscriptions"])
+@router.post("/{subscription_type_id}/unsubscribe", response_model=SubscribeResponse, tags=["订阅"])
 async def unsubscribe_from_service(
     subscription_type_id: int,
     db: Session = Depends(get_db),
@@ -173,7 +173,7 @@ async def unsubscribe_from_service(
     )
 
 
-@router.put("/{subscription_type_id}/settings", response_model=UserSubscriptionModelResponse, tags=["Subscriptions"])
+@router.put("/{subscription_type_id}/settings", response_model=UserSubscriptionModelResponse, tags=["订阅"])
 async def update_subscription_settings(
     subscription_type_id: int,
     request: UserSubscriptionUpdate,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_core/api/api.dart';
+import 'package:flutter_core/core/network/rest_client.dart';
 import 'package:flutter_core/models/message_model.dart';
-import 'package:flutter_core/repositories/message_repository.dart';
 import '../../../core/services/auth_service.dart';
 
 class ChatPage extends StatefulWidget {
@@ -15,7 +16,7 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final MessageRepository _messageRepository = MessageRepository();
+  final RestClient _api = bipupuApi;
 
   List<Message> _messages = [];
   bool _isLoading = false;
@@ -31,8 +32,9 @@ class _ChatPageState extends State<ChatPage> {
     setState(() => _isLoading = true);
     try {
       // Use efficient conversation endpoint provided by repository
-      final response = await _messageRepository.getConversationMessages(
+      final response = await _api.getConversationMessages(
         widget.userId,
+        page: 1,
         size: 50,
       );
 
@@ -76,7 +78,7 @@ class _ChatPageState extends State<ChatPage> {
     // Note: We need a temporary local message object preferably
 
     try {
-      final newMessage = await _messageRepository.createMessage({
+      final newMessage = await _api.createMessage({
         'title': 'Chat', // Optional or specific logic
         'content': content,
         'receiver_id': widget.userId,

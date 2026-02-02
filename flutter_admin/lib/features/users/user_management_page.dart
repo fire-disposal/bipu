@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_core/api/api.dart';
+import 'package:flutter_core/core/network/rest_client.dart';
 import 'package:flutter_core/models/user_model.dart';
-import 'package:flutter_core/repositories/user_repository.dart';
 
 class UserManagementPage extends StatefulWidget {
   const UserManagementPage({super.key});
@@ -10,7 +11,7 @@ class UserManagementPage extends StatefulWidget {
 }
 
 class _UserManagementPageState extends State<UserManagementPage> {
-  final UserRepository _userRepository = UserRepository();
+  RestClient get _api => bipupuApi;
   List<User> _users = [];
   bool _isLoading = true;
   String? _error;
@@ -39,7 +40,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
     });
 
     try {
-      final response = await _userRepository.getUsers(
+      final response = await _api.adminGetAllUsers(
         page: _currentPage,
         size: _pageSize,
         search: _searchQuery,
@@ -75,9 +76,9 @@ class _UserManagementPageState extends State<UserManagementPage> {
         onSave: (data) async {
           try {
             if (user == null) {
-              await _userRepository.createUser(data);
+              await _api.register(data);
             } else {
-              await _userRepository.updateUser(user.id, data);
+              await _api.updateUser(user.id, data);
             }
             if (context.mounted) {
               Navigator.pop(context);
@@ -104,7 +105,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
 
   Future<void> _toggleUserStatus(User user) async {
     try {
-      await _userRepository.updateUser(user.id, {'is_active': !user.isActive});
+      await _api.adminUpdateUserStatus(user.id, {'is_active': !user.isActive});
       if (mounted) {
         _loadUsers();
       }

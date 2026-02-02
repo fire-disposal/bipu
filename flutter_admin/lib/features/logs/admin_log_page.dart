@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_core/api/api.dart';
+import 'package:flutter_core/core/network/rest_client.dart';
 import 'package:flutter_core/models/admin_log_model.dart';
-import 'package:flutter_core/repositories/admin_log_repository.dart';
 import 'package:intl/intl.dart';
 
 class AdminLogPage extends StatefulWidget {
@@ -11,7 +12,7 @@ class AdminLogPage extends StatefulWidget {
 }
 
 class _AdminLogPageState extends State<AdminLogPage> {
-  final AdminLogRepository _repository = AdminLogRepository();
+  RestClient get _api => bipupuApi;
   List<AdminLog> _logs = [];
   bool _isLoading = true;
   String? _error;
@@ -34,7 +35,7 @@ class _AdminLogPageState extends State<AdminLogPage> {
     });
 
     try {
-      final response = await _repository.getLogs(
+      final response = await _api.getAdminLogs(
         page: _currentPage,
         size: _pageSize,
       );

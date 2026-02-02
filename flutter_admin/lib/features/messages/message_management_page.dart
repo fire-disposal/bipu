@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_core/api/api.dart';
+import 'package:flutter_core/core/network/rest_client.dart';
 import 'package:flutter_core/models/message_model.dart';
-import 'package:flutter_core/repositories/system_notification_repository.dart';
 import 'send_system_message_page.dart';
 
 class MessageManagementPage extends StatefulWidget {
@@ -11,8 +12,7 @@ class MessageManagementPage extends StatefulWidget {
 }
 
 class _MessageManagementPageState extends State<MessageManagementPage> {
-  final SystemNotificationRepository _notificationRepository =
-      SystemNotificationRepository();
+  RestClient get _api => bipupuApi;
   List<Message> _messages = [];
   bool _isLoading = true;
   String? _error;
@@ -34,8 +34,10 @@ class _MessageManagementPageState extends State<MessageManagementPage> {
     });
 
     try {
-      final response = await _notificationRepository
-          .adminGetAllSystemNotifications(page: _currentPage, size: _pageSize);
+      final response = await _api.adminGetAllSystemNotifications(
+        page: _currentPage,
+        size: _pageSize,
+      );
       if (!mounted) return;
       setState(() {
         _messages = response.items;
@@ -53,7 +55,7 @@ class _MessageManagementPageState extends State<MessageManagementPage> {
 
   Future<void> _deleteMessage(int id) async {
     try {
-      await _notificationRepository.adminDeleteSystemNotification(id);
+      await _api.adminDeleteSystemNotification(id);
       _loadMessages(); // Reload the list
     } catch (e) {
       if (!mounted) return;
@@ -65,7 +67,7 @@ class _MessageManagementPageState extends State<MessageManagementPage> {
 
   Future<void> _showStats() async {
     try {
-      final stats = await _notificationRepository.adminGetStats();
+      final stats = await _api.adminGetSystemNotificationStats();
       if (!mounted) return;
       showDialog(
         context: context,

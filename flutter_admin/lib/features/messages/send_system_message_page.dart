@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_core/api/api.dart';
+import 'package:flutter_core/core/network/rest_client.dart';
 import 'package:flutter_core/models/system_notification_create_model.dart';
-import 'package:flutter_core/repositories/system_notification_repository.dart';
 
 class SendSystemMessagePage extends StatefulWidget {
   const SendSystemMessagePage({super.key});
@@ -12,7 +13,7 @@ class SendSystemMessagePage extends StatefulWidget {
 
 class _SendSystemMessagePageState extends State<SendSystemMessagePage> {
   final _formKey = GlobalKey<FormState>();
-  final _notificationRepository = SystemNotificationRepository();
+  RestClient get _api => bipupuApi;
   final _userIdController = TextEditingController();
   final _patternController = TextEditingController();
 
@@ -35,19 +36,19 @@ class _SendSystemMessagePageState extends State<SendSystemMessagePage> {
       case 'Emergency Red':
         preset = {
           "rgb": {"r": 255, "g": 0, "b": 0},
-          "vibe": {"intensity": 80, "duration": 2000}
+          "vibe": {"intensity": 80, "duration": 2000},
         };
         break;
       case 'Success Green':
         preset = {
           "rgb": {"r": 0, "g": 255, "b": 0},
-          "vibe": {"intensity": 30, "duration": 500}
+          "vibe": {"intensity": 30, "duration": 500},
         };
         break;
       case 'Info Blue':
         preset = {
           "rgb": {"r": 0, "g": 100, "b": 255},
-          "vibe": {"intensity": 20, "duration": 300}
+          "vibe": {"intensity": 20, "duration": 300},
         };
         break;
       default:
@@ -64,7 +65,7 @@ class _SendSystemMessagePageState extends State<SendSystemMessagePage> {
 
     try {
       List<int>? targetUsers;
-      
+
       if (!_sendToAll) {
         final userIdText = _userIdController.text;
         if (userIdText.trim().isEmpty) {
@@ -76,7 +77,7 @@ class _SendSystemMessagePageState extends State<SendSystemMessagePage> {
             .where((e) => e != null)
             .cast<int>()
             .toList();
-            
+
         if (targetUsers.isEmpty) {
           throw Exception('未能解析出有效的用户 ID');
         }
@@ -99,7 +100,7 @@ class _SendSystemMessagePageState extends State<SendSystemMessagePage> {
         pattern: pattern,
       );
 
-      await _notificationRepository.createSystemNotification(notification);
+      await _api.createSystemNotification(notification.toJson());
 
       if (mounted) {
         ScaffoldMessenger.of(
@@ -167,7 +168,7 @@ class _SendSystemMessagePageState extends State<SendSystemMessagePage> {
                 ],
               ),
               const SizedBox(height: 16),
-              
+
               SwitchListTile(
                 title: const Text('发送给所有活跃用户'),
                 subtitle: const Text('关闭以指定特定用户 ID'),
@@ -175,7 +176,7 @@ class _SendSystemMessagePageState extends State<SendSystemMessagePage> {
                 onChanged: (val) => setState(() => _sendToAll = val),
                 contentPadding: EdgeInsets.zero,
               ),
-              
+
               if (!_sendToAll)
                 TextFormField(
                   controller: _userIdController,
@@ -191,9 +192,9 @@ class _SendSystemMessagePageState extends State<SendSystemMessagePage> {
                     return null;
                   },
                 ),
-                
+
               const SizedBox(height: 16),
-              
+
               Row(
                 children: [
                   const Text('快速样式: '),

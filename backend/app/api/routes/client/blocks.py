@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 def get_user_settings_service(db: Session = Depends(get_db)) -> UserSettingsService:
     return UserSettingsService(db)
 
-@router.post("/blocks", response_model=StatusResponse, tags=["Blocks"])
+@router.post("/blocks", response_model=StatusResponse, tags=["黑名单"])
 async def block_user(
     block_request: BlockUserRequest,
     service: UserSettingsService = Depends(get_user_settings_service),
@@ -30,7 +30,7 @@ async def block_user(
     return {"message": "用户已拉黑"}
 
 
-@router.delete("/blocks/{user_id}", response_model=StatusResponse, tags=["Blocks"])
+@router.delete("/blocks/{user_id}", response_model=StatusResponse, tags=["黑名单"])
 async def unblock_user(
     user_id: int,
     service: UserSettingsService = Depends(get_user_settings_service),
@@ -42,7 +42,7 @@ async def unblock_user(
     return {"message": "用户已解除拉黑"}
 
 
-@router.get("/blocks", response_model=PaginatedResponse[BlockedUserResponse], tags=["Blocks"])
+@router.get("/blocks", response_model=PaginatedResponse[BlockedUserResponse], tags=["黑名单"])
 async def get_blocked_users(
     params: PaginationParams = Depends(),
     service: UserSettingsService = Depends(get_user_settings_service),

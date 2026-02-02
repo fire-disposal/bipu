@@ -71,7 +71,7 @@ class SubscriptionTypeDetailResponse(BaseModel):
         from_attributes = True
 
 
-@router.get("/subscription-types", response_model=PaginatedResponse[SubscriptionTypeDetailResponse], tags=["Subscription Management"])
+@router.get("/subscription-types", response_model=PaginatedResponse[SubscriptionTypeDetailResponse], tags=["订阅管理"])
 async def get_all_subscription_types(
     params: PaginationParams = Depends(),
     category: Optional[str] = None,
@@ -111,7 +111,7 @@ async def get_all_subscription_types(
     return PaginatedResponse.create(result, total, params)
 
 
-@router.get("/subscription-types/{subscription_type_id}", response_model=SubscriptionTypeDetailResponse, tags=["Subscription Management"])
+@router.get("/subscription-types/{subscription_type_id}", response_model=SubscriptionTypeDetailResponse, tags=["订阅管理"])
 async def get_subscription_type_detail(
     subscription_type_id: int,
     db: Session = Depends(get_db),
@@ -141,7 +141,7 @@ async def get_subscription_type_detail(
     )
 
 
-@router.post("/subscription-types", response_model=SubscriptionTypeResponse, tags=["Subscription Management"])
+@router.post("/subscription-types", response_model=SubscriptionTypeResponse, tags=["订阅管理"])
 async def create_subscription_type(
     subscription_type_in: SubscriptionTypeCreate,
     db: Session = Depends(get_db),
@@ -172,7 +172,7 @@ async def create_subscription_type(
     return subscription_type
 
 
-@router.put("/subscription-types/{subscription_type_id}", response_model=SubscriptionTypeResponse, tags=["Subscription Management"])
+@router.put("/subscription-types/{subscription_type_id}", response_model=SubscriptionTypeResponse, tags=["订阅管理"])
 async def update_subscription_type(
     subscription_type_id: int,
     subscription_update: SubscriptionTypeUpdate,
@@ -211,7 +211,7 @@ async def update_subscription_type(
     return subscription_type
 
 
-@router.put("/subscription-types/{subscription_type_id}/status", response_model=SubscriptionTypeResponse, tags=["Subscription Management"])
+@router.put("/subscription-types/{subscription_type_id}/status", response_model=SubscriptionTypeResponse, tags=["订阅管理"])
 async def toggle_subscription_type_status(
     subscription_type_id: int,
     status_update: SubscriptionTypeStatusUpdate,
@@ -237,7 +237,7 @@ async def toggle_subscription_type_status(
     return subscription_type
 
 
-@router.delete("/subscription-types/{subscription_type_id}", response_model=StatusResponse, tags=["Subscription Management"])
+@router.delete("/subscription-types/{subscription_type_id}", response_model=StatusResponse, tags=["订阅管理"])
 async def delete_subscription_type(
     subscription_type_id: int,
     db: Session = Depends(get_db),
@@ -267,7 +267,7 @@ async def delete_subscription_type(
     return {"message": "订阅类型已删除"}
 
 
-@router.get("/subscription-types/{subscription_type_id}/count", response_model=SubscriptionCountResponse, tags=["Subscription Management"])
+@router.get("/subscription-types/{subscription_type_id}/count", response_model=SubscriptionCountResponse, tags=["订阅管理"])
 async def get_subscription_count(
     subscription_type_id: int,
     db: Session = Depends(get_db),
@@ -302,7 +302,7 @@ async def get_subscription_count(
     )
 
 
-@router.get("/subscription-types/{subscription_type_id}/subscribers", response_model=PaginatedResponse[SubscriberItem], tags=["Subscription Management"])
+@router.get("/subscription-types/{subscription_type_id}/subscribers", response_model=PaginatedResponse[SubscriberItem], tags=["订阅管理"])
 async def get_subscription_subscribers(
     subscription_type_id: int,
     params: PaginationParams = Depends(),
@@ -344,7 +344,7 @@ async def get_subscription_subscribers(
     return PaginatedResponse.create(items, total, params)
 
 
-@router.get("/stats/overview", response_model=SubscriptionOverviewResponse, tags=["Subscription Management"])
+@router.get("/stats/overview", response_model=SubscriptionOverviewResponse, tags=["订阅管理"])
 async def get_subscription_overview(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_superuser)

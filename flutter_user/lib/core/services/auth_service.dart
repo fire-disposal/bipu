@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_core/api/api.dart';
 import 'package:flutter_core/core/network/api_client.dart';
+import 'package:flutter_core/core/network/rest_client.dart';
 import 'package:flutter_core/core/storage/token_storage.dart';
-import 'package:flutter_core/repositories/user_repository.dart';
 import '../storage/mobile_token_storage.dart';
 import 'package:flutter_core/models/user_model.dart';
 
@@ -13,7 +14,7 @@ class AuthService {
 
   final _authStateController = ValueNotifier<AuthStatus>(AuthStatus.unknown);
   final TokenStorage _tokenStorage = MobileTokenStorage();
-  final UserRepository _userRepository = UserRepository();
+  RestClient get _api => bipupuApi;
 
   User? _currentUser;
   bool _isGuest = false;
@@ -56,7 +57,7 @@ class AuthService {
 
   Future<void> fetchCurrentUser() async {
     try {
-      _currentUser = await _userRepository.getMe();
+      _currentUser = await _api.getMe();
     } catch (e) {
       rethrow;
     }
@@ -69,7 +70,7 @@ class AuthService {
     String? nickname,
   }) async {
     try {
-      await _userRepository.register({
+      await _api.register({
         'username': username,
         'email': email,
         'password': password,
@@ -82,16 +83,18 @@ class AuthService {
 
   Future<void> login(String username, String password) async {
     try {
-      final authResponse = await _userRepository.login(username, password);
+      final authResponse = await _api.login({
+        'username': username,
+        'password': password,
+      });
 
       await _tokenStorage.saveTokens(
         accessToken: authResponse.accessToken,
         refreshToken: authResponse.refreshToken,
       );
 
-      // Backend login might not return the full User object if the model differs,
-      // but UserRepository.login returns AuthResponse which usually contains User.
-      // If AuthResponse.user is optional or null, we might need to fetch it.
+      // Backend login might not return the full User object depending on schema.
+      // If AuthResponse.user is null, fetch the profile explicitly.
       _currentUser = authResponse.user;
       if (_currentUser == null) {
         await fetchCurrentUser();
@@ -119,25 +122,5 @@ class AuthService {
     _currentUser = null;
     _isGuest = false;
     _authStateController.value = AuthStatus.unauthenticated;
-  }
-}
-
-class AuthResponse {
-  final String accessToken;
-  final String refreshToken;
-  final User user;
-
-  AuthResponse({
-    required this.accessToken,
-    required this.refreshToken,
-    required this.user,
-  });
-
-  factory AuthResponse.fromJson(Map<String, dynamic> json) {
-    return AuthResponse(
-      accessToken: json['access_token'] as String,
-      refreshToken: json['refresh_token'] as String,
-      user: User.fromJson(json['user']),
-    );
   }
 }

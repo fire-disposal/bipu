@@ -29,7 +29,7 @@ def get_message_service(db: Session = Depends(get_db)) -> MessageService:
  
 
 # 基础消息功能
-@router.post("/", response_model=MessageResponse, tags=["Messages"])
+@router.post("/", response_model=MessageResponse, tags=["消息"])
 async def create_message(
     message: MessageCreate,
     service: MessageService = Depends(get_message_service),
@@ -41,7 +41,7 @@ async def create_message(
     return created_message
 
 
-@router.get("/", response_model=PaginatedResponse[MessageResponse], tags=["Messages"])
+@router.get("/", response_model=PaginatedResponse[MessageResponse], tags=["消息"])
 async def get_messages(
     params: PaginationParams = Depends(),
     message_type: Optional[MessageType] = None,
@@ -61,7 +61,7 @@ async def get_messages(
     return PaginatedResponse.create(messages, total, params)
 
 
-@router.get("/conversations/{user_id}", response_model=PaginatedResponse[MessageResponse], tags=["Messages"])
+@router.get("/conversations/{user_id}", response_model=PaginatedResponse[MessageResponse], tags=["消息"])
 async def get_conversation_messages(
     user_id: int,
     params: PaginationParams = Depends(),
@@ -73,7 +73,7 @@ async def get_conversation_messages(
     return PaginatedResponse.create(messages, total, params)
 
 
-@router.get("/unread/count", response_model=int, tags=["Messages"])
+@router.get("/unread/count", response_model=int, tags=["消息"])
 async def get_unread_count(
     current_user: User = Depends(get_current_active_user)
 ):
@@ -81,7 +81,7 @@ async def get_unread_count(
     return await RedisService.get_unread_count(current_user.id)
 
 
-@router.get("/stats", response_model=MessageStats, tags=["Messages"])
+@router.get("/stats", response_model=MessageStats, tags=["消息"])
 async def get_message_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -122,7 +122,7 @@ async def get_message_stats(
     return stats
 
 
-@router.get("/{message_id}", response_model=MessageResponse, tags=["Messages"])
+@router.get("/{message_id}", response_model=MessageResponse, tags=["消息"])
 async def get_message(
     message_id: int,
     db: Session = Depends(get_db),
@@ -140,7 +140,7 @@ async def get_message(
     return message
 
 
-@router.put("/{message_id}", response_model=MessageResponse, tags=["Messages"])
+@router.put("/{message_id}", response_model=MessageResponse, tags=["消息"])
 async def update_message(
     message_id: int,
     message_update: MessageUpdate,
@@ -173,7 +173,7 @@ async def update_message(
     return message
 
 
-@router.put("/{message_id}/read", response_model=StatusResponse, tags=["Messages"])
+@router.put("/{message_id}/read", response_model=StatusResponse, tags=["消息"])
 async def mark_message_as_read(
     message_id: int,
     db: Session = Depends(get_db),
@@ -199,7 +199,7 @@ async def mark_message_as_read(
     return {"message": "Message marked as read"}
 
 
-@router.put("/read-all", response_model=StatusResponse, tags=["Messages"])
+@router.put("/read-all", response_model=StatusResponse, tags=["消息"])
 async def mark_all_messages_as_read(
     service: MessageService = Depends(get_message_service),
     current_user: User = Depends(get_current_active_user)
@@ -210,7 +210,7 @@ async def mark_all_messages_as_read(
     return {"message": f"{updated_count} messages marked as read"}
 
 
-@router.delete("/{message_id}", response_model=StatusResponse, tags=["Messages"])
+@router.delete("/{message_id}", response_model=StatusResponse, tags=["消息"])
 async def delete_message(
     message_id: int,
     db: Session = Depends(get_db),
@@ -232,7 +232,7 @@ async def delete_message(
     return {"message": "Message deleted successfully"}
 
 # 消息回执功能
-@router.post("/ack", response_model=MessageAckEventResponse, tags=["Messages"])
+@router.post("/ack", response_model=MessageAckEventResponse, tags=["消息"])
 async def create_message_ack_event(
     ack_event: MessageAckEventCreate,
     service: MessageService = Depends(get_message_service),
@@ -244,7 +244,7 @@ async def create_message_ack_event(
     return result
 
 
-@router.get("/ack/message/{message_id}", response_model=PaginatedResponse[MessageAckEventResponse], tags=["Messages"])
+@router.get("/ack/message/{message_id}", response_model=PaginatedResponse[MessageAckEventResponse], tags=["消息"])
 async def get_message_ack_events(
     message_id: int,
     params: PaginationParams = Depends(),
@@ -256,7 +256,7 @@ async def get_message_ack_events(
     return PaginatedResponse.create(events, total, params)
 
 # 消息管理功能
-@router.post("/{message_id}/favorite", response_model=StatusResponse, tags=["Messages"])
+@router.post("/{message_id}/favorite", response_model=StatusResponse, tags=["消息"])
 async def favorite_message(
     message_id: int,
     service: MessageService = Depends(get_message_service),
@@ -268,7 +268,7 @@ async def favorite_message(
     return {"message": "消息已收藏"}
 
 
-@router.delete("/{message_id}/favorite", response_model=StatusResponse, tags=["Messages"])
+@router.delete("/{message_id}/favorite", response_model=StatusResponse, tags=["消息"])
 async def unfavorite_message(
     message_id: int,
     service: MessageService = Depends(get_message_service),
@@ -280,7 +280,7 @@ async def unfavorite_message(
     return {"message": "已取消收藏"}
 
 
-@router.get("/favorites", response_model=PaginatedResponse[MessageResponse], tags=["Messages"])
+@router.get("/favorites", response_model=PaginatedResponse[MessageResponse], tags=["消息"])
 async def get_favorite_messages(
     params: PaginationParams = Depends(),
     service: MessageService = Depends(get_message_service),
@@ -291,7 +291,7 @@ async def get_favorite_messages(
     return PaginatedResponse.create(messages, total, params)
 
 
-@router.delete("/batch", response_model=StatusResponse, tags=["Messages"])
+@router.delete("/batch", response_model=StatusResponse, tags=["消息"])
 async def batch_delete_messages(
     message_ids: List[int],
     service: MessageService = Depends(get_message_service),
@@ -303,7 +303,7 @@ async def batch_delete_messages(
     return {"message": f"成功删除 {deleted_count} 条消息"}
 
 
-@router.put("/{message_id}/archive", response_model=StatusResponse, tags=["Messages"])
+@router.put("/{message_id}/archive", response_model=StatusResponse, tags=["消息"])
 async def archive_message(
     message_id: int,
     service: MessageService = Depends(get_message_service),
@@ -315,7 +315,7 @@ async def archive_message(
     return {"message": "消息已归档"}
 
 
-@router.get("/management/stats", response_model=MessageStatsResponse, tags=["Messages"])
+@router.get("/management/stats", response_model=MessageStatsResponse, tags=["消息"])
 async def get_message_management_stats(
     stats_request: MessageStatsRequest = Depends(),
     service: MessageService = Depends(get_message_service),
@@ -326,7 +326,7 @@ async def get_message_management_stats(
     return MessageStatsResponse(**result)
 
 
-@router.post("/export", response_model=ExportMessagesResponse, tags=["Messages"])
+@router.post("/export", response_model=ExportMessagesResponse, tags=["消息"])
 async def export_messages_advanced(
     export_request: ExportMessagesRequest,
     service: MessageService = Depends(get_message_service),
@@ -337,7 +337,7 @@ async def export_messages_advanced(
     return ExportMessagesResponse(**result)
 
 
-@router.get("/search", response_model=PaginatedResponse[MessageResponse], tags=["Messages"])
+@router.get("/search", response_model=PaginatedResponse[MessageResponse], tags=["消息"])
 async def search_messages(
     keyword: str,
     params: PaginationParams = Depends(),

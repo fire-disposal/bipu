@@ -20,7 +20,7 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.get("/users", response_model=PaginatedResponse[UserResponse], tags=["User Management"])
+@router.get("/users", response_model=PaginatedResponse[UserResponse], tags=["用户管理"])
 async def get_users(
     pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
@@ -44,7 +44,7 @@ async def get_users(
     return result
 
 
-@router.get("/users/{user_id}", response_model=UserResponse, tags=["User Management"])
+@router.get("/users/{user_id}", response_model=UserResponse, tags=["用户管理"])
 async def get_user(
     user_id: int,
     db: Session = Depends(get_db),
@@ -67,7 +67,7 @@ async def get_user(
     return user
 
 
-@router.put("/users/{user_id}", response_model=UserResponse, tags=["User Management"])
+@router.put("/users/{user_id}", response_model=UserResponse, tags=["用户管理"])
 async def update_user(
     user_id: int,
     user_update: UserUpdate,
@@ -92,7 +92,7 @@ async def update_user(
         raise ValidationException("User update failed")
 
 
-@router.delete("/users/{user_id}", response_model=StatusResponse, tags=["User Management"])
+@router.delete("/users/{user_id}", response_model=StatusResponse, tags=["用户管理"])
 async def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
@@ -117,7 +117,7 @@ async def delete_user(
         raise ValidationException("User deletion failed")
 
 
-@router.put("/users/{user_id}/status", response_model=StatusResponse, tags=["User Management"])
+@router.put("/users/{user_id}/status", response_model=StatusResponse, tags=["用户管理"])
 async def update_user_status(
     user_id: int,
     status_update: UserStatusUpdate,
@@ -146,7 +146,7 @@ async def update_user_status(
 
 from app.schemas.common import UserStatsResponse
 
-@router.get("/users/stats", response_model=UserStatsResponse, tags=["User Management"]) 
+@router.get("/users/stats", response_model=UserStatsResponse, tags=["用户管理"]) 
 async def get_user_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_superuser)

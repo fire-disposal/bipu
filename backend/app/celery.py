@@ -1,6 +1,7 @@
 """Celery配置"""
 import os
 from celery import Celery
+from celery.schedules import crontab
 from app.core.config import settings
 from app.core.logging import get_logger
 
@@ -30,9 +31,20 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     worker_max_tasks_per_child=1000,
     beat_schedule={
+        # 基础统计任务
         "user-counts-hourly": {
             "task": "stats.user_counts",
             "schedule": 3600.0,
+        },
+        # 天气订阅：每30分钟触发一次，由时间窗逻辑控制是否发送
+        "subscriptions-weather-30min": {
+            "task": "subscriptions.weather",
+            "schedule": 1800.0,
+        },
+        # 今日运势：每天早上 07:30 触发一次
+        "subscriptions-fortune-daily": {
+            "task": "subscriptions.fortune",
+            "schedule": crontab(minute=30, hour=7),
         },
     }
 )

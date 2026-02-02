@@ -22,7 +22,7 @@ logger = get_logger(__name__)
 def get_friendship_service(db: Session = Depends(get_db)) -> FriendshipService:
     return FriendshipService(db)
 
-@router.post("/", response_model=FriendshipResponse, tags=["Friends"])
+@router.post("/", response_model=FriendshipResponse, tags=["好友"])
 async def create_friend_request(
     friendship: FriendshipCreate,
     service: FriendshipService = Depends(get_friendship_service),
@@ -34,7 +34,7 @@ async def create_friend_request(
     return result
 
 
-@router.get("/", response_model=PaginatedResponse[FriendshipResponse], tags=["Friends"])
+@router.get("/", response_model=PaginatedResponse[FriendshipResponse], tags=["好友"])
 async def get_friendships(
     params: PaginationParams = Depends(),
     status: Optional[FriendshipStatus] = None,
@@ -46,7 +46,7 @@ async def get_friendships(
     return PaginatedResponse.create(friendships, total, params)
 
 
-@router.get("/requests", response_model=PaginatedResponse[FriendshipResponse], tags=["Friends"])
+@router.get("/requests", response_model=PaginatedResponse[FriendshipResponse], tags=["好友"])
 async def get_friend_requests(
     params: PaginationParams = Depends(),
     service: FriendshipService = Depends(get_friendship_service),
@@ -57,7 +57,7 @@ async def get_friend_requests(
     return PaginatedResponse.create(requests, total, params)
 
 
-@router.get("/friends", response_model=PaginatedResponse[UserResponse], tags=["Friends"])
+@router.get("/friends", response_model=PaginatedResponse[UserResponse], tags=["好友"])
 async def get_friends(
     params: PaginationParams = Depends(),
     service: FriendshipService = Depends(get_friendship_service),
@@ -68,7 +68,7 @@ async def get_friends(
     return PaginatedResponse.create(friends, total, params)
 
 
-@router.put("/{friendship_id}/accept", response_model=FriendshipResponse, tags=["Friends"])
+@router.put("/{friendship_id}/accept", response_model=FriendshipResponse, tags=["好友"])
 async def accept_friend_request(
     friendship_id: int,
     service: FriendshipService = Depends(get_friendship_service),
@@ -80,7 +80,7 @@ async def accept_friend_request(
     return friendship
 
 
-@router.put("/{friendship_id}/reject", response_model=FriendshipResponse, tags=["Friends"])
+@router.put("/{friendship_id}/reject", response_model=FriendshipResponse, tags=["好友"])
 async def reject_friend_request(
     friendship_id: int,
     service: FriendshipService = Depends(get_friendship_service),
@@ -92,7 +92,7 @@ async def reject_friend_request(
     return friendship
 
 
-@router.delete("/{friendship_id}", response_model=StatusResponse, tags=["Friends"])
+@router.delete("/{friendship_id}", response_model=StatusResponse, tags=["好友"])
 async def delete_friend(
     friendship_id: int,
     service: FriendshipService = Depends(get_friendship_service),

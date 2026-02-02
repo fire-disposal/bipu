@@ -11,11 +11,11 @@ api_router = APIRouter()
 # 根目录路由 (健康检查、文档等)
 api_router.include_router(root_router)
 
-# 公共接口路由 (登录注册等通用功能)
-api_router.include_router(public_router, prefix="/public", tags=["Public"])
+# 公共接口路由 (认证相关)
+api_router.include_router(public_router, prefix="/public", tags=["认证"])
 
 # 客户端API路由 (用户业务功能，无需管理员权限)
-api_router.include_router(client_router, prefix="/client", tags=["Client"])
+api_router.include_router(client_router, prefix="/client")
 
 # 管理员API路由 (需要管理员身份)
-api_router.include_router(admin_router, prefix="/admin", tags=["Admin"])
+api_router.include_router(admin_router, prefix="/admin")

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_core/api/api.dart';
+import 'package:flutter_core/core/network/rest_client.dart';
+import 'package:flutter_core/models/paginated_response.dart';
 import 'package:flutter_core/models/user_model.dart';
-import 'package:flutter_core/repositories/user_repository.dart';
 import 'package:flutter_user/features/friendship/bloc/friendship_bloc.dart';
 import 'package:flutter_user/features/friendship/bloc/friendship_event.dart';
 
@@ -13,7 +15,7 @@ class UserSearchPage extends StatefulWidget {
 }
 
 class _UserSearchPageState extends State<UserSearchPage> {
-  final UserRepository _userRepository = UserRepository();
+  RestClient get _api => bipupuApi;
   final TextEditingController _searchController = TextEditingController();
   List<User> _results = [];
   bool _isLoading = false;
@@ -28,7 +30,7 @@ class _UserSearchPageState extends State<UserSearchPage> {
     });
 
     try {
-      final response = await _userRepository.getUsers(search: query);
+      final response = await _fetchUsers(query);
       setState(() {
         _results = response.items;
       });
@@ -41,6 +43,14 @@ class _UserSearchPageState extends State<UserSearchPage> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<PaginatedResponse<User>> _fetchUsers(String keyword) {
+    return _api.adminGetAllUsers(
+      page: 1,
+      size: 20,
+      search: keyword.isNotEmpty ? keyword : null,
+    );
   }
 
   @override
@@ -81,7 +91,6 @@ class _UserSearchPageState extends State<UserSearchPage> {
                   trailing: IconButton(
                     icon: const Icon(Icons.person_add),
                     onPressed: () {
-                      // TODO: Check if already friends
                       context.read<FriendshipBloc>().add(
                         SendFriendRequest(user.id),
                       );

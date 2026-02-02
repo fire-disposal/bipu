@@ -4,24 +4,23 @@ import '../utils/logger.dart';
 class GlobalHttpInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    logger.i(
-      "🛜 [HTTP Request] | METHOD: ${options.method} | PATH: ${options.path}",
-    );
+    logger.i("🛜 [REQ] ${options.method} ${options.uri}");
     handler.next(options);
   }
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
     logger.i(
-      "✅ [HTTP Response] | STATUS: ${response.statusCode} | PATH: ${response.requestOptions.path}",
+      "✅ [RES] ${response.statusCode} ${response.requestOptions.method} ${response.requestOptions.uri}",
     );
     handler.next(response);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
+    final status = err.response?.statusCode;
     logger.e(
-      "❌ [HTTP Error] | STATUS: ${err.response?.statusCode} | PATH: ${err.requestOptions.path} | MSG: ${err.message}",
+      "❌ [ERR] ${status ?? '-'} ${err.requestOptions.method} ${err.requestOptions.uri} ${err.message}",
     );
     handler.next(err);
   }

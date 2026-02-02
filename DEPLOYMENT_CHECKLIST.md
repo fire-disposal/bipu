@@ -86,3 +86,15 @@
 2. **日志收集**：配置集中式日志收集
 3. **备份策略**：制定数据库和文件备份计划
 4. **安全扫描**：定期进行安全漏洞扫描
+
+## 订阅推送（Celery）
+
+- 角色环境变量：
+   - `CONTAINER_ROLE=worker` 启动 Celery Worker
+   - `CONTAINER_ROLE=beat` 启动 Celery Beat（定时任务）
+- 必需的进程：
+   - Worker 消费任务：`celery -A app.celery.celery_app worker -l info`
+   - Beat 下发任务：`celery -A app.celery.celery_app beat -l info`
+- 已内置的定时任务：
+   - `subscriptions.weather`：每 30 分钟触发一次，由订阅时间窗控制是否真实发送
+   - `subscriptions.fortune`：每天 07:30 触发一次

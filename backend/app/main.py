@@ -13,6 +13,7 @@ from app.core.openapi_util import export_openapi_json
 from app.core.exceptions import custom_exception_handler, http_exception_handler, general_exception_handler, BaseCustomException
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.utils import generate_unique_id
 
 from app.core.logging import setup_logging
 setup_logging()
@@ -86,6 +87,18 @@ async def lifespan(app: FastAPI):
     logger.info("🛑 服务停止中")
 
 def create_app() -> FastAPI:
+    tags_metadata = [
+        {"name": "系统", "description": "系统健康检查与服务信息"},
+        {"name": "认证", "description": "用户注册、登录、刷新、登出"},
+        {"name": "消息", "description": "IM 消息、回执、收藏、归档、搜索"},
+        {"name": "好友", "description": "好友请求、同意/拒绝、好友列表"},
+        {"name": "黑名单", "description": "拉黑、解除拉黑、黑名单查询"},
+        {"name": "用户资料", "description": "用户信息、个人资料、在线状态"},
+        {"name": "订阅", "description": "用户侧订阅的查询与管理"},
+        {"name": "用户管理", "description": "管理员用户管理"},
+        {"name": "订阅管理", "description": "管理员订阅类型与统计"},
+    ]
+
     app = FastAPI(
         title=settings.PROJECT_NAME,
         version=settings.VERSION,
@@ -94,16 +107,9 @@ def create_app() -> FastAPI:
         openapi_url="/api/openapi.json",
         docs_url="/api/docs",
         redoc_url="/api/redoc",
+        openapi_tags=tags_metadata,
+        generate_unique_id_function=generate_unique_id,
     )
-
-    @app.middleware("http")
-    async def add_security_headers(request: Request, call_next):
-        response = await call_next(request)
-        response.headers["X-Frame-Options"] = "SAMEORIGIN"
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        return response
-
     # 挂载静态文件 (替代 Nginx 功能)
     # 确保上传目录存在
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
@@ -111,10 +117,6 @@ def create_app() -> FastAPI:
 
     # 注册你的业务路由
     app.include_router(api_router, prefix="/api")
-
-    @app.get("/health", tags=["System"])
-    async def health_check():
-        return {"status": "healthy"}
 
     # 注册全局异常处理器
     app.add_exception_handler(BaseCustomException, custom_exception_handler)

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_core/api/api.dart';
+import 'package:flutter_core/core/network/rest_client.dart';
 import 'package:flutter_core/models/subscription_model.dart';
-import 'package:flutter_core/repositories/subscription_repository.dart';
 
 class SubscriptionManagementPage extends StatefulWidget {
   const SubscriptionManagementPage({super.key});
@@ -12,8 +13,7 @@ class SubscriptionManagementPage extends StatefulWidget {
 
 class _SubscriptionManagementPageState
     extends State<SubscriptionManagementPage> {
-  final SubscriptionRepository _subscriptionRepository =
-      SubscriptionRepository();
+  RestClient get _api => bipupuApi;
   List<SubscriptionType> _subscriptionTypes = [];
   bool _isLoading = true;
   String? _error;
@@ -35,7 +35,7 @@ class _SubscriptionManagementPageState
     });
 
     try {
-      final response = await _subscriptionRepository.getSubscriptionTypes(
+      final response = await _api.getSubscriptionTypes(
         page: _currentPage,
         size: _pageSize,
       );

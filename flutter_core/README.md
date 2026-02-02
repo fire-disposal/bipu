@@ -28,7 +28,7 @@ import 'package:flutter_core/core/storage/token_storage.dart';
 
 final api = ApiClient();
 api.init(
-	baseUrl: 'https://your-host', // 客户端方法已使用 '/api/...'
+	baseUrl: 'https://your-host/api', // 约定：'/api' 放在 baseUrl
 	tokenStorage: MyTokenStorageImplementation(),
 );
 ```
@@ -37,6 +37,14 @@ api.init(
 
 TODO: Include short and useful examples for package users. Add longer examples
 to `/example` folder.
+
+### 鉴权与自动刷新
+- `AuthInterceptor` 会在请求中自动附加 `Authorization: Bearer <access_token>`。
+- 当访问返回 `401` 时，拦截器会：
+	- 使用独立 `Dio` 调用 `POST /api/public/refresh` 刷新令牌；
+	- 并发到达的多个 401 会排队等待同一次刷新完成；
+	- 刷新成功后自动重试原请求；若失败则清理本地 Token 并回调 `onUnauthorized()`。
+- 需要在 `ApiClient.init` 时传入自定义的 `TokenStorage` 实现以读写 `access_token` 与 `refresh_token`。
 
 ### 认证（Public）
 - 登录：`POST /api/public/login` → `AuthResponse`

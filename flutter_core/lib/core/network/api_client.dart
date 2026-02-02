@@ -63,17 +63,23 @@ class ApiClient {
 
   // Helper to update the unauthorized callback
   void setUnauthorizedCallback(Function() callback) {
-    // We need to find the AuthInterceptor and update it, or just re-add it.
-    // For simplicity in this "No DI" approach, we can just expose a static stream/callback
-    // or let AuthService handle the 401 check independently.
-    // But let's keep it simple:
+    // 移除旧的 AuthInterceptor，并尽量保持其在日志拦截器之前的顺序
     dio.interceptors.removeWhere((element) => element is AuthInterceptor);
-    dio.interceptors.add(
-      AuthInterceptor(
-        dio: dio,
-        tokenStorage: _tokenStorage,
-        onUnauthorized: callback,
-      ),
+
+    final auth = AuthInterceptor(
+      dio: dio,
+      tokenStorage: _tokenStorage,
+      onUnauthorized: callback,
     );
+
+    // 尽量将 AuthInterceptor 插入到 Logger 之前，以便在日志打印前完成鉴权头设置
+    final loggerIndex = dio.interceptors.indexWhere(
+      (e) => e is GlobalHttpInterceptor,
+    );
+    if (loggerIndex >= 0) {
+      dio.interceptors.insert(loggerIndex, auth);
+    } else {
+      dio.interceptors.add(auth);
+    }
   }
 }

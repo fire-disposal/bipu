@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_core/repositories/health_repository.dart';
-import 'package:flutter_core/repositories/system_notification_repository.dart';
-import 'package:flutter_core/repositories/user_repository.dart';
+import 'package:flutter_core/api/api.dart';
+import 'package:flutter_core/core/network/rest_client.dart';
 import '../../core/services/auth_service.dart';
 
 /// Admin Shell Page - 提供侧边栏导航框架
@@ -292,9 +291,7 @@ class DashboardView extends StatefulWidget {
 }
 
 class _DashboardViewState extends State<DashboardView> {
-  final _healthRepo = HealthRepository();
-  final _notificationRepo = SystemNotificationRepository();
-  final _userRepo = UserRepository();
+  RestClient get _api => bipupuApi;
 
   bool _isLoading = true;
   Map<String, dynamic> _healthStatus = {};
@@ -310,10 +307,10 @@ class _DashboardViewState extends State<DashboardView> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final health = await _healthRepo.checkHealth();
-      final stats = await _notificationRepo.adminGetStats();
+      final health = await _api.checkHealth();
+      final stats = await _api.adminGetSystemNotificationStats();
       // Fetch user count loosely via page 1
-      final users = await _userRepo.getUsers(page: 1, size: 1);
+      final users = await _api.adminGetAllUsers(page: 1, size: 1);
 
       if (mounted) {
         setState(() {

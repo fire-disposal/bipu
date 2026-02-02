@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_core/api/api.dart';
+import 'package:flutter_core/core/network/rest_client.dart';
 import 'package:flutter_core/models/message_model.dart';
-import 'package:flutter_core/repositories/message_repository.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -15,7 +16,7 @@ class ConversationListPage extends StatefulWidget {
 
 class _ConversationListPageState extends State<ConversationListPage>
     with SingleTickerProviderStateMixin {
-  final MessageRepository _messageRepository = MessageRepository();
+  final RestClient _api = bipupuApi;
   List<Message> _receivedMessages = [];
   List<Message> _sentMessages = [];
   bool _isLoading = false;
@@ -39,7 +40,7 @@ class _ConversationListPageState extends State<ConversationListPage>
 
     setState(() => _isLoading = true);
     try {
-      final responseReceived = await _messageRepository.getReceivedMessages(
+      final responseReceived = await _api.getReceivedMessages(
         page: 1,
         size: 50,
       );

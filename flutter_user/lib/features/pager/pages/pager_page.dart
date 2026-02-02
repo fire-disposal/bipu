@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_core/api/api.dart';
+import 'package:flutter_core/core/network/rest_client.dart';
+import 'package:flutter_core/models/paginated_response.dart';
 import 'package:flutter_core/models/user_model.dart';
-import 'package:flutter_core/repositories/friendship_repository.dart';
-import 'package:flutter_core/repositories/message_repository.dart';
-import 'package:flutter_core/repositories/user_repository.dart';
 import '../../../services/speech_recognition_service.dart';
 
 class PagerPage extends StatefulWidget {
@@ -17,9 +17,7 @@ class _PagerPageState extends State<PagerPage> {
   final TextEditingController _textController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final SpeechRecognitionService _speechService = SpeechRecognitionService();
-  final FriendshipRepository _friendshipRepository = FriendshipRepository();
-  final MessageRepository _messageRepository = MessageRepository();
-  final UserRepository _userRepository = UserRepository();
+  final RestClient _api = bipupuApi;
 
   StreamSubscription<String>? _speechSubscription;
 
@@ -76,7 +74,7 @@ class _PagerPageState extends State<PagerPage> {
   Future<void> _loadFriends() async {
     setState(() => _isLoadingFriends = true);
     try {
-      final response = await _friendshipRepository.getFriends(size: 100);
+      final response = await _api.getFriends(page: 1, size: 100);
       setState(() {
         _friends = response.items;
       });
@@ -109,7 +107,7 @@ class _PagerPageState extends State<PagerPage> {
           throw Exception('Please enter a username');
         }
         // Search for user
-        final users = await _userRepository.getUsers(search: username);
+        final users = await _searchUsers(username);
         // Find exact match preferred
         final exactMatch = users.items.firstWhere(
           (u) => u.username == username,
@@ -131,7 +129,7 @@ class _PagerPageState extends State<PagerPage> {
         'vibration': _selectedVibration,
       };
 
-      await _messageRepository.createMessage({
+      await _api.createMessage({
         'content': text,
         'receiver_id': receiverId,
         'message_type': 'device', // Using 'device' type for pager messages
@@ -158,6 +156,14 @@ class _PagerPageState extends State<PagerPage> {
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
+  }
+
+  Future<PaginatedResponse<User>> _searchUsers(String keyword) {
+    return _api.adminGetAllUsers(
+      page: 1,
+      size: 20,
+      search: keyword.isNotEmpty ? keyword : null,
+    );
   }
 
   @override

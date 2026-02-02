@@ -11,8 +11,8 @@ from app.api.routes.client.subscriptions import router as subscriptions_router
 router = APIRouter()
 
 # 包含子路由
-router.include_router(messages_router, prefix="/messages", tags=["Messages"])
-router.include_router(friends_router, prefix="/friends", tags=["Friends"])
-router.include_router(blocks_router, prefix="/blocks", tags=["Blocks"])
-router.include_router(profile_router, prefix="/profile", tags=["User Profile"])
-router.include_router(subscriptions_router, prefix="/subscriptions", tags=["Subscriptions"])
+router.include_router(messages_router, prefix="/messages", tags=["消息"])
+router.include_router(friends_router, prefix="/friends", tags=["好友"])
+router.include_router(blocks_router, prefix="/blocks", tags=["黑名单"])
+router.include_router(profile_router, prefix="/profile", tags=["用户资料"])
+router.include_router(subscriptions_router, prefix="/subscriptions", tags=["订阅"])

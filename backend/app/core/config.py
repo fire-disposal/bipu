@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     # 项目基本信息
     PROJECT_NAME: str = "bipupu"
     VERSION: str = "1.5.0"
-    DESCRIPTION: str = "bipupu backend API"
+    DESCRIPTION: str = "bipupu 后端 API"
     DEBUG: bool = False
     
     # 数据库配置

@@ -40,12 +40,12 @@ def _process_subscription_task(category: str):
         if db:
             db.close()
 
-@shared_task
+@shared_task(name="subscriptions.weather")
 def generate_weather_subscription():
     """生成天气订阅消息"""
     return _process_subscription_task("weather")
 
-@shared_task
+@shared_task(name="subscriptions.fortune")
 def generate_fortune_subscription():
     """生成今日运势订阅消息"""
     return _process_subscription_task("fortune")

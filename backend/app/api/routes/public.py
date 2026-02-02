@@ -22,7 +22,7 @@ from app.services.user_service import UserService
 router = APIRouter()
 logger = get_logger(__name__)
 
-@router.post("/register", response_model=UserResponse, tags=["Authentication"])
+@router.post("/register", response_model=UserResponse, tags=["认证"])
 async def register_user(
     user: UserCreate,
     db: Session = Depends(get_db)
@@ -49,7 +49,7 @@ async def register_user(
         raise ValidationException("Registration failed")
 
 
-@router.post("/login", response_model=Token, tags=["Authentication"])
+@router.post("/login", response_model=Token, tags=["认证"])
 async def login(
     user_credentials: UserLogin,
     db: Session = Depends(get_db)
@@ -107,7 +107,7 @@ async def login(
     }
 
 
-@router.post("/refresh", response_model=Token, tags=["Authentication"])
+@router.post("/refresh", response_model=Token, tags=["认证"])
 async def refresh_token(
     token_refresh: TokenRefresh,
     db: Session = Depends(get_db)
@@ -163,7 +163,7 @@ async def refresh_token(
         )
 
 
-@router.post("/logout", response_model=StatusResponse, tags=["Authentication"])
+@router.post("/logout", response_model=StatusResponse, tags=["认证"])
 async def logout(
     credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
 ):

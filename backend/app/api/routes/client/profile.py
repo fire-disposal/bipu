@@ -18,7 +18,7 @@ from app.services.user_service import UserService
 router = APIRouter()
 logger = get_logger(__name__)
 
-@router.get("/me", response_model=UserResponse, tags=["User Profile"])
+@router.get("/me", response_model=UserResponse, tags=["用户资料"])
 async def get_current_user_info(
     current_user: User = Depends(get_current_active_user)
 ):
@@ -32,7 +32,7 @@ async def get_current_user_info(
     return current_user
 
 
-@router.get("/profile", response_model=UserProfile, tags=["User Profile"])
+@router.get("/profile", response_model=UserProfile, tags=["用户资料"])
 async def get_user_profile(
     current_user: User = Depends(get_current_active_user)
 ):
@@ -62,7 +62,7 @@ async def get_user_profile(
     return profile
 
 
-@router.put("/profile", response_model=UserProfile, tags=["User Profile"])
+@router.put("/profile", response_model=UserProfile, tags=["用户资料"])
 async def update_user_profile(
     user_update: UserUpdate,
     db: Session = Depends(get_db),
@@ -100,7 +100,7 @@ async def update_user_profile(
         raise ValidationException("Profile update failed")
 
 
-@router.put("/online-status", response_model=StatusResponse, tags=["User Profile"])
+@router.put("/online-status", response_model=StatusResponse, tags=["用户资料"])
 async def update_online_status(
     update: OnlineStatusUpdate,
     db: Session = Depends(get_db),

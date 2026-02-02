@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_core/api/api.dart';
 import 'package:flutter_core/core/network/api_client.dart';
+import 'package:flutter_core/core/network/rest_client.dart';
 import 'package:flutter_core/core/storage/token_storage.dart';
-import 'package:flutter_core/repositories/user_repository.dart';
 import '../storage/token_storage_factory.dart';
 import 'package:flutter_core/models/user_model.dart';
 
@@ -13,7 +14,7 @@ class AuthService {
 
   final _authStateController = ValueNotifier<AuthStatus>(AuthStatus.unknown);
   final TokenStorage _tokenStorage = TokenStorageFactory.create();
-  final UserRepository _userRepository = UserRepository();
+  RestClient get _api => bipupuApi;
 
   User? _currentUser;
 
@@ -53,7 +54,7 @@ class AuthService {
 
   Future<void> fetchCurrentUser() async {
     try {
-      _currentUser = await _userRepository.getMe();
+      _currentUser = await _api.getMe();
     } catch (e) {
       rethrow;
     }
@@ -66,7 +67,7 @@ class AuthService {
     String? nickname,
   }) async {
     try {
-      await _userRepository.register({
+      await _api.register({
         'username': username,
         'email': email,
         'password': password,
@@ -79,7 +80,10 @@ class AuthService {
 
   Future<void> login(String username, String password) async {
     try {
-      final authResponse = await _userRepository.login(username, password);
+      final authResponse = await _api.login({
+        'username': username,
+        'password': password,
+      });
 
       await _tokenStorage.saveTokens(
         accessToken: authResponse.accessToken,

@@ -1,19 +1,15 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_core/repositories/friendship_repository.dart';
-import 'package:flutter_core/repositories/user_repository.dart';
+import 'package:flutter_core/api/api.dart';
+import 'package:flutter_core/core/network/rest_client.dart';
 import 'friendship_event.dart';
 import 'friendship_state.dart';
 
 class FriendshipBloc extends Bloc<FriendshipEvent, FriendshipState> {
-  final FriendshipRepository _friendshipRepository;
-  final UserRepository _userRepository;
+  final RestClient _api;
 
-  FriendshipBloc({
-    FriendshipRepository? friendshipRepository,
-    UserRepository? userRepository,
-  }) : _friendshipRepository = friendshipRepository ?? FriendshipRepository(),
-       _userRepository = userRepository ?? UserRepository(),
-       super(FriendshipInitial()) {
+  FriendshipBloc({RestClient? api})
+    : _api = api ?? bipupuApi,
+      super(FriendshipInitial()) {
     on<LoadFriendships>(_onLoadFriendships);
     on<LoadFriendRequests>(_onLoadFriendRequests);
     on<AcceptFriendRequest>(_onAcceptFriendRequest);
@@ -31,16 +27,10 @@ class FriendshipBloc extends Bloc<FriendshipEvent, FriendshipState> {
       }
 
       // Load Friends
-      final friendsResponse = await _friendshipRepository.getFriends(
-        page: 1, // Pagination TODO
-        size: 50,
-      );
+      final friendsResponse = await _api.getFriends(page: 1, size: 50);
 
       // Load Requests count
-      final requestsResponse = await _friendshipRepository.getFriendRequests(
-        page: 1,
-        size: 1, // minimal fetch to get total
-      );
+      final requestsResponse = await _api.getFriendRequests(page: 1, size: 1);
 
       // If we are already in Loaded state, preserve the requests
       final currentRequests = state is FriendshipLoaded
@@ -70,17 +60,14 @@ class FriendshipBloc extends Bloc<FriendshipEvent, FriendshipState> {
         emit(FriendshipLoading());
       }
 
-      final requestsResponse = await _friendshipRepository.getFriendRequests(
-        page: 1,
-        size: 50,
-      );
+      final requestsResponse = await _api.getFriendRequests(page: 1, size: 50);
 
       // We need to fetch User details for each request
       final requestItems = await Future.wait(
         requestsResponse.items.map((friendship) async {
           try {
             // userId is the sender
-            final sender = await _userRepository.getUser(friendship.userId);
+            final sender = await _api.getUserDetails(friendship.userId);
             return FriendRequestItem(friendship: friendship, sender: sender);
           } catch (e) {
             // Fallback or skip
@@ -116,7 +103,7 @@ class FriendshipBloc extends Bloc<FriendshipEvent, FriendshipState> {
     Emitter<FriendshipState> emit,
   ) async {
     try {
-      await _friendshipRepository.acceptFriendRequest(event.friendshipId);
+      await _api.acceptFriendRequest(event.friendshipId);
       add(const LoadFriendRequests(refresh: true));
       add(const LoadFriendships(refresh: true));
     } catch (e) {
@@ -129,7 +116,7 @@ class FriendshipBloc extends Bloc<FriendshipEvent, FriendshipState> {
     Emitter<FriendshipState> emit,
   ) async {
     try {
-      await _friendshipRepository.rejectFriendRequest(event.friendshipId);
+      await _api.rejectFriendRequest(event.friendshipId);
       add(const LoadFriendRequests(refresh: true));
     } catch (e) {
       // Handle error
@@ -141,7 +128,7 @@ class FriendshipBloc extends Bloc<FriendshipEvent, FriendshipState> {
     Emitter<FriendshipState> emit,
   ) async {
     try {
-      await _friendshipRepository.sendFriendRequest(event.friendId);
+      await _api.sendFriendRequest({'friend_id': event.friendId});
       // Maybe emit a "Success" side effect or snackbar
     } catch (e) {
       // Handle error
