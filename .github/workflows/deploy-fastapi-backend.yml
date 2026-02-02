@@ -102,11 +102,21 @@ jobs:
 
       - name: 🚀 执行远程滚动部署
         env:
-          # 只需要注入动态生成的镜像 tag，其他 secrets 已在全局 env 中
           BACKEND_IMAGE: ${{ steps.ver.outputs.BACKEND_IMAGE }}
         run: |
           echo "🔑 刷新远程登录状态..."
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+          echo "📝 生成生产环境 .env 文件..."
+          # 在 GitHub Runner 本地生成 .env，docker compose 会读取并将其内容推送到远程容器
+          cat > backend/docker/.env <<EOF
+          BIPUPU_SECRET_KEY=$SECRET_KEY
+          BIPUPU_POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+          BIPUPU_ADMIN_EMAIL=$ADMIN_EMAIL
+          BIPUPU_ADMIN_PASSWORD=$ADMIN_PASSWORD
+          BIPUPU_ADMIN_USERNAME=$ADMIN_USERNAME
+          BIPUPU_LOG_LEVEL=INFO
+          EOF
 
           echo "📡 拉取新镜像并启动服务..."
           docker compose \
@@ -117,24 +127,30 @@ jobs:
 
       - name: 🩺 运行远程健康检查
         run: |
-          echo "🔍 正在确认服务可用性..."
-          success=false
-          for i in {1..10}; do
-            # 直接在远程容器中通过 uv 运行健康检查
-            if docker exec bipupu-backend uv run python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" 2>/dev/null; then
-              echo "✅ 服务已就绪！"
-              success=true
-              break
+          echo "🔍 正在通过 Docker 状态确认服务可用性 (最多 5 次)..."
+          for i in {1..5}; do
+            # 获取容器健康状态：healthy, unhealthy, starting
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' bipupu-backend 2>/dev/null || echo "not-found")
+            
+            if [ "$STATUS" == "healthy" ]; then
+              echo "✅ 服务已就绪 (状态: $STATUS)"
+              exit 0
             fi
-            echo "⏳ 检查中 ($i/10)..."
-            sleep 6
+            
+            echo "⏳ 检查中 ($i/5): 当前状态为 $STATUS..."
+            # 步长稍微拉长一点，给容器启动时间
+            sleep 12
           done
 
-          if [ "$success" != "true" ]; then
-            echo "❌ 健康检查失败，输出异常日志："
-            docker compose -f backend/docker/docker-compose.yml -f backend/docker/docker-compose.prod.yml -p bipupu-backend logs --tail 50
-            exit 1
-          fi
+          echo "❌ 健康检查失败或超时！"
+          echo "📊 容器当前详细状态："
+          docker inspect --format='状态: {{.State.Status}}, 健康: {{.State.Health.Status}}, 退出码: {{.State.ExitCode}}' bipupu-backend
+          
+          echo "📝 输出异常日志 (最后 100 行)："
+          docker logs bipupu-backend --tail 100
+          
+          # 如果此时还有正在运行但状态不佳的容器，将其停止以便后续重试
+          exit 1
 
       - name: 🧹 清理旧镜像
         run: |

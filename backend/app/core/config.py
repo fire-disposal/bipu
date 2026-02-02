@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
 from typing import List, Optional
 import os
@@ -10,12 +10,14 @@ from hashlib import sha256
 class Settings(BaseSettings):
     """应用配置"""
     
-    # 项目基本信息
-    PROJECT_NAME: str = "bipupu"
-    VERSION: str = "1.5.0"
-    DESCRIPTION: str = "bipupu 后端 API"
-    DEBUG: bool = False
-    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore",
+        env_prefix="BIPUPU_"  # 所有环境变量需以 BIPUPU_ 开头
+    )
+
     # 数据库配置
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "postgres"
@@ -25,18 +27,11 @@ class Settings(BaseSettings):
     
     @property
     def DATABASE_URL(self) -> str:
-        """
-        如果环境变量中设置了 DATABASE_URL，则直接使用。
-        否则根据 POSTGRES_* 变量构建。
-        强制使用 PostgreSQL，不再支持 SQLite 回退。
-        """
-        if os.getenv("DATABASE_URL"):
-            return os.getenv("DATABASE_URL")
-        
+        """保持兼容性，返回构建好的 DATABASE_URL"""
+        if os.getenv("BIPUPU_DATABASE_URL"):
+            return os.getenv("BIPUPU_DATABASE_URL")
         password = quote_plus(self.POSTGRES_PASSWORD)
-        pg_url = f"postgresql://{self.POSTGRES_USER}:{password}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
-        
-        return pg_url
+        return f"postgresql://{self.POSTGRES_USER}:{password}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     # Redis配置
     REDIS_PASSWORD: Optional[str] = None
@@ -45,8 +40,8 @@ class Settings(BaseSettings):
     
     @property
     def REDIS_URL(self) -> str:
-        if os.getenv("REDIS_URL"):
-            return os.getenv("REDIS_URL")
+        if os.getenv("BIPUPU_REDIS_URL"):
+            return os.getenv("BIPUPU_REDIS_URL")
         
         auth = ""
         if self.REDIS_PASSWORD:
@@ -57,8 +52,8 @@ class Settings(BaseSettings):
 
     @property
     def CELERY_BROKER_URL(self) -> str:
-        if os.getenv("CELERY_BROKER_URL"):
-            return os.getenv("CELERY_BROKER_URL")
+        if os.getenv("BIPUPU_CELERY_BROKER_URL"):
+            return os.getenv("BIPUPU_CELERY_BROKER_URL")
             
         auth = ""
         if self.REDIS_PASSWORD:
@@ -69,8 +64,8 @@ class Settings(BaseSettings):
 
     @property
     def CELERY_RESULT_BACKEND(self) -> str:
-        if os.getenv("CELERY_RESULT_BACKEND"):
-            return os.getenv("CELERY_RESULT_BACKEND")
+        if os.getenv("BIPUPU_CELERY_RESULT_BACKEND"):
+            return os.getenv("BIPUPU_CELERY_RESULT_BACKEND")
             
         auth = ""
         if self.REDIS_PASSWORD:
@@ -126,17 +121,23 @@ class Settings(BaseSettings):
             v = sha256(v.encode("utf-8")).hexdigest()
         return v
     
-    @field_validator("ADMIN_EMAIL", "ADMIN_USERNAME", "ADMIN_PASSWORD", mode="before")
+    @field_validator(
+        "ADMIN_EMAIL", 
+        "ADMIN_USERNAME", 
+        "ADMIN_PASSWORD", 
+        "POSTGRES_USER", 
+        "POSTGRES_PASSWORD", 
+        "POSTGRES_SERVER", 
+        "POSTGRES_DB",
+        mode="before"
+    )
     @classmethod
     def empty_str_to_none(cls, v: Optional[str]):
         if v == "":
             return None
         return v
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-        extra = "ignore"
+    # 已迁移至 model_config
 
 
 # 创建配置实例

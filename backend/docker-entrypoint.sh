@@ -9,60 +9,12 @@ NC='\033[0m' # No Color
 
 echo -e "${GREEN}开始启动 bipupu Backend...${NC}"
 
-# 设置默认值
-DB_HOST=${POSTGRES_SERVER:-db}
-DB_PORT=${POSTGRES_PORT:-5432}
-DB_USER=${POSTGRES_USER:-postgres}
-REDIS_HOST=${REDIS_HOST:-redis}
-REDIS_PORT=${REDIS_PORT:-6379}
-
-# 等待数据库就绪
-echo -e "${YELLOW}等待数据库连接 (${DB_HOST}:${DB_PORT})...${NC}"
-uv run python -c "
-import sys, time, psycopg2, os
-host = os.getenv('POSTGRES_SERVER', 'db')
-port = os.getenv('POSTGRES_PORT', '5432')
-user = os.getenv('POSTGRES_USER', 'postgres')
-password = os.getenv('POSTGRES_PASSWORD', 'postgres')
-dbname = os.getenv('POSTGRES_DB', 'bipupu')
-
-start = time.time()
-while time.time() - start < 60:
-    try:
-        conn = psycopg2.connect(host=host, port=port, user=user, password=password, dbname=dbname)
-        conn.close()
-        sys.exit(0)
-    except Exception:
-        time.sleep(1)
-sys.exit(1)
-" || {
-    echo -e "${RED}数据库连接失败${NC}"
+# 依赖服务自检（使用应用内部逻辑，不再重复定义变量）
+echo -e "${YELLOW}正在通过应用配置自检依赖服务...${NC}"
+uv run python -m app.check_deps || {
+    echo -e "${RED}依赖服务自检失败，请检查配置或网络${NC}"
     exit 1
 }
-echo -e "${GREEN}数据库连接成功${NC}"
-
-# 等待Redis就绪
-echo -e "${YELLOW}等待Redis连接 (${REDIS_HOST}:${REDIS_PORT})...${NC}"
-uv run python -c "
-import sys, time, redis, os
-host = os.getenv('REDIS_HOST', 'redis')
-port = int(os.getenv('REDIS_PORT', '6379'))
-password = os.getenv('REDIS_PASSWORD') or None
-
-start = time.time()
-while time.time() - start < 60:
-    try:
-        r = redis.Redis(host=host, port=port, password=password, socket_timeout=1)
-        if r.ping():
-            sys.exit(0)
-    except Exception:
-        time.sleep(1)
-sys.exit(1)
-" || {
-    echo -e "${RED}Redis连接失败${NC}"
-    exit 1
-}
-echo -e "${GREEN}Redis连接成功${NC}"
 
 # 根据容器角色执行不同操作
 case "${CONTAINER_ROLE:-backend}" in

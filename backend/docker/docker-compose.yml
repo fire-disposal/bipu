@@ -9,17 +9,13 @@ services:
       dockerfile: Dockerfile
     container_name: bipupu-backend
     #restart: unless-stopped
+    # 使用 .env 文件减少重复映射，环境中的 BIPUPU_ 前缀变量也会被自动加载
+    env_file:
+      - .env
     environment:
-      - SECRET_KEY=${SECRET_KEY}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_DB=${POSTGRES_DB:-bipupu}
-      - POSTGRES_SERVER=${POSTGRES_SERVER:-db}
-      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
-      - ADMIN_EMAIL=${ADMIN_EMAIL}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - ADMIN_USERNAME=${ADMIN_USERNAME}
       - CONTAINER_ROLE=backend
+      - BACKEND_IMAGE=${BACKEND_IMAGE:-bipupu-backend:local}
+    depends_on:
     depends_on:
       db:
         condition: service_healthy
@@ -49,17 +45,10 @@ services:
       dockerfile: Dockerfile
     container_name: bipupu-celery-worker
     #restart: unless-stopped
+    env_file:
+      - .env
     environment:
       - CONTAINER_ROLE=worker
-      - SECRET_KEY=${SECRET_KEY}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_DB=${POSTGRES_DB:-bipupu}
-      - POSTGRES_SERVER=${POSTGRES_SERVER:-db}
-      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
-      - ADMIN_EMAIL=${ADMIN_EMAIL}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - ADMIN_USERNAME=${ADMIN_USERNAME}
     depends_on:
       db:
         condition: service_healthy
@@ -80,17 +69,10 @@ services:
       dockerfile: Dockerfile
     container_name: bipupu-celery-beat
     #restart: unless-stopped
+    env_file:
+      - .env
     environment:
       - CONTAINER_ROLE=beat
-      - SECRET_KEY=${SECRET_KEY}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_DB=${POSTGRES_DB:-bipupu}
-      - POSTGRES_SERVER=${POSTGRES_SERVER:-db}
-      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
-      - ADMIN_EMAIL=${ADMIN_EMAIL}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - ADMIN_USERNAME=${ADMIN_USERNAME}
     depends_on:
       db:
         condition: service_healthy
@@ -109,9 +91,9 @@ services:
     container_name: bipupu-db
     #restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-bipupu}
+      POSTGRES_USER: ${BIPUPU_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${BIPUPU_POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${BIPUPU_POSTGRES_DB:-bipupu}
       TZ: ${TZ:-Asia/Shanghai}
     volumes:
       - pg_data:/var/lib/postgresql/data
@@ -120,7 +102,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${BIPUPU_POSTGRES_USER:-postgres}"]
       interval: 5s
       timeout: 3s
       retries: 10
