@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import os
 from app.api.router import api_router
+from app.api.routes.root import router as root_router
 from app.core.config import settings
 from app.db.database import init_db, init_redis, close_redis
 from app.db.init_data import init_default_data
@@ -112,6 +113,9 @@ def create_app() -> FastAPI:
     # 确保上传目录存在
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+
+    # 注册系统根路由 (健康检查等，保持在根路径 /)
+    app.include_router(root_router)
 
     # 注册你的业务路由
     app.include_router(api_router, prefix="/api")
