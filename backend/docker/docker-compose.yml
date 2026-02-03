@@ -16,7 +16,6 @@ services:
       - CONTAINER_ROLE=backend
       - BACKEND_IMAGE=${BACKEND_IMAGE:-bipupu-backend:local}
     depends_on:
-    depends_on:
       db:
         condition: service_healthy
       redis:
