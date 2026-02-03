@@ -178,6 +178,39 @@ class _RestClient implements RestClient {
   }
 
   @override
+  Future<User> updateAvatar(MultipartFile file) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = FormData();
+    _data.files.add(MapEntry('file', file));
+    final _options = _setStreamType<User>(
+      Options(
+            method: 'POST',
+            headers: _headers,
+            extra: _extra,
+            contentType: 'multipart/form-data',
+          )
+          .compose(
+            _dio.options,
+            '/client/profile/avatar',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late User _value;
+    try {
+      _value = User.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
   Future<void> updateOnlineStatus(Map<String, dynamic> body) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};

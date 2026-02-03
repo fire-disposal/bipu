@@ -10,6 +10,7 @@ dependencies = [
     "email-validator>=2.3.0",
     "fastapi>=0.122.0",
     "passlib[argon2]>=1.7.4",
+    "pillow>=12.1.0",
     "psycopg2-binary>=2.9.11",
     "pydantic>=2.12.3",
     "pydantic-settings>=2.12.0",

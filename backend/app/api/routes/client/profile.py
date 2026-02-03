@@ -14,9 +14,56 @@ from app.core.exceptions import ValidationException
 from app.core.logging import get_logger
 from app.services.redis_service import RedisService
 from app.services.user_service import UserService
+from app.services.storage_service import StorageService
+from fastapi import File, UploadFile
 
 router = APIRouter()
 logger = get_logger(__name__)
+
+@router.post("/avatar", response_model=UserProfile, tags=["用户资料"])
+async def upload_avatar(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """上传并更新用户头像"""
+    try:
+        # 保存旧头像以便删除（可选）
+        old_avatar = current_user.avatar_url
+        
+        # 保存并压缩新头像
+        avatar_url = await StorageService.save_avatar(file, current_user.id)
+        
+        # 更新数据库
+        current_user.avatar_url = avatar_url
+        db.add(current_user)
+        db.commit()
+        db.refresh(current_user)
+        
+        # 删除旧头像文件
+        if old_avatar:
+            StorageService.delete_old_avatar(old_avatar)
+            
+        # 更新缓存
+        profile = {
+            "id": current_user.id,
+            "username": current_user.username,
+            "email": current_user.email,
+            "nickname": current_user.nickname,
+            "avatar_url": current_user.avatar_url,
+            "is_active": current_user.is_active,
+            "is_superuser": current_user.is_superuser,
+            "role": current_user.role,
+            "last_active": current_user.last_active,
+            "created_at": current_user.created_at,
+            "updated_at": current_user.updated_at
+        }
+        await RedisService.cache_user_data(current_user.id, profile)
+        
+        return profile
+    except Exception as e:
+        logger.error(f"Avatar upload error: {e}")
+        raise ValidationException("Avatar upload failed")
 
 @router.get("/me", response_model=UserResponse, tags=["用户资料"])
 async def get_current_user_info(
@@ -48,6 +95,7 @@ async def get_user_profile(
         "username": current_user.username,
         "email": current_user.email,
         "nickname": current_user.nickname,
+        "avatar_url": current_user.avatar_url,
         "is_active": current_user.is_active,
         "is_superuser": current_user.is_superuser,
         "role": current_user.role,
@@ -81,6 +129,7 @@ async def update_user_profile(
             "username": updated_user.username,
             "email": updated_user.email,
             "nickname": updated_user.nickname,
+            "avatar_url": updated_user.avatar_url,
             "is_active": updated_user.is_active,
             "is_superuser": updated_user.is_superuser,
             "role": updated_user.role,

@@ -8,6 +8,7 @@ import '../features/chat/pages/chat_page.dart';
 import '../features/contacts/pages/contacts_page.dart';
 import '../features/profile/pages/profile_page.dart';
 import '../features/profile/pages/profile_edit_page.dart';
+import '../features/profile/pages/user_detail_page.dart';
 import '../features/layout/main_layout.dart';
 import '../features/layout/discover_page.dart';
 import '../features/speech_test/speech_test_page.dart';
@@ -137,6 +138,16 @@ class UserRouter {
         builder: (context, state) {
           final idParam = state.pathParameters['id'] ?? '0';
           return ChatPage(userId: int.tryParse(idParam) ?? 0);
+        },
+      ),
+
+      // 用户详情页
+      GoRoute(
+        path: '/user/detail/:id',
+        name: 'user_detail',
+        builder: (context, state) {
+          final idParam = state.pathParameters['id'] ?? '0';
+          return UserDetailPage(userId: int.tryParse(idParam) ?? 0);
         },
       ),
 

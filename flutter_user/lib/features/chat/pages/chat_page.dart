@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_core/api/api.dart';
 import 'package:flutter_core/core/network/rest_client.dart';
 import 'package:flutter_core/models/message_model.dart';
+import 'package:flutter_core/models/user_model.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/services/auth_service.dart';
 
 class ChatPage extends StatefulWidget {
@@ -21,31 +24,65 @@ class _ChatPageState extends State<ChatPage> {
 
   List<Message> _messages = [];
   bool _isLoading = false;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  int _currentPage = 1;
+  User? _peerUser;
   final int _currentUserId = AuthService().currentUser?.id ?? 0;
 
   @override
   void initState() {
     super.initState();
+    _loadPeerInfo();
     _loadMessages();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _textController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoadingMore &&
+        _hasMore) {
+      _loadMoreMessages();
+    }
+  }
+
+  Future<void> _loadPeerInfo() async {
+    try {
+      final user = await _api.adminGetUser(widget.userId);
+      if (mounted) {
+        setState(() {
+          _peerUser = user;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading peer info: $e');
+    }
   }
 
   Future<void> _loadMessages() async {
     setState(() => _isLoading = true);
     try {
-      // Use efficient conversation endpoint provided by repository
       final response = await _api.getConversationMessages(
         widget.userId,
         page: 1,
-        size: 50,
+        size: 20,
       );
 
-      // The conversation endpoint should return messages in order (usually DESC or ASC)
-      // We sort just in case to ensure chronological order
-      final all = response.items;
-      all.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      final items = response.items;
+      items.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
       setState(() {
-        _messages = all;
+        _messages = items;
+        _currentPage = 1;
+        _hasMore = items.length >= 20;
       });
 
       _scrollToBottom();
@@ -54,6 +91,37 @@ class _ChatPageState extends State<ChatPage> {
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _loadMoreMessages() async {
+    if (_isLoadingMore || !_hasMore) return;
+    setState(() => _isLoadingMore = true);
+    try {
+      final response = await _api.getConversationMessages(
+        widget.userId,
+        page: _currentPage + 1,
+        size: 20,
+      );
+
+      if (response.items.isEmpty) {
+        setState(() => _hasMore = false);
+      } else {
+        final newItems = response.items;
+        newItems.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+        setState(() {
+          _messages.insertAll(0, newItems);
+          _currentPage++;
+          _hasMore = newItems.length >= 20;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading more: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingMore = false);
       }
     }
   }
@@ -100,43 +168,46 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: Row(
           children: [
             Hero(
               tag: 'avatar_${widget.userId}',
-              child: CircleAvatar(
-                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                child: const Icon(Icons.person, size: 20),
-              ),
+              child: _buildAvatar(widget.userId, radius: 18),
             ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '用户 ${widget.userId}',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _peerUser?.nickname ??
+                        _peerUser?.username ??
+                        '用户 ${widget.userId}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                Text(
-                  '在线',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Theme.of(context).colorScheme.primary,
+                  Text(
+                    '在线',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
         actions: [
           IconButton(icon: const Icon(Icons.call_outlined), onPressed: () {}),
           IconButton(
-            icon: const Icon(Icons.videocam_outlined),
-            onPressed: () {},
+            icon: const Icon(Icons.more_vert),
+            onPressed: () => context.push('/user/detail/${widget.userId}'),
           ),
         ],
       ),
@@ -148,17 +219,27 @@ class _ChatPageState extends State<ChatPage> {
                   child: ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
+                      horizontal: 12,
                       vertical: 8,
                     ),
-                    itemCount: _messages.length,
+                    itemCount: _messages.length + (_isLoadingMore ? 1 : 0),
                     itemBuilder: (context, index) {
-                      final msg = _messages[index];
+                      if (index == 0 && _isLoadingMore) {
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        );
+                      }
+
+                      final msgIdx = _isLoadingMore ? index - 1 : index;
+                      final msg = _messages[msgIdx];
                       final isMe = msg.senderId == _currentUserId;
                       final showTime =
-                          index == 0 ||
+                          msgIdx == 0 ||
                           msg.createdAt
-                                  .difference(_messages[index - 1].createdAt)
+                                  .difference(_messages[msgIdx - 1].createdAt)
                                   .inMinutes >
                               5;
 
@@ -189,88 +270,200 @@ class _ChatPageState extends State<ChatPage> {
 
   String _formatMessageTime(DateTime time) {
     final now = DateTime.now();
-    if (now.difference(time).inDays == 0) {
-      return DateFormat('HH:mm').format(time);
+    final localTime = time.toLocal();
+    if (now.difference(localTime).inDays == 0) {
+      return DateFormat('HH:mm').format(localTime);
     }
-    return DateFormat('MM月dd日 HH:mm').format(time);
+    return DateFormat('MM-dd HH:mm').format(localTime);
+  }
+
+  Widget _buildAvatar(int userId, {double radius = 20}) {
+    final user = userId == _currentUserId
+        ? AuthService().currentUser
+        : _peerUser;
+    final avatarUrl = user?.avatarUrl;
+
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+      backgroundImage: avatarUrl != null
+          ? CachedNetworkImageProvider(
+              avatarUrl.startsWith('http')
+                  ? avatarUrl
+                  : '${bipupuHttp.options.baseUrl}$avatarUrl',
+            )
+          : null,
+      child: avatarUrl == null
+          ? Text(
+              (user?.nickname ?? user?.username ?? '?')
+                  .substring(0, 1)
+                  .toUpperCase(),
+              style: TextStyle(fontSize: radius * 0.8),
+            )
+          : null,
+    );
   }
 
   Widget _buildMessageBubble(Message msg, bool isMe) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDevice = msg.messageType == MessageType.device;
 
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
-        ),
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-        decoration: BoxDecoration(
-          color: isDevice
-              ? (isMe ? colorScheme.primary : colorScheme.secondaryContainer)
-              : (isMe
-                    ? colorScheme.primary
-                    : colorScheme.surfaceContainerHighest),
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(20),
-            topRight: const Radius.circular(20),
-            bottomLeft: Radius.circular(isMe ? 20 : 4),
-            bottomRight: Radius.circular(isMe ? 4 : 20),
+    Widget? rgbIndicator;
+    if (msg.pattern != null &&
+        (msg.pattern!.containsKey('rgb') ||
+            msg.pattern!.containsKey('color'))) {
+      Color? color;
+      if (msg.pattern!.containsKey('rgb')) {
+        final rgb = msg.pattern!['rgb'] as List;
+        if (rgb.length == 3) {
+          color = Color.fromARGB(
+            255,
+            (rgb[0] as num).toInt(),
+            (rgb[1] as num).toInt(),
+            (rgb[2] as num).toInt(),
+          );
+        }
+      } else if (msg.pattern!.containsKey('color')) {
+        final hex = msg.pattern!['color'] as String;
+        final cleanHex = hex.replaceFirst('#', '');
+        if (cleanHex.length == 6) {
+          color = Color(int.parse('FF$cleanHex', radix: 16));
+        }
+      }
+
+      if (color != null) {
+        rgbIndicator = Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.4),
+                blurRadius: 3,
+                spreadRadius: 1,
+              ),
+            ],
           ),
-          boxShadow: isDevice
-              ? [
-                  BoxShadow(
-                    color: (isMe ? colorScheme.primary : colorScheme.secondary)
-                        .withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          crossAxisAlignment: isMe
-              ? CrossAxisAlignment.end
-              : CrossAxisAlignment.start,
-          children: [
-            if (isDevice)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.sensors,
-                      size: 14,
-                      color: isMe ? Colors.white70 : colorScheme.primary,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '传唤信号',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: isMe ? Colors.white70 : colorScheme.primary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            Text(
-              msg.content,
-              style: TextStyle(
-                color: isMe
-                    ? (isDevice ? Colors.white : colorScheme.onPrimary)
-                    : (isDevice
-                          ? colorScheme.onSecondaryContainer
-                          : colorScheme.onSurfaceVariant),
-                fontSize: 16,
-              ),
-            ),
+        );
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!isMe) ...[
+            _buildAvatar(msg.senderId, radius: 18),
+            const SizedBox(width: 8),
           ],
-        ),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: isMe
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isMe
+                        ? colorScheme.primary
+                        : (isDevice
+                              ? colorScheme.secondaryContainer
+                              : Colors.white),
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(16),
+                      topRight: const Radius.circular(16),
+                      bottomLeft: Radius.circular(isMe ? 16 : 4),
+                      bottomRight: Radius.circular(isMe ? 4 : 16),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 5,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isDevice)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.sensors,
+                                size: 12,
+                                color: isMe
+                                    ? Colors.white70
+                                    : colorScheme.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '传唤信号',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: isMe
+                                      ? Colors.white70
+                                      : colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      Text(
+                        msg.content,
+                        style: TextStyle(
+                          color: isMe
+                              ? Colors.white
+                              : (isDevice
+                                    ? colorScheme.onSecondaryContainer
+                                    : Colors.black87),
+                          fontSize: 15,
+                        ),
+                      ),
+                      if (rgbIndicator != null) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            rgbIndicator,
+                            const SizedBox(width: 4),
+                            Text(
+                              'RGB信号',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: isMe ? Colors.white70 : Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (isMe) ...[
+            const SizedBox(width: 8),
+            _buildAvatar(msg.senderId, radius: 18),
+          ],
+        ],
       ),
     );
   }
@@ -278,48 +471,42 @@ class _ChatPageState extends State<ChatPage> {
   Widget _buildTextComposer() {
     return Container(
       padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
+        left: 8,
+        right: 8,
         top: 8,
         bottom: MediaQuery.of(context).padding.bottom + 8,
       ),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey[300]!)),
       ),
       child: Row(
         children: [
           IconButton(
             icon: const Icon(Icons.add_circle_outline),
             onPressed: () {},
-            color: Theme.of(context).colorScheme.primary,
+            color: Colors.grey[600],
           ),
           Expanded(
             child: TextField(
               controller: _textController,
-              onSubmitted: _handleSubmitted,
               decoration: InputDecoration(
-                hintText: '开始聊天...',
+                hintText: '发送消息...',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
-                fillColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+                fillColor: Colors.grey[100],
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 8,
                 ),
               ),
+              onSubmitted: _handleSubmitted,
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
           IconButton(
             icon: const Icon(Icons.send),
             onPressed: () => _handleSubmitted(_textController.text),

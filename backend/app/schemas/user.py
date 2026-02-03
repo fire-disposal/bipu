@@ -8,6 +8,7 @@ class UserBase(BaseModel):
     email: EmailStr
     username: str
     nickname: Optional[str] = None
+    avatar_url: Optional[str] = None
     is_active: bool = True
     is_superuser: bool = False
     role: str = Field(default="user", description="角色（user/admin）")
@@ -79,6 +80,7 @@ class UserProfile(BaseModel):
     username: str
     email: EmailStr
     nickname: Optional[str]
+    avatar_url: Optional[str]
     is_active: bool
     is_superuser: bool
     role: str

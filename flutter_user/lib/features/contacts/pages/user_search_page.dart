@@ -75,6 +75,7 @@ class _UserSearchPageState extends State<UserSearchPage> {
               itemBuilder: (context, index) {
                 final user = _results[index];
                 return ListTile(
+                  onTap: () => context.push('/user/detail/${user.id}'),
                   leading: CircleAvatar(
                     child: Text(
                       user.username.isNotEmpty

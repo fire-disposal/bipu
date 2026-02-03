@@ -3,6 +3,7 @@ class User {
   final String username;
   final String email;
   final String? nickname;
+  final String? avatarUrl;
   final bool isActive;
   final bool isSuperuser;
   final DateTime? createdAt;
@@ -13,6 +14,7 @@ class User {
     required this.username,
     required this.email,
     this.nickname,
+    this.avatarUrl,
     this.isActive = true,
     this.isSuperuser = false,
     this.createdAt,
@@ -25,6 +27,7 @@ class User {
       username: json['username'] as String,
       email: json['email'] as String,
       nickname: json['nickname'] as String?,
+      avatarUrl: json['avatar_url'] as String?,
       isActive: json['is_active'] as bool? ?? true,
       isSuperuser: json['is_superuser'] as bool? ?? false,
       createdAt: json['created_at'] != null
@@ -42,6 +45,7 @@ class User {
       'username': username,
       'email': email,
       'nickname': nickname,
+      'avatar_url': avatarUrl,
       'is_active': isActive,
       'is_superuser': isSuperuser,
       'created_at': createdAt?.toIso8601String(),

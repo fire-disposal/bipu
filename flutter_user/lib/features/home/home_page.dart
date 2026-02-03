@@ -147,13 +147,6 @@ class _HomePageState extends State<HomePage> {
           'BIPUPU',
           style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2.0),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.bluetooth_searching),
-            tooltip: '蓝牙搜索',
-            onPressed: () => context.push('/bluetooth/scan'),
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),

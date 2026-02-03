@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_core/api/api.dart';
+import 'dart:io';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/profile_service.dart';
 import '../../../core/services/toast_service.dart';
@@ -57,6 +62,43 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     }
   }
 
+  Future<void> _pickAndUploadImage() async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+    if (image == null) return;
+
+    final croppedFile = await ImageCropper().cropImage(
+      sourcePath: image.path,
+      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: '裁剪头像',
+          toolbarColor: Theme.of(context).primaryColor,
+          toolbarWidgetColor: Colors.white,
+          initAspectRatio: CropAspectRatioPreset.square,
+          lockAspectRatio: true,
+        ),
+        IOSUiSettings(title: '裁剪头像', aspectRatioLockEnabled: true),
+      ],
+    );
+
+    if (croppedFile == null) return;
+
+    setState(() => _saving = true);
+    try {
+      await ProfileService().uploadAvatar(File(croppedFile.path));
+      await AuthService().fetchCurrentUser();
+      if (mounted) {
+        ToastService().showSuccess('头像已更新');
+      }
+    } catch (e) {
+      if (mounted) ToastService().showError('上传失败：$e');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -77,24 +119,38 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                 Center(
                   child: Stack(
                     children: [
-                      CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Theme.of(
-                          context,
-                        ).colorScheme.primaryContainer,
-                        child: Text(
-                          (_nicknameCtrl.text.isNotEmpty
-                                  ? _nicknameCtrl.text
-                                  : _usernameCtrl.text)
-                              .substring(0, 1)
-                              .toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onPrimaryContainer,
-                          ),
+                      GestureDetector(
+                        onTap: _pickAndUploadImage,
+                        child: CircleAvatar(
+                          radius: 50,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primaryContainer,
+                          backgroundImage:
+                              AuthService().currentUser?.avatarUrl != null
+                              ? CachedNetworkImageProvider(
+                                  AuthService().currentUser!.avatarUrl!
+                                          .startsWith('http')
+                                      ? AuthService().currentUser!.avatarUrl!
+                                      : '${bipupuHttp.options.baseUrl}${AuthService().currentUser!.avatarUrl}',
+                                )
+                              : null,
+                          child: AuthService().currentUser?.avatarUrl == null
+                              ? Text(
+                                  (_nicknameCtrl.text.isNotEmpty
+                                          ? _nicknameCtrl.text
+                                          : _usernameCtrl.text)
+                                      .substring(0, 1)
+                                      .toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimaryContainer,
+                                  ),
+                                )
+                              : null,
                         ),
                       ),
                       Positioned(

@@ -33,6 +33,10 @@ abstract class RestClient {
   @PUT('/client/profile/profile')
   Future<User> updateMe(@Body() Map<String, dynamic> body);
 
+  @POST('/client/profile/avatar')
+  @MultiPart()
+  Future<User> updateAvatar(@Part(name: "file") MultipartFile file);
+
   @PUT('/client/profile/online-status')
   Future<void> updateOnlineStatus(@Body() Map<String, dynamic> body);
 

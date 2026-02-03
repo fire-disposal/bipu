@@ -67,13 +67,6 @@ class _ContactsPageState extends State<ContactsPage> {
                   badgeCount: requestCount,
                   onTap: () => context.go('/contacts/requests'),
                 ),
-                _buildSystemItem(
-                  context,
-                  Icons.group_work_rounded,
-                  '群组通知',
-                  Colors.blue.shade700,
-                  onTap: () {}, // 暂未实现
-                ),
                 const Padding(
                   padding: EdgeInsets.only(left: 20, top: 24, bottom: 8),
                   child: Text(
@@ -167,7 +160,7 @@ class _ContactsPageState extends State<ContactsPage> {
       ),
       subtitle: Text(user.email, style: const TextStyle(fontSize: 12)),
       onTap: () {
-        context.push('/chat/${user.id}');
+        context.push('/user/detail/${user.id}');
       },
     );
   }

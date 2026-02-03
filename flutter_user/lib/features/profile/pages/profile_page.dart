@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_core/api/api.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/theme_service.dart';
 import '../../common/widgets/setting_tile.dart';
@@ -10,7 +12,7 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = AuthService().currentUser;
-    final username = user?.username ?? "Guest";
+    final username = user?.nickname ?? user?.username ?? "Guest";
     final email = user?.email ?? "Offline Mode";
 
     return Scaffold(
@@ -38,11 +40,20 @@ class ProfilePage extends StatelessWidget {
                     CircleAvatar(
                       radius: 40,
                       backgroundColor: Colors.white,
-                      child: Icon(
-                        Icons.person,
-                        size: 40,
-                        color: Theme.of(context).primaryColor,
-                      ),
+                      backgroundImage: user?.avatarUrl != null
+                          ? CachedNetworkImageProvider(
+                              user!.avatarUrl!.startsWith('http')
+                                  ? user.avatarUrl!
+                                  : '${bipupuHttp.options.baseUrl}${user.avatarUrl}',
+                            )
+                          : null,
+                      child: user?.avatarUrl == null
+                          ? Icon(
+                              Icons.person,
+                              size: 40,
+                              color: Theme.of(context).primaryColor,
+                            )
+                          : null,
                     ),
                     const SizedBox(height: 10),
                     Text(

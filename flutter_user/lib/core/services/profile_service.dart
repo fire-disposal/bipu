@@ -1,5 +1,7 @@
 import 'package:flutter_core/api/api.dart';
 import 'package:flutter_core/models/user_model.dart';
+import 'package:dio/dio.dart';
+import 'dart:io';
 
 class ProfileService {
   static final ProfileService _instance = ProfileService._internal();
@@ -9,6 +11,15 @@ class ProfileService {
   final _api = bipupuApi;
 
   Future<User> getMe() => _api.getMe();
+
+  Future<User> uploadAvatar(File file) async {
+    final fileName = file.path.split('/').last;
+    final multipartFile = await MultipartFile.fromFile(
+      file.path,
+      filename: fileName,
+    );
+    return _api.updateAvatar(multipartFile);
+  }
 
   Future<User> updateProfile({
     String? nickname,
