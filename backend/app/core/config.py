@@ -18,6 +18,11 @@ class Settings(BaseSettings):
         env_prefix="BIPUPU_"  # 所有环境变量需以 BIPUPU_ 开头
     )
 
+    # 项目配置
+    PROJECT_NAME: str = "bipupu"
+    VERSION: str = "0.2.0"
+    DESCRIPTION: str = "BIPUPU API 服务"
+
     # 数据库配置
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "postgres"
@@ -136,8 +141,6 @@ class Settings(BaseSettings):
         if v == "":
             return None
         return v
-    
-    # 已迁移至 model_config
 
 
 # 创建配置实例
