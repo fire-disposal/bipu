@@ -22,6 +22,7 @@ class SpeechRecognitionService {
   final RecorderStream _recorder = RecorderStream();
 
   bool _isInitialized = false;
+  Completer<void>? _initCompleter;
   final _resultController = StreamController<String>.broadcast();
 
   // Buffer to hold the accumulated text across endpoints
@@ -41,21 +42,21 @@ class SpeechRecognitionService {
 
   Future<void> init() async {
     if (_isInitialized) return;
+    if (_initCompleter != null) return _initCompleter!.future;
 
-    sherpa.initBindings();
-
-    // TODO: Extract these to a configuration file or remote config if needed
-    const modelDir = 'assets/models/asr';
-    const modelFiles = {
-      'tokens': '$modelDir/tokens.txt',
-      'encoder': '$modelDir/encoder-epoch-99-avg-1.int8.onnx',
-      'decoder': '$modelDir/decoder-epoch-99-avg-1.onnx',
-      'joiner': '$modelDir/joiner-epoch-99-avg-1.int8.onnx',
-    };
+    _initCompleter = Completer<void>();
 
     try {
-      // 1. Validate assets existence in bundle (fail fast)
-      // Note: rootBundle.load will throw if asset is missing, which is caught below.
+      sherpa.initBindings();
+
+      // TODO: Extract these to a configuration file or remote config if needed
+      const modelDir = 'assets/models/asr';
+      const modelFiles = {
+        'tokens': '$modelDir/tokens.txt',
+        'encoder': '$modelDir/encoder-epoch-99-avg-1.int8.onnx',
+        'decoder': '$modelDir/decoder-epoch-99-avg-1.onnx',
+        'joiner': '$modelDir/joiner-epoch-99-avg-1.int8.onnx',
+      };
 
       // 2. Copy assets to local storage so C++ can access them
       final paths = <String, String>{};
@@ -95,17 +96,16 @@ class SpeechRecognitionService {
 
       _isInitialized = true;
       Logger.info('SpeechRecognitionService initialized successfully');
+      _initCompleter!.complete();
     } catch (e, stackTrace) {
       Logger.error(
-        'SpeechRecognitionService initialization failed.\n'
-        'Checklist:\n'
-        '1. Do assets/models/* files exist?\n'
-        '2. Are they listed in pubspec.yaml under assets?\n'
-        '3. Did you run "flutter pub get"?',
+        'SpeechRecognitionService initialization failed.',
         e,
         stackTrace,
       );
       _isInitialized = false;
+      _initCompleter!.completeError(e, stackTrace);
+      _initCompleter = null;
       rethrow;
     }
   }
@@ -113,37 +113,33 @@ class SpeechRecognitionService {
   Future<String?> _copyAssetToLocal(String assetPath) async {
     try {
       final data = await rootBundle.load(assetPath);
-      final directory = await getApplicationDocumentsDirectory();
-      final fileName = assetPath.split('/').last;
-      final file = File('${directory.path}/$fileName');
+      final bytes = data.buffer.asUint8List(
+        data.offsetInBytes,
+        data.lengthInBytes,
+      );
 
-      // Check if file exists and verify integrity/updates by size
-      // This allows updating models by simply replacing assets and rebuilding,
-      // even if the filename remains the same.
-      if (await file.exists()) {
-        final existingSize = await file.length();
-        if (existingSize == data.lengthInBytes) {
-          Logger.info(
-            'Asset $assetPath already exists and size matches. Skipping copy.',
-          );
-          return file.path;
-        }
-        Logger.info(
-          'Asset $assetPath exists but size mismatch. Overwriting...',
-        );
+      final appDir = await getApplicationSupportDirectory();
+      final modelCacheDir = Directory('${appDir.path}/models/asr');
+      if (!await modelCacheDir.exists()) {
+        await modelCacheDir.create(recursive: true);
       }
 
-      await file.writeAsBytes(
-        data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
-        flush: true, // Ensure write is committed to disk
-      );
-      Logger.info('Copied asset $assetPath to ${file.path}');
-      return file.path;
+      final fileName = assetPath.split('/').last;
+      final localPath = '${modelCacheDir.path}/$fileName';
+      final file = File(localPath);
+
+      // Integrity check
+      if (await file.exists()) {
+        final existingSize = await file.length();
+        if (existingSize == bytes.length) {
+          return localPath;
+        }
+      }
+
+      await file.writeAsBytes(bytes, flush: true);
+      return localPath;
     } catch (e) {
-      Logger.error(
-        'Failed to copy asset: $assetPath. Make sure it is declared in pubspec.yaml',
-        e,
-      );
+      Logger.error('Failed to copy asset $assetPath: $e');
       return null;
     }
   }
@@ -151,13 +147,18 @@ class SpeechRecognitionService {
   /// Starts listening to the microphone.
   Future<void> startRecording() async {
     if (!_isInitialized) {
-      Logger.error('SpeechService not initialized. Call init() first.');
-      return;
+      await init();
     }
 
     final status = await Permission.microphone.request();
-    if (status != PermissionStatus.granted) {
+    if (status.isDenied) {
       throw Exception('Microphone permission denied');
+    }
+    if (status.isPermanentlyDenied) {
+      openAppSettings();
+      throw Exception(
+        'Microphone permission permanently denied. Please enable it in settings.',
+      );
     }
 
     startListening(_recorder.audioStream);
@@ -188,7 +189,11 @@ class SpeechRecognitionService {
   }
 
   Future<void> stop() async {
-    await _recorder.stop();
+    try {
+      await _recorder.stop();
+    } catch (e) {
+      Logger.error('Error stopping recorder', e);
+    }
     _stopCurrentStream();
     _audioSubscription?.cancel();
     _audioSubscription = null;
@@ -196,23 +201,33 @@ class SpeechRecognitionService {
 
   void _stopCurrentStream() {
     if (_stream != null) {
-      _stream!.free();
+      try {
+        _stream!.free();
+      } catch (e) {
+        Logger.error('Error freeing stream', e);
+      }
       _stream = null;
     }
   }
 
   void _processAudioData(List<int> data) {
-    if (_stream == null || _recognizer == null) return;
+    if (!_isInitialized || _stream == null || _recognizer == null) return;
 
     try {
-      final samples = _convertBytesToFloat(data);
+      final Uint8List bytes = data is Uint8List
+          ? data
+          : Uint8List.fromList(data);
+      final samples = _convertBytesToFloat(bytes);
+      if (samples.isEmpty) return;
+
       _stream!.acceptWaveform(samples: samples, sampleRate: 16000);
 
       while (_recognizer!.isReady(_stream!)) {
         _recognizer!.decode(_stream!);
       }
 
-      final currentSegment = _recognizer!.getResult(_stream!).text;
+      final result = _recognizer!.getResult(_stream!);
+      final currentSegment = result.text;
 
       // Emit full text: committed buffer + current active segment
       final fullText = _sessionBuffer.toString() + currentSegment;
@@ -221,40 +236,40 @@ class SpeechRecognitionService {
       if (_recognizer!.isEndpoint(_stream!)) {
         if (currentSegment.isNotEmpty) {
           _sessionBuffer.write(currentSegment);
-          // Add punctuation or space if needed? Sherpa usually does good, but let's ensure separation
-          // _sessionBuffer.write(' ');
         }
         _recognizer!.reset(_stream!);
       }
-    } catch (e) {
-      Logger.error('Error during speech recognition processing', e);
+    } catch (e, stackTrace) {
+      Logger.error('Error during speech recognition processing', e, stackTrace);
     }
   }
 
   // Convert 16-bit PCM bytes to float samples
-  Float32List _convertBytesToFloat(List<int> bytes) {
+  Float32List _convertBytesToFloat(Uint8List bytes) {
     // Ensure we have an even number of bytes for 16-bit samples
     final len = bytes.length;
-    if (len % 2 != 0) {
-      // Handle odd byte length if necessary, simplistic approach: drop last byte
-      // Or usually sound_stream guarantees it?
-      // For safety:
-      return _convertBytesToFloat(bytes.sublist(0, len - 1));
-    }
+    final sampleCount = len ~/ 2;
+    if (sampleCount == 0) return Float32List(0);
 
-    final int16List = Int16List.view(Uint8List.fromList(bytes).buffer);
-    final float32List = Float32List(int16List.length);
-    for (var i = 0; i < int16List.length; i++) {
-      float32List[i] = int16List[i] / 32768.0;
+    // Optimized conversion using ByteData to avoid Int16List alignment issues
+    final byteData = ByteData.sublistView(bytes);
+    final float32List = Float32List(sampleCount);
+
+    for (var i = 0; i < sampleCount; i++) {
+      // Int16 PCM to Float [-1.0, 1.0]
+      // Try-catch inside loop is usually slow, but getInt16 should be safe here
+      // since we checked sampleCount.
+      final intValue = byteData.getInt16(i * 2, Endian.little);
+      float32List[i] = intValue / 32768.0;
     }
     return float32List;
   }
 
   void dispose() {
+    _isInitialized = false;
     stop();
     _recognizer?.free();
     _recognizer = null;
-    _isInitialized = false;
     _resultController.close();
   }
 }

@@ -14,29 +14,30 @@ class TtsService {
 
   sherpa.OfflineTts? _tts;
   bool _isInitialized = false;
+  Completer<void>? _initCompleter;
 
   bool get isInitialized => _isInitialized;
 
   Future<void> init() async {
     if (_isInitialized) return;
+    if (_initCompleter != null) return _initCompleter!.future;
 
-    sherpa.initBindings();
-
-    // TODO: Extract these to a configuration file or remote config if needed
-    const modelDir = 'assets/models/tts';
-    const modelFiles = {
-      'model': '$modelDir/vits-aishell3.onnx',
-      'tokens': '$modelDir/tokens.txt',
-      'lexicon': '$modelDir/lexicon.txt',
-      'phoneFst': '$modelDir/phone.fst',
-      'dateFst': '$modelDir/date.fst',
-      'numberFst': '$modelDir/number.fst',
-      'newHeteronymFst': '$modelDir/new_heteronym.fst',
-    };
+    _initCompleter = Completer<void>();
 
     try {
-      // 1. Validate assets existence in bundle (fail fast)
-      // Note: rootBundle.load will throw if asset is missing, which is caught below.
+      sherpa.initBindings();
+
+      // TODO: Extract these to a configuration file or remote config if needed
+      const modelDir = 'assets/models/tts';
+      const modelFiles = {
+        'model': '$modelDir/vits-aishell3.onnx',
+        'tokens': '$modelDir/tokens.txt',
+        'lexicon': '$modelDir/lexicon.txt',
+        'phoneFst': '$modelDir/phone.fst',
+        'dateFst': '$modelDir/date.fst',
+        'numberFst': '$modelDir/number.fst',
+        'newHeteronymFst': '$modelDir/new_heteronym.fst',
+      };
 
       // 2. Copy assets to local storage so C++ can access them
       final paths = <String, String>{};
@@ -69,14 +70,11 @@ class TtsService {
 
       _isInitialized = true;
       Logger.info('TtsService initialized successfully');
+      _initCompleter!.complete();
     } catch (e, stackTrace) {
-      Logger.error(
-        'TtsService initialization failed.\n'
-        'Checklist:\n'
-        '1. Do TTS model files exist in assets/models/?\n'
-        '2. Ensure model.onnx, tokens.txt, lexicon.txt are present.\n'
-        'Error: $e\n$stackTrace',
-      );
+      Logger.error('TtsService initialization failed.', e, stackTrace);
+      _initCompleter!.completeError(e, stackTrace);
+      _initCompleter = null;
       rethrow;
     }
   }
@@ -84,15 +82,30 @@ class TtsService {
   Future<String?> _copyAssetToLocal(String assetPath) async {
     try {
       final data = await rootBundle.load(assetPath);
-      final bytes = data.buffer.asUint8List();
+      final bytes = data.buffer.asUint8List(
+        data.offsetInBytes,
+        data.lengthInBytes,
+      );
 
-      final tempDir = await getTemporaryDirectory();
+      final appDir = await getApplicationSupportDirectory();
+      final modelCacheDir = Directory('${appDir.path}/models/tts');
+      if (!await modelCacheDir.exists()) {
+        await modelCacheDir.create(recursive: true);
+      }
+
       final fileName = assetPath.split('/').last;
-      final localPath = '${tempDir.path}/$fileName';
-
+      final localPath = '${modelCacheDir.path}/$fileName';
       final file = File(localPath);
-      await file.writeAsBytes(bytes);
 
+      // Integrity check
+      if (await file.exists()) {
+        final existingSize = await file.length();
+        if (existingSize == bytes.length) {
+          return localPath;
+        }
+      }
+
+      await file.writeAsBytes(bytes, flush: true);
       return localPath;
     } catch (e) {
       Logger.error('Failed to copy asset $assetPath: $e');
@@ -106,11 +119,12 @@ class TtsService {
     double speed = 1.0,
   }) async {
     if (!_isInitialized || _tts == null) {
-      Logger.error('TtsService not initialized. Call init() first.');
-      return null;
+      await init();
     }
 
     try {
+      // OfflineTts.generate is a synchronous FFI call that might be heavy
+      // We wrap it in a try-catch to ensure UI doesn't crash on model errors
       final audio = _tts!.generate(text: text, sid: sid, speed: speed);
       return audio;
     } catch (e, stackTrace) {
