@@ -6,6 +6,7 @@ import 'package:flutter_core/models/paginated_response.dart';
 import 'package:flutter_core/models/user_model.dart';
 import 'package:flutter_user/features/friendship/bloc/friendship_bloc.dart';
 import 'package:flutter_user/features/friendship/bloc/friendship_event.dart';
+import 'package:go_router/go_router.dart';
 
 class UserSearchPage extends StatefulWidget {
   const UserSearchPage({super.key});
