@@ -8,6 +8,7 @@ import 'core/storage/mobile_token_storage.dart';
 import 'core/services/theme_service.dart';
 import 'core/theme/app_theme.dart';
 import 'router/app_router.dart';
+import 'services/background_service.dart';
 
 import 'core/services/toast_service.dart';
 
@@ -30,6 +31,13 @@ void main() async {
 
   // Initialize Auth Service
   await AuthService().initialize();
+
+  // Initialize Background Service
+  try {
+    await AppBackgroundService().initialize();
+  } catch (e) {
+    debugPrint('Failed to initialize background service: $e');
+  }
 
   runApp(const UserApp());
 }

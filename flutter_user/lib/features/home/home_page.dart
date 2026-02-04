@@ -302,7 +302,7 @@ class _HomePageState extends State<HomePage> {
                   '聊天',
                   Icons.chat_bubble_rounded,
                   Colors.indigo.shade600,
-                  () => context.push('/chat'),
+                  () => context.push('/messages'),
                 ),
               ],
             ),

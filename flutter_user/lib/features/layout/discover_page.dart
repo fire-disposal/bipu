@@ -21,7 +21,7 @@ class DiscoverPage extends StatelessWidget {
             title: 'Bluetooth Message',
             subtitle: 'Chat via BLE mesh',
             color: Colors.blue,
-            route: '/bluetooth',
+            route: '/bluetooth/scan',
           ),
           _buildDiscoverItem(
             context,
