@@ -124,33 +124,59 @@ class _MainLayoutState extends State<MainLayout> {
   @override
   Widget build(BuildContext context) {
     final currentIndex = _getCurrentIndex(context);
+    final theme = Theme.of(context);
 
     return Scaffold(
-      body: Column(
-        children: [
-          // 主内容区域
-          Expanded(child: widget.child),
-        ],
-      ),
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8,
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(context, 0, Icons.home, 'Home', currentIndex),
-              _buildPagerItem(context, 1, currentIndex),
-              _buildNavItem(
-                context,
-                2,
-                Icons.message,
-                'Messages',
-                currentIndex,
+      body: widget.child,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          border: Border(
+            top: BorderSide(
+              color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+              width: 0.5,
+            ),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(
+                theme.brightness == Brightness.dark ? 0.3 : 0.05,
               ),
-              _buildNavItem(context, 3, Icons.person, 'My', currentIndex),
-            ],
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: SizedBox(
+            height: 72,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(
+                  context,
+                  0,
+                  Icons.home_rounded,
+                  '首页',
+                  currentIndex,
+                ),
+                _buildPagerItem(context, 1, currentIndex),
+                _buildNavItem(
+                  context,
+                  2,
+                  Icons.chat_bubble_rounded,
+                  '消息',
+                  currentIndex,
+                ),
+                _buildNavItem(
+                  context,
+                  3,
+                  Icons.person_rounded,
+                  '我的',
+                  currentIndex,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -165,47 +191,116 @@ class _MainLayoutState extends State<MainLayout> {
     int currentIndex,
   ) {
     final isSelected = index == currentIndex;
-    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
-    return InkWell(
-      onTap: () => _onItemTapped(index, context),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color),
-          Text(label, style: TextStyle(color: color, fontSize: 12)),
-        ],
+    final activeColor = colorScheme.primary;
+    final inactiveColor = colorScheme.onSurfaceVariant.withOpacity(0.6);
+
+    return Expanded(
+      child: InkWell(
+        onTap: () => _onItemTapped(index, context),
+        splashColor: activeColor.withOpacity(0.1),
+        highlightColor: Colors.transparent,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? activeColor.withOpacity(0.12)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                icon,
+                color: isSelected ? activeColor : inactiveColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? activeColor : inactiveColor,
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildPagerItem(BuildContext context, int index, int currentIndex) {
     final isSelected = index == currentIndex;
-    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onTap: () => _onItemTapped(index, context),
-      onLongPress: () {
-        if (isSelected) {
-          _onPagerLongPressed(context);
-        } else {
-          _onItemTapped(index, context);
-        }
-      },
-      onLongPressUp: () {
-        if (isSelected) {
-          _onPagerLongPressEnd(context);
-        }
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.mic, color: color, size: 28),
-          Text('Pager', style: TextStyle(color: color, fontSize: 12)),
-        ],
+    final activeColor = colorScheme.primary;
+    final inactiveColor = colorScheme.onSurfaceVariant.withOpacity(0.6);
+
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => _onItemTapped(index, context),
+        onLongPress: () {
+          if (isSelected) {
+            _onPagerLongPressed(context);
+          } else {
+            _onItemTapped(index, context);
+          }
+        },
+        onLongPressUp: () {
+          if (isSelected) {
+            _onPagerLongPressEnd(context);
+          }
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isSelected ? activeColor : activeColor.withOpacity(0.05),
+                shape: BoxShape.circle,
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: activeColor.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : [],
+              ),
+              child: Icon(
+                Icons.mic_rounded,
+                color: isSelected
+                    ? colorScheme.onPrimary
+                    : activeColor.withOpacity(0.7),
+                size: 26,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '对讲',
+              style: TextStyle(
+                color: isSelected ? activeColor : inactiveColor,
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
