@@ -2,8 +2,8 @@ from fastapi import APIRouter
 
 # 导入新的路由模块
 from app.api.routes.public import router as public_router
-from app.api.routes.client import router as client_router  # 这会导入 client.py 文件
-from app.api.routes.admin import router as admin_router    # 这会导入 admin.py 文件
+from app.api.routes.client import router as client_router 
+from app.api.routes.admin import router as admin_router
 
 api_router = APIRouter()
 

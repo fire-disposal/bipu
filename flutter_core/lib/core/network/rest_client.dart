@@ -30,7 +30,7 @@ abstract class RestClient {
   @GET('/client/profile/me')
   Future<User> getMe();
 
-  @PUT('/client/profile/profile')
+  @PUT('/client/profile')
   Future<User> updateMe(@Body() Map<String, dynamic> body);
 
   @POST('/client/profile/avatar')

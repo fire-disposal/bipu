@@ -81,7 +81,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
                       ? CachedNetworkImageProvider(
                           user.avatarUrl!.startsWith('http')
                               ? user.avatarUrl!
-                              : '${bipupuHttp.options.baseUrl}${user.avatarUrl}',
+                              : '${bipupuHttp.options.baseUrl.replaceFirst(RegExp(r"/api$"), '')}${user.avatarUrl}',
                         )
                       : null,
                   child: user.avatarUrl == null

@@ -160,7 +160,7 @@ class _RestClient implements RestClient {
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/client/profile/profile',
+            '/client/profile',
             queryParameters: queryParameters,
             data: _data,
           )

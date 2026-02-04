@@ -30,6 +30,10 @@
 	<string>Main</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app needs access to microphone for speech recognition.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>我们需要访问您的相册以设置头像</string>
+	<key>NSCameraUsageDescription</key>
+	<string>我们需要使用您的相机以拍摄头像照片</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

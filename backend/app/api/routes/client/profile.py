@@ -79,7 +79,7 @@ async def get_current_user_info(
     return current_user
 
 
-@router.get("/profile", response_model=UserProfile, tags=["用户资料"])
+@router.get("/", response_model=UserProfile, tags=["用户资料"])
 async def get_user_profile(
     current_user: User = Depends(get_current_active_user)
 ):
@@ -110,7 +110,7 @@ async def get_user_profile(
     return profile
 
 
-@router.put("/profile", response_model=UserProfile, tags=["用户资料"])
+@router.put("/", response_model=UserProfile, tags=["用户资料"])
 async def update_user_profile(
     user_update: UserUpdate,
     db: Session = Depends(get_db),
