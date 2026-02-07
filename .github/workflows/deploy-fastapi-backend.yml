@@ -127,8 +127,8 @@ jobs:
 
       - name: 🩺 运行远程健康检查
         run: |
-          echo "🔍 正在通过 Docker 状态确认服务可用性 (最多 5 次)..."
-          for i in {1..5}; do
+          echo "🔍 正在通过 Docker 状态确认服务可用性 (最多 10 次)..."
+          for i in {1..10}; do
             # 获取容器健康状态：healthy, unhealthy, starting
             STATUS=$(docker inspect --format='{{.State.Health.Status}}' bipupu-backend 2>/dev/null || echo "not-found")
             
