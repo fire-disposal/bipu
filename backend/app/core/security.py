@@ -1,9 +1,9 @@
 """JWT认证和授权相关功能"""
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Union
+from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
@@ -32,6 +32,16 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def get_password_hash(password: str) -> str:
     """获取密码哈希"""
     return pwd_context.hash(password)
+
+
+def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
+    """验证用户凭据"""
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        return None
+    if not verify_password(password, user.hashed_password):
+        return None
+    return user
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -122,3 +132,65 @@ async def get_current_superuser(current_user: User = Depends(get_current_user)) 
             detail="Not enough permissions"
         )
     return current_user
+
+
+async def get_current_superuser_web(
+    request: Request,
+    db: Session = Depends(get_db)
+) -> User:
+    """Web版本的超级用户认证，失败时重定向到登录页面"""
+    # 首先尝试从cookie获取token
+    token = request.cookies.get("access_token")
+    if token and token.startswith("Bearer "):
+        token = token[7:]  # 移除 "Bearer " 前缀
+    
+    # 如果没有cookie token，尝试Authorization header
+    if not token:
+        auth_header = request.headers.get("authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+    
+    if not token:
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/admin/login", status_code=302)
+    
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        # 检查令牌是否在黑名单中
+        if await RedisService.is_token_blacklisted(token):
+            raise credentials_exception
+            
+        payload = decode_token(token)
+        if payload is None:
+            raise credentials_exception
+            
+        # 检查令牌类型
+        if payload.get("type") != "access":
+            raise credentials_exception
+            
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+            
+    except Exception as e:
+        logger.error(f"Token validation error: {e}")
+        # 重定向到登录页面
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/admin/login", status_code=302)
+    
+    # 查询用户
+    user = db.query(User).filter(User.username == user_id).first()
+    if user is None:
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/admin/login", status_code=302)
+        
+    if not user.is_superuser:
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/admin/login", status_code=302)
+        
+    return user

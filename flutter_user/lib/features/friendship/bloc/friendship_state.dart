@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
-import 'package:flutter_core/models/friendship_model.dart';
-import 'package:flutter_core/models/user_model.dart';
+import 'package:flutter_user/models/friendship_model.dart';
+import 'package:flutter_user/models/user_model.dart';
 
 class FriendRequestItem extends Equatable {
   final Friendship friendship;

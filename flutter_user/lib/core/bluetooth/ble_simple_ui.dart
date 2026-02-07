@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'ble_pipeline.dart';
 
-/// 简化的蓝牙UI组件适配器
+/// 简化的蓝牙UI组件适配�?
 /// 为新的BlePipeline提供兼容的UI组件
 class SimpleBleState extends ChangeNotifier {
   final BlePipeline _pipeline = BlePipeline();
@@ -11,7 +11,7 @@ class SimpleBleState extends ChangeNotifier {
     _pipeline.addListener(notifyListeners);
   }
 
-  // 兼容的属性
+  // 兼容的属�?
   bool get isScanning => _pipeline.isScanning;
   bool get isConnecting => _pipeline.isConnecting;
   bool get isConnected => _pipeline.isConnected;
@@ -19,7 +19,7 @@ class SimpleBleState extends ChangeNotifier {
   int? get batteryLevel => _pipeline.batteryLevel;
   List<ScanResult> get scanResults => _pipeline.scanResults;
 
-  // 兼容的方法
+  // 兼容的方�?
   Future<void> startScan() => _pipeline.startScan();
   Future<void> stopScan() => _pipeline.stopScan();
   Future<void> connect(BluetoothDevice device) => _pipeline.connect(device);
@@ -44,7 +44,7 @@ class SimpleBleDeviceInfo {
   String get id => device.remoteId.toString();
 }
 
-/// 简化的设备列表项
+/// 简化的设备列表�?
 class SimpleBleDeviceListItem extends StatelessWidget {
   final SimpleBleDeviceInfo deviceInfo;
   final bool isConnecting;

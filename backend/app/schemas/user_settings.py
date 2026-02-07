@@ -89,7 +89,6 @@ class UserProfileResponse(BaseModel):
     terms_accepted: bool
     terms_accepted_at: Optional[datetime]
     is_active: bool
-    role: str
     last_active: Optional[datetime]
     created_at: datetime
     updated_at: Optional[datetime]

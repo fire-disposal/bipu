@@ -2,12 +2,12 @@ import 'dart:typed_data';
 
 /// BLE标准CTS (Current Time Service) 协议实现
 /// 基于Bluetooth SIG标准规范
-/// 参考: https://www.bluetooth.com/specifications/specs/current-time-service-1-1/
+/// 参�? https://www.bluetooth.com/specifications/specs/current-time-service-1-1/
 
-/// CTS时间同步状态枚举
+/// CTS时间同步状态枚�?
 enum BleCtsSyncState {
-  none, // 未同步
-  pending, // 同步中
+  none, // 未同�?
+  pending, // 同步�?
   success, // 同步成功
   failed, // 同步失败
 }
@@ -23,8 +23,8 @@ enum BleCtsSyncState {
 /// - 分钟 (1字节): 0-59
 /// - 秒钟 (1字节): 0-59
 /// - 星期 (1字节): 0=未知, 1=周一, 7=周日
-/// - 分数 (1字节): 1/256秒, 0-255
-/// - 调整原因 (1字节): 位标志
+/// - 分数 (1字节): 1/256�? 0-255
+/// - 调整原因 (1字节): 位标�?
 class BleCtsCurrentTime {
   static const int dataLength = 10;
 
@@ -35,8 +35,8 @@ class BleCtsCurrentTime {
   final int minute; // 分钟 (0-59)
   final int second; // 秒钟 (0-59)
   final int weekday; // 星期 (0-7, 0=未知, 1=周一, 7=周日)
-  final int fraction256; // 分数 (0-255, 1/256秒)
-  final int adjustReason; // 调整原因 (位标志)
+  final int fraction256; // 分数 (0-255, 1/256�?
+  final int adjustReason; // 调整原因 (位标�?
 
   const BleCtsCurrentTime({
     required this.year,
@@ -71,7 +71,7 @@ class BleCtsCurrentTime {
     );
   }
 
-  /// 转换为字节数组
+  /// 转换为字节数�?
   Uint8List toBytes() {
     final bytes = Uint8List(dataLength);
     bytes[0] = year & 0xFF; // little-endian
@@ -112,7 +112,7 @@ class BleCtsCurrentTime {
     return DateTime(year, month, day, hour, minute, second);
   }
 
-  /// 验证时间数据的有效性
+  /// 验证时间数据的有效�?
   bool isValidTimeData() {
     return year >= 1582 && // Gregorian calendar start year
         year <= 9999 &&
@@ -138,15 +138,15 @@ class BleCtsCurrentTime {
 }
 
 /// CTS本地时间信息特征数据结构
-/// 特征UUID: 0x2A0F (可选)
+/// 特征UUID: 0x2A0F (可�?
 /// 数据长度: 2字节
 /// 格式:
-/// - 时区偏移 (1字节, 有符号): -48 到 +56 (0.25小时为单位)
+/// - 时区偏移 (1字节, 有符�?: -48 �?+56 (0.25小时为单�?
 /// - DST偏移 (1字节): 0=标准时间, 2=+0.5小时, 4=+1小时, 8=+2小时
 class BleCtsLocalTimeInfo {
   static const int dataLength = 2;
 
-  final int timezoneOffset; // 时区偏移 (-48 到 +56, 0.25小时为单位)
+  final int timezoneOffset; // 时区偏移 (-48 �?+56, 0.25小时为单�?
   final int dstOffset; // DST偏移 (0, 2, 4, 8)
 
   const BleCtsLocalTimeInfo({
@@ -154,7 +154,7 @@ class BleCtsLocalTimeInfo {
     required this.dstOffset,
   });
 
-  /// 从字节数组解析本地时间信息
+  /// 从字节数组解析本地时间信�?
   factory BleCtsLocalTimeInfo.fromBytes(Uint8List bytes) {
     if (bytes.length != dataLength) {
       throw ArgumentError(
@@ -162,7 +162,7 @@ class BleCtsLocalTimeInfo {
       );
     }
 
-    // 时区偏移是有符号数，需要处理
+    // 时区偏移是有符号数，需要处�?
     final timezoneByte = bytes[0];
     final timezoneOffset = timezoneByte > 127
         ? timezoneByte - 256
@@ -174,7 +174,7 @@ class BleCtsLocalTimeInfo {
     );
   }
 
-  /// 转换为字节数组
+  /// 转换为字节数�?
   Uint8List toBytes() {
     final bytes = Uint8List(dataLength);
 
@@ -189,7 +189,7 @@ class BleCtsLocalTimeInfo {
     return bytes;
   }
 
-  /// 从当前系统时区创建本地时间信息
+  /// 从当前系统时区创建本地时间信�?
   factory BleCtsLocalTimeInfo.fromSystemTimezone() {
     // 获取当前时区偏移（小时）
     final now = DateTime.now();
@@ -199,10 +199,10 @@ class BleCtsLocalTimeInfo {
     // 计算时区差异（小时）
     final timezoneDiff = local.difference(utc).inHours;
 
-    // 转换为0.25小时单位
+    // 转换�?.25小时单位
     final timezoneOffset = (timezoneDiff * 4).round();
 
-    // 简化的DST检测（实际应用中可能需要更复杂的逻辑）
+    // 简化的DST检测（实际应用中可能需要更复杂的逻辑�?
     int dstOffset = 0;
     if (local.isAfter(DateTime(local.year, 3, 1)) &&
         local.isBefore(DateTime(local.year, 11, 1))) {

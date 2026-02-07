@@ -26,24 +26,32 @@ async def upload_avatar(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """上传并更新用户头像"""
+    """上传并更新用户头像（存储到数据库）"""
     try:
-        # 保存旧头像以便删除（可选）
-        old_avatar = current_user.avatar_url
+        # 文件大小验证
+        from app.core.config import settings
+        file_content = await file.read()
+        file_size = len(file_content)
         
-        # 保存并压缩新头像
-        avatar_url = await StorageService.save_avatar(file, current_user.id)
+        if file_size > settings.MAX_FILE_SIZE:
+            raise ValidationException(f"File too large. Maximum size is {settings.MAX_FILE_SIZE // (1024*1024)}MB")
+        
+        # 重新创建文件对象
+        from io import BytesIO
+        file.file = BytesIO(file_content)
+        
+        # 保存头像到数据库
+        avatar_data, filename, mimetype = await StorageService.save_avatar_to_db(file, current_user.id, db)
         
         # 更新数据库
-        current_user.avatar_url = avatar_url
+        current_user.avatar_data = avatar_data
+        current_user.avatar_filename = filename
+        current_user.avatar_mimetype = mimetype
+        current_user.avatar_url = f"/api/client/profile/avatar/{current_user.id}"
         db.add(current_user)
         db.commit()
         db.refresh(current_user)
         
-        # 删除旧头像文件
-        if old_avatar:
-            StorageService.delete_old_avatar(old_avatar)
-            
         # 更新缓存
         profile = {
             "id": current_user.id,
@@ -53,7 +61,6 @@ async def upload_avatar(
             "avatar_url": current_user.avatar_url,
             "is_active": current_user.is_active,
             "is_superuser": current_user.is_superuser,
-            "role": current_user.role,
             "last_active": current_user.last_active,
             "created_at": current_user.created_at,
             "updated_at": current_user.updated_at
@@ -98,7 +105,6 @@ async def get_user_profile(
         "avatar_url": current_user.avatar_url,
         "is_active": current_user.is_active,
         "is_superuser": current_user.is_superuser,
-        "role": current_user.role,
         "last_active": current_user.last_active,
         "created_at": current_user.created_at,
         "updated_at": current_user.updated_at
@@ -132,7 +138,6 @@ async def update_user_profile(
             "avatar_url": updated_user.avatar_url,
             "is_active": updated_user.is_active,
             "is_superuser": updated_user.is_superuser,
-            "role": updated_user.role,
             "last_active": updated_user.last_active,
             "created_at": updated_user.created_at,
             "updated_at": updated_user.updated_at
@@ -165,3 +170,22 @@ async def update_online_status(
     
     logger.info(f"User {current_user.username} is now {status_text}")
     return {"message": f"User is now {status_text}"}
+
+
+@router.get("/avatar/{user_id}", tags=["用户资料"])
+async def get_user_avatar(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    """获取用户头像（从数据库提供）"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.avatar_data:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Avatar not found")
+    
+    from fastapi.responses import Response
+    return Response(
+        content=user.avatar_data,
+        media_type=user.avatar_mimetype or "image/jpeg",
+        headers={"Cache-Control": "public, max-age=3600"}  # 缓存1小时
+    )

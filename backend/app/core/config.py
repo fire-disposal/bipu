@@ -30,18 +30,27 @@ class Settings(BaseSettings):
     POSTGRES_PORT: str = "5432"
     POSTGRES_DB: str = "bipupu"
     
+    # SQLite配置（fallback）
+    SQLITE_DB_PATH: str = "bipupu.db"
+    
     @property
     def DATABASE_URL(self) -> str:
-        """保持兼容性，返回构建好的 DATABASE_URL"""
+        """保持兼容性，返回构建好的 DATABASE_URL，支持自动回退"""
+        # 优先使用环境变量
         if os.getenv("BIPUPU_DATABASE_URL"):
             return os.getenv("BIPUPU_DATABASE_URL")
+        
+        # 尝试构建PostgreSQL URL
         password = quote_plus(self.POSTGRES_PASSWORD)
-        return f"postgresql://{self.POSTGRES_USER}:{password}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        postgres_url = f"postgresql://{self.POSTGRES_USER}:{password}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        
+        return postgres_url
 
     # Redis配置
     REDIS_PASSWORD: Optional[str] = None
     REDIS_HOST: str = "redis"
     REDIS_PORT: str = "6379"
+    USE_MEMORY_CACHE: bool = False  # 是否使用内存缓存作为fallback
     
     @property
     def REDIS_URL(self) -> str:

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, LargeBinary
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.models.base import Base
@@ -12,11 +12,12 @@ class User(Base):
     email = Column(String(255), unique=True, index=True, nullable=False)
     username = Column(String(50), unique=True, index=True, nullable=False)
     nickname = Column(String(50), nullable=True)
-    avatar_url = Column(String(255), nullable=True)
+    avatar_data = Column(LargeBinary, nullable=True)  # 存储图像二进制数据
+    avatar_filename = Column(String(255), nullable=True)  # 存储原始文件名
+    avatar_mimetype = Column(String(50), nullable=True)  # 存储MIME类型
     hashed_password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
-    role = Column(String(20), default="user", nullable=False)  # "user" / "admin"
     last_active = Column(DateTime(timezone=True), server_default=func.now())
 
     # 时间戳
@@ -40,4 +41,4 @@ class User(Base):
     blocked_by = relationship("UserBlock", foreign_keys="[UserBlock.blocked_id]", back_populates="blocked", cascade="all, delete-orphan")
 
     def __repr__(self):
-        return f"<User(id={self.id}, email='{self.email}', username='{self.username}', role='{self.role}')>"
+        return f"<User(id={self.id}, email='{self.email}', username='{self.username}', is_superuser={self.is_superuser})>"

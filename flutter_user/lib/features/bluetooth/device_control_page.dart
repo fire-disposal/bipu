@@ -16,7 +16,7 @@ class _DeviceControlPageState extends State<DeviceControlPage> {
   final BlePipeline _blePipeline = BlePipeline();
   final TextEditingController _textController = TextEditingController();
 
-  // 参数状态
+  // 参数状�?
   VibrationType _vibrationType = VibrationType.none;
   ScreenEffect _screenEffect = ScreenEffect.none;
 
@@ -25,7 +25,7 @@ class _DeviceControlPageState extends State<DeviceControlPage> {
   double _green = 0;
   double _blue = 0;
 
-  // 状态
+  // 状�?
   bool _timeSyncInProgress = false;
   bool _timeSyncCompleted = false;
   bool _isSendingMessage = false;
@@ -114,7 +114,7 @@ class _DeviceControlPageState extends State<DeviceControlPage> {
       if (!shouldProceed) return;
     }
 
-    // 显示发送状态
+    // 显示发送状�?
     setState(() {
       _isSendingMessage = true;
     });
@@ -239,10 +239,10 @@ class _DeviceControlPageState extends State<DeviceControlPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 连接状态卡片
+            // 连接状态卡�?
             _buildConnectionStatusCard(),
 
-            // 时间同步状态
+            // 时间同步状�?
             _buildTimeSyncIndicator(),
 
             const SizedBox(height: 16),
@@ -268,7 +268,7 @@ class _DeviceControlPageState extends State<DeviceControlPage> {
 
             const SizedBox(height: 30),
 
-            // 发送按钮
+            // 发送按�?
             _buildSendButton(),
           ],
         ),

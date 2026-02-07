@@ -1,7 +1,6 @@
 """数据库初始化数据（最小化，仅创建默认管理员）"""
 import asyncio
 from sqlalchemy.orm import Session
-from app.db.database import SessionLocal
 from app.models.user import User
 from app.models.subscription import SubscriptionType
 from app.core.security import get_password_hash
@@ -77,6 +76,9 @@ async def create_default_admin_user(db: Session):
 async def init_default_data():
     """初始化默认数据"""
     logger.info("开始初始化数据库默认数据...")
+    
+    # 动态导入SessionLocal，确保使用最新的数据库配置
+    from app.db.database import SessionLocal
     
     db = SessionLocal()
     try:

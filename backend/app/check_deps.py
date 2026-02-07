@@ -1,46 +1,52 @@
 import sys
+import asyncio
 import time
-import psycopg2
-import redis
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.db.database import init_db, init_redis, current_db_type
 
 logger = get_logger(__name__)
 
-def check_db():
-    url = settings.DATABASE_URL
-    logger.info(f"正在检查数据库连接...")
+async def check_db():
+    """检查数据库连接和初始化"""
+    logger.info("🔍 检查数据库连接...")
     start = time.time()
     while time.time() - start < 30:
         try:
-            # 从构建好的 DATABASE_URL 直接连接，无需关心内部字段
-            conn = psycopg2.connect(url, connect_timeout=3)
-            conn.close()
-            logger.info("✅ 数据库连接成功")
+            await init_db()
+            db_type = "PostgreSQL" if current_db_type == "postgresql" else "SQLite"
+            logger.info(f"✅ 数据库初始化成功 (类型: {db_type})")
             return True
         except Exception as e:
-            logger.warning(f"⏳ 数据库等待中: {e}")
-            time.sleep(2)
+            logger.warning(f"⏳ 数据库初始化等待中: {e}")
+            await asyncio.sleep(2)
     return False
 
-def check_redis():
-    url = settings.REDIS_URL
-    logger.info(f"正在检查 Redis 连接...")
+
+async def check_redis():
+    """检查Redis连接和初始化"""
+    logger.info("🔍 检查Redis连接...")
     start = time.time()
     while time.time() - start < 30:
         try:
-            r = redis.from_url(url, socket_timeout=2)
-            if r.ping():
-                logger.info("✅ Redis 连接成功")
-                return True
+            await init_redis()
+            logger.info("✅ Redis初始化成功")
+            return True
         except Exception as e:
-            logger.warning(f"⏳ Redis 等待中: {e}")
-            time.sleep(2)
+            logger.warning(f"⏳ Redis初始化等待中: {e}")
+            await asyncio.sleep(2)
     return False
 
-if __name__ == "__main__":
-    if check_db() and check_redis():
-        sys.exit(0)
+async def main():
+    """主检查函数"""
+    if await check_db() and await check_redis():
+        logger.info("🎉 所有依赖服务检查通过")
+        return True
     else:
         logger.error("❌ 依赖服务自检失败")
-        sys.exit(1)
+        return False
+
+
+if __name__ == "__main__":
+    success = asyncio.run(main())
+    sys.exit(0 if success else 1)

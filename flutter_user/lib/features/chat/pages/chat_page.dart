@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_core/api/api.dart';
-import 'package:flutter_core/core/network/rest_client.dart';
-import 'package:flutter_core/models/message_model.dart';
-import 'package:flutter_core/models/user_model.dart';
+import 'package:flutter_user/api/api.dart';
+import 'package:flutter_user/core/network/rest_client.dart';
+import 'package:flutter_user/models/message_model.dart';
+import 'package:flutter_user/models/user_model.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
@@ -160,7 +160,7 @@ class _ChatPageState extends State<ChatPage> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('发送失败: $e')));
+        ).showSnackBar(SnackBar(content: Text('发送失�? $e')));
       }
     }
   }
@@ -491,7 +491,7 @@ class _ChatPageState extends State<ChatPage> {
             child: TextField(
               controller: _textController,
               decoration: InputDecoration(
-                hintText: '发送消息...',
+                hintText: '发送消�?..',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: BorderSide.none,

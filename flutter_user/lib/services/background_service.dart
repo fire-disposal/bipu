@@ -8,8 +8,8 @@ import 'package:flutter_background_service_android/flutter_background_service_an
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:logger/logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_core/api/api.dart';
-import 'package:flutter_core/core/network/api_client.dart';
+import 'package:flutter_user/api/api.dart';
+import 'package:flutter_user/core/network/api_client.dart';
 import '../core/storage/mobile_token_storage.dart';
 import '../core/bluetooth/ble_pipeline.dart';
 import '../core/protocol/ble_protocol.dart';

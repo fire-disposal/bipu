@@ -1,6 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_core/core/storage/token_storage.dart';
+import 'package:flutter_user/core/storage/token_storage.dart';
 
 class MobileTokenStorage implements TokenStorage {
   static const _accessTokenKey = 'access_token';

@@ -8,7 +8,7 @@ import '../constants/ble_constants.dart';
 import '../protocol/ble_protocol.dart';
 import '../protocol/ble_cts_protocol.dart';
 
-/// 统一的蓝牙管道接口 - 简化版蓝牙管理
+/// 统一的蓝牙管道接�?- 简化版蓝牙管理
 class BlePipeline extends ChangeNotifier {
   static final BlePipeline _instance = BlePipeline._internal();
   factory BlePipeline() => _instance;
@@ -16,7 +16,7 @@ class BlePipeline extends ChangeNotifier {
     _init();
   }
 
-  // 核心状态
+  // 核心状�?
   bool _isScanning = false;
   bool _isConnecting = false;
   bool _isConnected = false;
@@ -25,12 +25,12 @@ class BlePipeline extends ChangeNotifier {
   List<ScanResult> _scanResults = [];
   String? _lastConnectedDeviceId;
 
-  // 时间同步状态 - 使用新的CTS协议
+  // 时间同步状�?- 使用新的CTS协议
   BleCtsSyncState _timeSyncState = BleCtsSyncState.none;
   DateTime? _lastSyncTime;
   String? _lastSyncError;
 
-  // CTS服务和特征
+  // CTS服务和特�?
   BluetoothService? _ctsService;
   BluetoothCharacteristic? _currentTimeCharacteristic;
   BluetoothCharacteristic? _localTimeInfoCharacteristic;
@@ -41,7 +41,7 @@ class BlePipeline extends ChangeNotifier {
   StreamSubscription? _batterySubscription;
   StreamSubscription? _adapterStateSubscription;
 
-  // 定时器
+  // 定时�?
   Timer? _connectionTimeoutTimer;
   Timer? _autoReconnectTimer;
 
@@ -86,7 +86,7 @@ class BlePipeline extends ChangeNotifier {
     });
   }
 
-  /// 检查权限
+  /// 检查权�?
   Future<bool> checkPermissions() async {
     if (defaultTargetPlatform == TargetPlatform.android) {
       final location = await Permission.location.request();
@@ -100,7 +100,7 @@ class BlePipeline extends ChangeNotifier {
     return false;
   }
 
-  /// 开始扫描
+  /// 开始扫�?
   Future<void> startScan() async {
     if (_isScanning) return;
 
@@ -224,7 +224,7 @@ class BlePipeline extends ChangeNotifier {
     _connectedDevice = null;
     _batterySubscription?.cancel();
 
-    // 重置时间同步状态
+    // 重置时间同步状�?
     _timeSyncState = BleCtsSyncState.none;
     _lastSyncTime = null;
     _lastSyncError = null;
@@ -270,7 +270,7 @@ class BlePipeline extends ChangeNotifier {
         }
       }
 
-      // 连接成功后立即进行时间同步
+      // 连接成功后立即进行时间同�?
       if (_currentTimeCharacteristic != null) {
         debugPrint('CTS service found, initiating time sync...');
         await syncTime();
@@ -365,7 +365,7 @@ class BlePipeline extends ChangeNotifier {
     // 处理CTS相关通知
     if (_currentTimeCharacteristic != null) {
       // 可以在这里处理CTS当前时间特征的通知
-      // 例如，设备可能主动发送时间更新
+      // 例如，设备可能主动发送时间更�?
       if (value.length == BleCtsCurrentTime.dataLength) {
         _handleCtsTimeUpdate(value);
       }
@@ -403,7 +403,7 @@ class BlePipeline extends ChangeNotifier {
     }
   }
 
-  /// 发送数据 - 统一的数据发送接口
+  /// 发送数�?- 统一的数据发送接�?
   Future<void> sendData(List<int> data) async {
     if (!_isConnected) {
       throw Exception("Device not connected");
@@ -454,7 +454,7 @@ class BlePipeline extends ChangeNotifier {
     return null;
   }
 
-  /// 发送协议消息 - 简化的消息发送
+  /// 发送协议消�?- 简化的消息发�?
   Future<void> sendMessage({
     List<ColorData> colors = const [],
     VibrationType vibration = VibrationType.none,
@@ -478,7 +478,7 @@ class BlePipeline extends ChangeNotifier {
     }
 
     try {
-      // 设置同步状态为进行中
+      // 设置同步状态为进行�?
       _timeSyncState = BleCtsSyncState.pending;
       _lastSyncError = null;
       notifyListeners();
@@ -507,7 +507,7 @@ class BlePipeline extends ChangeNotifier {
         withoutResponse: false,
       );
 
-      // 如果有本地时间信息特征，也写入时区信息
+      // 如果有本地时间信息特征，也写入时区信�?
       final localTimeInfoChar = _localTimeInfoCharacteristic;
       if (localTimeInfoChar != null) {
         final localTimeInfo = BleCtsProtocol.createLocalTimeInfo();
@@ -552,7 +552,7 @@ class BlePipeline extends ChangeNotifier {
         throw Exception('Invalid CTS time data');
       }
 
-      // 设备主动发送时间更新，可以记录或处理
+      // 设备主动发送时间更新，可以记录或处�?
       _lastSyncTime = currentTime.toDateTime();
       debugPrint('CTS time updated by device: $_lastSyncTime');
 

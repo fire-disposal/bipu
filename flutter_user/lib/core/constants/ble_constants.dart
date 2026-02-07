@@ -17,11 +17,11 @@ class BleConstants {
   static const String localTimeInfoCharUuid = "2A0F"; // 可选，用于时区信息
 
   // CTS时间格式常量
-  static const int ctsYearOffset = 1900; // CTS年份从1900年开始计算
+  static const int ctsYearOffset = 1900; // CTS年份�?900年开始计�?
   static const int ctsAdjustReasonManualUpdate = 0x01;
   static const int ctsAdjustReasonExternalUpdate = 0x02;
   static const int ctsAdjustReasonTimezoneChange = 0x04;
-  static const int ctsAdjustReasonDSTChange = 0x08; // 夏令时变化
+  static const int ctsAdjustReasonDSTChange = 0x08; // 夏令时变�?
 
   // CTS星期定义 (BLE标准: 0=未知, 1=周一, 7=周日)
   static const int ctsWeekdayUnknown = 0;

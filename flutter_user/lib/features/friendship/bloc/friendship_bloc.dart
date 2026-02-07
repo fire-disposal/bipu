@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_core/api/api.dart';
-import 'package:flutter_core/core/network/rest_client.dart';
+import 'package:flutter_user/api/api.dart';
+import 'package:flutter_user/core/network/rest_client.dart';
 import 'friendship_event.dart';
 import 'friendship_state.dart';
 

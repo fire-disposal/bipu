@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_core/api/api.dart';
-import 'package:flutter_core/core/network/api_client.dart';
-import 'package:flutter_core/core/network/rest_client.dart';
-import 'package:flutter_core/core/storage/token_storage.dart';
+import 'package:flutter_user/api/api.dart';
+import 'package:flutter_user/core/network/api_client.dart';
+import 'package:flutter_user/core/network/rest_client.dart';
+import 'package:flutter_user/core/storage/token_storage.dart';
 import '../storage/mobile_token_storage.dart';
-import 'package:flutter_core/models/user_model.dart';
+import 'package:flutter_user/models/user_model.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated, guest }
 

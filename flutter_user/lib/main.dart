@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:flutter_core/core/network/api_client.dart';
+import 'package:flutter_user/core/network/api_client.dart';
 import 'package:flutter_user/features/friendship/bloc/friendship_bloc.dart';
 import 'core/services/auth_service.dart';
 import 'core/storage/mobile_token_storage.dart';

@@ -57,13 +57,7 @@ async def get_blocked_users(
         blocked_users.append(BlockedUserResponse(
             id=user.id,
             username=user.username,
-            email=user.email,
             nickname=user.nickname,
-            is_active=user.is_active,
-            is_superuser=user.is_superuser,
-            role=user.role,
-            created_at=user.created_at,
-            updated_at=user.updated_at,
             blocked_at=user.blocked_at
         ))
 

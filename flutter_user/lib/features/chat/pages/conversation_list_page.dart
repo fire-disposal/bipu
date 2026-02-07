@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_core/api/api.dart';
-import 'package:flutter_core/core/network/rest_client.dart';
-import 'package:flutter_core/models/message_model.dart';
+import 'package:flutter_user/api/api.dart';
+import 'package:flutter_user/core/network/rest_client.dart';
+import 'package:flutter_user/models/message_model.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -91,8 +91,8 @@ class _ConversationListPageState extends State<ConversationListPage>
           controller: _tabController,
           labelStyle: const TextStyle(fontWeight: FontWeight.bold),
           tabs: const [
-            Tab(text: '收到的'),
-            Tab(text: '已发送'),
+            Tab(text: '收到消息'),
+            Tab(text: '已发消息'),
           ],
         ),
         actions: [IconButton(icon: const Icon(Icons.search), onPressed: () {})],
@@ -268,7 +268,7 @@ class _ConversationListPageState extends State<ConversationListPage>
           children: [
             const Icon(Icons.bluetooth_disabled, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
-            const Text('访客模式 - 暂不可使用在线翻译'),
+            const Text('访客模式 - 暂不可使用在线翻�?),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => context.go('/bluetooth'),

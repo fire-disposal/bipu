@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_core/api/api.dart';
-import 'package:flutter_core/models/user_model.dart';
+import 'package:flutter_user/api/api.dart';
+import 'package:flutter_user/models/user_model.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -62,7 +62,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
           IconButton(
             icon: const Icon(Icons.more_horiz),
             onPressed: () {
-              // TODO: 更多操作（拉黑等）
+              // TODO: 更多操作（拉黑等�?
             },
           ),
         ],
@@ -115,7 +115,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
                     child: ElevatedButton.icon(
                       onPressed: () => context.push('/chat/${user.id}'),
                       icon: const Icon(Icons.chat_bubble_outline),
-                      label: const Text('发送消息'),
+                      label: const Text('发送消�?),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),

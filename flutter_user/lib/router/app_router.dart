@@ -29,19 +29,19 @@ class UserRouter {
   static final GoRouter router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/home',
-    // 确保 AuthService().authState 是一个 ValueListenable (如 ValueNotifier)
+    // 确保 AuthService().authState 是一�?ValueListenable (�?ValueNotifier)
     refreshListenable: AuthService().authState,
     redirect: (context, state) {
       final authStatus = AuthService().authState.value;
       final isLoggingIn = state.uri.path == '/login';
       final isRegistering = state.uri.path == '/register';
 
-      // 1. 未登录处理
+      // 1. 未登录处�?
       if (authStatus == AuthStatus.unauthenticated) {
         return (isLoggingIn || isRegistering) ? null : '/login';
       }
 
-      // 2. 已登录但访问登录页处理
+      // 2. 已登录但访问登录页处�?
       if (authStatus == AuthStatus.authenticated ||
           authStatus == AuthStatus.guest) {
         if (isLoggingIn || isRegistering) {
@@ -64,7 +64,7 @@ class UserRouter {
         builder: (context, state) => const UserRegisterPage(),
       ),
 
-      // --- 主应用外壳 (带底部导航栏) ---
+      // --- 主应用外�?(带底部导航栏) ---
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
         builder: (context, state, child) => MainLayout(child: child),
@@ -84,7 +84,7 @@ class UserRouter {
             name: 'messages',
             builder: (context, state) => const ConversationListPage(),
           ),
-          // Profile 及其子路由嵌套在 ShellRoute 中
+          // Profile 及其子路由嵌套在 ShellRoute �?
           GoRoute(
             path: '/profile',
             name: 'profile',
@@ -129,7 +129,7 @@ class UserRouter {
         ],
       ),
 
-      // --- 独立功能页 (全屏，不带底部导航) ---
+      // --- 独立功能�?(全屏，不带底部导�? ---
 
       // 聊天页：使用 tryParse 保证安全
       GoRoute(
@@ -141,7 +141,7 @@ class UserRouter {
         },
       ),
 
-      // 用户详情页
+      // 用户详情�?
       GoRoute(
         path: '/user/detail/:id',
         name: 'user_detail',
@@ -151,7 +151,7 @@ class UserRouter {
         },
       ),
 
-      // 联系人
+      // 联系�?
       GoRoute(
         path: '/contacts',
         name: 'contacts',
@@ -175,21 +175,21 @@ class UserRouter {
         builder: (context, state) => const DiscoverPage(),
       ),
 
-      // 蓝牙设备扫描页
+      // 蓝牙设备扫描�?
       GoRoute(
         path: '/bluetooth/scan',
         name: 'bluetooth_scan',
         builder: (context, state) => const BluetoothScanPage(),
       ),
 
-      // 蓝牙设备控制页
+      // 蓝牙设备控制�?
       GoRoute(
         path: '/bluetooth/control',
         name: 'bluetooth_control',
         builder: (context, state) => const DeviceControlPage(),
       ),
 
-      // 测试与订阅
+      // 测试与订�?
       GoRoute(
         path: '/speech_test',
         builder: (context, state) => const SpeechTestPage(),
@@ -203,7 +203,7 @@ class UserRouter {
         builder: (context, state) => const SubscriptionPage(),
       ),
     ],
-    // 错误处理 (可选)
+    // 错误处理 (可�?
     errorBuilder: (context, state) =>
         Scaffold(body: Center(child: Text('Page not found: ${state.uri}'))),
   );

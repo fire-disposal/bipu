@@ -2,18 +2,18 @@
   "openapi": "3.1.0",
   "info": {
     "title": "bipupu",
-    "description": "bipupu 后端 API",
-    "version": "1.5.0"
+    "description": "BIPUPU API 服务",
+    "version": "0.2.0"
   },
   "paths": {
-    "/api/health": {
+    "/health": {
       "get": {
         "tags": [
           "系统"
         ],
         "summary": "Health Check",
         "description": "系统健康检查",
-        "operationId": "health_check_api_health_get",
+        "operationId": "health_check_health_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -28,14 +28,14 @@
         }
       }
     },
-    "/api/ready": {
+    "/ready": {
       "get": {
         "tags": [
           "系统"
         ],
         "summary": "Readiness Check",
         "description": "就绪检查端点",
-        "operationId": "readiness_check_api_ready_get",
+        "operationId": "readiness_check_ready_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -50,14 +50,14 @@
         }
       }
     },
-    "/api/live": {
+    "/live": {
       "get": {
         "tags": [
           "系统"
         ],
         "summary": "Liveness Check",
         "description": "存活检查端点",
-        "operationId": "liveness_check_api_live_get",
+        "operationId": "liveness_check_live_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -72,14 +72,14 @@
         }
       }
     },
-    "/api/": {
+    "/": {
       "get": {
         "tags": [
           "系统"
         ],
         "summary": "Root",
         "description": "根路径 - 返回API信息",
-        "operationId": "root_api__get",
+        "operationId": "root__get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1556,7 +1556,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/app__schemas__friendship__FriendshipStatus"
+                  "$ref": "#/components/schemas/app__models__friendship__FriendshipStatus"
                 },
                 {
                   "type": "null"
@@ -2060,6 +2060,54 @@
         }
       }
     },
+    "/api/client/profile/avatar": {
+      "post": {
+        "tags": [
+          "用户资料",
+          "用户资料"
+        ],
+        "summary": "Upload Avatar",
+        "description": "上传并更新用户头像（存储到数据库）",
+        "operationId": "upload_avatar_api_client_profile_avatar_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_avatar_api_client_profile_avatar_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfile"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/client/profile/me": {
       "get": {
         "tags": [
@@ -2088,7 +2136,7 @@
         ]
       }
     },
-    "/api/client/profile/profile": {
+    "/api/client/profile/": {
       "get": {
         "tags": [
           "用户资料",
@@ -2096,7 +2144,7 @@
         ],
         "summary": "Get User Profile",
         "description": "获取用户详细资料",
-        "operationId": "get_user_profile_api_client_profile_profile_get",
+        "operationId": "get_user_profile_api_client_profile__get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2122,7 +2170,7 @@
         ],
         "summary": "Update User Profile",
         "description": "更新用户详细资料",
-        "operationId": "update_user_profile_api_client_profile_profile_put",
+        "operationId": "update_user_profile_api_client_profile__put",
         "requestBody": {
           "content": {
             "application/json": {
@@ -2208,6 +2256,48 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/api/client/profile/avatar/{user_id}": {
+      "get": {
+        "tags": [
+          "用户资料",
+          "用户资料"
+        ],
+        "summary": "Get User Avatar",
+        "description": "获取用户头像（从数据库提供）",
+        "operationId": "get_user_avatar_api_client_profile_avatar__user_id__get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/client/subscriptions/available": {
@@ -3359,6 +3449,228 @@
           }
         ]
       }
+    },
+    "/admin/login": {
+      "get": {
+        "tags": [
+          "管理后台"
+        ],
+        "summary": "Admin Login Page",
+        "description": "管理后台登录页面",
+        "operationId": "admin_login_page_admin_login_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "管理后台"
+        ],
+        "summary": "Admin Login",
+        "description": "处理管理后台登录",
+        "operationId": "admin_login_admin_login_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_admin_login_admin_login_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/logout": {
+      "post": {
+        "tags": [
+          "管理后台"
+        ],
+        "summary": "Admin Logout",
+        "description": "处理管理后台登出",
+        "operationId": "admin_logout_admin_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/": {
+      "get": {
+        "tags": [
+          "管理后台"
+        ],
+        "summary": "Admin Dashboard",
+        "description": "管理后台仪表板",
+        "operationId": "admin_dashboard_admin__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "tags": [
+          "管理后台"
+        ],
+        "summary": "Admin Users",
+        "description": "用户管理页面",
+        "operationId": "admin_users_admin_users_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Per Page"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/messages": {
+      "get": {
+        "tags": [
+          "管理后台"
+        ],
+        "summary": "Admin Messages",
+        "description": "消息管理页面",
+        "operationId": "admin_messages_admin_messages_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Per Page"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/subscriptions": {
+      "get": {
+        "tags": [
+          "管理后台"
+        ],
+        "summary": "Admin Subscriptions",
+        "description": "订阅管理页面",
+        "operationId": "admin_subscriptions_admin_subscriptions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3460,6 +3772,38 @@
         "title": "BlockedUserResponse",
         "description": "被拉黑用户响应"
       },
+      "Body_admin_login_admin_login_post": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "Body_admin_login_admin_login_post"
+      },
+      "Body_upload_avatar_api_client_profile_avatar_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_avatar_api_client_profile_avatar_post"
+      },
       "ExportMessagesRequest": {
         "properties": {
           "message_type": {
@@ -3559,7 +3903,7 @@
             "title": "Friend Id"
           },
           "status": {
-            "$ref": "#/components/schemas/app__schemas__friendship__FriendshipStatus",
+            "$ref": "#/components/schemas/app__models__friendship__FriendshipStatus",
             "default": "pending"
           }
         },
@@ -3581,7 +3925,7 @@
             "title": "Friend Id"
           },
           "status": {
-            "$ref": "#/components/schemas/app__schemas__friendship__FriendshipStatus",
+            "$ref": "#/components/schemas/app__models__friendship__FriendshipStatus",
             "default": "pending"
           },
           "id": {
@@ -5003,6 +5347,17 @@
             ],
             "title": "Nickname"
           },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
           "is_active": {
             "type": "boolean",
             "title": "Is Active",
@@ -5012,12 +5367,6 @@
             "type": "boolean",
             "title": "Is Superuser",
             "default": false
-          },
-          "role": {
-            "type": "string",
-            "title": "Role",
-            "description": "角色（user/admin）",
-            "default": "user"
           },
           "last_active": {
             "anyOf": [
@@ -5093,6 +5442,17 @@
             ],
             "title": "Nickname"
           },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
           "is_active": {
             "type": "boolean",
             "title": "Is Active"
@@ -5100,10 +5460,6 @@
           "is_superuser": {
             "type": "boolean",
             "title": "Is Superuser"
-          },
-          "role": {
-            "type": "string",
-            "title": "Role"
           },
           "last_active": {
             "anyOf": [
@@ -5141,9 +5497,9 @@
           "username",
           "email",
           "nickname",
+          "avatar_url",
           "is_active",
           "is_superuser",
-          "role",
           "last_active",
           "created_at",
           "updated_at"
@@ -5173,6 +5529,17 @@
             ],
             "title": "Nickname"
           },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
           "is_active": {
             "type": "boolean",
             "title": "Is Active",
@@ -5182,12 +5549,6 @@
             "type": "boolean",
             "title": "Is Superuser",
             "default": false
-          },
-          "role": {
-            "type": "string",
-            "title": "Role",
-            "description": "角色（user/admin）",
-            "default": "user"
           },
           "last_active": {
             "anyOf": [
@@ -5500,6 +5861,15 @@
         ],
         "title": "ValidationError"
       },
+      "app__models__friendship__FriendshipStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "accepted",
+          "blocked"
+        ],
+        "title": "FriendshipStatus"
+      },
       "app__models__message__MessageType": {
         "type": "string",
         "enum": [
@@ -5510,15 +5880,6 @@
         ],
         "title": "MessageType",
         "description": "消息类型"
-      },
-      "app__schemas__friendship__FriendshipStatus": {
-        "type": "string",
-        "enum": [
-          "pending",
-          "accepted",
-          "blocked"
-        ],
-        "title": "FriendshipStatus"
       },
       "app__schemas__message__MessageStatus": {
         "type": "string",

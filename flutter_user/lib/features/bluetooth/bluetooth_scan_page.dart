@@ -58,7 +58,7 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
         Navigator.pop(context); // Close loading
         ToastService().showSuccess('Connected to ${device.platformName}');
 
-        // 连接成功后立即触发时间同步
+        // 连接成功后立即触发时间同�?
         try {
           await _blePipeline.syncTime();
           ToastService().showSuccess('Time synchronized successfully');
@@ -123,7 +123,7 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
       ),
       body: Column(
         children: [
-          // 状态信息
+          // 状态信�?
           Container(
             padding: const EdgeInsets.all(16),
             color: Colors.blue.withValues(alpha: 0.1),

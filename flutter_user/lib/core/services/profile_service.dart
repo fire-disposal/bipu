@@ -1,5 +1,5 @@
-import 'package:flutter_core/api/api.dart';
-import 'package:flutter_core/models/user_model.dart';
+import 'package:flutter_user/api/api.dart';
+import 'package:flutter_user/models/user_model.dart';
 import 'package:dio/dio.dart';
 import 'dart:io';
 
