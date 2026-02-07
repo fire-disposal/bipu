@@ -485,7 +485,7 @@ class _PagerPageState extends State<PagerPage> {
                               TextField(
                                 controller: _usernameController,
                                 decoration: InputDecoration(
-                                  hintText: '输入目标用户�?,
+                                  hintText: '输入目标用户名',
                                   prefixIcon: Icon(
                                     Icons.person_search_outlined,
                                     color: themeColor,
@@ -548,7 +548,7 @@ class _PagerPageState extends State<PagerPage> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
-                                      '${_textController.text.length} �?,
+                                      '${_textController.text.length} 字',
                                       style: TextStyle(
                                         fontSize: 11,
                                         color: themeColor,
@@ -683,7 +683,7 @@ class _PagerPageState extends State<PagerPage> {
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 4),
           child: Text(
-            '切换调度�?,
+            '切换调度员',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ),
@@ -809,7 +809,7 @@ class _PagerPageState extends State<PagerPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '信号灯色�?,
+            '信号灯颜色',
             style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           ),
           const SizedBox(height: 12),
