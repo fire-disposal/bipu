@@ -32,7 +32,7 @@ class Message(Base):
     - 警报消息（alert）
     
     关键字段说明：
-    - pattern: 复合信息 JSON，包含 RGB、振动、屏幕、宇宙传讯数据等
+    - pattern: 复合信息 JSON，包含 振动、屏幕、宇宙传讯数据等
     - category: 快速分类字段，用于高效查询特定类型消息
     - is_deleted: 软删除标记，支持数据恢复和审计
     """
@@ -66,7 +66,6 @@ class Message(Base):
     #   "source_type": "subscription|system|user|device",  // 必需
     #   "source_id": 123,  // 必需
     #   "subscription_type": "weather|fortune|...",  // 可选
-    #   "rgb": {"r": 255, "g": 100, "b": 100},  // 可选
     #   "vibe": {"intensity": 50, "duration": 2000},  // 可选
     #   "screen": {"text": "显示文本", "duration": 3000},  // 可选
     #   "cosmic_data": {"energy_level": 5, "zodiac_sign": "aries", ...},  // 可选

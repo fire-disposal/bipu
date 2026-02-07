@@ -27,7 +27,7 @@ class MessageBase(BaseModel):
     content: str = Field(..., min_length=1)
     message_type: MessageType
     priority: int = Field(default=0, ge=0, le=10)
-    pattern: Optional[dict] = None  # 复合信息格式：{"vibe": {...}, "rgb": {...}, "screen": {...}, "source_type": "user", "source_id": 123, "cosmic_data": {...}}
+    pattern: Optional[dict] = None  # 复合信息格式：{"vibe": {...}, "screen": {...}, "source_type": "user", "source_id": 123, "cosmic_data": {...}}
     sender_id: Optional[int] = None
     receiver_id: Optional[int] = None
 
@@ -39,13 +39,6 @@ class MessageCreate(MessageBase):
     def validate_pattern(cls, v):
         """验证复合信息格式"""
         if v is not None and isinstance(v, dict):
-            # 验证RGB格式
-            if 'rgb' in v and isinstance(v['rgb'], dict):
-                rgb = v['rgb']
-                for color in ['r', 'g', 'b']:
-                    if color in rgb and not (0 <= rgb[color] <= 255):
-                        raise ValueError(f'RGB颜色值必须在0-255之间: {color}')
-            
             # 验证震动格式
             if 'vibe' in v and isinstance(v['vibe'], dict):
                 vibe = v['vibe']

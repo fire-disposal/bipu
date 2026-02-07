@@ -5,7 +5,6 @@ import 'package:flutter_user/models/common/paginated_response.dart';
 import 'package:flutter_user/models/user_model.dart';
 import 'package:flutter_user/models/message/message_request.dart';
 import 'package:flutter_user/models/common/enums.dart';
-import '../../../core/utils/color_extension.dart';
 import '../../../services/speech_recognition_service.dart';
 import '../../common/widgets/app_button.dart';
 
@@ -30,7 +29,7 @@ class _PagerPageState extends State<PagerPage> {
   List<User> _friends = [];
 
   // Attachments
-  Color _selectedColor = Colors.blue;
+  final Color _selectedColor = Colors.blue;
   String _selectedVibration = 'SHORT';
   final Map<String, String> _vibrationPatterns = {
     'SHORT': '短促震动',
@@ -140,10 +139,7 @@ class _PagerPageState extends State<PagerPage> {
         receiverId = _selectedFriend!.id;
       }
 
-      final pattern = {
-        'rgb': '#${_selectedColor.toHex()}',
-        'vibration': _selectedVibration,
-      };
+      final pattern = {'vibration': _selectedVibration};
 
       final request = MessageCreateRequest(
         title: '寻呼消息',
@@ -652,6 +648,8 @@ class _PagerPageState extends State<PagerPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // RGB颜色选择已禁用
+          /*
           const Text(
             '信号灯颜色',
             style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
@@ -712,6 +710,7 @@ class _PagerPageState extends State<PagerPage> {
             ],
           ),
           const SizedBox(height: 16),
+          */
           DropdownButtonFormField<String>(
             decoration: const InputDecoration(
               labelText: '震动脉冲',
@@ -733,6 +732,7 @@ class _PagerPageState extends State<PagerPage> {
     );
   }
 
+  /*
   Widget _buildColorSlider(
     String label,
     int value,
@@ -761,4 +761,5 @@ class _PagerPageState extends State<PagerPage> {
       ],
     );
   }
+  */
 }

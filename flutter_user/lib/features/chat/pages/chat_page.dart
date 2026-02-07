@@ -311,49 +311,6 @@ class _ChatPageState extends State<ChatPage> {
     final colorScheme = Theme.of(context).colorScheme;
     final isDevice = msg.messageType == MessageType.device;
 
-    Widget? rgbIndicator;
-    if (msg.pattern != null &&
-        (msg.pattern!.containsKey('rgb') ||
-            msg.pattern!.containsKey('color'))) {
-      Color? color;
-      if (msg.pattern!.containsKey('rgb')) {
-        final rgb = msg.pattern!['rgb'] as List;
-        if (rgb.length == 3) {
-          color = Color.fromARGB(
-            255,
-            (rgb[0] as num).toInt(),
-            (rgb[1] as num).toInt(),
-            (rgb[2] as num).toInt(),
-          );
-        }
-      } else if (msg.pattern!.containsKey('color')) {
-        final hex = msg.pattern!['color'] as String;
-        final cleanHex = hex.replaceFirst('#', '');
-        if (cleanHex.length == 6) {
-          color = Color(int.parse('FF$cleanHex', radix: 16));
-        }
-      }
-
-      if (color != null) {
-        rgbIndicator = Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.4),
-                blurRadius: 3,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-        );
-      }
-    }
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -439,23 +396,6 @@ class _ChatPageState extends State<ChatPage> {
                           fontSize: 15,
                         ),
                       ),
-                      if (rgbIndicator != null) ...[
-                        const SizedBox(height: 6),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            rgbIndicator,
-                            const SizedBox(width: 4),
-                            Text(
-                              'RGB信号',
-                              style: TextStyle(
-                                fontSize: 9,
-                                color: isMe ? Colors.white70 : Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
                     ],
                   ),
                 ),
