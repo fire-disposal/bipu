@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_user/api/api.dart';
-import 'package:flutter_user/core/network/rest_client.dart';
-import 'package:flutter_user/models/paginated_response.dart';
+import 'package:flutter_user/models/common/paginated_response.dart';
 import 'package:flutter_user/models/user_model.dart';
+import 'package:flutter_user/models/message/message_request.dart';
+import 'package:flutter_user/models/common/enums.dart';
 import '../../../core/utils/color_extension.dart';
-import '../../../models/dispatcher.dart';
 import '../../../services/speech_recognition_service.dart';
 import '../../common/widgets/app_button.dart';
 
@@ -20,7 +20,7 @@ class _PagerPageState extends State<PagerPage> {
   final TextEditingController _textController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final SpeechRecognitionService _speechService = SpeechRecognitionService();
-  final RestClient _api = bipupuApi;
+  final ApiService _api = bipupuApi;
 
   StreamSubscription<String>? _speechSubscription;
 
@@ -28,10 +28,6 @@ class _PagerPageState extends State<PagerPage> {
   bool _isDirectInput = false;
   User? _selectedFriend;
   List<User> _friends = [];
-  bool _isLoadingFriends = false;
-
-  // Dispatcher Selection
-  Dispatcher _selectedDispatcher = mockDispatchers[0];
 
   // Attachments
   Color _selectedColor = Colors.blue;
@@ -96,16 +92,15 @@ class _PagerPageState extends State<PagerPage> {
   }
 
   Future<void> _loadFriends() async {
-    setState(() => _isLoadingFriends = true);
     try {
-      final response = await _api.getFriends(page: 1, size: 100);
+      final response = await _api.adminGetUsers(page: 1, size: 100);
       setState(() {
-        _friends = response.items;
+        _friends = response
+            .map((item) => User.fromJson(item.toJson()))
+            .toList();
       });
     } catch (e) {
       debugPrint('Error loading friends: $e');
-    } finally {
-      if (mounted) setState(() => _isLoadingFriends = false);
     }
   }
 
@@ -150,13 +145,16 @@ class _PagerPageState extends State<PagerPage> {
         'vibration': _selectedVibration,
       };
 
-      await _api.createMessage({
-        'content': text,
-        'receiver_id': receiverId,
-        'message_type': 'device', // Using 'device' type for pager messages
-        'priority': 1,
-        'pattern': pattern,
-      });
+      final request = MessageCreateRequest(
+        title: '寻呼消息',
+        content: text,
+        messageType: MessageType.device,
+        priority: 1,
+        pattern: pattern,
+        receiverId: receiverId,
+      );
+
+      await _api.sendMessage(request);
 
       if (mounted) {
         ScaffoldMessenger.of(
@@ -179,10 +177,17 @@ class _PagerPageState extends State<PagerPage> {
     }
   }
 
-  Future<PaginatedResponse<User>> _searchUsers(String keyword) {
+  Future<PaginatedResponse<User>> _searchUsers(String keyword) async {
     // 暂时使用 adminGetUsers，注意这可能需要管理员权限
     // 后续建议增加专门的公开搜索接口
-    return _api.adminGetUsers(page: 1, size: 20);
+    final response = await _api.adminGetUsers(page: 1, size: 20);
+    return PaginatedResponse<User>(
+      items: response.map((e) => User.fromJson(e.toJson())).toList(),
+      total: response.length,
+      page: 1,
+      size: 20,
+      pages: 1,
+    );
   }
 
   @override
@@ -283,7 +288,7 @@ class _PagerPageState extends State<PagerPage> {
 
   @override
   Widget build(BuildContext context) {
-    final themeColor = _selectedDispatcher.themeColor;
+    final themeColor = _selectedColor;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -350,11 +355,6 @@ class _PagerPageState extends State<PagerPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   children: [
-                    // Dispatcher Card - Show current dispatcher info
-                    _buildCurrentDispatcherCard(),
-
-                    const SizedBox(height: 16),
-
                     // Target Selection
                     Card(
                       elevation: 0,
@@ -503,11 +503,6 @@ class _PagerPageState extends State<PagerPage> {
 
                     const SizedBox(height: 16),
 
-                    // Dispatcher Selection
-                    _buildDispatcherList(),
-
-                    const SizedBox(height: 16),
-
                     // Message Body
                     Card(
                       elevation: 0,
@@ -620,159 +615,8 @@ class _PagerPageState extends State<PagerPage> {
     );
   }
 
-  Widget _buildCurrentDispatcherCard() {
-    final themeColor = _selectedDispatcher.themeColor;
-    return Card(
-      elevation: 4,
-      shadowColor: themeColor.withValues(alpha: 0.2),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          gradient: LinearGradient(
-            colors: [themeColor, themeColor.withValues(alpha: 0.8)],
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                color: Colors.white24,
-                shape: BoxShape.circle,
-              ),
-              child: Text(
-                _selectedDispatcher.avatar,
-                style: const TextStyle(fontSize: 40),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _selectedDispatcher.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    _selectedDispatcher.description,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.verified, color: Colors.white70),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDispatcherList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4),
-          child: Text(
-            '切换调度员',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 100,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: mockDispatchers.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final dispatcher = mockDispatchers[index];
-              final isSelected = _selectedDispatcher.id == dispatcher.id;
-
-              return GestureDetector(
-                onTap: () {
-                  if (dispatcher.isLocked) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${dispatcher.name} 尚未解锁')),
-                    );
-                    return;
-                  }
-                  setState(() => _selectedDispatcher = dispatcher);
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 80,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? dispatcher.themeColor.withValues(alpha: 0.1)
-                        : Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isSelected
-                          ? dispatcher.themeColor
-                          : Colors.transparent,
-                      width: 2,
-                    ),
-                  ),
-                  child: Stack(
-                    children: [
-                      Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              dispatcher.avatar,
-                              style: TextStyle(
-                                fontSize: 32,
-                                color: dispatcher.isLocked ? Colors.grey : null,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              dispatcher.name,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: dispatcher.isLocked ? Colors.grey : null,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (dispatcher.isLocked)
-                        const Positioned(
-                          top: 4,
-                          right: 4,
-                          child: Icon(
-                            Icons.lock_outline,
-                            size: 12,
-                            color: Colors.grey,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildVoiceButton() {
-    final themeColor = _selectedDispatcher.themeColor;
+    final themeColor = _selectedColor;
     return GestureDetector(
       onLongPressStart: (_) => _toggleListening(),
       onLongPressEnd: (_) => _toggleListening(),
@@ -836,7 +680,7 @@ class _PagerPageState extends State<PagerPage> {
                   children: [
                     _buildColorSlider(
                       'R',
-                      _selectedColor.red,
+                      (_selectedColor.r * 255.0).round().clamp(0, 255),
                       Colors.red,
                       (v) => setState(
                         () =>
@@ -845,7 +689,7 @@ class _PagerPageState extends State<PagerPage> {
                     ),
                     _buildColorSlider(
                       'G',
-                      _selectedColor.green,
+                      (_selectedColor.g * 255.0).round().clamp(0, 255),
                       Colors.green,
                       (v) => setState(
                         () => _selectedColor = _selectedColor.withGreen(
@@ -855,7 +699,7 @@ class _PagerPageState extends State<PagerPage> {
                     ),
                     _buildColorSlider(
                       'B',
-                      _selectedColor.blue,
+                      (_selectedColor.b * 255.0).round().clamp(0, 255),
                       Colors.blue,
                       (v) => setState(
                         () =>

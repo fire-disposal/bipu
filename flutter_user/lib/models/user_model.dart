@@ -1,83 +1,72 @@
 class User {
-  final int id;
-  final String username;
   final String email;
+  final String username;
   final String? nickname;
   final String? avatarUrl;
   final bool isActive;
   final bool isSuperuser;
-  final DateTime? createdAt;
   final DateTime? lastActive;
+  final int id;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   User({
-    required this.id,
-    required this.username,
     required this.email,
+    required this.username,
     this.nickname,
     this.avatarUrl,
     this.isActive = true,
     this.isSuperuser = false,
-    this.createdAt,
     this.lastActive,
+    required this.id,
+    this.createdAt,
+    this.updatedAt,
   });
+
+  static DateTime? _parseDateTime(dynamic v) {
+    if (v == null) return null;
+    if (v is DateTime) return v;
+    if (v is String) return DateTime.tryParse(v);
+    if (v is int) {
+      try {
+        return DateTime.fromMillisecondsSinceEpoch(v);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
 
   factory User.fromJson(Map<String, dynamic> json) {
+    String? avatar = json['avatar_url'] ?? json['avatarUrl'];
+    String? nick = json['nickname'] ?? json['nickName'];
+    bool active = json['is_active'] ?? json['isActive'] ?? true;
+    bool superuser = json['is_superuser'] ?? json['isSuperuser'] ?? false;
+
     return User(
-      id: json['id'] as int,
-      username: json['username'] as String,
       email: json['email'] as String,
-      nickname: json['nickname'] as String?,
-      avatarUrl: json['avatar_url'] as String?,
-      isActive: json['is_active'] as bool? ?? true,
-      isSuperuser: json['is_superuser'] as bool? ?? false,
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'] as String)
-          : null,
-      lastActive: json['last_active'] != null
-          ? DateTime.parse(json['last_active'] as String)
-          : null,
+      username: json['username'] as String,
+      nickname: nick,
+      avatarUrl: avatar,
+      isActive: active,
+      isSuperuser: superuser,
+      lastActive: _parseDateTime(json['last_active'] ?? json['lastActive']),
+      id: (json['id'] is int) ? json['id'] as int : int.parse('${json['id']}'),
+      createdAt: _parseDateTime(json['created_at'] ?? json['createdAt']),
+      updatedAt: _parseDateTime(json['updated_at'] ?? json['updatedAt']),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'username': username,
-      'email': email,
-      'nickname': nickname,
-      'avatar_url': avatarUrl,
-      'is_active': isActive,
-      'is_superuser': isSuperuser,
-      'created_at': createdAt?.toIso8601String(),
-      'last_active': lastActive?.toIso8601String(),
-    };
-  }
-}
-
-class AuthResponse {
-  final String accessToken;
-  final String? refreshToken;
-  final String tokenType;
-  final int expiresIn;
-  final User? user;
-
-  AuthResponse({
-    required this.accessToken,
-    this.refreshToken,
-    this.tokenType = 'bearer',
-    required this.expiresIn,
-    this.user,
-  });
-
-  factory AuthResponse.fromJson(Map<String, dynamic> json) {
-    return AuthResponse(
-      accessToken: json['access_token'] as String,
-      refreshToken: json['refresh_token'] as String?,
-      tokenType: (json['token_type'] as String?) ?? 'bearer',
-      expiresIn: json['expires_in'] as int,
-      user: json['user'] != null
-          ? User.fromJson(json['user'] as Map<String, dynamic>)
-          : null,
-    );
-  }
+  Map<String, dynamic> toJson() => {
+    'email': email,
+    'username': username,
+    'nickname': nickname,
+    'avatar_url': avatarUrl,
+    'is_active': isActive,
+    'is_superuser': isSuperuser,
+    'last_active': lastActive?.toIso8601String(),
+    'id': id,
+    'created_at': createdAt?.toIso8601String(),
+    'updated_at': updatedAt?.toIso8601String(),
+  };
 }

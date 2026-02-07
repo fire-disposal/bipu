@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_user/api/api.dart';
-import 'package:flutter_user/core/network/rest_client.dart';
-import 'package:flutter_user/models/paginated_response.dart';
+import 'package:flutter_user/models/common/paginated_response.dart';
 import 'package:flutter_user/models/user_model.dart';
 import 'package:flutter_user/features/friendship/bloc/friendship_bloc.dart';
 import 'package:flutter_user/features/friendship/bloc/friendship_event.dart';
@@ -16,7 +15,7 @@ class UserSearchPage extends StatefulWidget {
 }
 
 class _UserSearchPageState extends State<UserSearchPage> {
-  RestClient get _api => bipupuApi;
+  ApiService get _api => bipupuApi;
   final TextEditingController _searchController = TextEditingController();
   List<User> _results = [];
   bool _isLoading = false;
@@ -46,8 +45,15 @@ class _UserSearchPageState extends State<UserSearchPage> {
     }
   }
 
-  Future<PaginatedResponse<User>> _fetchUsers(String keyword) {
-    return _api.adminGetUsers(page: 1, size: 20);
+  Future<PaginatedResponse<User>> _fetchUsers(String keyword) async {
+    final response = await _api.adminGetUsers(page: 1, size: 20);
+    return PaginatedResponse<User>(
+      items: response.map((e) => User.fromJson(e.toJson())).toList(),
+      total: response.length,
+      page: 1,
+      size: 20,
+      pages: 1,
+    );
   }
 
   @override

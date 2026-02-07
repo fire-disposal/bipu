@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/bluetooth/ble_pipeline.dart';
-import '../../core/bluetooth/ble_simple_ui.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -11,132 +9,14 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final BlePipeline _blePipeline = BlePipeline();
-  late final SimpleBleState _bleState;
-
   @override
   void initState() {
     super.initState();
-    _bleState = SimpleBleState();
-    _bleState.addListener(_onBleStateChanged);
   }
 
   @override
   void dispose() {
-    _bleState.removeListener(_onBleStateChanged);
-    _bleState.dispose();
     super.dispose();
-  }
-
-  void _onBleStateChanged() {
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  Widget _buildConnectionStatus() {
-    if (_bleState.isConnecting) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: Colors.orange.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.orange),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(
-              width: 12,
-              height: 12,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              '正在连接',
-              style: TextStyle(
-                color: Colors.orange.shade700,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-      );
-    } else if (_bleState.isConnected) {
-      final batteryLevel = _bleState.batteryLevel;
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: Colors.green.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.green),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.bluetooth_connected,
-              size: 14,
-              color: Colors.green,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              '已连接',
-              style: TextStyle(
-                color: Colors.green.shade700,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-            if (batteryLevel != null) ...[
-              const SizedBox(width: 8),
-              Icon(
-                batteryLevel > 20 ? Icons.battery_std : Icons.battery_alert,
-                size: 14,
-                color: batteryLevel > 20 ? Colors.green : Colors.red,
-              ),
-              Text(
-                '$batteryLevel%',
-                style: TextStyle(
-                  color: Colors.green.shade700,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ],
-        ),
-      );
-    } else {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.errorContainer,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Theme.of(context).colorScheme.error),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.link_off,
-              size: 14,
-              color: Theme.of(context).colorScheme.error,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              '未连接',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.error,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
   }
 
   @override
@@ -170,8 +50,7 @@ class _HomePageState extends State<HomePage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        // Connection status
-                        _buildConnectionStatus(),
+                        // Connection status removed
                       ],
                     ),
                     const SizedBox(height: 24),
@@ -196,23 +75,16 @@ class _HomePageState extends State<HomePage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                _bleState.isConnected
-                                    ? (_bleState
-                                              .connectedDevice
-                                              ?.platformName ??
-                                          '未知设备')
-                                    : '未绑定设备',
-                                style: const TextStyle(
+                              const Text(
+                                '寻呼功能',
+                                style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                _bleState.isConnected
-                                    ? 'ID: ${_bleState.connectedDevice?.remoteId.str ?? '--'}'
-                                    : '请先连接您的蓝牙设备',
+                                '发送寻呼消息给您的好友',
                                 style: TextStyle(
                                   color: Colors.grey.shade600,
                                   fontSize: 13,
@@ -226,11 +98,7 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(height: 24),
                     ElevatedButton(
                       onPressed: () {
-                        if (_bleState.isConnected) {
-                          context.push('/bluetooth/control');
-                        } else {
-                          context.push('/bluetooth/scan');
-                        }
+                        context.push('/pager');
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Theme.of(context).colorScheme.primary,
@@ -240,18 +108,14 @@ class _HomePageState extends State<HomePage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: Row(
+                      child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            _bleState.isConnected
-                                ? Icons.settings_remote
-                                : Icons.add_link,
-                          ),
-                          const SizedBox(width: 8),
+                          Icon(Icons.message),
+                          SizedBox(width: 8),
                           Text(
-                            _bleState.isConnected ? '设备详情' : '立即连接',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                            '开始寻呼',
+                            style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),

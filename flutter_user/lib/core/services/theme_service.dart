@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 class ThemeService extends ChangeNotifier {
   static final ThemeService _instance = ThemeService._internal();
@@ -7,13 +7,14 @@ class ThemeService extends ChangeNotifier {
   ThemeService._internal();
 
   static const String _themeKey = 'theme_mode';
+  static const String _boxName = 'settings';
   ThemeMode _themeMode = ThemeMode.system;
 
   ThemeMode get themeMode => _themeMode;
 
   Future<void> loadTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    final themeString = prefs.getString(_themeKey);
+    final box = await Hive.openBox(_boxName);
+    final themeString = box.get(_themeKey) as String?;
     if (themeString != null) {
       try {
         _themeMode = ThemeMode.values.firstWhere(
@@ -33,7 +34,7 @@ class ThemeService extends ChangeNotifier {
     _themeMode = mode;
     notifyListeners();
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_themeKey, mode.toString());
+    final box = await Hive.openBox(_boxName);
+    await box.put(_themeKey, mode.toString());
   }
 }

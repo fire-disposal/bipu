@@ -1,9 +1,9 @@
 import 'package:equatable/equatable.dart';
-import 'package:flutter_user/models/friendship_model.dart';
+import 'package:flutter_user/models/friendship/friendship_response.dart';
 import 'package:flutter_user/models/user_model.dart';
 
 class FriendRequestItem extends Equatable {
-  final Friendship friendship;
+  final FriendshipResponse friendship;
   final User sender;
 
   const FriendRequestItem({required this.friendship, required this.sender});

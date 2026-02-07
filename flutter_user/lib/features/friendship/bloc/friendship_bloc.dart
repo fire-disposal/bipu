@@ -1,13 +1,15 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_user/api/api.dart';
-import 'package:flutter_user/core/network/rest_client.dart';
+import 'package:flutter_user/core/services/auth_service.dart';
+import 'package:flutter_user/models/friendship/friendship_request.dart';
+import 'package:flutter_user/models/user_model.dart';
 import 'friendship_event.dart';
 import 'friendship_state.dart';
 
 class FriendshipBloc extends Bloc<FriendshipEvent, FriendshipState> {
-  final RestClient _api;
+  final ApiService _api;
 
-  FriendshipBloc({RestClient? api})
+  FriendshipBloc({ApiService? api})
     : _api = api ?? bipupuApi,
       super(FriendshipInitial()) {
     on<LoadFriendships>(_onLoadFriendships);
@@ -27,7 +29,7 @@ class FriendshipBloc extends Bloc<FriendshipEvent, FriendshipState> {
       }
 
       // Load Friends
-      final friendsResponse = await _api.getFriends(page: 1, size: 50);
+      final friendsResponse = await _api.getFriendships(page: 1, size: 50);
 
       // Load Requests count
       final requestsResponse = await _api.getFriendRequests(page: 1, size: 1);
@@ -39,7 +41,12 @@ class FriendshipBloc extends Bloc<FriendshipEvent, FriendshipState> {
 
       emit(
         FriendshipLoaded(
-          friends: friendsResponse.items,
+          friends: await Future.wait(
+            friendsResponse.items.map((friendship) async {
+              final userData = await _api.adminGetUser(friendship.friendId);
+              return User.fromJson(userData.toJson());
+            }),
+          ),
           friendsCount: friendsResponse.total,
           requests: currentRequests,
           requestsCount: requestsResponse.total,
@@ -64,10 +71,12 @@ class FriendshipBloc extends Bloc<FriendshipEvent, FriendshipState> {
 
       // We need to fetch User details for each request
       final requestItems = await Future.wait(
-        requestsResponse.items.map((friendship) async {
+        requestsResponse.items.map((item) async {
+          final friendship = item;
           try {
             // userId is the sender
-            final sender = await _api.adminGetUser(friendship.userId);
+            final senderData = await _api.adminGetUser(friendship.userId);
+            final sender = User.fromJson(senderData.toJson());
             return FriendRequestItem(friendship: friendship, sender: sender);
           } catch (e) {
             // Fallback or skip
@@ -128,7 +137,15 @@ class FriendshipBloc extends Bloc<FriendshipEvent, FriendshipState> {
     Emitter<FriendshipState> emit,
   ) async {
     try {
-      await _api.sendFriendRequest({'friend_id': event.friendId});
+      final currentUserId = AuthService().currentUser?.id;
+      if (currentUserId != null) {
+        await _api.createFriendship(
+          FriendshipCreateRequest(
+            userId: currentUserId,
+            friendId: event.friendId,
+          ),
+        );
+      }
       // Maybe emit a "Success" side effect or snackbar
     } catch (e) {
       // Handle error

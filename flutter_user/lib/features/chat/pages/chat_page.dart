@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_user/api/api.dart';
-import 'package:flutter_user/core/network/rest_client.dart';
-import 'package:flutter_user/models/message_model.dart';
-import 'package:flutter_user/models/user_model.dart';
+import 'package:flutter_user/models/message/message_response.dart';
+import 'package:flutter_user/models/user/user_response.dart';
+import 'package:flutter_user/models/message/message_request.dart';
+import 'package:flutter_user/models/common/enums.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
@@ -20,14 +21,14 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final RestClient _api = bipupuApi;
+  final ApiService _api = bipupuApi;
 
-  List<Message> _messages = [];
+  List<MessageResponse> _messages = [];
   bool _isLoading = false;
   bool _isLoadingMore = false;
   bool _hasMore = true;
   int _currentPage = 1;
-  User? _peerUser;
+  UserResponse? _peerUser;
   final int _currentUserId = AuthService().currentUser?.id ?? 0;
 
   @override
@@ -144,13 +145,15 @@ class _ChatPageState extends State<ChatPage> {
     _textController.clear();
 
     try {
-      final newMessage = await _api.createMessage({
-        'title': 'Bipupu Chat',
-        'content': content,
-        'receiver_id': widget.userId,
-        'message_type': 'user',
-        'priority': 0,
-      });
+      final newMessage = await _api.sendMessage(
+        MessageCreateRequest(
+          title: 'Bipupu Chat',
+          content: content,
+          receiverId: widget.userId,
+          messageType: MessageType.user,
+          priority: 0,
+        ),
+      );
 
       setState(() {
         _messages.add(newMessage);
@@ -160,7 +163,7 @@ class _ChatPageState extends State<ChatPage> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('发送失�? $e')));
+        ).showSnackBar(SnackBar(content: Text('发送失�? $e')));
       }
     }
   }
@@ -304,7 +307,7 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _buildMessageBubble(Message msg, bool isMe) {
+  Widget _buildMessageBubble(MessageResponse msg, bool isMe) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDevice = msg.messageType == MessageType.device;
 
@@ -341,7 +344,7 @@ class _ChatPageState extends State<ChatPage> {
             border: Border.all(color: Colors.white, width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: color.withOpacity(0.4),
+                color: color.withValues(alpha: 0.4),
                 blurRadius: 3,
                 spreadRadius: 1,
               ),
@@ -388,7 +391,7 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 5,
                         offset: const Offset(0, 2),
                       ),
@@ -491,7 +494,7 @@ class _ChatPageState extends State<ChatPage> {
             child: TextField(
               controller: _textController,
               decoration: InputDecoration(
-                hintText: '发送消�?..',
+                hintText: '发送消�?..',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: BorderSide.none,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_user/api/api.dart';
-import 'package:flutter_user/core/network/rest_client.dart';
-import 'package:flutter_user/models/message_model.dart';
+import 'package:flutter_user/models/message/message_response.dart';
+import 'package:flutter_user/models/common/enums.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -16,9 +16,9 @@ class ConversationListPage extends StatefulWidget {
 
 class _ConversationListPageState extends State<ConversationListPage>
     with SingleTickerProviderStateMixin {
-  final RestClient _api = bipupuApi;
-  List<Message> _receivedMessages = [];
-  List<Message> _sentMessages = [];
+  final ApiService _api = bipupuApi;
+  List<MessageResponse> _receivedMessages = [];
+  List<MessageResponse> _sentMessages = [];
   bool _isLoading = false;
   late TabController _tabController;
 
@@ -40,19 +40,15 @@ class _ConversationListPageState extends State<ConversationListPage>
 
     setState(() => _isLoading = true);
     try {
-      final responseReceived = await _api.getReceivedMessages(
-        page: 1,
-        size: 50,
-      );
-
-      final responseSent = await _api.getSentMessages(page: 1, size: 50);
+      // 并发请求两个接口
+      final results = await Future.wait([
+        _api.getReceivedMessages(page: 1, size: 50),
+        _api.getSentMessages(page: 1, size: 50),
+      ]);
 
       setState(() {
-        _receivedMessages = _groupMessages(
-          responseReceived.items,
-          bySender: true,
-        );
-        _sentMessages = _groupMessages(responseSent.items, bySender: false);
+        _receivedMessages = _groupMessages(results[0], bySender: true);
+        _sentMessages = _groupMessages(results[1], bySender: false);
       });
     } catch (e) {
       debugPrint('Error loading messages: $e');
@@ -61,11 +57,11 @@ class _ConversationListPageState extends State<ConversationListPage>
     }
   }
 
-  List<Message> _groupMessages(
-    List<Message> messages, {
+  List<MessageResponse> _groupMessages(
+    List<MessageResponse> messages, {
     required bool bySender,
   }) {
-    final Map<int, Message> conversations = {};
+    final Map<int, MessageResponse> conversations = {};
     for (var msg in messages) {
       final targetId = bySender ? msg.senderId : msg.receiverId;
       if (!conversations.containsKey(targetId)) {
@@ -120,7 +116,10 @@ class _ConversationListPageState extends State<ConversationListPage>
     );
   }
 
-  Widget _buildMessageList(List<Message> messages, {required bool isReceived}) {
+  Widget _buildMessageList(
+    List<MessageResponse> messages, {
+    required bool isReceived,
+  }) {
     if (_isLoading && messages.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -135,7 +134,7 @@ class _ConversationListPageState extends State<ConversationListPage>
               decoration: BoxDecoration(
                 color: Theme.of(
                   context,
-                ).colorScheme.primaryContainer.withOpacity(0.3),
+                ).colorScheme.primaryContainer.withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
               child: Icon(

@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_user/api/api.dart';
-import 'package:flutter_user/core/network/api_client.dart';
-import 'package:flutter_user/core/network/rest_client.dart';
 import 'package:flutter_user/core/storage/token_storage.dart';
 import '../storage/mobile_token_storage.dart';
-import 'package:flutter_user/models/user_model.dart';
+import 'package:flutter_user/models/models.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated, guest }
 
@@ -14,9 +12,9 @@ class AuthService {
 
   final _authStateController = ValueNotifier<AuthStatus>(AuthStatus.unknown);
   final TokenStorage _tokenStorage = MobileTokenStorage();
-  RestClient get _api => bipupuApi;
+  ApiService get _api => bipupuApi;
 
-  User? _currentUser;
+  UserResponse? _currentUser;
   bool _isGuest = false;
 
   factory AuthService() {
@@ -26,16 +24,15 @@ class AuthService {
   AuthService._internal();
 
   ValueNotifier<AuthStatus> get authState => _authStateController;
-  User? get currentUser => _currentUser;
+  UserResponse? get currentUser => _currentUser;
   bool get isGuest => _isGuest;
 
   Future<void> initialize() async {
     try {
       // Set up the unauthorized callback in ApiClient if needed
-      // ApiClient(). setUnauthorizedCallback ... (this is usually global)
-      ApiClient().setUnauthorizedCallback(() {
-        if (!_isGuest) logout();
-      });
+      // ApiClient().setUnauthorizedCallback(() {
+      //   if (!_isGuest) logout();
+      // });
 
       final token = await _tokenStorage.getAccessToken();
       if (token != null) {
@@ -70,12 +67,21 @@ class AuthService {
     String? nickname,
   }) async {
     try {
-      await _api.register({
-        'username': username,
-        'email': email,
-        'password': password,
-        if (nickname != null) 'nickname': nickname,
-      });
+      final token = await _api.register(
+        RegisterRequest(
+          username: username,
+          email: email,
+          password: password,
+          nickname: nickname,
+        ),
+      );
+      await _tokenStorage.saveTokens(
+        accessToken: token.accessToken,
+        refreshToken: token.refreshToken,
+      );
+      if (token.user != null) {
+        _currentUser = token.user;
+      }
     } catch (e) {
       rethrow;
     }
@@ -83,20 +89,18 @@ class AuthService {
 
   Future<void> login(String username, String password) async {
     try {
-      final authResponse = await _api.login({
-        'username': username,
-        'password': password,
-      });
-
-      await _tokenStorage.saveTokens(
-        accessToken: authResponse.accessToken,
-        refreshToken: authResponse.refreshToken,
+      final token = await _api.login(
+        LoginRequest(username: username, password: password),
       );
 
-      // Backend login might not return the full User object depending on schema.
-      // If AuthResponse.user is null, fetch the profile explicitly.
-      _currentUser = authResponse.user;
-      if (_currentUser == null) {
+      await _tokenStorage.saveTokens(
+        accessToken: token.accessToken,
+        refreshToken: token.refreshToken,
+      );
+
+      if (token.user != null) {
+        _currentUser = token.user;
+      } else {
         await fetchCurrentUser();
       }
       _authStateController.value = AuthStatus.authenticated;
@@ -107,13 +111,7 @@ class AuthService {
 
   Future<void> loginAsGuest() async {
     _isGuest = true;
-    _currentUser = User(
-      id: 0,
-      username: 'Guest',
-      email: 'guest@local',
-      isActive: true,
-      isSuperuser: false,
-    );
+    // TODO: Create a guest user response or handle differently
     _authStateController.value = AuthStatus.guest;
   }
 

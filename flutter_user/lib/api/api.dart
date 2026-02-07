@@ -1,9 +1,10 @@
 import 'package:dio/dio.dart';
 import '../core/network/api_client.dart';
-import '../core/network/rest_client.dart';
+import 'api_service.dart';
+export 'api_service.dart';
 
 /// Shorthand accessors for the configured API client.
-RestClient get bipupuApi => ApiClient().restClient;
+ApiService get bipupuApi => ApiClient().apiService;
 Dio get bipupuHttp => ApiClient().dio;
 
 extension ApiEnum on Enum {

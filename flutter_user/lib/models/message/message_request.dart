@@ -1,0 +1,76 @@
+import '../common/enums.dart';
+
+class MessageCreateRequest {
+  final String title;
+  final String content;
+  final MessageType messageType;
+  final int priority;
+  final Map<String, dynamic>? pattern;
+  final int? receiverId;
+
+  MessageCreateRequest({
+    required this.title,
+    required this.content,
+    required this.messageType,
+    this.priority = 0,
+    this.pattern,
+    this.receiverId,
+  });
+
+  factory MessageCreateRequest.fromJson(Map<String, dynamic> json) {
+    return MessageCreateRequest(
+      title: json['title'] as String,
+      content: json['content'] as String,
+      messageType: _parseMessageType(json['message_type'] as String),
+      priority: json['priority'] ?? 0,
+      pattern: (json['pattern'] as Map<String, dynamic>?)
+          ?.cast<String, dynamic>(),
+      receiverId: json['receiver_id'] != null
+          ? (json['receiver_id'] is int
+                ? json['receiver_id'] as int
+                : int.parse(json['receiver_id'].toString()))
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'title': title,
+    'content': content,
+    'message_type': _messageTypeToString(messageType),
+    'priority': priority,
+    'pattern': pattern,
+    'receiver_id': receiverId,
+  };
+}
+
+MessageType _parseMessageType(String value) {
+  switch (value) {
+    case 'system':
+      return MessageType.system;
+    case 'device':
+      return MessageType.device;
+    case 'user':
+      return MessageType.user;
+    case 'alert':
+      return MessageType.alert;
+    case 'notification':
+      return MessageType.notification;
+    default:
+      return MessageType.user;
+  }
+}
+
+String _messageTypeToString(MessageType type) {
+  switch (type) {
+    case MessageType.system:
+      return 'system';
+    case MessageType.device:
+      return 'device';
+    case MessageType.user:
+      return 'user';
+    case MessageType.alert:
+      return 'alert';
+    case MessageType.notification:
+      return 'notification';
+  }
+}

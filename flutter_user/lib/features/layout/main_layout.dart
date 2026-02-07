@@ -5,7 +5,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:sound_stream/sound_stream.dart';
 import '../../core/services/toast_service.dart';
 import '../../services/speech_recognition_service.dart';
-import '../../core/bluetooth/ble_pipeline.dart';
 
 /// 重构后的主布局
 class MainLayout extends StatefulWidget {
@@ -20,7 +19,6 @@ class MainLayout extends StatefulWidget {
 class _MainLayoutState extends State<MainLayout> {
   final RecorderStream _recorder = RecorderStream();
   final SpeechRecognitionService _speechService = SpeechRecognitionService();
-  final BlePipeline _blePipeline = BlePipeline();
   bool _isSpeechInitialized = false;
 
   @override
@@ -133,14 +131,14 @@ class _MainLayoutState extends State<MainLayout> {
           color: theme.colorScheme.surface,
           border: Border(
             top: BorderSide(
-              color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
               width: 0.5,
             ),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(
-                theme.brightness == Brightness.dark ? 0.3 : 0.05,
+              color: Colors.black.withValues(
+                alpha: theme.brightness == Brightness.dark ? 0.3 : 0.05,
               ),
               blurRadius: 10,
               offset: const Offset(0, -2),
@@ -195,12 +193,12 @@ class _MainLayoutState extends State<MainLayout> {
     final colorScheme = theme.colorScheme;
 
     final activeColor = colorScheme.primary;
-    final inactiveColor = colorScheme.onSurfaceVariant.withOpacity(0.6);
+    final inactiveColor = colorScheme.onSurfaceVariant.withValues(alpha: 0.6);
 
     return Expanded(
       child: InkWell(
         onTap: () => _onItemTapped(index, context),
-        splashColor: activeColor.withOpacity(0.1),
+        splashColor: activeColor.withValues(alpha: 0.1),
         highlightColor: Colors.transparent,
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -212,7 +210,7 @@ class _MainLayoutState extends State<MainLayout> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? activeColor.withOpacity(0.12)
+                    ? activeColor.withValues(alpha: 0.12)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -243,7 +241,7 @@ class _MainLayoutState extends State<MainLayout> {
     final colorScheme = theme.colorScheme;
 
     final activeColor = colorScheme.primary;
-    final inactiveColor = colorScheme.onSurfaceVariant.withOpacity(0.6);
+    final inactiveColor = colorScheme.onSurfaceVariant.withValues(alpha: 0.6);
 
     return Expanded(
       child: GestureDetector(
@@ -270,12 +268,14 @@ class _MainLayoutState extends State<MainLayout> {
               curve: Curves.easeInOut,
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: isSelected ? activeColor : activeColor.withOpacity(0.05),
+                color: isSelected
+                    ? activeColor
+                    : activeColor.withValues(alpha: 0.05),
                 shape: BoxShape.circle,
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: activeColor.withOpacity(0.3),
+                          color: activeColor.withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -286,7 +286,7 @@ class _MainLayoutState extends State<MainLayout> {
                 Icons.mic_rounded,
                 color: isSelected
                     ? colorScheme.onPrimary
-                    : activeColor.withOpacity(0.7),
+                    : activeColor.withValues(alpha: 0.7),
                 size: 26,
               ),
             ),

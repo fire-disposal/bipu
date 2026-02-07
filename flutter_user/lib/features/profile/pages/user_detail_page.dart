@@ -26,7 +26,8 @@ class _UserDetailPageState extends State<UserDetailPage> {
 
   Future<void> _loadUser() async {
     try {
-      final user = await bipupuApi.adminGetUser(widget.userId);
+      final userData = await bipupuApi.adminGetUser(widget.userId);
+      final user = User.fromJson(userData.toJson());
       setState(() {
         _user = user;
         _isLoading = false;
@@ -131,7 +132,6 @@ class _UserDetailPageState extends State<UserDetailPage> {
   }
 
   Widget _buildInfoCard(BuildContext context, User user) {
-    final theme = Theme.of(context);
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
