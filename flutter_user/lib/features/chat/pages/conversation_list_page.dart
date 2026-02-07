@@ -268,7 +268,7 @@ class _ConversationListPageState extends State<ConversationListPage>
           children: [
             const Icon(Icons.bluetooth_disabled, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
-            const Text('访客模式 - 暂不可使用在线翻�?),
+            const Text('访客模式 - 暂不可使用在线翻译'),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => context.go('/bluetooth'),

@@ -82,7 +82,7 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(width: 4),
             Text(
-              '已连�?,
+              '已连接',
               style: TextStyle(
                 color: Colors.green.shade700,
                 fontWeight: FontWeight.bold,
@@ -126,7 +126,7 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(width: 4),
             Text(
-              '未连�?,
+              '未连接',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.error,
                 fontWeight: FontWeight.bold,
@@ -202,7 +202,7 @@ class _HomePageState extends State<HomePage> {
                                               .connectedDevice
                                               ?.platformName ??
                                           '未知设备')
-                                    : '未绑定设�?,
+                                    : '未绑定设备',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,

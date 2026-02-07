@@ -38,10 +38,10 @@ class _PagerPageState extends State<PagerPage> {
   String _selectedVibration = 'SHORT';
   final Map<String, String> _vibrationPatterns = {
     'SHORT': '短促震动',
-    'LONG': '长震�?,
+    'LONG': '长震动',
     'SOS': 'SOS 模式',
     'HEARTBEAT': '心跳模式',
-    'RAPID': '快速连�?,
+    'RAPID': '快速连击',
   };
 
   bool _isSending = false;
@@ -114,7 +114,7 @@ class _PagerPageState extends State<PagerPage> {
     if (text.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('请输入发送内�?)));
+      ).showSnackBar(const SnackBar(content: Text('请输入发送内容')));
       return;
     }
 
@@ -140,7 +140,7 @@ class _PagerPageState extends State<PagerPage> {
         receiverId = exactMatch.id;
       } else {
         if (_selectedFriend == null) {
-          throw Exception('请选择一位好�?);
+          throw Exception('请选择一位好友');
         }
         receiverId = _selectedFriend!.id;
       }
@@ -161,7 +161,7 @@ class _PagerPageState extends State<PagerPage> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('传呼成功�?)));
+        ).showSnackBar(const SnackBar(content: Text('传呼成功')));
         _textController.clear();
         _speechService.clearBuffer();
       }
@@ -169,7 +169,7 @@ class _PagerPageState extends State<PagerPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('发送失�? $e'),
+            content: Text('发送失�? $e'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -485,7 +485,7 @@ class _PagerPageState extends State<PagerPage> {
                               TextField(
                                 controller: _usernameController,
                                 decoration: InputDecoration(
-                                  hintText: '输入目标用户�?,
+                                  hintText: '输入目标用户�?,
                                   prefixIcon: Icon(
                                     Icons.person_search_outlined,
                                     color: themeColor,
@@ -548,7 +548,7 @@ class _PagerPageState extends State<PagerPage> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
-                                      '${_textController.text.length} �?,
+                                      '${_textController.text.length} �?,
                                       style: TextStyle(
                                         fontSize: 11,
                                         color: themeColor,
@@ -564,7 +564,7 @@ class _PagerPageState extends State<PagerPage> {
                               maxLines: 4,
                               onChanged: (v) => setState(() {}),
                               decoration: InputDecoration(
-                                hintText: '键入内容或使用下方语�?..',
+                                hintText: '键入内容或使用下方语�?..',
                                 fillColor: Theme.of(
                                   context,
                                 ).colorScheme.surface,
@@ -598,7 +598,7 @@ class _PagerPageState extends State<PagerPage> {
 
                             const SizedBox(height: 16),
                             AppButton(
-                              text: _isSending ? '信号传输�?..' : '启动传呼',
+                              text: _isSending ? '信号传输�?..' : '启动传呼',
                               onPressed: _isSending ? null : _sendMessage,
                               isLoading: _isSending,
                               icon: Icons.bolt,
@@ -683,7 +683,7 @@ class _PagerPageState extends State<PagerPage> {
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 4),
           child: Text(
-            '切换调度�?,
+            '切换调度�?,
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ),
@@ -809,7 +809,7 @@ class _PagerPageState extends State<PagerPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '信号灯色�?,
+            '信号灯色�?,
             style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           ),
           const SizedBox(height: 12),

@@ -28,7 +28,7 @@ class _ContactsPageState extends State<ContactsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('联系�?, style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('联系人', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: const Icon(Icons.person_add_alt_1_outlined),

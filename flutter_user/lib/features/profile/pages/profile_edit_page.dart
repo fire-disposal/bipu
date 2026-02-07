@@ -52,11 +52,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       );
       AuthService().fetchCurrentUser();
       if (mounted) {
-        ToastService().showSuccess('资料已更�?);
+        ToastService().showSuccess('资料已更新');
         Navigator.pop(context, updated);
       }
     } catch (e) {
-      if (mounted) ToastService().showError('更新失败�?e');
+      if (mounted) ToastService().showError('更新失败�?e');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -90,10 +90,10 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       await ProfileService().uploadAvatar(File(croppedFile.path));
       await AuthService().fetchCurrentUser();
       if (mounted) {
-        ToastService().showSuccess('头像已更�?);
+        ToastService().showSuccess('头像已更新');
       }
     } catch (e) {
-      if (mounted) ToastService().showError('上传失败�?e');
+      if (mounted) ToastService().showError('上传失败�?e');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -195,12 +195,12 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                 TextFormField(
                   controller: _usernameCtrl,
                   decoration: const InputDecoration(
-                    labelText: '用户�?,
+                    labelText: '用户名',
                     prefixIcon: Icon(Icons.person_outline),
-                    helperText: '唯一标识，用于好友搜�?,
+                    helperText: '唯一标识，用于好友搜索',
                   ),
                   validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? '用户名不能为�? : null,
+                      (v == null || v.trim().isEmpty) ? '用户名不能为空' : null,
                 ),
                 const SizedBox(height: 20),
                 TextFormField(
@@ -211,7 +211,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                   ),
                   keyboardType: TextInputType.emailAddress,
                   validator: (v) =>
-                      (v == null || !v.contains('@')) ? '请输入有效邮�? : null,
+                      (v == null || !v.contains('@')) ? '请输入有效邮箱' : null,
                 ),
                 const SizedBox(height: 48),
                 AppButton(

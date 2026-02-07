@@ -69,10 +69,14 @@ class TtsService {
       _tts = sherpa.OfflineTts(config);
 
       _isInitialized = true;
-      Logger.info('TtsService initialized successfully');
+      logger.i('TtsService initialized successfully');
       _initCompleter!.complete();
     } catch (e, stackTrace) {
-      Logger.error('TtsService initialization failed.', e, stackTrace);
+      logger.e(
+        'TtsService initialization failed.',
+        error: e,
+        stackTrace: stackTrace,
+      );
       _initCompleter!.completeError(e, stackTrace);
       _initCompleter = null;
       rethrow;
@@ -108,7 +112,7 @@ class TtsService {
       await file.writeAsBytes(bytes, flush: true);
       return localPath;
     } catch (e) {
-      Logger.error('Failed to copy asset $assetPath: $e');
+      logger.e('Failed to copy asset $assetPath: $e');
       return null;
     }
   }
@@ -128,7 +132,7 @@ class TtsService {
       final audio = _tts!.generate(text: text, sid: sid, speed: speed);
       return audio;
     } catch (e, stackTrace) {
-      Logger.error('Error generating TTS: $e\n$stackTrace');
+      logger.e('Error generating TTS: $e\n$stackTrace');
       return null;
     }
   }

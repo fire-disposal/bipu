@@ -80,14 +80,14 @@ class ProfilePage extends StatelessWidget {
                   SettingTile(
                     icon: Icons.bluetooth_connected,
                     title: '设备绑定',
-                    subtitle: '管理已连接的传呼�?,
+                    subtitle: '管理已连接的传呼机',
                     onTap: () => context.push('/bluetooth/scan'),
                   ),
                 ],
               ),
 
               SettingSection(
-                title: '账户与安�?,
+                title: '账户与安全',
                 children: [
                   SettingTile(
                     icon: Icons.person_outline,
@@ -102,7 +102,7 @@ class ProfilePage extends StatelessWidget {
                   SettingTile(
                     icon: Icons.security,
                     title: '账号安全',
-                    subtitle: '密码、二步验�?,
+                    subtitle: '密码、二步验证',
                     onTap: () => context.push('/profile/security'),
                   ),
                   SettingTile(
@@ -119,7 +119,7 @@ class ProfilePage extends StatelessWidget {
                   SettingTile(
                     icon: Icons.palette_outlined,
                     title: '外观',
-                    subtitle: '浅色、深色、跟随系�?,
+                    subtitle: '浅色、深色、跟随系统',
                     onTap: () => _showThemeSelector(context),
                   ),
                   SettingTile(
@@ -145,7 +145,7 @@ class ProfilePage extends StatelessWidget {
                 child: Card(
                   child: SettingTile(
                     icon: Icons.logout,
-                    title: '退出登�?,
+                    title: '退出登录',
                     textColor: Colors.red,
                     iconColor: Colors.red,
                     onTap: () => _showLogoutDialog(context),
@@ -172,8 +172,8 @@ class ProfilePage extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('退出登�?),
-        content: const Text('确定要退出当前账号吗�?),
+        title: const Text('退出登录'),
+        content: const Text('确定要退出当前账号吗？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -265,5 +265,5 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  // 旧的 Section/Tile 已替换为可复用组�?
+  // 旧的 Section/Tile 已替换为可复用组�?
 }

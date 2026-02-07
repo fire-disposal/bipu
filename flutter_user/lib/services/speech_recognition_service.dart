@@ -95,13 +95,13 @@ class SpeechRecognitionService {
       await _recorder.initialize();
 
       _isInitialized = true;
-      Logger.info('SpeechRecognitionService initialized successfully');
+      logger.i('SpeechRecognitionService initialized successfully');
       _initCompleter!.complete();
     } catch (e, stackTrace) {
-      Logger.error(
+      logger.e(
         'SpeechRecognitionService initialization failed.',
-        e,
-        stackTrace,
+        error: e,
+        stackTrace: stackTrace,
       );
       _isInitialized = false;
       _initCompleter!.completeError(e, stackTrace);
@@ -139,7 +139,7 @@ class SpeechRecognitionService {
       await file.writeAsBytes(bytes, flush: true);
       return localPath;
     } catch (e) {
-      Logger.error('Failed to copy asset $assetPath: $e');
+      logger.e('Failed to copy asset $assetPath: $e');
       return null;
     }
   }
@@ -169,7 +169,7 @@ class SpeechRecognitionService {
   /// The audio stream is expected to be a stream of bytes (Int16 PCM).
   void startListening(Stream<List<int>> audioStream) {
     if (!_isInitialized || _recognizer == null) {
-      Logger.error('SpeechService not initialized. Call init() first.');
+      logger.e('SpeechService not initialized. Call init() first.');
       return;
     }
 
@@ -181,7 +181,7 @@ class SpeechRecognitionService {
         _processAudioData(data);
       },
       onError: (e) {
-        Logger.error('Error in audio stream', e);
+        logger.e('Error in audio stream', error: e);
         stop();
       },
       cancelOnError: true,
@@ -192,7 +192,7 @@ class SpeechRecognitionService {
     try {
       await _recorder.stop();
     } catch (e) {
-      Logger.error('Error stopping recorder', e);
+      logger.e('Error stopping recorder', error: e);
     }
     _stopCurrentStream();
     _audioSubscription?.cancel();
@@ -204,7 +204,7 @@ class SpeechRecognitionService {
       try {
         _stream!.free();
       } catch (e) {
-        Logger.error('Error freeing stream', e);
+        logger.e('Error freeing stream', error: e);
       }
       _stream = null;
     }
@@ -240,7 +240,11 @@ class SpeechRecognitionService {
         _recognizer!.reset(_stream!);
       }
     } catch (e, stackTrace) {
-      Logger.error('Error during speech recognition processing', e, stackTrace);
+      logger.e(
+        'Error during speech recognition processing',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 

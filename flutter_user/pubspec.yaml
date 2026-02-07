@@ -54,6 +54,7 @@ dependencies:
   image_cropper: ^11.0.0
   cached_network_image: ^3.4.1
   flutter_background_service: ^5.1.0
+  flutter_background_service_android: ^6.2.0
   flutter_local_notifications: ^20.0.0
   device_info_plus: ^12.3.0
   retrofit: ^4.9.2
