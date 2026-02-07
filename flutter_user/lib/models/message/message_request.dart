@@ -74,3 +74,21 @@ String _messageTypeToString(MessageType type) {
       return 'notification';
   }
 }
+
+class MessageAckEventCreate {
+  final int messageId;
+  final String event;
+  final DateTime? timestamp;
+
+  MessageAckEventCreate({
+    required this.messageId,
+    required this.event,
+    this.timestamp,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'message_id': messageId,
+    'event': event,
+    if (timestamp != null) 'timestamp': timestamp!.toIso8601String(),
+  };
+}

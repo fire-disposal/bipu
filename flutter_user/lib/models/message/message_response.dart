@@ -102,3 +102,67 @@ MessageStatus _parseMessageStatus(String? value) {
     return MessageStatus.unread;
   }
 }
+
+class MessageStats {
+  final int total;
+  final int unread;
+  final int read;
+  final int archived;
+  final Map<String, dynamic> byType;
+
+  MessageStats({
+    required this.total,
+    required this.unread,
+    required this.read,
+    required this.archived,
+    required this.byType,
+  });
+
+  factory MessageStats.fromJson(Map<String, dynamic> json) {
+    return MessageStats(
+      total: json['total'] as int,
+      unread: json['unread'] as int,
+      read: json['read'] as int,
+      archived: json['archived'] as int,
+      byType: json['by_type'] as Map<String, dynamic>,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'total': total,
+    'unread': unread,
+    'read': read,
+    'archived': archived,
+    'by_type': byType,
+  };
+}
+
+class MessageAckEventResponse {
+  final int messageId;
+  final String event;
+  final DateTime timestamp;
+  final int id;
+
+  MessageAckEventResponse({
+    required this.messageId,
+    required this.event,
+    required this.timestamp,
+    required this.id,
+  });
+
+  factory MessageAckEventResponse.fromJson(Map<String, dynamic> json) {
+    return MessageAckEventResponse(
+      messageId: json['message_id'] as int,
+      event: json['event'] as String,
+      timestamp: DateTime.parse(json['timestamp'] as String),
+      id: json['id'] as int,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'message_id': messageId,
+    'event': event,
+    'timestamp': timestamp.toIso8601String(),
+    'id': id,
+  };
+}

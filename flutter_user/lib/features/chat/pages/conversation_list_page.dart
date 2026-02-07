@@ -40,15 +40,18 @@ class _ConversationListPageState extends State<ConversationListPage>
 
     setState(() => _isLoading = true);
     try {
+      final currentUserId = AuthService().currentUser?.id;
+      if (currentUserId == null) return;
+
       // 并发请求两个接口
       final results = await Future.wait([
-        _api.getReceivedMessages(page: 1, size: 50),
-        _api.getSentMessages(page: 1, size: 50),
+        _api.getMessages(page: 1, size: 50, receiverId: currentUserId),
+        _api.getMessages(page: 1, size: 50, senderId: currentUserId),
       ]);
 
       setState(() {
-        _receivedMessages = _groupMessages(results[0], bySender: true);
-        _sentMessages = _groupMessages(results[1], bySender: false);
+        _receivedMessages = _groupMessages(results[0].items, bySender: true);
+        _sentMessages = _groupMessages(results[1].items, bySender: false);
       });
     } catch (e) {
       debugPrint('Error loading messages: $e');
@@ -77,13 +80,24 @@ class _ConversationListPageState extends State<ConversationListPage>
       return _buildGuestView();
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          '消息列表',
-          style: TextStyle(fontWeight: FontWeight.bold),
+    return Column(
+      children: [
+        // AppBar replacement
+        Container(
+          padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+          color: Theme.of(context).colorScheme.surface,
+          child: const SizedBox(
+            height: kToolbarHeight,
+            child: Center(
+              child: Text(
+                '消息列表',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+              ),
+            ),
+          ),
         ),
-        bottom: TabBar(
+        // TabBar
+        TabBar(
           controller: _tabController,
           labelStyle: const TextStyle(fontWeight: FontWeight.bold),
           tabs: const [
@@ -91,28 +105,23 @@ class _ConversationListPageState extends State<ConversationListPage>
             Tab(text: '已发消息'),
           ],
         ),
-        actions: [IconButton(icon: const Icon(Icons.search), onPressed: () {})],
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          RefreshIndicator(
-            onRefresh: _loadMessages,
-            child: _buildMessageList(_receivedMessages, isReceived: true),
+        // Body
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              RefreshIndicator(
+                onRefresh: _loadMessages,
+                child: _buildMessageList(_receivedMessages, isReceived: true),
+              ),
+              RefreshIndicator(
+                onRefresh: _loadMessages,
+                child: _buildMessageList(_sentMessages, isReceived: false),
+              ),
+            ],
           ),
-          RefreshIndicator(
-            onRefresh: _loadMessages,
-            child: _buildMessageList(_sentMessages, isReceived: false),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          context.push('/contacts');
-        },
-        label: const Text('新消息'),
-        icon: const Icon(Icons.edit_outlined),
-      ),
+        ),
+      ],
     );
   }
 
@@ -259,22 +268,19 @@ class _ConversationListPageState extends State<ConversationListPage>
   }
 
   Widget _buildGuestView() {
-    return Scaffold(
-      appBar: AppBar(title: const Text('消息 (访客)')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.bluetooth_disabled, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            const Text('访客模式 - 暂不可使用在线翻译'),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => context.go('/bluetooth'),
-              child: const Text('前往蓝牙聊天'),
-            ),
-          ],
-        ),
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.bluetooth_disabled, size: 64, color: Colors.grey),
+          const SizedBox(height: 16),
+          const Text('访客模式 - 暂不可使用在线翻译'),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () => context.go('/bluetooth'),
+            child: const Text('前往蓝牙聊天'),
+          ),
+        ],
       ),
     );
   }

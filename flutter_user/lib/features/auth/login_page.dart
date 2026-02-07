@@ -27,7 +27,10 @@ class _UserLoginPageState extends State<UserLoginPage> {
         _usernameController.text,
         _passwordController.text,
       );
-      // Navigation is handled by AuthWrapper
+      // Navigate to home page after successful login
+      if (mounted) {
+        context.go('/');
+      }
     } catch (e) {
       if (mounted) {
         ToastService().showError('Login failed: $e');

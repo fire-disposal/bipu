@@ -87,11 +87,24 @@ class _ChatPageState extends State<ChatPage> {
       });
 
       _scrollToBottom();
+      _markMessagesAsRead(items);
     } catch (e) {
       debugPrint('Error loading chat: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _markMessagesAsRead(List<MessageResponse> messages) async {
+    for (var msg in messages) {
+      if (msg.receiverId == _currentUserId && !msg.isRead) {
+        try {
+          await _api.markMessageAsRead(msg.id);
+        } catch (e) {
+          debugPrint('Error marking message as read: $e');
+        }
       }
     }
   }

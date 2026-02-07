@@ -15,156 +15,154 @@ class ProfilePage extends StatelessWidget {
     final username = user?.nickname ?? user?.username ?? "Guest";
     final email = user?.email ?? "Offline Mode";
 
-    return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            expandedHeight: 200,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Theme.of(context).primaryColor,
-                      Theme.of(context).primaryColorDark,
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 40),
-                    CircleAvatar(
-                      radius: 40,
-                      backgroundColor: Colors.white,
-                      backgroundImage: user?.avatarUrl != null
-                          ? CachedNetworkImageProvider(
-                              user!.avatarUrl!.startsWith('http')
-                                  ? user.avatarUrl!
-                                  : '${bipupuHttp.options.baseUrl.replaceFirst(RegExp(r"/api$"), '')}${user.avatarUrl}',
-                            )
-                          : null,
-                      child: user?.avatarUrl == null
-                          ? Icon(
-                              Icons.person,
-                              size: 40,
-                              color: Theme.of(context).primaryColor,
-                            )
-                          : null,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      username,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(email, style: const TextStyle(color: Colors.white70)),
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          pinned: true,
+          expandedHeight: 200,
+          flexibleSpace: FlexibleSpaceBar(
+            background: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).primaryColor,
+                    Theme.of(context).primaryColorDark,
                   ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 40),
+                  CircleAvatar(
+                    radius: 40,
+                    backgroundColor: Colors.white,
+                    backgroundImage: user?.avatarUrl != null
+                        ? CachedNetworkImageProvider(
+                            user!.avatarUrl!.startsWith('http')
+                                ? user.avatarUrl!
+                                : '${bipupuHttp.options.baseUrl.replaceFirst(RegExp(r"/api$"), '')}${user.avatarUrl}',
+                          )
+                        : null,
+                    child: user?.avatarUrl == null
+                        ? Icon(
+                            Icons.person,
+                            size: 40,
+                            color: Theme.of(context).primaryColor,
+                          )
+                        : null,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    username,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(email, style: const TextStyle(color: Colors.white70)),
+                ],
               ),
             ),
           ),
-          SliverList(
-            delegate: SliverChildListDelegate([
-              const SizedBox(height: 12),
+        ),
+        SliverList(
+          delegate: SliverChildListDelegate([
+            const SizedBox(height: 12),
 
-              SettingSection(
-                title: '设备管理',
-                children: [
-                  SettingTile(
-                    icon: Icons.bluetooth_connected,
-                    title: '设备绑定',
-                    subtitle: '管理已连接的传呼机',
-                    onTap: () => context.push('/bluetooth/scan'),
-                  ),
-                ],
-              ),
+            SettingSection(
+              title: '设备管理',
+              children: [
+                SettingTile(
+                  icon: Icons.bluetooth_connected,
+                  title: '设备绑定',
+                  subtitle: '管理已连接的传呼机',
+                  onTap: () => context.push('/bluetooth/scan'),
+                ),
+              ],
+            ),
 
-              SettingSection(
-                title: '账户与安全',
-                children: [
-                  SettingTile(
-                    icon: Icons.person_outline,
-                    title: '个人资料',
-                    onTap: () => context.push('/profile/personal_info'),
-                  ),
-                  SettingTile(
-                    icon: Icons.edit,
-                    title: '编辑资料',
-                    onTap: () => context.push('/profile/edit'),
-                  ),
-                  SettingTile(
-                    icon: Icons.security,
-                    title: '账号安全',
-                    subtitle: '密码、二步验证',
-                    onTap: () => context.push('/profile/security'),
-                  ),
-                  SettingTile(
-                    icon: Icons.lock_outline,
-                    title: '隐私设置',
-                    onTap: () => context.push('/profile/privacy'),
-                  ),
-                ],
-              ),
+            SettingSection(
+              title: '账户与安全',
+              children: [
+                SettingTile(
+                  icon: Icons.person_outline,
+                  title: '个人资料',
+                  onTap: () => context.push('/profile/personal_info'),
+                ),
+                SettingTile(
+                  icon: Icons.edit,
+                  title: '编辑资料',
+                  onTap: () => context.push('/profile/edit'),
+                ),
+                SettingTile(
+                  icon: Icons.security,
+                  title: '账号安全',
+                  subtitle: '密码、二步验证',
+                  onTap: () => context.push('/profile/security'),
+                ),
+                SettingTile(
+                  icon: Icons.lock_outline,
+                  title: '隐私设置',
+                  onTap: () => context.push('/profile/privacy'),
+                ),
+              ],
+            ),
 
-              SettingSection(
-                title: '应用设置',
-                children: [
-                  SettingTile(
-                    icon: Icons.palette_outlined,
-                    title: '外观',
-                    subtitle: '浅色、深色、跟随系统',
-                    onTap: () => _showThemeSelector(context),
-                  ),
-                  SettingTile(
-                    icon: Icons.notifications_outlined,
-                    title: '通知',
-                    onTap: () => context.push('/profile/notifications'),
-                  ),
-                  SettingTile(
-                    icon: Icons.language,
-                    title: '语言',
-                    onTap: () => context.push('/profile/language'),
-                  ),
-                  SettingTile(
-                    icon: Icons.info_outline,
-                    title: '关于 Bipupu',
-                    onTap: () => context.push('/profile/about'),
-                  ),
-                ],
-              ),
+            SettingSection(
+              title: '应用设置',
+              children: [
+                SettingTile(
+                  icon: Icons.palette_outlined,
+                  title: '外观',
+                  subtitle: '浅色、深色、跟随系统',
+                  onTap: () => _showThemeSelector(context),
+                ),
+                SettingTile(
+                  icon: Icons.notifications_outlined,
+                  title: '通知',
+                  onTap: () => context.push('/profile/notifications'),
+                ),
+                SettingTile(
+                  icon: Icons.language,
+                  title: '语言',
+                  onTap: () => context.push('/profile/language'),
+                ),
+                SettingTile(
+                  icon: Icons.info_outline,
+                  title: '关于 Bipupu',
+                  onTap: () => context.push('/profile/about'),
+                ),
+              ],
+            ),
 
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Card(
-                  child: SettingTile(
-                    icon: Icons.logout,
-                    title: '退出登录',
-                    textColor: Colors.red,
-                    iconColor: Colors.red,
-                    onTap: () => _showLogoutDialog(context),
-                  ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Card(
+                child: SettingTile(
+                  icon: Icons.logout,
+                  title: '退出登录',
+                  textColor: Colors.red,
+                  iconColor: Colors.red,
+                  onTap: () => _showLogoutDialog(context),
                 ),
               ),
+            ),
 
-              const SizedBox(height: 24),
-              const Center(
-                child: Text(
-                  'Bipupu v1.0.1',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
-                ),
+            const SizedBox(height: 24),
+            const Center(
+              child: Text(
+                'Bipupu v1.0.1',
+                style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
-              const SizedBox(height: 20),
-            ]),
-          ),
-        ],
-      ),
+            ),
+            const SizedBox(height: 20),
+          ]),
+        ),
+      ],
     );
   }
 

@@ -3,7 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_user/api/api.dart';
 import 'package:flutter_user/core/storage/token_storage.dart';
 import '../storage/mobile_token_storage.dart';
+import '../network/api_client.dart';
 import 'package:flutter_user/models/models.dart';
+import '../utils/logger.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated, guest }
 
@@ -29,6 +31,13 @@ class AuthService {
 
   Future<void> initialize() async {
     try {
+      // 初始化API客户端
+      ApiClient().init(
+        baseUrl: 'https://api.205716.xyz/api',
+        connectTimeout: 15000,
+        receiveTimeout: 15000,
+      );
+
       // Set up the unauthorized callback in ApiClient if needed
       // ApiClient().setUnauthorizedCallback(() {
       //   if (!_isGuest) logout();
@@ -88,10 +97,12 @@ class AuthService {
   }
 
   Future<void> login(String username, String password) async {
+    logger.i('Attempting to login user: $username');
     try {
       final token = await _api.login(
         LoginRequest(username: username, password: password),
       );
+      logger.i('Login successful, saving tokens');
 
       await _tokenStorage.saveTokens(
         accessToken: token.accessToken,
@@ -100,11 +111,15 @@ class AuthService {
 
       if (token.user != null) {
         _currentUser = token.user;
+        logger.i('User data set from token response');
       } else {
+        logger.i('No user data in token response, fetching current user');
         await fetchCurrentUser();
       }
       _authStateController.value = AuthStatus.authenticated;
+      logger.i('Login process completed successfully');
     } catch (e) {
+      logger.e('Login failed for user: $username', error: e);
       rethrow;
     }
   }
