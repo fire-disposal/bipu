@@ -16,8 +16,12 @@ class Token {
   });
 
   factory Token.fromJson(Map<String, dynamic> json) {
+    final accessToken = json['access_token'] ?? json['accessToken'];
+    if (accessToken == null || accessToken is! String) {
+      throw FormatException('Invalid or missing access_token in response');
+    }
     return Token(
-      accessToken: json['access_token'] ?? json['accessToken'] as String,
+      accessToken: accessToken,
       refreshToken: json['refresh_token'] ?? json['refreshToken'] as String?,
       tokenType: json['token_type'] ?? json['tokenType'] ?? 'bearer',
       expiresIn: (json['expires_in'] ?? json['expiresIn']) is int

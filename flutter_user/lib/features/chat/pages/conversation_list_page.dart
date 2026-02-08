@@ -36,7 +36,7 @@ class _ConversationListPageState extends State<ConversationListPage>
   }
 
   Future<void> _loadMessages() async {
-    if (AuthService().isGuest) return;
+    if (AuthService().currentUser == null) return;
 
     setState(() => _isLoading = true);
     try {
@@ -64,19 +64,32 @@ class _ConversationListPageState extends State<ConversationListPage>
     List<MessageResponse> messages, {
     required bool bySender,
   }) {
+    // Group messages by conversation partner and pick the latest message per partner
     final Map<int, MessageResponse> conversations = {};
+    final Map<int, int> unreadCounts = {};
+
     for (var msg in messages) {
       final targetId = bySender ? msg.senderId : msg.receiverId;
-      if (!conversations.containsKey(targetId)) {
+      final existing = conversations[targetId];
+      if (existing == null || msg.createdAt.isAfter(existing.createdAt)) {
         conversations[targetId] = msg;
       }
+
+      // count unread for each conversation (received inbox only)
+      if (bySender && !msg.isRead) {
+        unreadCounts[targetId] = (unreadCounts[targetId] ?? 0) + 1;
+      }
     }
-    return conversations.values.toList();
+
+    final list = conversations.values.toList();
+    // sort by latest message time desc
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
   }
 
   @override
   Widget build(BuildContext context) {
-    if (AuthService().isGuest) {
+    if (AuthService().currentUser == null) {
       return _buildGuestView();
     }
 
@@ -168,7 +181,7 @@ class _ConversationListPageState extends State<ConversationListPage>
     return ListView.separated(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: messages.length,
-      separatorBuilder: (_, __) => const Divider(indent: 72, height: 1),
+      separatorBuilder: (_, _) => const Divider(indent: 72, height: 1),
       itemBuilder: (context, index) {
         final message = messages[index];
         final targetId = isReceived ? message.senderId : message.receiverId;
@@ -274,11 +287,14 @@ class _ConversationListPageState extends State<ConversationListPage>
         children: [
           const Icon(Icons.bluetooth_disabled, size: 64, color: Colors.grey),
           const SizedBox(height: 16),
-          const Text('访客模式 - 暂不可使用在线翻译'),
+          const Text(
+            '未登录 - 无法查看消息',
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+          ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: () => context.go('/bluetooth'),
-            child: const Text('前往蓝牙聊天'),
+            onPressed: () => context.go('/login'),
+            child: const Text('前往登录'),
           ),
         ],
       ),

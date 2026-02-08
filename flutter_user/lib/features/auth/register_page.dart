@@ -60,7 +60,9 @@ class _UserRegisterPageState extends State<UserRegisterPage> {
       }
     } on DioException catch (e) {
       String errorMessage = 'Registration failed';
-      if (e.response?.data is Map) {
+      if (e.type == DioExceptionType.cancel) {
+        errorMessage = e.error?.toString() ?? 'Request was cancelled';
+      } else if (e.response?.data is Map) {
         final data = e.response!.data as Map;
         if (data['detail'] != null) {
           if (data['detail'] is List) {

@@ -106,8 +106,6 @@ def create_app() -> FastAPI:
         {"name": "黑名单", "description": "拉黑、解除拉黑、黑名单查询"},
         {"name": "用户资料", "description": "用户信息、个人资料、在线状态"},
         {"name": "订阅", "description": "用户侧订阅的查询与管理"},
-        {"name": "用户管理", "description": "管理员用户管理"},
-        {"name": "订阅管理", "description": "管理员订阅类型与统计"},
     ]
 
     app = FastAPI(

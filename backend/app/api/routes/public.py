@@ -83,13 +83,13 @@ async def login(
     # 创建访问令牌，使用配置中的过期时间
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": str(user.id)}, expires_delta=access_token_expires
+        data={"sub": user.id}, expires_delta=access_token_expires
     )
     
     logger.info(f"User logged in: id={user.id}, username={user.username}")
     
     # 创建刷新令牌
-    refresh_token = create_refresh_token(data={"sub": str(user.id)})
+    refresh_token = create_refresh_token(data={"sub": user.id})
     
     return {
         "access_token": access_token,
@@ -144,12 +144,15 @@ async def refresh_token(
         # 创建新的访问令牌，使用配置中的过期时间
         access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": str(user.id)}, expires_delta=access_token_expires
+            data={"sub": user.id}, expires_delta=access_token_expires
         )
         
+        # 返回新的 refresh token 以支持刷新令牌轮换
+        new_refresh = create_refresh_token(data={"sub": user.id})
         logger.info(f"Token refreshed for user: id={user.id}, username={user.username}")
         return {
             "access_token": access_token,
+            "refresh_token": new_refresh,
             "token_type": "bearer",
             "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
         }

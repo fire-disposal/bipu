@@ -1,6 +1,6 @@
-# 蓝牙固件参考文档
+# 蓝牙固件参考文档 - 简化版
 
-本文档为固件工程师提供Flutter应用中蓝牙通信相关的关键代码摘要，包括电量信息传输和时间同步功能。
+本文档为固件工程师提供Flutter应用中蓝牙通信相关的关键代码摘要。**注意：RGB颜色传讯功能已移除**，简化协议以提升稳定性和性能。
 
 ## 1. 蓝牙服务和特征值UUID
 
@@ -20,34 +20,27 @@ static const String batteryLevelCharUuid = "2A19";
 ### 2.1 电量服务发现和处理
 
 ```dart
-Future<void> _handleBatteryService(BluetoothService service) async {
-  for (final characteristic in service.characteristics) {
-    if (characteristic.uuid.toString().toUpperCase().contains(
-      BleConstants.batteryLevelCharUuid,
-    )) {
-      try {
-        // 读取当前电量
-        final value = await characteristic.read();
-        if (value.isNotEmpty) {
-          _batteryLevel = value[0]; // 电量值 (0-100)
-          notifyListeners();
-        }
-      } catch (e) {
-        debugPrint("Error reading battery: $e");
-      }
+Future<void> readBatteryLevel() async {
+  if (!_isConnected) return;
 
-      // 订阅电量变化通知
-      if (characteristic.properties.notify) {
-        await characteristic.setNotifyValue(true);
-        _batterySubscription = characteristic.lastValueStream.listen((value) {
-          if (value.isNotEmpty) {
-            _batteryLevel = value[0];
-            notifyListeners();
+  try {
+    final services = await _bluetoothDevice!.discoverServices();
+    for (BluetoothService service in services) {
+      if (service.uuid.toString().toUpperCase() == BleConstants.batteryServiceUuid) {
+        for (BluetoothCharacteristic characteristic in service.characteristics) {
+          if (characteristic.uuid.toString().toUpperCase() == BleConstants.batteryLevelCharUuid) {
+            final value = await characteristic.read();
+            if (value.isNotEmpty) {
+              final batteryLevel = value[0]; // 0-100
+              debugPrint('Battery Level: $batteryLevel%');
+              // Update UI or store the battery level
+            }
           }
-        });
+        }
       }
-      break;
     }
+  } catch (e) {
+    debugPrint('Failed to read battery level: $e');
   }
 }
 ```
@@ -81,7 +74,7 @@ List<int> _createTimeSyncPacket(DateTime time) {
   packet.addByte(time.minute);               // 分钟 (0-59)
   packet.addByte(time.second);               // 秒钟 (0-59)
   packet.addByte(time.weekday - 1);          // 星期 (0-6, 0=周一)
-
+  
   final bytes = packet.toBytes();
   int checksum = 0;
   for (final byte in bytes) {
@@ -104,47 +97,18 @@ List<int> _createTimeSyncPacket(DateTime time) {
 | 4 | 星期 | 1 | 0-6 (0=周一, 6=周日) |
 | 5 | 校验和 | 1 | 前面所有字节的和 & 0xFF |
 
-### 3.3 连接成功后自动时间同步
-
-在设备控制页面中，连接成功后会自动触发时间同步：
-
-```dart
-@override
-void initState() {
-  super.initState();
-  _blePipeline.addListener(_onBleStateChanged);
-  _triggerTimeSync(); // 自动触发时间同步
-}
-
-void _triggerTimeSync() {
-  if (_blePipeline.isConnected && !_timeSyncCompleted) {
-    setState(() {
-      _timeSyncInProgress = true;
-    });
-
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted && _blePipeline.isConnected) {
-        _sendTimeSync();
-      }
-    });
-  }
-}
-```
-
-## 4. 消息发送协议
+## 4. 消息发送协议（简化版）
 
 ### 4.1 主要数据发送接口
 
 ```dart
-/// 发送协议消息 - 简化的消息发送
+/// 发送协议消息 - 简化版（移除RGB颜色功能）
 Future<void> sendMessage({
-  List<ColorData> colors = const [],
   VibrationType vibration = VibrationType.none,
   ScreenEffect screenEffect = ScreenEffect.none,
   String text = '',
 }) async {
   final packet = BleProtocol.createPacket(
-    colors: colors,
     vibration: vibration,
     screenEffect: screenEffect,
     text: text,
@@ -154,7 +118,44 @@ Future<void> sendMessage({
 }
 ```
 
-### 4.2 数据发送重试机制
+### 4.2 简化的协议数据格式
+
+| 字节位置 | 字段 | 长度 | 说明 |
+|---------|------|------|------|
+| 0 | 协议版本 | 1 | 0x01 |
+| 1 | 命令类型 | 1 | 0x01 (消息命令) |
+| 2-3 | 序列号 | 2 | Little Endian |
+| 4 | 震动模式 | 1 | 0x00-0x04 |
+| 5 | 震动强度 | 1 | 固定为 1 |
+| 6 | 文本长度 | 1 | 0-64 字节 |
+| 7+(n-1) | 文本内容 | n | UTF-8 编码，最大64字节 |
+| 7+n | 屏幕效果 | 1 | 0x00-0x03 |
+| 8+n | 校验和 | 1 | 前面所有字节的和 & 0xFF |
+
+### 4.3 震动类型枚举
+
+```dart
+enum VibrationType {
+  none(0x00),      // 无震动
+  standard(0x01),  // 标准震动
+  urgent(0x02),    // 紧急震动
+  gentle(0x03),    // 轻柔震动
+  notification(0x04); // 通知震动
+}
+```
+
+### 4.4 屏幕效果枚举
+
+```dart
+enum ScreenEffect {
+  none(0x00),      // 无效果
+  scroll(0x01),    // 滚动
+  blink(0x02),     // 闪烁
+  breathing(0x03); // 呼吸效果
+}
+```
+
+### 4.5 数据发送重试机制
 
 ```dart
 /// 发送数据 - 统一的数据发送接口
@@ -198,10 +199,16 @@ Future<void> sendData(List<int> data) async {
 3. 验证校验和并更新设备时间
 4. 可选择在时间同步成功后发送确认响应
 
-### 5.3 连接稳定性
-1. 实现连接状态监听
-2. 支持自动重连机制
-3. 处理连接超时情况
+### 5.3 消息处理实现
+1. 解析简化的消息协议（已移除RGB颜色字段）
+2. 根据震动类型执行相应的震动模式
+3. 在屏幕上显示文本内容，应用屏幕效果
+4. 验证校验和确保数据完整性
+
+### 5.4 连接稳定性
+1. 实现心跳机制保持连接活跃
+2. 支持自动重连功能
+3. 合理的超时处理和错误恢复
 
 ## 6. 调试建议
 
@@ -209,7 +216,14 @@ Future<void> sendData(List<int> data) async {
 2. **时间同步确认**: 可选择发送同步成功确认包
 3. **错误处理**: 对无效命令或数据格式返回错误响应
 4. **日志记录**: 记录关键操作便于调试
+5. **性能优化**: 协议简化后减少数据传输量，提升响应速度
+
+## 7. 重要更新说明
+
+- **移除RGB颜色传讯**: 为简化协议和提升性能，已完全移除RGB灯光颜色传讯功能
+- **协议简化**: 减少数据包大小，提高传输效率和稳定性
+- **专注核心功能**: 专注于文本显示、震动和屏幕效果，保持功能实用性
 
 ---
 
-*本文档基于Flutter应用代码生成，如有更新请及时同步。*
+*本文档基于简化后的Flutter应用代码生成，如有更新请及时同步。*

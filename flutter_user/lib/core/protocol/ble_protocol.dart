@@ -31,19 +31,11 @@ enum ScreenEffect {
   const ScreenEffect(this.value, this.label);
 }
 
-class ColorData {
-  final int r;
-  final int g;
-  final int b;
-  const ColorData(this.r, this.g, this.b);
-}
-
 class BleProtocol {
   static const int protocolVersion = 0x01;
   static int _sequenceNumber = 0;
 
   static Uint8List createPacket({
-    List<ColorData> colors = const [],
     VibrationType vibration = VibrationType.none,
     ScreenEffect screenEffect = ScreenEffect.none,
     String text = '',
@@ -61,36 +53,23 @@ class BleProtocol {
     buffer.addByte(_sequenceNumber & 0xFF);
     buffer.addByte((_sequenceNumber >> 8) & 0xFF);
 
-    // 4. Color Count (1 byte)
-    // Limit colors to 20 as per recommendation
-    final validColors = colors.take(20).toList();
-    buffer.addByte(validColors.length);
-
-    // 5. RGB Colors (3 * n bytes)
-    for (final color in validColors) {
-      buffer.addByte(color.r);
-      buffer.addByte(color.g);
-      buffer.addByte(color.b);
-    }
-
-    // 6. Vibration Mode (1 byte)
+    // 4. Vibration Mode (1 byte)
     buffer.addByte(vibration.value);
 
-    // 7. Vibration Strength (1 byte)
-    // Simplified: Always send 1 (Standard strength)
+    // 5. Vibration Strength (1 byte) - Always standard
     buffer.addByte(1);
 
-    // 8. Text Length (1 byte) & 9. Text Content
+    // 6. Text Length (1 byte) & 7. Text Content
     final textBytes = utf8.encode(text);
     // Limit text to 64 bytes
     final validTextBytes = textBytes.take(64).toList();
     buffer.addByte(validTextBytes.length);
     buffer.add(validTextBytes);
 
-    // 10. Screen Effect (1 byte)
+    // 8. Screen Effect (1 byte)
     buffer.addByte(screenEffect.value);
 
-    // 11. Checksum (1 byte)
+    // 9. Checksum (1 byte)
     // Sum of all previous bytes & 0xFF
     int checksum = 0;
     for (final byte in buffer.toBytes()) {

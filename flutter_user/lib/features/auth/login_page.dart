@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:dio/dio.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/toast_service.dart';
 
@@ -30,6 +31,25 @@ class _UserLoginPageState extends State<UserLoginPage> {
       // Navigate to home page after successful login
       if (mounted) {
         context.go('/');
+      }
+    } on DioException catch (e) {
+      String errorMessage = 'Login failed';
+      if (e.type == DioExceptionType.cancel) {
+        errorMessage = e.error?.toString() ?? 'Request was cancelled';
+      } else if (e.response?.data is Map) {
+        final data = e.response!.data as Map;
+        if (data['detail'] != null) {
+          if (data['detail'] is List) {
+            errorMessage = (data['detail'] as List)
+                .map((e) => e['msg'] ?? e.toString())
+                .join(', ');
+          } else {
+            errorMessage = data['detail'].toString();
+          }
+        }
+      }
+      if (mounted) {
+        ToastService().showError(errorMessage);
       }
     } catch (e) {
       if (mounted) {
@@ -105,16 +125,7 @@ class _UserLoginPageState extends State<UserLoginPage> {
               const SizedBox(height: 20),
               const Divider(),
               const SizedBox(height: 20),
-              OutlinedButton.icon(
-                onPressed: () {
-                  AuthService().loginAsGuest();
-                },
-                icon: const Icon(Icons.bluetooth),
-                label: const Text('Offline Mode (Bluetooth Only)'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
+              // Offline debug entry removed
             ],
           ),
         ),

@@ -3,11 +3,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_user/api/api.dart';
 import 'package:flutter_user/core/storage/token_storage.dart';
 import '../storage/mobile_token_storage.dart';
-import '../network/api_client.dart';
 import 'package:flutter_user/models/models.dart';
 import '../utils/logger.dart';
+import 'package:dio/dio.dart';
 
-enum AuthStatus { unknown, authenticated, unauthenticated, guest }
+enum AuthStatus { unknown, authenticated, unauthenticated }
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
@@ -17,7 +17,6 @@ class AuthService {
   ApiService get _api => bipupuApi;
 
   UserResponse? _currentUser;
-  bool _isGuest = false;
 
   factory AuthService() {
     return _instance;
@@ -27,22 +26,9 @@ class AuthService {
 
   ValueNotifier<AuthStatus> get authState => _authStateController;
   UserResponse? get currentUser => _currentUser;
-  bool get isGuest => _isGuest;
 
   Future<void> initialize() async {
     try {
-      // 初始化API客户端
-      ApiClient().init(
-        baseUrl: 'https://api.205716.xyz/api',
-        connectTimeout: 15000,
-        receiveTimeout: 15000,
-      );
-
-      // Set up the unauthorized callback in ApiClient if needed
-      // ApiClient().setUnauthorizedCallback(() {
-      //   if (!_isGuest) logout();
-      // });
-
       final token = await _tokenStorage.getAccessToken();
       if (token != null) {
         try {
@@ -50,6 +36,8 @@ class AuthService {
           _authStateController.value = AuthStatus.authenticated;
         } catch (e) {
           debugPrint('Error fetching user: $e');
+          // Clear invalid token
+          await _tokenStorage.clearTokens();
           _authStateController.value = AuthStatus.unauthenticated;
         }
       } else {
@@ -119,21 +107,27 @@ class AuthService {
       _authStateController.value = AuthStatus.authenticated;
       logger.i('Login process completed successfully');
     } catch (e) {
-      logger.e('Login failed for user: $username', error: e);
+      // Clear any partially saved tokens on failure
+      await _tokenStorage.clearTokens();
+      if (e is DioException) {
+        logger.e(
+          'Login failed for user: $username - HTTP ${e.response?.statusCode ?? 'Unknown'}',
+          error: e,
+          stackTrace: e.stackTrace,
+        );
+        if (e.response?.data != null) {
+          logger.e('Response data: ${e.response!.data}');
+        }
+      } else {
+        logger.e('Login failed for user: $username', error: e);
+      }
       rethrow;
     }
-  }
-
-  Future<void> loginAsGuest() async {
-    _isGuest = true;
-    // TODO: Create a guest user response or handle differently
-    _authStateController.value = AuthStatus.guest;
   }
 
   Future<void> logout() async {
     await _tokenStorage.clearTokens();
     _currentUser = null;
-    _isGuest = false;
     _authStateController.value = AuthStatus.unauthenticated;
   }
 }

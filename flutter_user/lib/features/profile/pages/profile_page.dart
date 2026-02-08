@@ -5,6 +5,7 @@ import '../../../core/services/auth_service.dart';
 import '../../../core/services/theme_service.dart';
 import '../../common/widgets/setting_tile.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -12,8 +13,8 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = AuthService().currentUser;
-    final username = user?.nickname ?? user?.username ?? "Guest";
-    final email = user?.email ?? "Offline Mode";
+    final username = user?.nickname ?? user?.username ?? "未登录";
+    final email = user?.email ?? "未登录";
 
     return CustomScrollView(
       slivers: [
@@ -132,6 +133,12 @@ class ProfilePage extends StatelessWidget {
                   onTap: () => context.push('/profile/language'),
                 ),
                 SettingTile(
+                  icon: Icons.cleaning_services_outlined,
+                  title: '清除本地缓存',
+                  subtitle: '清除所有本地存储的数据',
+                  onTap: () => _showClearCacheDialog(context),
+                ),
+                SettingTile(
                   icon: Icons.info_outline,
                   title: '关于 Bipupu',
                   onTap: () => context.push('/profile/about'),
@@ -182,6 +189,46 @@ class ProfilePage extends StatelessWidget {
               Navigator.pop(context);
               await AuthService().logout();
               if (context.mounted) context.go('/login');
+            },
+            child: const Text('确定', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showClearCacheDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('清除本地缓存'),
+        content: const Text('确定要清除所有本地缓存数据吗？此操作不可撤销。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                // 清除所有Hive boxes
+                await Hive.deleteFromDisk();
+                // 重新初始化Hive
+                await Hive.initFlutter();
+                // 显示成功消息
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('本地缓存已清除')));
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('清除缓存失败: $e')));
+                }
+              }
             },
             child: const Text('确定', style: TextStyle(color: Colors.red)),
           ),
@@ -262,6 +309,4 @@ class ProfilePage extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 24),
     );
   }
-
-  // 旧的 Section/Tile 已替换为可复用组�?
 }

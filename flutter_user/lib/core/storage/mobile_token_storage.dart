@@ -1,14 +1,16 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_user/core/storage/token_storage.dart';
+import 'package:flutter_user/core/storage/storage_manager.dart';
 
 class MobileTokenStorage implements TokenStorage {
+  static const _boxName = 'token_box';
   static const _accessTokenKey = 'access_token';
   static const _refreshTokenKey = 'refresh_token';
 
-  final _storage = const FlutterSecureStorage(
-    aOptions: AndroidOptions(resetOnError: true),
-  );
+  Future<Box<String>> _getBox() async {
+    return await Hive.openBox<String>(_boxName);
+  }
 
   @override
   Future<void> saveTokens({
@@ -16,29 +18,26 @@ class MobileTokenStorage implements TokenStorage {
     String? refreshToken,
   }) async {
     try {
-      await _storage.write(key: _accessTokenKey, value: accessToken);
+      final box = await _getBox();
+      await box.put(_accessTokenKey, accessToken);
       if (refreshToken != null) {
-        await _storage.write(key: _refreshTokenKey, value: refreshToken);
+        // Store refresh token in secure storage
+        await StorageManager.setSecureData('refresh_token', refreshToken);
+        await box.put(
+          _refreshTokenKey,
+          '',
+        ); // keep key for compatibility (empty)
       }
     } catch (e) {
       debugPrint('Error saving tokens: $e');
-      // Try to recover by clearing storage
-      try {
-        await _storage.deleteAll();
-        await _storage.write(key: _accessTokenKey, value: accessToken);
-        if (refreshToken != null) {
-          await _storage.write(key: _refreshTokenKey, value: refreshToken);
-        }
-      } catch (e2) {
-        debugPrint('Error saving tokens after retry: $e2');
-      }
     }
   }
 
   @override
   Future<String?> getAccessToken() async {
     try {
-      return await _storage.read(key: _accessTokenKey);
+      final box = await _getBox();
+      return box.get(_accessTokenKey);
     } catch (e) {
       debugPrint('Error reading access token: $e');
       return null;
@@ -48,7 +47,9 @@ class MobileTokenStorage implements TokenStorage {
   @override
   Future<String?> getRefreshToken() async {
     try {
-      return await _storage.read(key: _refreshTokenKey);
+      // Read refresh token from secure storage
+      final token = await StorageManager.getSecureData('refresh_token');
+      return token;
     } catch (e) {
       debugPrint('Error reading refresh token: $e');
       return null;
@@ -58,8 +59,14 @@ class MobileTokenStorage implements TokenStorage {
   @override
   Future<void> clearTokens() async {
     try {
-      await _storage.delete(key: _accessTokenKey);
-      await _storage.delete(key: _refreshTokenKey);
+      final box = await _getBox();
+      await box.delete(_accessTokenKey);
+      await box.delete(_refreshTokenKey);
+      // no guest_mode key exists
+      // clear refresh token from secure storage
+      try {
+        await StorageManager.setSecureData('refresh_token', '');
+      } catch (_) {}
     } catch (e) {
       debugPrint('Error clearing tokens: $e');
     }

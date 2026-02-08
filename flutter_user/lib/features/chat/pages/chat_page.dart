@@ -6,6 +6,7 @@ import 'package:flutter_user/models/message/message_request.dart';
 import 'package:flutter_user/models/common/enums.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/auth_service.dart';
 
@@ -398,15 +399,75 @@ class _ChatPageState extends State<ChatPage> {
                             ],
                           ),
                         ),
-                      Text(
-                        msg.content,
-                        style: TextStyle(
-                          color: isMe
-                              ? Colors.white
-                              : (isDevice
-                                    ? colorScheme.onSecondaryContainer
-                                    : Colors.black87),
-                          fontSize: 15,
+                      GestureDetector(
+                        onLongPress: () async {
+                          // show simple actions including favorite
+                          final action = await showModalBottomSheet<String>(
+                            context: context,
+                            builder: (c) => Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ListTile(
+                                  leading: const Icon(
+                                    Icons.bookmark_add_outlined,
+                                  ),
+                                  title: const Text('收藏'),
+                                  onTap: () => Navigator.pop(c, 'favorite'),
+                                ),
+                                ListTile(
+                                  leading: const Icon(Icons.copy_outlined),
+                                  title: const Text('复制'),
+                                  onTap: () => Navigator.pop(c, 'copy'),
+                                ),
+                                ListTile(
+                                  leading: const Icon(Icons.delete_outline),
+                                  title: const Text('删除'),
+                                  onTap: () => Navigator.pop(c, 'delete'),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (action == 'favorite') {
+                            try {
+                              await bipupuApi.favoriteMessage(msg.id);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('已收藏')),
+                              );
+                            } catch (e) {
+                              debugPrint('Favorite failed: $e');
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('收藏失败')),
+                              );
+                            }
+                          } else if (action == 'copy') {
+                            Clipboard.setData(ClipboardData(text: msg.content));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('已复制')),
+                            );
+                          } else if (action == 'delete') {
+                            try {
+                              await bipupuApi.deleteMessage(msg.id);
+                              setState(
+                                () => _messages.removeWhere(
+                                  (it) => it.id == msg.id,
+                                ),
+                              );
+                            } catch (e) {
+                              debugPrint('Delete failed: $e');
+                            }
+                          }
+                        },
+                        child: Text(
+                          msg.content,
+                          style: TextStyle(
+                            color: isMe
+                                ? Colors.white
+                                : (isDevice
+                                      ? colorScheme.onSecondaryContainer
+                                      : Colors.black87),
+                            fontSize: 15,
+                          ),
                         ),
                       ),
                     ],

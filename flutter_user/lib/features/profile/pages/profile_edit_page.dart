@@ -68,13 +68,15 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
     if (image == null) return;
 
+    final theme = Theme.of(context);
+
     final croppedFile = await ImageCropper().cropImage(
       sourcePath: image.path,
       aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
       uiSettings: [
         AndroidUiSettings(
           toolbarTitle: '裁剪头像',
-          toolbarColor: Theme.of(context).primaryColor,
+          toolbarColor: theme.primaryColor,
           toolbarWidgetColor: Colors.white,
           initAspectRatio: CropAspectRatioPreset.square,
           lockAspectRatio: true,

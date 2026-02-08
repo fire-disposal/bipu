@@ -29,7 +29,7 @@ class DiscoverPage extends StatelessWidget {
             title: 'Speech Test',
             subtitle: 'Test voice recognition',
             color: Colors.red,
-            route: '/speech_test',
+            route: '/speech-test',
           ),
           _buildDiscoverItem(
             context,
@@ -37,7 +37,7 @@ class DiscoverPage extends StatelessWidget {
             title: 'TTS Test',
             subtitle: 'Test text to speech',
             color: Colors.green,
-            route: '/tts_test',
+            route: '/tts-test',
           ),
           _buildDiscoverItem(
             context,

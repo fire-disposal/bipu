@@ -9,6 +9,7 @@ import '../models/user/user_request.dart';
 import '../models/friendship/friendship_request.dart';
 import '../models/message/message_request.dart';
 import '../models/subscription/subscription_response.dart';
+import '../models/user/user_settings_request.dart';
 
 class ApiService {
   final Dio _dio;
@@ -27,16 +28,6 @@ class ApiService {
       response.data,
       (item) => fromJson(item as Map<String, dynamic>),
     );
-  }
-
-  Future<List<T>> _fetchList<T>(
-    String endpoint,
-    T Function(Map<String, dynamic>) fromJson, {
-    Map<String, dynamic>? queryParameters,
-  }) async {
-    final response = await _dio.get(endpoint, queryParameters: queryParameters);
-    final List items = response.data['items'] ?? response.data;
-    return items.map((e) => fromJson(e as Map<String, dynamic>)).toList();
   }
 
   // Auth endpoints (Public)
@@ -362,6 +353,29 @@ class ApiService {
   Future<UserResponse> adminGetUser(int id) async {
     final response = await _dio.get('/admin/users/$id');
     return UserResponse.fromJson(response.data);
+  }
+
+  // User block / blacklist endpoints
+  Future<void> blockUser(BlockUserRequest body) async {
+    await _dio.post('/client/users/block', data: body.toJson());
+  }
+
+  Future<void> unblockUser(int userId) async {
+    await _dio.delete('/client/users/block/$userId');
+  }
+
+  Future<List<UserResponse>> getBlockedUsers({
+    int page = 1,
+    int size = 50,
+  }) async {
+    final response = await _dio.get(
+      '/client/users/blocked',
+      queryParameters: {'page': page, 'size': size},
+    );
+    final List items = response.data['items'] ?? response.data;
+    return items
+        .map((e) => UserResponse.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<UserResponse>> adminGetUsers({
