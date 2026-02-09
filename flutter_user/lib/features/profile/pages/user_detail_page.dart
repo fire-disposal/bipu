@@ -3,7 +3,7 @@ import 'package:flutter_user/api/api.dart';
 import 'package:flutter_user/models/user_model.dart';
 import 'package:flutter_user/models/user/user_settings_request.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_user/core/widgets/user_avatar.dart';
 
 class UserDetailPage extends StatefulWidget {
   final int userId;
@@ -143,24 +143,10 @@ class _UserDetailPageState extends State<UserDetailPage> {
             Center(
               child: Hero(
                 tag: 'avatar_${user.id}',
-                child: CircleAvatar(
+                child: UserAvatar(
+                  avatarUrl: user.avatarUrl,
+                  displayName: user.username,
                   radius: 50,
-                  backgroundColor: theme.colorScheme.primaryContainer,
-                  backgroundImage: user.avatarUrl != null
-                      ? CachedNetworkImageProvider(
-                          user.avatarUrl!.startsWith('http')
-                              ? user.avatarUrl!
-                              : '${bipupuHttp.options.baseUrl.replaceFirst(RegExp(r"/api$"), '')}${user.avatarUrl}',
-                        )
-                      : null,
-                  child: user.avatarUrl == null
-                      ? Text(
-                          user.username.isNotEmpty
-                              ? user.username[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(fontSize: 32),
-                        )
-                      : null,
                 ),
               ),
             ),

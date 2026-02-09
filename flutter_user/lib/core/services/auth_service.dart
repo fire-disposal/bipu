@@ -4,8 +4,6 @@ import 'package:flutter_user/api/api.dart';
 import 'package:flutter_user/core/storage/token_storage.dart';
 import '../storage/mobile_token_storage.dart';
 import 'package:flutter_user/models/models.dart';
-import '../utils/logger.dart';
-import 'package:dio/dio.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
 
@@ -30,7 +28,7 @@ class AuthService {
   Future<void> initialize() async {
     try {
       final token = await _tokenStorage.getAccessToken();
-      if (token != null) {
+      if (token != null && token.isNotEmpty) {
         try {
           await fetchCurrentUser();
           _authStateController.value = AuthStatus.authenticated;
@@ -85,42 +83,22 @@ class AuthService {
   }
 
   Future<void> login(String username, String password) async {
-    logger.i('Attempting to login user: $username');
     try {
       final token = await _api.login(
         LoginRequest(username: username, password: password),
       );
-      logger.i('Login successful, saving tokens');
 
       await _tokenStorage.saveTokens(
         accessToken: token.accessToken,
         refreshToken: token.refreshToken,
       );
 
-      if (token.user != null) {
-        _currentUser = token.user;
-        logger.i('User data set from token response');
-      } else {
-        logger.i('No user data in token response, fetching current user');
-        await fetchCurrentUser();
-      }
+      // Always fetch current user after login to ensure we have the latest user data
+      await fetchCurrentUser();
       _authStateController.value = AuthStatus.authenticated;
-      logger.i('Login process completed successfully');
     } catch (e) {
       // Clear any partially saved tokens on failure
       await _tokenStorage.clearTokens();
-      if (e is DioException) {
-        logger.e(
-          'Login failed for user: $username - HTTP ${e.response?.statusCode ?? 'Unknown'}',
-          error: e,
-          stackTrace: e.stackTrace,
-        );
-        if (e.response?.data != null) {
-          logger.e('Response data: ${e.response!.data}');
-        }
-      } else {
-        logger.e('Login failed for user: $username', error: e);
-      }
       rethrow;
     }
   }

@@ -20,14 +20,25 @@ class Token {
     if (accessToken == null || accessToken is! String) {
       throw FormatException('Invalid or missing access_token in response');
     }
+
+    final expiresInValue = json['expires_in'] ?? json['expiresIn'];
+    int expiresIn;
+    if (expiresInValue is int) {
+      expiresIn = expiresInValue;
+    } else if (expiresInValue is String) {
+      expiresIn = int.tryParse(expiresInValue) ?? 1800; // Default to 30 minutes
+    } else {
+      expiresIn = 1800; // Default to 30 minutes if null or invalid
+    }
+
     return Token(
       accessToken: accessToken,
-      refreshToken: json['refresh_token'] ?? json['refreshToken'] as String?,
+      refreshToken: (json['refresh_token'] ?? json['refreshToken']) is String
+          ? json['refresh_token'] ?? json['refreshToken'] as String
+          : null,
       tokenType: json['token_type'] ?? json['tokenType'] ?? 'bearer',
-      expiresIn: (json['expires_in'] ?? json['expiresIn']) is int
-          ? (json['expires_in'] ?? json['expiresIn']) as int
-          : int.parse('${json['expires_in'] ?? json['expiresIn']}'),
-      user: json['user'] != null
+      expiresIn: expiresIn,
+      user: json['user'] != null && json['user'] is Map<String, dynamic>
           ? UserResponse.fromJson(json['user'] as Map<String, dynamic>)
           : null,
     );

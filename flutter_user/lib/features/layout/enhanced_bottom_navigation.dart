@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/state/app_state_management.dart';
 import '../../core/animations/animation_system.dart';
+import '../../core/services/im_service.dart';
 
 /// 优化的底部导航栏
 class EnhancedBottomNavigation extends StatefulWidget {
@@ -32,42 +33,48 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
   late Animation<double> _breathingAnimation;
   late Animation<double> _selectionAnimation;
 
-  final List<NavItem> _navItems = [
-    NavItem(
-      index: 0,
-      icon: Icons.home_outlined,
-      activeIcon: Icons.home_rounded,
-      label: '首页',
-      route: '/home',
-    ),
-    NavItem(
-      index: 1,
-      icon: Icons.mic_outlined,
-      activeIcon: Icons.mic_rounded,
-      label: '对讲',
-      route: '/pager',
-      isSpecial: true,
-    ),
-    NavItem(
-      index: 2,
-      icon: Icons.chat_bubble_outline,
-      activeIcon: Icons.chat_bubble_rounded,
-      label: '消息',
-      route: '/messages',
-      badge: 3,
-    ),
-    NavItem(
-      index: 3,
-      icon: Icons.person_outline,
-      activeIcon: Icons.person_rounded,
-      label: '我的',
-      route: '/profile',
-    ),
-  ];
+  late List<NavItem> _navItems;
+  late ImService _imService;
 
   @override
   void initState() {
     super.initState();
+
+    _imService = ImService();
+    _imService.addListener(_onImServiceChanged);
+
+    _navItems = [
+      NavItem(
+        index: 0,
+        icon: Icons.home_outlined,
+        activeIcon: Icons.home_rounded,
+        label: '首页',
+        route: '/home',
+      ),
+      NavItem(
+        index: 1,
+        icon: Icons.mic_outlined,
+        activeIcon: Icons.mic_rounded,
+        label: '对讲',
+        route: '/pager',
+        isSpecial: true,
+      ),
+      NavItem(
+        index: 2,
+        icon: Icons.chat_bubble_outline,
+        activeIcon: Icons.chat_bubble_rounded,
+        label: '消息',
+        route: '/messages',
+        badge: _imService.unreadCount,
+      ),
+      NavItem(
+        index: 3,
+        icon: Icons.person_outline,
+        activeIcon: Icons.person_rounded,
+        label: '我的',
+        route: '/profile',
+      ),
+    ];
 
     _breathingController = AnimationController(
       duration: const Duration(milliseconds: 2000),
@@ -120,7 +127,14 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
   void dispose() {
     _breathingController.dispose();
     _selectionController.dispose();
+    _imService.removeListener(_onImServiceChanged);
     super.dispose();
+  }
+
+  void _onImServiceChanged() {
+    setState(() {
+      _navItems[2] = _navItems[2].copyWith(badge: _imService.unreadCount);
+    });
   }
 
   @override
@@ -412,4 +426,24 @@ class NavItem {
     this.isSpecial = false,
     this.badge,
   });
+
+  NavItem copyWith({
+    int? index,
+    IconData? icon,
+    IconData? activeIcon,
+    String? label,
+    String? route,
+    bool? isSpecial,
+    int? badge,
+  }) {
+    return NavItem(
+      index: index ?? this.index,
+      icon: icon ?? this.icon,
+      activeIcon: activeIcon ?? this.activeIcon,
+      label: label ?? this.label,
+      route: route ?? this.route,
+      isSpecial: isSpecial ?? this.isSpecial,
+      badge: badge ?? this.badge,
+    );
+  }
 }

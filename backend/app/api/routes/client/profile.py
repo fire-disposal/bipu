@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 from app.db.database import get_db
 from app.models.user import User
-from app.schemas.user import UserResponse, UserUpdate, UserProfile
+from app.schemas.user import UserResponse, UserUpdate
 from app.schemas.user_settings import OnlineStatusUpdate
 from app.schemas.common import StatusResponse
 from app.core.security import get_current_active_user
@@ -20,7 +20,7 @@ from fastapi import File, UploadFile
 router = APIRouter()
 logger = get_logger(__name__)
 
-@router.post("/avatar", response_model=UserProfile, tags=["用户资料"])
+@router.post("/avatar", response_model=UserResponse, tags=["用户资料"])
 async def upload_avatar(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -86,7 +86,7 @@ async def get_current_user_info(
     return current_user
 
 
-@router.get("/", response_model=UserProfile, tags=["用户资料"])
+@router.get("/", response_model=UserResponse, tags=["用户资料"])
 async def get_user_profile(
     current_user: User = Depends(get_current_active_user)
 ):
@@ -94,7 +94,7 @@ async def get_user_profile(
     # 尝试从缓存获取用户数据
     cached_data = await RedisService.get_cached_user_data(current_user.id)
     if cached_data:
-        return UserProfile(**cached_data)
+        return UserResponse(**cached_data)
     
     # 如果缓存不存在，构建并返回用户资料
     profile = {
@@ -116,7 +116,7 @@ async def get_user_profile(
     return profile
 
 
-@router.put("/", response_model=UserProfile, tags=["用户资料"])
+@router.put("/", response_model=UserResponse, tags=["用户资料"])
 async def update_user_profile(
     user_update: UserUpdate,
     db: Session = Depends(get_db),

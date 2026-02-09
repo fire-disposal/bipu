@@ -5,10 +5,7 @@ class UserResponse {
   final String? avatarUrl;
   final bool isActive;
   final bool isSuperuser;
-  final DateTime? lastActive;
   final int id;
-  final DateTime createdAt;
-  final DateTime? updatedAt;
 
   UserResponse({
     required this.email,
@@ -17,30 +14,24 @@ class UserResponse {
     this.avatarUrl,
     this.isActive = true,
     this.isSuperuser = false,
-    this.lastActive,
     required this.id,
-    required this.createdAt,
-    this.updatedAt,
   });
 
   factory UserResponse.fromJson(Map<String, dynamic> json) {
     return UserResponse(
-      email: json['email'] as String,
-      username: json['username'] as String,
+      email: json['email'] is String
+          ? json['email'] as String
+          : throw FormatException('email is required and must be a string'),
+      username: json['username'] is String
+          ? json['username'] as String
+          : throw FormatException('username is required and must be a string'),
       nickname: json['nickname'] as String?,
-      avatarUrl: json['avatarUrl'] as String?,
-      isActive: json['isActive'] ?? true,
-      isSuperuser: json['isSuperuser'] ?? false,
-      lastActive: json['lastActive'] != null
-          ? DateTime.parse(json['lastActive'] as String)
-          : null,
+      avatarUrl: json['avatarUrl'] ?? json['avatar_url'] as String?,
+      isActive: json['isActive'] ?? json['is_active'] ?? true,
+      isSuperuser: json['isSuperuser'] ?? json['is_superuser'] ?? false,
       id: json['id'] is int
           ? json['id'] as int
           : int.parse(json['id'].toString()),
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'] as String)
-          : null,
     );
   }
 
@@ -51,9 +42,6 @@ class UserResponse {
     'avatarUrl': avatarUrl,
     'isActive': isActive,
     'isSuperuser': isSuperuser,
-    'lastActive': lastActive?.toIso8601String(),
     'id': id,
-    'createdAt': createdAt.toIso8601String(),
-    'updatedAt': updatedAt?.toIso8601String(),
   };
 }

@@ -33,7 +33,14 @@ class ApiService {
   // Auth endpoints (Public)
   Future<Token> login(LoginRequest body) async {
     final response = await _dio.post('/public/login', data: body.toJson());
-    return Token.fromJson(response.data);
+    final data = response.data;
+    // Defensive: ensure backend returned a JSON object we can parse as a Token
+    if (data is! Map<String, dynamic>) {
+      // Include a short excerpt to aid debugging
+      final snippet = data == null ? 'null' : data.toString();
+      throw Exception('Unexpected login response (not JSON object): $snippet');
+    }
+    return Token.fromJson(data);
   }
 
   Future<Token> register(RegisterRequest body) async {

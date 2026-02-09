@@ -43,7 +43,7 @@ class StorageManager {
 
       // 清理旧版本可能遗留的 guest_mode 键（迁移步骤）
       try {
-        final tokenBox = await Hive.openBox('token_box');
+        final tokenBox = await Hive.openBox<String>('token_box');
         if (tokenBox.containsKey('guest_mode')) {
           await tokenBox.delete('guest_mode');
           debugPrint('Removed legacy guest_mode key from token_box');

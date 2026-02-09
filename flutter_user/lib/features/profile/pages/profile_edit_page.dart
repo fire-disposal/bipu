@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_user/api/api.dart';
 import 'dart:io';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/profile_service.dart';
 import '../../../core/services/toast_service.dart';
 import '../../common/widgets/app_button.dart';
+import '../../../core/widgets/user_avatar.dart';
 
 class ProfileEditPage extends StatefulWidget {
   const ProfileEditPage({super.key});
@@ -119,60 +118,14 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Center(
-                  child: Stack(
-                    children: [
-                      GestureDetector(
-                        onTap: _pickAndUploadImage,
-                        child: CircleAvatar(
-                          radius: 50,
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.primaryContainer,
-                          backgroundImage:
-                              AuthService().currentUser?.avatarUrl != null
-                              ? CachedNetworkImageProvider(
-                                  AuthService().currentUser!.avatarUrl!
-                                          .startsWith('http')
-                                      ? AuthService().currentUser!.avatarUrl!
-                                      : '${bipupuHttp.options.baseUrl}${AuthService().currentUser!.avatarUrl}',
-                                )
-                              : null,
-                          child: AuthService().currentUser?.avatarUrl == null
-                              ? Text(
-                                  (_nicknameCtrl.text.isNotEmpty
-                                          ? _nicknameCtrl.text
-                                          : _usernameCtrl.text)
-                                      .substring(0, 1)
-                                      .toUpperCase(),
-                                  style: TextStyle(
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onPrimaryContainer,
-                                  ),
-                                )
-                              : null,
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt,
-                            size: 18,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: UserAvatar(
+                    avatarUrl: AuthService().currentUser?.avatarUrl,
+                    displayName: _nicknameCtrl.text.isNotEmpty
+                        ? _nicknameCtrl.text
+                        : _usernameCtrl.text,
+                    radius: 50,
+                    onTap: _pickAndUploadImage,
+                    showEditIcon: true,
                   ),
                 ),
                 const SizedBox(height: 40),

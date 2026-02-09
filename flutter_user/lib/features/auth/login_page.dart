@@ -17,17 +17,17 @@ class _UserLoginPageState extends State<UserLoginPage> {
   bool _isLoading = false;
 
   Future<void> _login() async {
-    if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
+
+    if (username.isEmpty || password.isEmpty) {
       ToastService().showWarning('Please enter username and password');
       return;
     }
 
     setState(() => _isLoading = true);
     try {
-      await AuthService().login(
-        _usernameController.text,
-        _passwordController.text,
-      );
+      await AuthService().login(username, password);
       // Navigate to home page after successful login
       if (mounted) {
         context.go('/');
@@ -123,9 +123,6 @@ class _UserLoginPageState extends State<UserLoginPage> {
                 child: const Text('Don\'t have an account? Register'),
               ),
               const SizedBox(height: 20),
-              const Divider(),
-              const SizedBox(height: 20),
-              // Offline debug entry removed
             ],
           ),
         ),

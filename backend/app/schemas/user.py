@@ -17,7 +17,7 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     """创建用户模式"""
     password: str = Field(..., min_length=6, max_length=128)
-    nickname: Optional[str] = None
+    # nickname 已在 UserBase 中定义，无需重复
 
 
 class UserUpdate(BaseModel):
@@ -60,7 +60,7 @@ class Token(BaseModel):
     refresh_token: Optional[str] = None
     token_type: str = "bearer"
     expires_in: int
-    user: Optional[dict] = None
+    user: Optional[UserResponse] = None
 
 
 class TokenRefresh(BaseModel):
@@ -72,19 +72,6 @@ class TokenData(BaseModel):
     """令牌数据模式"""
     username: Optional[str] = None
 
-
-class UserProfile(BaseModel):
-    """用户详细资料模式"""
-    id: int
-    username: str
-    email: EmailStr
-    nickname: Optional[str]
-    avatar_url: Optional[str]  # 兼容现有API
-    is_active: bool
-    is_superuser: bool
-    last_active: Optional[datetime]
-    created_at: datetime
-    updated_at: Optional[datetime]
 
 class UserStatusUpdate(BaseModel):
     """用户状态更新请求"""

@@ -102,7 +102,8 @@ async def login(
             "email": user.email,
             "nickname": user.nickname,
             "is_active": user.is_active,
-            "is_superuser": user.is_superuser
+            "is_superuser": user.is_superuser,
+            "avatar_url": user.avatar_url
         }
     }
 
