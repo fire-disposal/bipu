@@ -62,7 +62,9 @@ class User {
       isSuperuser: superuser,
       cosmicProfile: cosmic,
       lastActive: _parseDateTime(json['last_active'] ?? json['lastActive']),
-      id: (json['id'] is int) ? json['id'] as int : int.parse('${json['id']}'),
+      id: (json['id'] is int)
+          ? json['id'] as int
+          : int.tryParse('${json['id']}') ?? 0,
       createdAt: _parseDateTime(json['created_at'] ?? json['createdAt']),
       updatedAt: _parseDateTime(json['updated_at'] ?? json['updatedAt']),
     );

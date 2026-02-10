@@ -29,38 +29,41 @@ class UserResponse {
 
   factory UserResponse.fromJson(Map<String, dynamic> json) {
     return UserResponse(
-      id: json['id'],
-      username: json['username'],
-      bipupuId: json['bipupu_id'],
+      id: (json['id'] is int)
+          ? json['id'] as int
+          : int.tryParse('${json['id']}') ?? 0,
+      username: json['username'] ?? '',
+      bipupuId: json['bipupu_id'] ?? '',
       nickname: json['nickname'],
       email: json['email'],
       avatarUrl: json['avatar_url'],
       cosmicProfile: json['cosmic_profile'],
-      isActive: json['is_active'] ?? true,
-      isSuperuser: json['is_superuser'] ?? false,
-      createdAt: DateTime.parse(json['created_at']),
+      isActive: json['is_active'] == true,
+      isSuperuser: json['is_superuser'] == true,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at']) ?? DateTime.now()
+          : DateTime.now(),
       updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
+          ? DateTime.tryParse(json['updated_at'])
           : null,
       lastActive: json['last_active'] != null
-          ? DateTime.parse(json['last_active'])
+          ? DateTime.tryParse(json['last_active'])
           : null,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'username': username,
-      'bipupu_id': bipupuId,
-      'nickname': nickname,
-      'avatar_url': avatarUrl,
-      'cosmic_profile': cosmicProfile,
-      'is_active': isActive,
-      'is_superuser': isSuperuser,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt?.toIso8601String(),
-      'last_active': lastActive?.toIso8601String(),
-    };
-  }
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'username': username,
+    'bipupu_id': bipupuId,
+    'nickname': nickname,
+    'email': email,
+    'avatar_url': avatarUrl,
+    'cosmic_profile': cosmicProfile,
+    'is_active': isActive,
+    'is_superuser': isSuperuser,
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt?.toIso8601String(),
+    'last_active': lastActive?.toIso8601String(),
+  };
 }

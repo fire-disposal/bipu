@@ -6,11 +6,12 @@ from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-
+from app.schemas.user import JWTPayload
 from app.core.config import settings
 from app.db.database import get_db
 from app.models.user import User
 from app.core.logging import get_logger
+from pydantic import ValidationError
 from app.services.redis_service import RedisService
 
 logger = get_logger(__name__)
@@ -52,6 +53,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
+    # 确保 sub 是字符串
+    if "sub" in to_encode:
+        to_encode["sub"] = str(to_encode["sub"])
+
     to_encode.update({"exp": expire, "type": "access"})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
@@ -61,6 +66,11 @@ def create_refresh_token(data: dict) -> str:
     """创建刷新令牌"""
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    
+    # 确保 sub 是字符串
+    if "sub" in to_encode:
+        to_encode["sub"] = str(to_encode["sub"])
+
     to_encode.update({"exp": expire, "type": "refresh"})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
@@ -71,7 +81,8 @@ def decode_token(token: str) -> Optional[dict]:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         return payload
-    except JWTError:
+    except JWTError as e:
+        logger.error(f"JWT Decode Error: {e}")
         return None
 
 
@@ -91,20 +102,34 @@ async def get_current_user(
         
         # 检查令牌是否在黑名单中
         if await RedisService.is_token_blacklisted(token):
+            logger.warning("Token is blacklisted")
             raise credentials_exception
             
         payload = decode_token(token)
         if payload is None:
+            # decode_token logs the error
             raise credentials_exception
-            
+        
+        # 使用 Pydantic 模型验证 payload
+        try:
+            token_data = JWTPayload(**payload)
+        except ValidationError as e:
+            logger.error(f"Token payload validation error: {e}")
+            raise credentials_exception
+
         # 检查令牌类型
-        if payload.get("type") != "access":
+        if token_data.type != "access":
+            logger.warning("Token type is not access")
             raise credentials_exception
             
-        user_id: int = int(payload.get("sub"))
-        if user_id is None:
+        try:
+            user_id = int(token_data.sub)
+        except (ValueError, TypeError):
+            logger.warning(f"Token sub is not an integer: {token_data.sub}")
             raise credentials_exception
             
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Token validation error: {e}")
         raise credentials_exception
@@ -112,6 +137,7 @@ async def get_current_user(
     # 查询用户
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
+        logger.warning(f"User not found for id: {user_id}")
         raise credentials_exception
         
     return user
@@ -154,28 +180,27 @@ async def get_current_superuser_web(
         from app.core.exceptions import AdminAuthException
         raise AdminAuthException()
     
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    
     try:
         # 检查令牌是否在黑名单中
         if await RedisService.is_token_blacklisted(token):
-            raise credentials_exception
+            raise Exception("Token blacklisted")
             
         payload = decode_token(token)
         if payload is None:
-            raise credentials_exception
+            raise Exception("Invalid token")
             
         # 检查令牌类型
         if payload.get("type") != "access":
-            raise credentials_exception
-            
-        user_id: str = payload.get("sub")
-        if user_id is None:
-            raise credentials_exception
+            raise Exception("Invalid token type")
+
+        user_id_str = payload.get("sub")
+        if user_id_str is None:
+             raise Exception("Token missing sub")
+             
+        try:
+            user_id = int(str(user_id_str))
+        except (ValueError, TypeError):
+             raise Exception("Invalid token sub")
             
     except Exception as e:
         logger.error(f"Token validation error: {e}")
@@ -184,7 +209,7 @@ async def get_current_superuser_web(
         raise AdminAuthException()
     
     # 查询用户
-    user = db.query(User).filter(User.username == user_id).first()
+    user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         from app.core.exceptions import AdminAuthException
         raise AdminAuthException()

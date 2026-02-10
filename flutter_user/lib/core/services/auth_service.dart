@@ -63,7 +63,7 @@ class AuthService {
     String? nickname,
   }) async {
     try {
-      final token = await _api.register(
+      await _api.register(
         RegisterRequest(
           username: username,
           email: email,
@@ -71,13 +71,6 @@ class AuthService {
           nickname: nickname,
         ),
       );
-      await _tokenStorage.saveTokens(
-        accessToken: token.accessToken,
-        refreshToken: token.refreshToken,
-      );
-      if (token.user != null) {
-        _currentUser = token.user;
-      }
     } catch (e) {
       rethrow;
     }

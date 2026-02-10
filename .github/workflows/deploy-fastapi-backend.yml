@@ -137,7 +137,7 @@ jobs:
               exit 0
             fi
             
-            echo "⏳ 检查中 ($i/5): 当前状态为 $STATUS..."
+            echo "⏳ 检查中 ($i/10): 当前状态为 $STATUS..."
             # 步长稍微拉长一点，给容器启动时间
             sleep 12
           done

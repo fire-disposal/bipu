@@ -77,6 +77,13 @@ class TokenData(BaseModel):
     username: Optional[str] = None
 
 
+class JWTPayload(BaseModel):
+    """JWT载荷模式"""
+    sub: str
+    exp: int
+    type: str
+
+
 class UserStatusUpdate(BaseModel):
     """用户状态更新请求"""
     is_active: bool

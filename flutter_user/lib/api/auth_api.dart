@@ -14,12 +14,12 @@ class AuthApi {
     return Token.fromJson(response.data);
   }
 
-  Future<Token> register(RegisterRequest body) async {
+  Future<UserResponse> register(RegisterRequest body) async {
     final response = await _dio.post(
       '/api/public/register',
       data: body.toJson(),
     );
-    return Token.fromJson(response.data);
+    return UserResponse.fromJson(response.data);
   }
 
   Future<Token> refreshToken(RefreshTokenRequest body) async {
