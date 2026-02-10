@@ -30,6 +30,7 @@ async def create_default_admin_user(db: Session):
         )
         db.add(admin_user)
         db.commit()
+        db.refresh(admin_user)
         logger.info(f"默认管理员用户创建成功: username={admin_username} (bipupu_id: {bipupu_id})")
     else:
         logger.info("管理员用户已存在，跳过创建")

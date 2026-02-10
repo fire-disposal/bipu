@@ -53,8 +53,10 @@ async def get_blocked_users(
     for user, blocked_at in rows:
         blocked_users.append(BlockedUserResponse(
             id=user.id,
+            bipupu_id=user.bipupu_id,
             username=user.username,
             nickname=user.nickname,
+            avatar_url=user.avatar_url,
             blocked_at=blocked_at
         ))
 

@@ -96,15 +96,7 @@ async def login(
         "refresh_token": refresh_token,
         "token_type": "bearer",
         "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        "user": {
-            "id": user.id,
-            "bipupu_id": user.bipupu_id,
-            "username": user.username,
-            "nickname": user.nickname,
-            "is_active": user.is_active,
-            "is_superuser": user.is_superuser,
-            "avatar_url": getattr(user, 'avatar_url', None)
-        }
+        "user": user
     }
 
 

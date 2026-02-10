@@ -1,5 +1,5 @@
 from typing import Generic, TypeVar, List
-from pydantic.generics import GenericModel
+from pydantic import BaseModel
 from fastapi import Query
 from app.core.config import settings
 import math
@@ -16,7 +16,7 @@ class PaginationParams:
         self.size = size
         self.skip = (page - 1) * size
 
-class PaginatedResponse(GenericModel, Generic[T]):
+class PaginatedResponse(BaseModel, Generic[T]):
     items: List[T]
     total: int
     page: int

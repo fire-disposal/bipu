@@ -41,7 +41,7 @@ class UserResponse(UserBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserList(BaseModel):
@@ -90,6 +90,8 @@ class BlockUserRequest(BaseModel):
 class BlockedUserResponse(BaseModel):
     """被拉黑用户响应模型"""
     id: int
+    bipupu_id: str
     username: str
     nickname: Optional[str] = None
+    avatar_url: Optional[str] = None
     blocked_at: datetime

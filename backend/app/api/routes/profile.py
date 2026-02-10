@@ -51,21 +51,16 @@ async def upload_avatar(
         db.commit()
         db.refresh(current_user)
         
-        # 更新缓存
-        profile = {
-            "id": current_user.id,
-            "username": current_user.username,
-            "nickname": current_user.nickname,
-            "avatar_url": current_user.avatar_url,
-            "is_active": current_user.is_active,
-            "is_superuser": current_user.is_superuser,
-            "last_active": current_user.last_active,
-            "created_at": current_user.created_at,
-            "updated_at": current_user.updated_at
-        }
-        await RedisService.cache_user_data(current_user.id, profile)
+        # 更新缓存 (使用 Schema 生成字典以确保字段完整)
+        profile_data = UserResponse.model_validate(current_user).model_dump()
+        # 处理 datetime 对象序列化
+        profile_data['created_at'] = profile_data['created_at'].isoformat() if profile_data.get('created_at') else None
+        profile_data['updated_at'] = profile_data['updated_at'].isoformat() if profile_data.get('updated_at') else None
+        profile_data['last_active'] = profile_data['last_active'].isoformat() if profile_data.get('last_active') else None
         
-        return profile
+        await RedisService.cache_user_data(current_user.id, profile_data)
+        
+        return current_user
     except Exception as e:
         logger.error(f"Avatar upload error: {e}")
         raise ValidationException("Avatar upload failed")
@@ -94,23 +89,17 @@ async def get_user_profile(
     if cached_data:
         return UserResponse(**cached_data)
     
-    # 如果缓存不存在，构建并返回用户资料
-    profile = {
-        "id": current_user.id,
-        "username": current_user.username,
-        "nickname": current_user.nickname,
-        "avatar_url": current_user.avatar_url,
-        "is_active": current_user.is_active,
-        "is_superuser": current_user.is_superuser,
-        "last_active": current_user.last_active,
-        "created_at": current_user.created_at,
-        "updated_at": current_user.updated_at
-    }
+    # 如果缓存不存在，构建并缓存用户资料
+    profile_data = UserResponse.model_validate(current_user).model_dump()
+    # 处理 datetime 对象序列化
+    profile_data['created_at'] = profile_data['created_at'].isoformat() if profile_data.get('created_at') else None
+    profile_data['updated_at'] = profile_data['updated_at'].isoformat() if profile_data.get('updated_at') else None
+    profile_data['last_active'] = profile_data['last_active'].isoformat() if profile_data.get('last_active') else None
     
     # 缓存用户资料
-    await RedisService.cache_user_data(current_user.id, profile)
+    await RedisService.cache_user_data(current_user.id, profile_data)
     
-    return profile
+    return current_user
 
 
 @router.put("/", response_model=UserResponse, tags=["用户资料"])
@@ -127,22 +116,16 @@ async def update_user_profile(
         logger.info(f"User profile updated: id={updated_user.id}, username={updated_user.username}")
         
         # 返回更新后的用户资料
-        profile = {
-            "id": updated_user.id,
-            "username": updated_user.username,
-            "nickname": updated_user.nickname,
-            "avatar_url": updated_user.avatar_url,
-            "is_active": updated_user.is_active,
-            "is_superuser": updated_user.is_superuser,
-            "last_active": updated_user.last_active,
-            "created_at": updated_user.created_at,
-            "updated_at": updated_user.updated_at
-        }
+        profile_data = UserResponse.model_validate(updated_user).model_dump()
+        # 处理 datetime 对象序列化
+        profile_data['created_at'] = profile_data['created_at'].isoformat() if profile_data.get('created_at') else None
+        profile_data['updated_at'] = profile_data['updated_at'].isoformat() if profile_data.get('updated_at') else None
+        profile_data['last_active'] = profile_data['last_active'].isoformat() if profile_data.get('last_active') else None
         
         # 重新缓存用户资料
-        await RedisService.cache_user_data(updated_user.id, profile)
+        await RedisService.cache_user_data(updated_user.id, profile_data)
         
-        return profile
+        return updated_user
     except ValidationException:
         raise
     except Exception as e:
