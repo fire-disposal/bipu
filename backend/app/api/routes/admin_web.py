@@ -41,7 +41,7 @@ async def admin_login(
         })
     
     # 创建访问令牌
-    access_token = create_access_token(data={"sub": user.username})
+    access_token = create_access_token(data={"sub": user.id})
     
     # 创建响应并设置cookie
     response = RedirectResponse(url="/admin", status_code=302)

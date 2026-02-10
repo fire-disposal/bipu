@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:easy_localization/easy_localization.dart';
 
+import 'core/state/app_state_management.dart';
 import 'core/utils/interaction_optimizer.dart';
 import 'features/layout/main_layout.dart';
 import 'features/pager/pages/pager_page.dart';
@@ -79,22 +81,25 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: AppThemeOptimized.themeMode,
-      builder: (context, themeMode, _) {
-        return MaterialApp.router(
-          localizationsDelegates: context.localizationDelegates,
-          supportedLocales: context.supportedLocales,
-          locale: context.locale,
-          title: 'Bipupu',
-          theme: AppThemeOptimized.lightTheme,
-          darkTheme: AppThemeOptimized.darkTheme,
-          themeMode: themeMode,
-          routerConfig: _router,
-          scaffoldMessengerKey: ToastService().scaffoldMessengerKey,
-          debugShowCheckedModeBanner: false,
-        );
-      },
+    return MultiBlocProvider(
+      providers: StateProviders.providers,
+      child: ValueListenableBuilder<ThemeMode>(
+        valueListenable: AppThemeOptimized.themeMode,
+        builder: (context, themeMode, _) {
+          return MaterialApp.router(
+            localizationsDelegates: context.localizationDelegates,
+            supportedLocales: context.supportedLocales,
+            locale: context.locale,
+            title: 'Bipupu',
+            theme: AppThemeOptimized.lightTheme,
+            darkTheme: AppThemeOptimized.darkTheme,
+            themeMode: themeMode,
+            routerConfig: _router,
+            scaffoldMessengerKey: ToastService().scaffoldMessengerKey,
+            debugShowCheckedModeBanner: false,
+          );
+        },
+      ),
     );
   }
 }
