@@ -2,7 +2,6 @@
 import asyncio
 from sqlalchemy.orm import Session
 from app.models.user import User
-from app.models.subscription import SubscriptionType
 from app.core.security import get_password_hash
 from app.core.logging import get_logger
 from app.core.config import settings
@@ -10,48 +9,8 @@ from app.core.config import settings
 logger = get_logger(__name__)
 
 
-async def create_default_subscription_types(db: Session):
-    """创建默认订阅类型"""
-    default_types = [
-        {
-            "name": "天气推送",
-            "category": "weather",
-            "description": "每日天气预报推送",
-            "default_settings": {"city": "北京"}
-        },
-        {
-            "name": "今日运势",
-            "category": "fortune",
-            "description": "每日星座运势推送",
-            "default_settings": {"zodiac": "白羊座"}
-        }
-    ]
-    
-    for subtype in default_types:
-        existing = db.query(SubscriptionType).filter(
-            SubscriptionType.category == subtype["category"]
-        ).first()
-        
-        if not existing:
-            logger.info(f"创建订阅类型: {subtype['name']}")
-            new_type = SubscriptionType(
-                name=subtype["name"],
-                category=subtype["category"],
-                description=subtype["description"],
-                default_settings=subtype["default_settings"],
-                is_active=True
-            )
-            db.add(new_type)
-        else:
-            # Optional: Ensure name/description are up to date if needed, but skipping for now
-            pass
-            
-    db.commit()
-
-
 async def create_default_admin_user(db: Session):
     """创建默认管理员用户（支持环境变量注入）"""
-    admin_email = settings.ADMIN_EMAIL
     admin_password = settings.ADMIN_PASSWORD[:72]
     admin_username = settings.ADMIN_USERNAME
     # 检查是否已存在管理员用户
@@ -59,19 +18,52 @@ async def create_default_admin_user(db: Session):
     
     if not admin_user:
         logger.info("创建默认管理员用户...")
+        from app.core.user_utils import generate_bipupu_id
+        bipupu_id = generate_bipupu_id(db)
+        
         admin_user = User(
-            email=admin_email,
             username=admin_username,
+            bipupu_id=bipupu_id,
             hashed_password=get_password_hash(admin_password),
             is_active=True,
             is_superuser=True
         )
         db.add(admin_user)
         db.commit()
-        logger.info(f"默认管理员用户创建成功: {admin_email}")
+        logger.info(f"默认管理员用户创建成功: username={admin_username} (bipupu_id: {bipupu_id})")
     else:
         logger.info("管理员用户已存在，跳过创建")
 
+
+async def create_default_services(db: Session):
+    """创建默认服务号"""
+    from app.models.service_account import ServiceAccount
+    
+    services = [
+        {
+            "name": "weather.service",
+            "description": "提供每日天气预报服务",
+            "is_active": True
+        },
+        {
+            "name": "cosmic.fortune",
+            "description": "提供每日运势解读",
+            "is_active": True
+        }
+    ]
+    
+    for svc in services:
+        existing = db.query(ServiceAccount).filter(ServiceAccount.name == svc["name"]).first()
+        if not existing:
+            new_svc = ServiceAccount(
+                name=svc["name"],
+                description=svc["description"],
+                is_active=svc["is_active"]
+            )
+            db.add(new_svc)
+            logger.info(f"Created service account: {svc['name']}")
+    
+    db.commit()
 
 async def init_default_data():
     """初始化默认数据"""
@@ -83,7 +75,7 @@ async def init_default_data():
     db = SessionLocal()
     try:
         await create_default_admin_user(db)
-        await create_default_subscription_types(db)
+        await create_default_services(db)
         logger.info("数据库默认数据初始化完成")
     except Exception as e:
         logger.error(f"数据库初始化失败: {e}")

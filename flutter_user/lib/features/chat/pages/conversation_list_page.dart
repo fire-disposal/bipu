@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_user/api/api.dart';
+import 'package:flutter_user/core/services/im_service.dart';
 import 'package:flutter_user/models/message/message_response.dart';
-import 'package:flutter_user/models/common/enums.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 import '../../../core/services/auth_service.dart';
 
@@ -14,290 +14,100 @@ class ConversationListPage extends StatefulWidget {
   State<ConversationListPage> createState() => _ConversationListPageState();
 }
 
-class _ConversationListPageState extends State<ConversationListPage>
-    with SingleTickerProviderStateMixin {
-  final ApiService _api = bipupuApi;
-  List<MessageResponse> _receivedMessages = [];
-  List<MessageResponse> _sentMessages = [];
-  bool _isLoading = false;
-  late TabController _tabController;
+class _ConversationListPageState extends State<ConversationListPage> {
+  final ImService _imService = ImService();
+  final AuthService _authService = AuthService();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _loadMessages();
+    _imService.addListener(_refresh);
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _imService.removeListener(_refresh);
     super.dispose();
   }
 
-  Future<void> _loadMessages() async {
-    if (AuthService().currentUser == null) return;
-
-    setState(() => _isLoading = true);
-    try {
-      final currentUserId = AuthService().currentUser?.id;
-      if (currentUserId == null) return;
-
-      // 并发请求两个接口
-      final results = await Future.wait([
-        _api.getMessages(page: 1, size: 50, receiverId: currentUserId),
-        _api.getMessages(page: 1, size: 50, senderId: currentUserId),
-      ]);
-
-      setState(() {
-        _receivedMessages = _groupMessages(results[0].items, bySender: true);
-        _sentMessages = _groupMessages(results[1].items, bySender: false);
-      });
-    } catch (e) {
-      debugPrint('Error loading messages: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+  void _refresh() {
+    if (mounted) setState(() {});
   }
 
-  List<MessageResponse> _groupMessages(
-    List<MessageResponse> messages, {
-    required bool bySender,
-  }) {
-    // Group messages by conversation partner and pick the latest message per partner
-    final Map<int, MessageResponse> conversations = {};
-    final Map<int, int> unreadCounts = {};
-
-    for (var msg in messages) {
-      final targetId = bySender ? msg.senderId : msg.receiverId;
-      final existing = conversations[targetId];
-      if (existing == null || msg.createdAt.isAfter(existing.createdAt)) {
-        conversations[targetId] = msg;
-      }
-
-      // count unread for each conversation (received inbox only)
-      if (bySender && !msg.isRead) {
-        unreadCounts[targetId] = (unreadCounts[targetId] ?? 0) + 1;
-      }
-    }
-
-    final list = conversations.values.toList();
-    // sort by latest message time desc
-    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return list;
+  String _getPeerId(MessageResponse msg, String myId) {
+    return msg.senderBipupuId == myId
+        ? msg.receiverBipupuId
+        : msg.senderBipupuId;
   }
 
   @override
   Widget build(BuildContext context) {
-    if (AuthService().currentUser == null) {
-      return _buildGuestView();
+    final currentUser = _authService.currentUser;
+    if (currentUser == null) {
+      return Center(child: Text('please_login'.tr()));
     }
 
-    return Column(
-      children: [
-        // AppBar replacement
-        Container(
-          padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
-          color: Theme.of(context).colorScheme.surface,
-          child: const SizedBox(
-            height: kToolbarHeight,
-            child: Center(
-              child: Text(
-                '消息列表',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-              ),
-            ),
-          ),
-        ),
-        // TabBar
-        TabBar(
-          controller: _tabController,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-          tabs: const [
-            Tab(text: '收到消息'),
-            Tab(text: '已发消息'),
-          ],
-        ),
-        // Body
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              RefreshIndicator(
-                onRefresh: _loadMessages,
-                child: _buildMessageList(_receivedMessages, isReceived: true),
-              ),
-              RefreshIndicator(
-                onRefresh: _loadMessages,
-                child: _buildMessageList(_sentMessages, isReceived: false),
-              ),
-            ],
-          ),
-        ),
-      ],
+    final myId = currentUser.bipupuId;
+    final allMessages = _imService.messages;
+
+    // Group by conversation (peerId)
+    final Map<String, MessageResponse> lastMessageMap = {};
+
+    for (var msg in allMessages) {
+      final peerId = _getPeerId(msg, myId);
+      lastMessageMap[peerId] = msg;
+    }
+
+    final conversations = lastMessageMap.entries.toList();
+    conversations.sort(
+      (a, b) => b.value.createdAt.compareTo(a.value.createdAt),
     );
-  }
 
-  Widget _buildMessageList(
-    List<MessageResponse> messages, {
-    required bool isReceived,
-  }) {
-    if (_isLoading && messages.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (messages.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primaryContainer.withValues(alpha: 0.3),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                isReceived ? Icons.inbox_outlined : Icons.send_outlined,
-                size: 48,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '暂无${isReceived ? '收到的' : '发送的'}消息',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: messages.length,
-      separatorBuilder: (_, _) => const Divider(indent: 72, height: 1),
-      itemBuilder: (context, index) {
-        final message = messages[index];
-        final targetId = isReceived ? message.senderId : message.receiverId;
-
-        return ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 4,
-          ),
-          leading: Hero(
-            tag: 'avatar_$targetId',
-            child: CircleAvatar(
-              radius: 28,
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              child: Text(
-                'U',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                ),
-              ),
-            ),
-          ),
-          title: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '用户 $targetId',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-              Text(
-                _formatTime(message.createdAt),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-          subtitle: Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Row(
-              children: [
-                if (message.messageType == MessageType.device)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: Icon(
-                      Icons.sensors,
-                      size: 14,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                Expanded(
-                  child: Text(
-                    message.content,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                  ),
-                ),
-                if (isReceived && !message.isRead)
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.error,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          onTap: () {
-            context.push('/chat/$targetId');
-          },
-        );
-      },
-    );
-  }
-
-  String _formatTime(DateTime time) {
-    final now = DateTime.now();
-    final difference = now.difference(time);
-
-    if (difference.inDays == 0) {
-      return DateFormat('HH:mm').format(time);
-    } else if (difference.inDays == 1) {
-      return '昨天';
-    } else if (difference.inDays < 7) {
-      return DateFormat('EEEE').format(time);
-    } else {
-      return DateFormat('MM/dd').format(time);
-    }
-  }
-
-  Widget _buildGuestView() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.bluetooth_disabled, size: 64, color: Colors.grey),
-          const SizedBox(height: 16),
-          const Text(
-            '未登录 - 无法查看消息',
-            style: TextStyle(fontSize: 18, color: Colors.grey),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () => context.go('/login'),
-            child: const Text('前往登录'),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('messages_title'.tr()),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              _imService.refresh();
+            },
           ),
         ],
       ),
+      body: conversations.isEmpty
+          ? Center(child: Text('no_messages'.tr()))
+          : ListView.builder(
+              itemCount: conversations.length,
+              itemBuilder: (context, index) {
+                final entry = conversations[index];
+                final peerId = entry.key;
+                final lastMsg = entry.value;
+
+                return ListTile(
+                  leading: CircleAvatar(
+                    child: Text(
+                      peerId.isNotEmpty
+                          ? peerId.substring(0, 1).toUpperCase()
+                          : '?',
+                    ),
+                  ),
+                  title: Text(peerId),
+                  subtitle: Text(
+                    lastMsg.content,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: Text(
+                    DateFormat('MM-dd HH:mm').format(lastMsg.createdAt),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  onTap: () {
+                    context.push('/chat', extra: peerId);
+                  },
+                );
+              },
+            ),
     );
   }
 }

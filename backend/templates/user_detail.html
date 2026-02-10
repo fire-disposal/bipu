@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}用户详情 - {{ user.username }} - Bipupu 管理后台{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <!-- 用户基本卡片 -->
+        <div class="card mb-4">
+            <div class="card-body text-center">
+                {% if user.avatar_data %}
+                <img src="/api/users/{{ user.id }}/avatar" class="rounded-circle img-fluid mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+                {% else %}
+                <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 150px; height: 150px;">
+                    <span class="text-white h1">{{ user.username[0]|upper }}</span>
+                </div>
+                {% endif %}
+                
+                <h5 class="card-title">{{ user.nickname or user.username }}</h5>
+                <p class="text-muted mb-1">@{{ user.username }}</p>
+                <p class="text-muted mb-4">ID: {{ user.bipupu_id }}</p>
+                
+                <div class="d-flex justify-content-center mb-2">
+                    {% if user.is_active %}
+                    <span class="badge bg-success me-2">活跃</span>
+                    {% else %}
+                    <span class="badge bg-danger me-2">已禁用</span>
+                    {% endif %}
+                    
+                    {% if user.is_superuser %}
+                    <span class="badge bg-warning text-dark">管理员</span>
+                    {% else %}
+                    <span class="badge bg-info">普通用户</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- 时间信息 -->
+        <div class="card mb-4">
+            <div class="card-header">时间线</div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    注册时间
+                    <span>{{ user.created_at.strftime('%Y-%m-%d') }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    最后活动
+                    <span>{{ user.last_active.strftime('%Y-%m-%d %H:%M') if user.last_active else '-' }}</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <!-- 详细资料 -->
+        <div class="card mb-4">
+            <div class="card-header">Cosmic Profile (JSON)</div>
+            <div class="card-body">
+                {% if user.cosmic_profile %}
+                <pre class="bg-light p-3 rounded"><code>{{ user.cosmic_profile | tojson(indent=2) }}</code></pre>
+                {% else %}
+                <p class="text-muted">暂无详细资料</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- 统计概览 -->
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">好友/联系人</h6>
+                        <h2 class="card-text">{{ user.contacts|length }}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">订阅服务</h6>
+                        <h2 class="card-text">{{ user.subscriptions|length }}</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-3">
+             <a href="/admin/users" class="btn btn-secondary">返回列表</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

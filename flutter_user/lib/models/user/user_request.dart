@@ -22,15 +22,3 @@ class UserUpdateRequest {
     'username': username,
   };
 }
-
-class OnlineStatusUpdate {
-  final bool isActive;
-
-  OnlineStatusUpdate({required this.isActive});
-
-  factory OnlineStatusUpdate.fromJson(Map<String, dynamic> json) {
-    return OnlineStatusUpdate(isActive: json['is_active'] as bool);
-  }
-
-  Map<String, dynamic> toJson() => {'is_active': isActive};
-}

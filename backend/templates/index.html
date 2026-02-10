@@ -13,23 +13,26 @@
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title">总用户数</h5>
-                <h3 class="text-primary">{{ stats.total_users }}</h3>
+                <h3 class="text-primary">{{ stats.users.total }}</h3>
+                <small class="text-muted">今日新增: {{ stats.users.today_new }}</small>
             </div>
         </div>
     </div>
     <div class="col-md-3">
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">活跃用户</h5>
-                <h3 class="text-success">{{ stats.active_users }}</h3>
+                <h5 class="card-title">消息统计</h5>
+                <h3 class="text-success">{{ stats.messages.total }}</h3>
+                <small class="text-muted">今日发送: {{ stats.messages.today }}</small>
             </div>
         </div>
     </div>
     <div class="col-md-3">
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">总消息数</h5>
-                <h3 class="text-info">{{ stats.total_messages }}</h3>
+                <h5 class="card-title">服务号</h5>
+                <h3 class="text-info">{{ stats.services.active }} / {{ stats.services.total }}</h3>
+                <small class="text-muted">活跃 / 总计</small>
             </div>
         </div>
     </div>

@@ -385,7 +385,7 @@ class _SmartListTileState extends State<SmartListTile>
 
     _highlightAnimation = ColorTween(
       begin: Colors.transparent,
-      end: Theme.of(context).primaryColor.withOpacity(0.1),
+      end: Theme.of(context).primaryColor.withValues(alpha: 0.1),
     ).animate(_highlightController);
   }
 

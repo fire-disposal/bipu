@@ -1,33 +1,37 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any, List
 
 
 class UserBase(BaseModel):
     """用户基础模式"""
-    email: EmailStr
     username: str
+    bipupu_id: str
     nickname: Optional[str] = None
-    avatar_url: Optional[str] = None  # 兼容旧的URL字段，未来可移除
+    avatar_url: Optional[str] = None
+    cosmic_profile: Optional[Dict[str, Any]] = None
     is_active: bool = True
     is_superuser: bool = False
     last_active: Optional[datetime] = Field(None, description="最后活跃时间")
 
 
-class UserCreate(UserBase):
+class UserCreate(BaseModel):
     """创建用户模式"""
+    username: str
     password: str = Field(..., min_length=6, max_length=128)
-    # nickname 已在 UserBase 中定义，无需重复
+    nickname: Optional[str] = None
 
 
 class UserUpdate(BaseModel):
     """更新用户模式"""
-    email: Optional[EmailStr] = None
-    username: Optional[str] = None
     nickname: Optional[str] = None
-    is_active: Optional[bool] = None
-    is_superuser: Optional[bool] = None
-    password: Optional[str] = Field(None, min_length=6, max_length=128)
+    cosmic_profile: Optional[Dict[str, Any]] = None
+
+
+class UserPasswordUpdate(BaseModel):
+    """用户密码更新"""
+    old_password: str
+    new_password: str = Field(..., min_length=6, max_length=128)
 
 
 class UserResponse(UserBase):
@@ -37,7 +41,7 @@ class UserResponse(UserBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 class UserList(BaseModel):
@@ -76,3 +80,16 @@ class TokenData(BaseModel):
 class UserStatusUpdate(BaseModel):
     """用户状态更新请求"""
     is_active: bool
+
+
+class BlockUserRequest(BaseModel):
+    """黑名单用户请求"""
+    user_id: int
+
+
+class BlockedUserResponse(BaseModel):
+    """被拉黑用户响应模型"""
+    id: int
+    username: str
+    nickname: Optional[str] = None
+    blocked_at: datetime

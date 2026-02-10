@@ -1,54 +1,77 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'core/theme/app_theme_optimized.dart';
-import 'core/storage/storage_manager.dart';
-import 'core/state/app_state_management.dart';
-import 'core/interactions/enhanced_interactions.dart';
-import 'features/auth/login_page.dart';
-import 'features/auth/register_page.dart';
-import 'features/home/home_page.dart';
-import 'features/pager/pages/pager_page.dart';
-import 'features/chat/pages/conversation_list_page.dart';
-import 'features/profile/pages/profile_page.dart';
-import 'features/profile/pages/user_detail_page.dart';
-import 'features/profile/pages/profile_edit_page.dart';
+import 'package:logging/logging.dart';
+import 'package:easy_localization/easy_localization.dart';
 
+import 'core/utils/interaction_optimizer.dart';
 import 'features/layout/main_layout.dart';
-import 'features/contacts/pages/contacts_page.dart';
-import 'features/contacts/pages/friend_requests_page.dart';
-import 'features/contacts/pages/user_search_page.dart';
-import 'features/layout/discover_page.dart';
-import 'features/subscription/pages/subscription_page.dart';
-import 'features/chat/pages/chat_page.dart';
-import 'features/chat/pages/favorites_page.dart';
-import 'features/profile/pages/security_page.dart';
-import 'features/profile/pages/privacy_page.dart';
-import 'features/profile/pages/notifications_page.dart';
-import 'features/bluetooth/bluetooth_scan_page.dart';
-import 'features/profile/pages/language_page.dart';
+import 'features/pager/pages/pager_page.dart';
+import 'features/profile/pages/profile_page.dart';
 import 'features/profile/pages/about_page.dart';
+import 'features/profile/pages/language_page.dart';
+import 'features/profile/pages/notifications_page.dart';
+import 'features/profile/pages/privacy_page.dart';
+import 'features/profile/pages/profile_edit_page.dart';
+import 'features/profile/pages/security_page.dart';
+import 'package:flutter_user/features/chat/pages/conversation_list_page.dart';
+import 'package:flutter_user/features/chat/pages/chat_page.dart';
+import 'package:flutter_user/features/chat/pages/favorites_page.dart';
+import 'package:flutter_user/features/contacts/pages/contacts_page.dart';
+import 'package:flutter_user/features/contacts/pages/user_search_page.dart';
+import 'package:flutter_user/features/profile/pages/user_detail_page.dart';
+import 'core/services/im_service.dart';
+import 'features/layout/discover_page.dart';
+
+import 'api/api.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/toast_service.dart';
-import 'core/services/im_service.dart';
-import 'api/api.dart';
+import 'core/storage/storage_manager.dart';
+import 'core/theme/app_theme_optimized.dart';
+import 'core/utils/logger.dart';
+import 'features/auth/login_page.dart';
+import 'features/auth/register_page.dart';
+import 'features/bluetooth/bluetooth_scan_page.dart';
+import 'features/home/home_page.dart';
 
-void main() async {
+Future<void> main() async {
+  // Catch errors
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    logger.e(
+      'Flutter error',
+      error: details.exception,
+      stackTrace: details.stack,
+    );
+  };
+
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 初始化存储系统
+  // Initialize logger
+  Logger.root.level = Level.ALL;
+  // Logger listener removed to fix analyze error
+  // Logger.root.onRecord.listen((record) {});
+
   await StorageManager.initialize();
 
-  // 初始化交互优化器
+  // Initialize Optimizer
   await InteractionOptimizer.initialize();
 
-  // 初始化认证服务
+  // Initialize Auth
   await AuthService().initialize();
 
-  // 初始化IM服务
-  ImService().initialize(bipupuApi);
+  // Initialize IM Service
+  ImService().initialize(bipupuHttp);
 
-  runApp(const MyApp());
+  await EasyLocalization.ensureInitialized();
+
+  runApp(
+    EasyLocalization(
+      supportedLocales: const [Locale('zh', 'CN'), Locale('en', 'US')],
+      path: 'assets/translations',
+      fallbackLocale: const Locale('zh', 'CN'),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -56,22 +79,22 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: StateProviders.providers,
-      child: BlocBuilder<AppCubit, AppState>(
-        builder: (context, appState) {
-          return MaterialApp.router(
-            title: 'Bipupu User',
-            theme: AppTheme.lightTheme,
-            darkTheme: AppTheme.darkTheme,
-            themeMode: appState.themeMode,
-            locale: appState.locale,
-            routerConfig: _router,
-            scaffoldMessengerKey: ToastService().scaffoldMessengerKey,
-            debugShowCheckedModeBanner: false,
-          );
-        },
-      ),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: AppThemeOptimized.themeMode,
+      builder: (context, themeMode, _) {
+        return MaterialApp.router(
+          localizationsDelegates: context.localizationDelegates,
+          supportedLocales: context.supportedLocales,
+          locale: context.locale,
+          title: 'Bipupu',
+          theme: AppThemeOptimized.lightTheme,
+          darkTheme: AppThemeOptimized.darkTheme,
+          themeMode: themeMode,
+          routerConfig: _router,
+          scaffoldMessengerKey: ToastService().scaffoldMessengerKey,
+          debugShowCheckedModeBanner: false,
+        );
+      },
     );
   }
 }
@@ -82,12 +105,10 @@ final GoRouter _router = GoRouter(
     final authService = AuthService();
     final authStatus = authService.authState.value;
 
-    // 如果正在初始化，显示加载页面
     if (authStatus == AuthStatus.unknown) {
       return '/loading';
     }
 
-    // 如果是认证状态且当前不在主界面相关页面，进入主界面
     if (authStatus == AuthStatus.authenticated) {
       if (state.matchedLocation == '/' ||
           state.matchedLocation == '/loading' ||
@@ -98,9 +119,6 @@ final GoRouter _router = GoRouter(
       return null;
     }
 
-    // 访客/离线模式已移除 - 仅处理认证与未认证两类状态
-
-    // 如果是未认证状态且不在登录页面，进入登录页面
     if (authStatus == AuthStatus.unauthenticated) {
       if (state.matchedLocation != '/login' &&
           !state.matchedLocation.startsWith('/register')) {
@@ -135,10 +153,6 @@ final GoRouter _router = GoRouter(
           builder: (context, state) => const ContactsPage(),
           routes: [
             GoRoute(
-              path: 'requests',
-              builder: (context, state) => const FriendRequestsPage(),
-            ),
-            GoRoute(
               path: 'search',
               builder: (context, state) => const UserSearchPage(),
             ),
@@ -148,10 +162,7 @@ final GoRouter _router = GoRouter(
           path: '/discover',
           builder: (context, state) => const DiscoverPage(),
         ),
-        GoRoute(
-          path: '/subscription',
-          builder: (context, state) => const SubscriptionPage(),
-        ),
+        // Subscription Page Deleted
         GoRoute(
           path: '/profile',
           builder: (context, state) => const ProfilePage(),
@@ -160,7 +171,7 @@ final GoRouter _router = GoRouter(
               path: 'personal_info',
               builder: (context, state) {
                 final user = AuthService().currentUser;
-                return UserDetailPage(userId: user?.id ?? 0);
+                return UserDetailPage(bipupuId: user?.bipupuId ?? '');
               },
             ),
             GoRoute(
@@ -200,14 +211,14 @@ final GoRouter _router = GoRouter(
       path: '/user/detail/:id',
       builder: (context, state) {
         final id = state.pathParameters['id']!;
-        return UserDetailPage(userId: int.parse(id));
+        return UserDetailPage(bipupuId: id);
       },
     ),
     GoRoute(
-      path: '/chat/:id',
+      path: '/chat',
       builder: (context, state) {
-        final id = state.pathParameters['id']!;
-        return ChatPage(userId: int.parse(id));
+        final extra = state.extra as String?;
+        return ChatPage(peerId: extra ?? '');
       },
     ),
     GoRoute(

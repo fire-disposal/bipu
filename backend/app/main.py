@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import os
 from app.api.router import api_router
@@ -11,7 +12,7 @@ from app.db.init_data import init_default_data
 from app.core.logging import get_logger
 import uvicorn
 from app.core.openapi_util import export_openapi_json
-from app.core.exceptions import custom_exception_handler, http_exception_handler, general_exception_handler, BaseCustomException
+from app.core.exceptions import custom_exception_handler, http_exception_handler, general_exception_handler, BaseCustomException, AdminAuthException, admin_auth_exception_handler
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -57,6 +58,10 @@ async def lifespan(app: FastAPI):
         
         # 初始化Redis（失败时自动使用内存缓存）
         await init_redis()
+        
+        # 导入并注册服务号
+        from app.services import builtin_services
+        logger.info("✅ 内置服务号已加载")
         
         port = os.getenv("PORT", "8000")
         logger.info("✅ 服务启动完成 ")
@@ -119,6 +124,15 @@ def create_app() -> FastAPI:
         openapi_tags=tags_metadata,
     )
     
+    # 配置 CORS
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.ALLOWED_HOSTS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    
     # 配置Jinja2模板
     templates = Jinja2Templates(directory="templates")
     
@@ -138,6 +152,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_web_router, prefix="/admin")
 
     # 注册全局异常处理器
+    app.add_exception_handler(AdminAuthException, admin_auth_exception_handler)
     app.add_exception_handler(BaseCustomException, custom_exception_handler)
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, http_exception_handler)

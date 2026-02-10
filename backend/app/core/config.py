@@ -99,7 +99,6 @@ class Settings(BaseSettings):
     JWT_TOKEN_PREFIX: str = "Bearer"
 
     # 默认管理员配置
-    ADMIN_EMAIL: str = "adminemail@qq.com"
     ADMIN_PASSWORD: str = "admin123"
     ADMIN_USERNAME: str = "admin"
     
@@ -136,7 +135,6 @@ class Settings(BaseSettings):
         return v
     
     @field_validator(
-        "ADMIN_EMAIL", 
         "ADMIN_USERNAME", 
         "ADMIN_PASSWORD", 
         "POSTGRES_USER", 

@@ -16,7 +16,7 @@
                     <tr>
                         <th>ID</th>
                         <th>用户名</th>
-                        <th>邮箱</th>
+                        <!-- 邮箱字段已移除 -->
                         <th>状态</th>
                         <th>注册时间</th>
                         <th>最后登录</th>
@@ -28,7 +28,7 @@
                     <tr>
                         <td>{{ user.id }}</td>
                         <td>{{ user.username }}</td>
-                        <td>{{ user.email }}</td>
+                        <td>—</td>
                         <td>
                             {% if user.is_active %}
                                 <span class="badge bg-success">活跃</span>

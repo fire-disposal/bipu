@@ -98,12 +98,12 @@ async def login(
         "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         "user": {
             "id": user.id,
+            "bipupu_id": user.bipupu_id,
             "username": user.username,
-            "email": user.email,
             "nickname": user.nickname,
             "is_active": user.is_active,
             "is_superuser": user.is_superuser,
-            "avatar_url": user.avatar_url
+            "avatar_url": getattr(user, 'avatar_url', None)
         }
     }
 

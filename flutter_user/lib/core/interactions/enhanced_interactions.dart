@@ -285,7 +285,7 @@ class RippleEffectPainter extends CustomPainter {
     final radius = maxRadius * animation.value;
 
     final paint = Paint()
-      ..color = color.withOpacity((1 - animation.value) * 0.2)
+      ..color = color.withValues(alpha: (1 - animation.value) * 0.2)
       ..style = PaintingStyle.fill;
 
     canvas.drawCircle(center, radius, paint);
@@ -438,7 +438,11 @@ class _ResponsiveSliderState extends State<ResponsiveSlider> {
   Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      transform: Matrix4.identity()..scale(_isChanging ? 1.02 : 1.0),
+      transform: Matrix4.diagonal3Values(
+        _isChanging ? 1.02 : 1.0,
+        _isChanging ? 1.02 : 1.0,
+        1.0,
+      ),
       child: Slider(
         value: widget.value,
         min: widget.min,

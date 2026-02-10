@@ -1,19 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_user/api/api.dart';
-import 'package:flutter_user/models/message/message_response.dart';
-import 'package:flutter_user/models/user/user_response.dart';
-import 'package:flutter_user/models/message/message_request.dart';
-import 'package:flutter_user/models/common/enums.dart';
-import 'package:intl/intl.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
-import '../../../core/services/auth_service.dart';
+import '../../../../core/services/im_service.dart';
+import '../../../../core/services/auth_service.dart';
+import '../../../../models/message/message_response.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class ChatPage extends StatefulWidget {
-  final int userId;
+  final String peerId;
 
-  const ChatPage({super.key, required this.userId});
+  const ChatPage({super.key, required this.peerId});
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -22,512 +16,169 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final ApiService _api = bipupuApi;
-
-  List<MessageResponse> _messages = [];
-  bool _isLoading = false;
-  bool _isLoadingMore = false;
-  bool _hasMore = true;
-  int _currentPage = 1;
-  UserResponse? _peerUser;
-  final int _currentUserId = AuthService().currentUser?.id ?? 0;
+  final ImService _imService = ImService();
+  final AuthService _authService = AuthService();
 
   @override
   void initState() {
     super.initState();
-    _loadPeerInfo();
-    _loadMessages();
-    _scrollController.addListener(_onScroll);
+    _imService.addListener(_refresh);
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _imService.removeListener(_refresh);
     _textController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 200 &&
-        !_isLoadingMore &&
-        _hasMore) {
-      _loadMoreMessages();
-    }
+  void _refresh() {
+    if (mounted) setState(() {});
   }
 
-  Future<void> _loadPeerInfo() async {
-    try {
-      final user = await _api.adminGetUser(widget.userId);
-      if (mounted) {
-        setState(() {
-          _peerUser = user;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading peer info: $e');
-    }
-  }
+  Future<void> _sendMessage() async {
+    final text = _textController.text.trim();
+    if (text.isEmpty) return;
 
-  Future<void> _loadMessages() async {
-    setState(() => _isLoading = true);
-    try {
-      final response = await _api.getConversationMessages(
-        widget.userId,
-        page: 1,
-        size: 20,
-      );
-
-      final items = response.items;
-      items.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-
-      setState(() {
-        _messages = items;
-        _currentPage = 1;
-        _hasMore = items.length >= 20;
-      });
-
-      _scrollToBottom();
-      _markMessagesAsRead(items);
-    } catch (e) {
-      debugPrint('Error loading chat: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<void> _markMessagesAsRead(List<MessageResponse> messages) async {
-    for (var msg in messages) {
-      if (msg.receiverId == _currentUserId && !msg.isRead) {
-        try {
-          await _api.markMessageAsRead(msg.id);
-        } catch (e) {
-          debugPrint('Error marking message as read: $e');
-        }
-      }
-    }
-  }
-
-  Future<void> _loadMoreMessages() async {
-    if (_isLoadingMore || !_hasMore) return;
-    setState(() => _isLoadingMore = true);
-    try {
-      final response = await _api.getConversationMessages(
-        widget.userId,
-        page: _currentPage + 1,
-        size: 20,
-      );
-
-      if (response.items.isEmpty) {
-        setState(() => _hasMore = false);
-      } else {
-        final newItems = response.items;
-        newItems.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-
-        setState(() {
-          _messages.insertAll(0, newItems);
-          _currentPage++;
-          _hasMore = newItems.length >= 20;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading more: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isLoadingMore = false);
-      }
-    }
-  }
-
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      Future.delayed(const Duration(milliseconds: 100), () {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      });
-    }
-  }
-
-  Future<void> _handleSubmitted(String text) async {
-    if (text.trim().isEmpty) return;
-    final content = _textController.text;
     _textController.clear();
-
     try {
-      final newMessage = await _api.sendMessage(
-        MessageCreateRequest(
-          title: 'Bipupu Chat',
-          content: content,
-          receiverId: widget.userId,
-          messageType: MessageType.user,
-          priority: 0,
-        ),
+      await _imService.messageApi.sendMessage(
+        receiverId: widget.peerId,
+        content: text,
       );
-
-      setState(() {
-        _messages.add(newMessage);
-      });
-      _scrollToBottom();
+      _imService.refresh(); // Trigger immediate fetch
     } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('send_failed'.tr(args: [e.toString()]))),
+        );
+      }
+    }
+  }
+
+  Future<void> _addToFavorite(MessageResponse msg) async {
+    try {
+      await _imService.messageApi.addFavorite(msg.id);
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('发送失�? $e')));
+        ).showSnackBar(SnackBar(content: Text('favorited'.tr())));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('favorite_failed'.tr(args: [e.toString()]))),
+        );
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Filter messages for this conversation
+    final allMessages = _imService.messages;
+    final conversation = allMessages
+        .where(
+          (m) =>
+              m.senderBipupuId == widget.peerId ||
+              m.receiverBipupuId == widget.peerId,
+        )
+        .toList();
+
+    final currentUser = _authService.currentUser;
+    final myId = currentUser?.bipupuId ?? '';
+
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Hero(
-              tag: 'avatar_${widget.userId}',
-              child: _buildAvatar(widget.userId, radius: 18),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _peerUser?.nickname ??
-                        _peerUser?.username ??
-                        '用户 ${widget.userId}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+      appBar: AppBar(title: Text(widget.peerId)),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              itemCount: conversation.length,
+              itemBuilder: (context, index) {
+                final msg = conversation[index];
+                final isMe = msg.senderBipupuId == myId;
+
+                return GestureDetector(
+                  onLongPress: () {
+                    showModalBottomSheet(
+                      context: context,
+                      builder: (context) => Wrap(
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.favorite),
+                            title: Text('favorite'.tr()),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _addToFavorite(msg);
+                            },
+                          ),
+                          if (isMe)
+                            ListTile(
+                              leading: const Icon(Icons.delete),
+                              title: Text('delete_not_supported'.tr()),
+                              enabled: false,
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                  child: Align(
+                    alignment: isMe
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: isMe ? Colors.blue[100] : Colors.grey[200],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(msg.content),
+                          if (msg.pattern != null)
+                            Text(
+                              '${msg.pattern}',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  Text(
-                    '在线',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
-          ],
-        ),
-        actions: [
-          IconButton(icon: const Icon(Icons.call_outlined), onPressed: () {}),
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () => context.push('/user/detail/${widget.userId}'),
           ),
-        ],
-      ),
-      body: _isLoading && _messages.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
               children: [
                 Expanded(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
+                  child: TextField(
+                    controller: _textController,
+                    decoration: const InputDecoration(
+                      hintText: '������Ϣ...',
+                      border: OutlineInputBorder(),
                     ),
-                    itemCount: _messages.length + (_isLoadingMore ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == 0 && _isLoadingMore) {
-                        return const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(8.0),
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        );
-                      }
-
-                      final msgIdx = _isLoadingMore ? index - 1 : index;
-                      final msg = _messages[msgIdx];
-                      final isMe = msg.senderId == _currentUserId;
-                      final showTime =
-                          msgIdx == 0 ||
-                          msg.createdAt
-                                  .difference(_messages[msgIdx - 1].createdAt)
-                                  .inMinutes >
-                              5;
-
-                      return Column(
-                        children: [
-                          if (showTime)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              child: Text(
-                                _formatMessageTime(msg.createdAt),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Theme.of(context).colorScheme.outline,
-                                ),
-                              ),
-                            ),
-                          _buildMessageBubble(msg, isMe),
-                        ],
-                      );
-                    },
+                    onSubmitted: (_) => _sendMessage(),
                   ),
                 ),
-                _buildTextComposer(),
-              ],
-            ),
-    );
-  }
-
-  String _formatMessageTime(DateTime time) {
-    final now = DateTime.now();
-    final localTime = time.toLocal();
-    if (now.difference(localTime).inDays == 0) {
-      return DateFormat('HH:mm').format(localTime);
-    }
-    return DateFormat('MM-dd HH:mm').format(localTime);
-  }
-
-  Widget _buildAvatar(int userId, {double radius = 20}) {
-    final user = userId == _currentUserId
-        ? AuthService().currentUser
-        : _peerUser;
-    final avatarUrl = user?.avatarUrl;
-
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-      backgroundImage: avatarUrl != null
-          ? CachedNetworkImageProvider(
-              avatarUrl.startsWith('http')
-                  ? avatarUrl
-                  : '${bipupuHttp.options.baseUrl}$avatarUrl',
-            )
-          : null,
-      child: avatarUrl == null
-          ? Text(
-              (user?.nickname ?? user?.username ?? '?')
-                  .substring(0, 1)
-                  .toUpperCase(),
-              style: TextStyle(fontSize: radius * 0.8),
-            )
-          : null,
-    );
-  }
-
-  Widget _buildMessageBubble(MessageResponse msg, bool isMe) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isDevice = msg.messageType == MessageType.device;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: isMe
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!isMe) ...[
-            _buildAvatar(msg.senderId, radius: 18),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: Column(
-              crossAxisAlignment: isMe
-                  ? CrossAxisAlignment.end
-                  : CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isMe
-                        ? colorScheme.primary
-                        : (isDevice
-                              ? colorScheme.secondaryContainer
-                              : Colors.white),
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(16),
-                      topRight: const Radius.circular(16),
-                      bottomLeft: Radius.circular(isMe ? 16 : 4),
-                      bottomRight: Radius.circular(isMe ? 4 : 16),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 5,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (isDevice)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.sensors,
-                                size: 12,
-                                color: isMe
-                                    ? Colors.white70
-                                    : colorScheme.primary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '传唤信号',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: isMe
-                                      ? Colors.white70
-                                      : colorScheme.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      GestureDetector(
-                        onLongPress: () async {
-                          // show simple actions including favorite
-                          final action = await showModalBottomSheet<String>(
-                            context: context,
-                            builder: (c) => Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                ListTile(
-                                  leading: const Icon(
-                                    Icons.bookmark_add_outlined,
-                                  ),
-                                  title: const Text('收藏'),
-                                  onTap: () => Navigator.pop(c, 'favorite'),
-                                ),
-                                ListTile(
-                                  leading: const Icon(Icons.copy_outlined),
-                                  title: const Text('复制'),
-                                  onTap: () => Navigator.pop(c, 'copy'),
-                                ),
-                                ListTile(
-                                  leading: const Icon(Icons.delete_outline),
-                                  title: const Text('删除'),
-                                  onTap: () => Navigator.pop(c, 'delete'),
-                                ),
-                              ],
-                            ),
-                          );
-
-                          if (action == 'favorite') {
-                            try {
-                              await bipupuApi.favoriteMessage(msg.id);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('已收藏')),
-                              );
-                            } catch (e) {
-                              debugPrint('Favorite failed: $e');
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('收藏失败')),
-                              );
-                            }
-                          } else if (action == 'copy') {
-                            Clipboard.setData(ClipboardData(text: msg.content));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('已复制')),
-                            );
-                          } else if (action == 'delete') {
-                            try {
-                              await bipupuApi.deleteMessage(msg.id);
-                              setState(
-                                () => _messages.removeWhere(
-                                  (it) => it.id == msg.id,
-                                ),
-                              );
-                            } catch (e) {
-                              debugPrint('Delete failed: $e');
-                            }
-                          }
-                        },
-                        child: Text(
-                          msg.content,
-                          style: TextStyle(
-                            color: isMe
-                                ? Colors.white
-                                : (isDevice
-                                      ? colorScheme.onSecondaryContainer
-                                      : Colors.black87),
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                IconButton(
+                  icon: const Icon(Icons.send),
+                  onPressed: _sendMessage,
                 ),
               ],
             ),
-          ),
-          if (isMe) ...[
-            const SizedBox(width: 8),
-            _buildAvatar(msg.senderId, radius: 18),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTextComposer() {
-    return Container(
-      padding: EdgeInsets.only(
-        left: 8,
-        right: 8,
-        top: 8,
-        bottom: MediaQuery.of(context).padding.bottom + 8,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey[300]!)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline),
-            onPressed: () {},
-            color: Colors.grey[600],
-          ),
-          Expanded(
-            child: TextField(
-              controller: _textController,
-              decoration: InputDecoration(
-                hintText: '发送消�?..',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: Colors.grey[100],
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-              ),
-              onSubmitted: _handleSubmitted,
-            ),
-          ),
-          const SizedBox(width: 4),
-          IconButton(
-            icon: const Icon(Icons.send),
-            onPressed: () => _handleSubmitted(_textController.text),
-            color: Theme.of(context).colorScheme.primary,
           ),
         ],
       ),

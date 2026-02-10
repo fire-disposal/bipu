@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, LargeBinary
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, LargeBinary, JSON, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.models.base import Base
@@ -9,13 +9,14 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String(255), unique=True, index=True, nullable=False)
+    bipupu_id = Column(String(8), unique=True, index=True, nullable=False)  # 8位纯数字ID
     username = Column(String(50), unique=True, index=True, nullable=False)
     nickname = Column(String(50), nullable=True)
     avatar_data = Column(LargeBinary, nullable=True)  # 存储图像二进制数据
     avatar_filename = Column(String(255), nullable=True)  # 存储原始文件名
     avatar_mimetype = Column(String(50), nullable=True)  # 存储MIME类型
     hashed_password = Column(String(255), nullable=False)
+    cosmic_profile = Column(JSON, nullable=True)  # 生日、八字、MBTI等
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
     last_active = Column(DateTime(timezone=True), server_default=func.now())
@@ -24,21 +25,35 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # 订阅关系
-    subscriptions = relationship("UserSubscription", back_populates="user", cascade="all, delete-orphan")
-    
-    # 消息相关关系
-    messages_sent = relationship("Message", foreign_keys="[Message.sender_id]", back_populates="sender", cascade="all, delete-orphan")
-    messages_received = relationship("Message", foreign_keys="[Message.receiver_id]", back_populates="receiver", cascade="all, delete-orphan")
-    favorite_messages = relationship("MessageFavorite", back_populates="user", cascade="all, delete-orphan")
-    
-    # 社交关系
-    friendships_initiated = relationship("Friendship", foreign_keys="[Friendship.user_id]", back_populates="user", cascade="all, delete-orphan")
-    friendships_received = relationship("Friendship", foreign_keys="[Friendship.friend_id]", back_populates="friend", cascade="all, delete-orphan")
-    
     # 黑名单关系
     blocks_initiated = relationship("UserBlock", foreign_keys="[UserBlock.blocker_id]", back_populates="blocker", cascade="all, delete-orphan")
     blocked_by = relationship("UserBlock", foreign_keys="[UserBlock.blocked_id]", back_populates="blocked", cascade="all, delete-orphan")
+    
+    # 联系人关系
+    contacts = relationship("TrustedContact", foreign_keys="[TrustedContact.owner_id]", back_populates="owner", cascade="all, delete-orphan")
+    
+    # 订阅关系
+    subscriptions = relationship(
+        "ServiceAccount",
+        secondary="subscriptions",
+        back_populates="subscribers")
+    
+    # 收藏关系
+    favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
+    
+    # 唯一约束
+    __table_args__ = (
+        UniqueConstraint('bipupu_id', name='unique_bipupu_id'),
+        UniqueConstraint('username', name='unique_username'),
+    )
+    
+    @property
+    def avatar_url(self):
+        """生成头像URL"""
+        if self.avatar_data:
+            # 返回API端点，用于获取头像
+            return f"/api/users/{self.bipupu_id}/avatar"
+        return None
 
     def __repr__(self):
-        return f"<User(id={self.id}, email='{self.email}', username='{self.username}', is_superuser={self.is_superuser})>"
+        return f"<User(id={self.id}, bipupu_id='{self.bipupu_id}', username='{self.username}', is_superuser={self.is_superuser})>"

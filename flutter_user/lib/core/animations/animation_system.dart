@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/physics.dart';
 
 /// 动画配置类
 class AnimationConfig {
@@ -282,7 +281,7 @@ class RipplePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = color.withOpacity(1 - animation.value)
+      ..color = color.withValues(alpha: 1 - animation.value)
       ..style = PaintingStyle.fill;
 
     final radius = animation.value * maxRadius;
@@ -298,6 +297,7 @@ class RipplePainter extends CustomPainter {
 /// 自定义路由动画
 class CustomRouteTransition<T> extends PageRoute<T> {
   final Widget child;
+  @override
   final Duration transitionDuration;
   final Widget Function(
     BuildContext context,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_user/api/api.dart';
-import 'package:flutter_user/models/message/message_response.dart';
+import 'package:flutter_user/core/services/im_service.dart';
+import 'package:flutter_user/models/favorite/favorite.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class FavoritesPage extends StatefulWidget {
   const FavoritesPage({super.key});
@@ -10,8 +11,8 @@ class FavoritesPage extends StatefulWidget {
 }
 
 class _FavoritesPageState extends State<FavoritesPage> {
-  final ApiService _api = bipupuApi;
-  List<MessageResponse> _items = [];
+  final ImService _imService = ImService();
+  List<Favorite> _favorites = [];
   bool _loading = false;
 
   @override
@@ -23,57 +24,69 @@ class _FavoritesPageState extends State<FavoritesPage> {
   Future<void> _loadFavorites() async {
     setState(() => _loading = true);
     try {
-      final resp = await _api.getFavoriteMessages(page: 1, size: 50);
-      setState(() => _items = resp.items);
+      // Assuming paginated, just getting first page for now
+      final resp = await _imService.messageApi.getFavorites(page: 1, size: 50);
+      setState(() => _favorites = resp.items);
     } catch (e) {
       debugPrint('Load favorites error: $e');
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  Future<void> _toggleFavorite(MessageResponse m) async {
+  Future<void> _removeFavorite(Favorite fav) async {
     try {
-      // optimistic UI: remove from list
-      setState(() => _items.removeWhere((it) => it.id == m.id));
-      await bipupuApi.unfavoriteMessage(m.id);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('已取消收藏')));
+      setState(() => _favorites.removeWhere((f) => f.id == fav.id));
+      // Use messageId to remove favorite as per API: DELETE /api/messages/{message_id}/favorite
+      await _imService.messageApi.removeFavorite(fav.messageId);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('unfavorited'.tr())));
+      }
     } catch (e) {
       debugPrint('Unfavorite failed: $e');
-      // reload to be safe
-      await _loadFavorites();
+      _loadFavorites(); // Reload on error
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('收藏')),
+      appBar: AppBar(title: Text('my_favorites'.tr())),
       body: RefreshIndicator(
         onRefresh: _loadFavorites,
         child: _loading
             ? const Center(child: CircularProgressIndicator())
-            : _items.isEmpty
-            ? Center(child: Text('暂无收藏'))
+            : _favorites.isEmpty
+            ? Center(
+                child: SingleChildScrollView(
+                  physics: AlwaysScrollableScrollPhysics(),
+                  child: Container(
+                    height: MediaQuery.of(context).size.height * 0.8,
+                    alignment: Alignment.center,
+                    child: Text('no_favorites'.tr()),
+                  ),
+                ),
+              )
             : ListView.separated(
-                itemCount: _items.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemCount: _favorites.length,
+                separatorBuilder: (_, __) => const Divider(),
                 itemBuilder: (context, index) {
-                  final m = _items[index];
+                  final fav = _favorites[index];
+                  final msg = fav.message;
+
                   return ListTile(
-                    title: Text(
-                      m.content,
+                    leading: const Icon(Icons.favorite, color: Colors.amber),
+                    title: Text(msg?.content ?? 'message_deleted'.tr()),
+                    subtitle: Text(
+                      '${'sender'.tr(args: [msg?.senderBipupuId ?? "Unknown"])}  \n${'note'.tr(args: [fav.note ?? ""])}',
                       maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    subtitle: Text('${m.createdAt} • 用户 ${m.senderId}'),
                     trailing: IconButton(
-                      icon: const Icon(Icons.bookmark_remove_outlined),
-                      onPressed: () => _toggleFavorite(m),
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () => _removeFavorite(fav),
                     ),
-                    onTap: () => Navigator.pop(context),
                   );
                 },
               ),

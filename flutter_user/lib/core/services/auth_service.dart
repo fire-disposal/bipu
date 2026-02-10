@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_user/api/api.dart';
+import 'package:flutter_user/api/auth_api.dart';
 import 'package:flutter_user/core/storage/token_storage.dart';
 import '../storage/mobile_token_storage.dart';
 import 'package:flutter_user/models/models.dart';
@@ -12,7 +13,7 @@ class AuthService {
 
   final _authStateController = ValueNotifier<AuthStatus>(AuthStatus.unknown);
   final TokenStorage _tokenStorage = MobileTokenStorage();
-  ApiService get _api => bipupuApi;
+  late final AuthApi _api = AuthApi(bipupuHttp);
 
   UserResponse? _currentUser;
 

@@ -2,11 +2,8 @@
 
 from .diagnostics import ping  # noqa: F401
 from .stats import user_counts  # noqa: F401
-from .subscription_tasks import generate_weather_subscription, generate_fortune_subscription  # noqa: F401
 
 __all__ = [
 	"ping",
 	"user_counts",
-	"generate_weather_subscription",
-	"generate_fortune_subscription",
 ]

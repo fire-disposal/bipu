@@ -61,6 +61,17 @@ def exception_handler(exc: BaseCustomException) -> Dict[str, Any]:
     }
 
 
+
+class AdminAuthException(Exception):
+    """管理后台认证失败异常，用于触发重定向"""
+    pass
+
+from fastapi.responses import RedirectResponse
+async def admin_auth_exception_handler(request: Request, exc: AdminAuthException):
+    """捕获管理后台认证异常，重定向到登录页"""
+    return RedirectResponse(url="/admin/login", status_code=302)
+
+
 async def custom_exception_handler(request: Request, exc: BaseCustomException) -> JSONResponse:
     """FastAPI异常处理器"""
     logger.error(f"Exception occurred: {exc.__class__.__name__}: {exc.message}")

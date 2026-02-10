@@ -1,7 +1,7 @@
 import 'package:flutter_user/api/api.dart';
+import 'package:flutter_user/api/auth_api.dart';
 import 'package:flutter_user/models/user_model.dart';
 import 'package:flutter_user/models/user/user_request.dart';
-import 'package:dio/dio.dart';
 import 'dart:io';
 
 class ProfileService {
@@ -9,20 +9,18 @@ class ProfileService {
   factory ProfileService() => _instance;
   ProfileService._internal();
 
-  final _api = bipupuApi;
+  late final AuthApi _api = AuthApi(bipupuHttp);
 
   Future<User> getMe() async {
     final userData = await _api.getMe();
+    // Convert UserResponse to User if they are different, or UserResponse is aliased.
+    // Assuming User.fromJson can digest the same json.
     return User.fromJson(userData.toJson());
   }
 
   Future<User> uploadAvatar(File file) async {
-    final fileName = file.path.split('/').last;
-    final multipartFile = await MultipartFile.fromFile(
-      file.path,
-      filename: fileName,
-    );
-    final userData = await _api.updateAvatar(multipartFile);
+    // AuthApi takes filePath
+    final userData = await _api.updateAvatar(file.path);
     return User.fromJson(userData.toJson());
   }
 
@@ -31,11 +29,9 @@ class ProfileService {
     String? username,
     String? email,
   }) async {
-    final body = <String, dynamic>{};
-    if (nickname != null) body['nickname'] = nickname;
-    if (username != null) body['username'] = username;
-    if (email != null) body['email'] = email;
-    final userData = await _api.updateMe(UserUpdateRequest.fromJson(body));
+    final userData = await _api.updateProfile(
+      UserUpdateRequest(nickname: nickname, username: username, email: email),
+    );
     return User.fromJson(userData.toJson());
   }
 }

@@ -29,5 +29,6 @@ async def root():
         "version": settings.VERSION,
         "project": settings.PROJECT_NAME,
         "docs_url": "/api/docs",
-        "redoc_url": "/api/redoc"
+        "redoc_url": "/api/redoc",
+        "admin_url": "/admin"
     }

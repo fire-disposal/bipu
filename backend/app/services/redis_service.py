@@ -44,27 +44,6 @@ class RedisService:
             logger.error(f"Failed to publish message to Redis: {e}")
 
     @staticmethod
-    async def cache_user_status(user_id: int, status: str, expire: int = 300):
-        """缓存用户在线状态"""
-        try:
-            redis = await get_redis()
-            key = f"user:{user_id}:status"
-            await redis.set(key, status, ex=expire)
-        except Exception as e:
-            logger.error(f"Failed to cache user status: {e}")
-
-    @staticmethod
-    async def get_user_status(user_id: int) -> Optional[str]:
-        """获取用户在线状态"""
-        try:
-            redis = await get_redis()
-            key = f"user:{user_id}:status"
-            return await redis.get(key)
-        except Exception as e:
-            logger.error(f"Failed to get user status: {e}")
-            return None
-
-    @staticmethod
     async def increment_unread_count(user_id: int):
         """增加未读消息计数"""
         try:

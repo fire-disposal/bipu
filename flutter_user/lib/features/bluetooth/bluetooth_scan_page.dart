@@ -276,8 +276,6 @@ class _ScanResultTile extends StatelessWidget {
             snapshot.data ?? BluetoothConnectionState.disconnected;
         final isConnected =
             connectionState == BluetoothConnectionState.connected;
-        final isConnecting =
-            connectionState == BluetoothConnectionState.connecting;
 
         return ListTile(
           leading: CircleAvatar(
@@ -341,13 +339,7 @@ class _ScanResultTile extends StatelessWidget {
               ),
             ],
           ),
-          trailing: isConnecting
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : isConnected
+          trailing: isConnected
               ? TextButton(
                   onPressed: onDisconnect,
                   child: const Text("断开", style: TextStyle(color: Colors.red)),

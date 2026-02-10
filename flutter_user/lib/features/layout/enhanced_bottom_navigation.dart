@@ -146,16 +146,16 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
       builder: (context, uiState) {
         return Container(
           decoration: BoxDecoration(
-            color: colorScheme.surface.withOpacity(0.95),
+            color: colorScheme.surface.withValues(alpha: 0.95),
             border: Border(
               top: BorderSide(
-                color: colorScheme.outlineVariant.withOpacity(0.2),
+                color: colorScheme.outlineVariant.withValues(alpha: 0.2),
                 width: 0.5,
               ),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(
+                color: Colors.black.withValues(alpha: 
                   theme.brightness == Brightness.dark ? 0.3 : 0.08,
                 ),
                 blurRadius: 20,
@@ -219,7 +219,7 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
                   ),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? colorScheme.primary.withOpacity(0.12)
+                        ? colorScheme.primary.withValues(alpha: 0.12)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -233,7 +233,7 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
                           key: ValueKey(isSelected),
                           color: isSelected
                               ? colorScheme.primary
-                              : colorScheme.onSurfaceVariant.withOpacity(0.6),
+                              : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                           size: 24,
                         ),
                       ),
@@ -251,7 +251,7 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.red.withOpacity(0.3),
+                                    color: Colors.red.withValues(alpha: 0.3),
                                     blurRadius: 4,
                                     offset: const Offset(0, 1),
                                   ),
@@ -282,7 +282,7 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
                   style: TextStyle(
                     color: isSelected
                         ? colorScheme.primary
-                        : colorScheme.onSurfaceVariant.withOpacity(0.6),
+                        : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                     fontSize: 10,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   ),
@@ -334,12 +334,12 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
                     decoration: BoxDecoration(
                       color: isSelected
                           ? colorScheme.primary
-                          : colorScheme.primary.withOpacity(0.1),
+                          : colorScheme.primary.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                       boxShadow: isSelected || widget.isPagerListening
                           ? [
                               BoxShadow(
-                                color: colorScheme.primary.withOpacity(0.3),
+                                color: colorScheme.primary.withValues(alpha: 0.3),
                                 blurRadius: widget.isPagerListening ? 12 : 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -358,7 +358,7 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
                                 height: 48 * _breathingAnimation.value,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: colorScheme.primary.withOpacity(
+                                  color: colorScheme.primary.withValues(alpha: 
                                     0.1 * (1 - _breathingController.value),
                                   ),
                                 ),
@@ -392,7 +392,7 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
               style: TextStyle(
                 color: isSelected || widget.isPagerListening
                     ? colorScheme.primary
-                    : colorScheme.onSurfaceVariant.withOpacity(0.6),
+                    : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                 fontSize: 10,
                 fontWeight: isSelected || widget.isPagerListening
                     ? FontWeight.w600

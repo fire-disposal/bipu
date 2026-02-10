@@ -9,7 +9,6 @@ class PrivacyPage extends StatefulWidget {
 
 class _PrivacyPageState extends State<PrivacyPage> {
   bool _profileVisible = true;
-  bool _onlineStatusVisible = true;
   bool _lastSeenVisible = false;
   bool _readReceiptsEnabled = true;
 
@@ -44,18 +43,6 @@ class _PrivacyPageState extends State<PrivacyPage> {
           ),
 
           const Divider(),
-
-          // Online Status
-          SwitchListTile(
-            title: const Text('在线状态'),
-            subtitle: const Text('显示您的在线状态'),
-            value: _onlineStatusVisible,
-            onChanged: (value) {
-              setState(() {
-                _onlineStatusVisible = value;
-              });
-            },
-          ),
 
           // Last Seen
           SwitchListTile(

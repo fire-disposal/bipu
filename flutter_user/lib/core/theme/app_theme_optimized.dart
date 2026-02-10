@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-class AppTheme {
+class AppThemeOptimized {
+  static final ValueNotifier<ThemeMode> themeMode = ValueNotifier(
+    ThemeMode.system,
+  );
   // 主题色彩定义
   static const Color primaryBlue = Color(0xFF1E88E5);
   static const Color primaryGreen = Color(0xFF43A047);
@@ -230,13 +233,14 @@ class AppTheme {
 // 自定义页面转场动画
 class CustomPageRoute<T> extends PageRoute<T> {
   final Widget child;
+  @override
   final Duration transitionDuration;
   final Curve curve;
 
   CustomPageRoute({
     required this.child,
-    this.transitionDuration = AppTheme.defaultDuration,
-    this.curve = AppTheme.defaultCurve,
+    this.transitionDuration = AppThemeOptimized.defaultDuration,
+    this.curve = AppThemeOptimized.defaultCurve,
     super.settings,
   });
 

@@ -151,8 +151,8 @@ async def get_current_superuser_web(
             token = auth_header[7:]
     
     if not token:
-        from fastapi.responses import RedirectResponse
-        return RedirectResponse(url="/admin/login", status_code=302)
+        from app.core.exceptions import AdminAuthException
+        raise AdminAuthException()
     
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -180,17 +180,17 @@ async def get_current_superuser_web(
     except Exception as e:
         logger.error(f"Token validation error: {e}")
         # 重定向到登录页面
-        from fastapi.responses import RedirectResponse
-        return RedirectResponse(url="/admin/login", status_code=302)
+        from app.core.exceptions import AdminAuthException
+        raise AdminAuthException()
     
     # 查询用户
     user = db.query(User).filter(User.username == user_id).first()
     if user is None:
-        from fastapi.responses import RedirectResponse
-        return RedirectResponse(url="/admin/login", status_code=302)
+        from app.core.exceptions import AdminAuthException
+        raise AdminAuthException()
         
     if not user.is_superuser:
-        from fastapi.responses import RedirectResponse
-        return RedirectResponse(url="/admin/login", status_code=302)
+        from app.core.exceptions import AdminAuthException
+        raise AdminAuthException()
         
     return user

@@ -28,8 +28,8 @@
                     {% for message in messages %}
                     <tr>
                         <td>{{ message.id }}</td>
-                        <td>{{ message.sender.username if message.sender else '系统' }}</td>
-                        <td>{{ message.receiver.username if message.receiver else '广播' }}</td>
+                        <td>{{ message.sender_bipupu_id }}</td>
+                        <td>{{ message.receiver_bipupu_id }}</td>
                         <td>
                             {% if message.content %}
                                 {% if message.content|length > 50 %}
@@ -41,17 +41,9 @@
                                 <em>无内容</em>
                             {% endif %}
                         </td>
-                        <td>{{ message.message_type.value }}</td>
+                        <td>{{ message.msg_type }}</td>
                         <td>
-                            {% if message.status == 'sent' %}
-                                <span class="badge bg-success">已发送</span>
-                            {% elif message.status == 'delivered' %}
-                                <span class="badge bg-info">已送达</span>
-                            {% elif message.status == 'read' %}
-                                <span class="badge bg-primary">已读</span>
-                            {% else %}
-                                <span class="badge bg-secondary">{{ message.status.value }}</span>
-                            {% endif %}
+                           <span class="badge bg-secondary">已存储</span>
                         </td>
                         <td>{{ message.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                         <td>

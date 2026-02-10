@@ -8,7 +8,7 @@ export 'api_service.dart';
 class AppConfig {
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://api.205716.xyz/api',
+    defaultValue: 'https://api.205716.xyz',
   );
 
   static const int connectTimeout = 5000; // 5 seconds

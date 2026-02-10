@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_user/api/api.dart';
-import 'package:flutter_user/models/common/paginated_response.dart';
-import 'package:flutter_user/models/user_model.dart';
-import 'package:flutter_user/features/friendship/bloc/friendship_bloc.dart';
-import 'package:flutter_user/features/friendship/bloc/friendship_event.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_user/api/user_api.dart';
+import 'package:flutter_user/api/block_api.dart';
+import 'package:flutter_user/core/services/im_service.dart';
+import 'package:flutter_user/models/user/user_response.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class UserSearchPage extends StatefulWidget {
   const UserSearchPage({super.key});
@@ -15,101 +14,101 @@ class UserSearchPage extends StatefulWidget {
 }
 
 class _UserSearchPageState extends State<UserSearchPage> {
-  ApiService get _api => bipupuApi;
+  late final UserApi _userApi = UserApi(bipupuHttp);
+  late final ImService _imService = ImService();
   final TextEditingController _searchController = TextEditingController();
-  List<User> _results = [];
+  UserResponse? _result;
   bool _isLoading = false;
   String? _error;
 
-  Future<void> _search(String query) async {
+  Future<void> _search() async {
+    final query = _searchController.text.trim();
     if (query.isEmpty) return;
 
     setState(() {
       _isLoading = true;
       _error = null;
+      _result = null;
     });
 
     try {
-      final response = await _fetchUsers(query);
+      final user = await _userApi.getUserByBipupuId(query);
       setState(() {
-        _results = response.items;
+        _result = user;
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = 'user_not_found'.tr(); // e.toString();
       });
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<PaginatedResponse<User>> _fetchUsers(String keyword) async {
-    final response = await _api.adminGetUsers(page: 1, size: 20);
-    return PaginatedResponse<User>(
-      items: response.map((e) => User.fromJson(e.toJson())).toList(),
-      total: response.length,
-      page: 1,
-      size: 20,
-      pages: 1,
-    );
+  Future<void> _addContact() async {
+    if (_result == null) return;
+    try {
+      await _imService.contactApi.addContact(_result!.bipupuId);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('add_success'.tr())));
+        // Logic to refresh contacts list or navigate back
+        _imService.refresh(); // assume this refreshes contacts too
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('add_failed'.tr(args: [e.toString()]))),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: TextField(
-          controller: _searchController,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Search users...',
-            border: InputBorder.none,
-            hintStyle: TextStyle(color: Colors.white70),
-          ),
-          style: const TextStyle(color: Colors.white),
-          onSubmitted: _search,
-          textInputAction: TextInputAction.search,
-        ),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(child: Text('Error: $_error'))
-          : ListView.builder(
-              itemCount: _results.length,
-              itemBuilder: (context, index) {
-                final user = _results[index];
-                return ListTile(
-                  onTap: () => context.push('/user/detail/${user.id}'),
+      appBar: AppBar(title: Text('add_contact'.tr())),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                labelText: 'search_id_placeholder'.tr(),
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: _search,
+                ),
+              ),
+              onSubmitted: (_) => _search(),
+            ),
+            const SizedBox(height: 20),
+            if (_isLoading) const CircularProgressIndicator(),
+            if (_error != null)
+              Text(_error!, style: const TextStyle(color: Colors.red)),
+            if (_result != null)
+              Card(
+                child: ListTile(
                   leading: CircleAvatar(
                     child: Text(
-                      user.username.isNotEmpty
-                          ? user.username[0].toUpperCase()
-                          : '?',
+                      _result!.nickname?.substring(0, 1) ??
+                          _result!.username.substring(0, 1),
                     ),
                   ),
-                  title: Text(user.nickname ?? user.username),
-                  subtitle: Text(user.username),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.person_add),
-                    onPressed: () {
-                      context.read<FriendshipBloc>().add(
-                        SendFriendRequest(user.id),
-                      );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Friend request sent to ${user.username}',
-                          ),
-                        ),
-                      );
-                    },
+                  title: Text(_result!.nickname ?? _result!.username),
+                  subtitle: Text('ID: ${_result!.bipupuId}'),
+                  trailing: ElevatedButton(
+                    onPressed: _addContact,
+                    child: Text('add_friend'.tr()),
                   ),
-                );
-              },
-            ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
