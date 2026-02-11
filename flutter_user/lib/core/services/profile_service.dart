@@ -28,9 +28,15 @@ class ProfileService {
     String? nickname,
     String? username,
     String? email,
+    Map<String, dynamic>? cosmicProfile,
   }) async {
     final userData = await _api.updateProfile(
-      UserUpdateRequest(nickname: nickname, username: username, email: email),
+      UserUpdateRequest(
+        nickname: nickname,
+        username: username,
+        email: email,
+        cosmicProfile: cosmicProfile,
+      ),
     );
     return User.fromJson(userData.toJson());
   }

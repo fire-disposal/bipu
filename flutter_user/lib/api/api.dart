@@ -76,6 +76,44 @@ Dio _createDio() {
           stackTrace: error.stackTrace,
         );
 
+        if (error.response?.statusCode == 401) {
+          final refreshToken = await tokenStorage.getRefreshToken();
+          if (refreshToken != null && refreshToken.isNotEmpty) {
+            try {
+              // 1. Exchange refresh token for new tokens
+              final refreshResponse = await dio.post(
+                '/api/public/refresh',
+                data: {'refresh_token': refreshToken},
+              );
+
+              final newAccessToken = refreshResponse.data['access_token'];
+              final newRefreshToken = refreshResponse.data['refresh_token'];
+
+              // 2. Save new tokens
+              await tokenStorage.saveTokens(
+                accessToken: newAccessToken,
+                refreshToken: newRefreshToken,
+              );
+
+              // 3. Retry the original request with the new access token
+              final originalRequest = error.requestOptions;
+              originalRequest.headers['Authorization'] =
+                  'Bearer $newAccessToken';
+
+              // Clone the request to ensure it's a new operation
+              final retryResponse = await dio.fetch(originalRequest);
+              return handler.resolve(retryResponse);
+            } catch (e) {
+              logger.e('Failed to refresh token or retry request', error: e);
+              // If refresh fails, clear tokens and proceed with error
+              await tokenStorage.clearTokens();
+            }
+          } else {
+            // No refresh token, clear all tokens
+            await tokenStorage.clearTokens();
+          }
+        }
+
         if (error.requestOptions.data != null) {
           logger.e('Request data: ${error.requestOptions.data}');
         }
@@ -85,11 +123,6 @@ Dio _createDio() {
           logger.w(
             'No response data available (network error or no server response)',
           );
-        }
-
-        // For 401 errors, just clear tokens and let the app handle re-auth
-        if (error.response?.statusCode == 401) {
-          await tokenStorage.clearTokens();
         }
 
         handler.next(error);

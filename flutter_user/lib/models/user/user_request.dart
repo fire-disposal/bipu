@@ -3,8 +3,15 @@ class UserUpdateRequest {
   final String? nickname;
   final String? password;
   final String? username;
+  final Map<String, dynamic>? cosmicProfile;
 
-  UserUpdateRequest({this.email, this.nickname, this.password, this.username});
+  UserUpdateRequest({
+    this.email,
+    this.nickname,
+    this.password,
+    this.username,
+    this.cosmicProfile,
+  });
 
   factory UserUpdateRequest.fromJson(Map<String, dynamic> json) {
     return UserUpdateRequest(
@@ -12,6 +19,7 @@ class UserUpdateRequest {
       nickname: json['nickname'] as String?,
       password: json['password'] as String?,
       username: json['username'] as String?,
+      cosmicProfile: json['cosmic_profile'] as Map<String, dynamic>?,
     );
   }
 
@@ -20,5 +28,6 @@ class UserUpdateRequest {
     'nickname': nickname,
     'password': password,
     'username': username,
+    'cosmic_profile': cosmicProfile,
   };
 }

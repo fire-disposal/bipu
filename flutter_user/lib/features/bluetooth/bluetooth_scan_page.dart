@@ -3,7 +3,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'bluetooth_config.dart';
+import 'package:flutter_user/core/services/bluetooth_device_service.dart';
+import 'package:flutter_user/features/bluetooth/device_detail_page.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class BluetoothScanPage extends StatefulWidget {
   const BluetoothScanPage({super.key});
@@ -13,35 +15,87 @@ class BluetoothScanPage extends StatefulWidget {
 }
 
 class _BluetoothScanPageState extends State<BluetoothScanPage> {
+  final BluetoothDeviceService _bluetoothService = BluetoothDeviceService();
   List<ScanResult> _scanResults = [];
   bool _isScanning = false;
   BluetoothAdapterState _adapterState = BluetoothAdapterState.unknown;
+  BluetoothDevice? _connectingDevice;
+
+  // 寻呼机设备特征 UUID
+  static const String _pagerServiceUUID =
+      '6e400001-b5a3-f393-e0a9-e50e24dcca9e'; // Nordic UART Service
 
   late StreamSubscription<List<ScanResult>> _scanResultsSubscription;
   late StreamSubscription<bool> _isScanningSubscription;
   late StreamSubscription<BluetoothAdapterState> _adapterStateSubscription;
+  VoidCallback? _connectionStateListener;
 
   @override
   void initState() {
     super.initState();
+    _setupListeners();
+    _checkPermissions();
+  }
 
-    // 1. Setup Adapter State Listener
+  void _setupListeners() {
     _adapterStateSubscription = FlutterBluePlus.adapterState.listen((state) {
       _adapterState = state;
       if (mounted) setState(() {});
     });
 
-    // 2. Setup Scan Results Listener
     _scanResultsSubscription = FlutterBluePlus.scanResults.listen((results) {
+      // Sort results by RSSI
+      results.sort((a, b) => b.rssi.compareTo(a.rssi));
       _scanResults = results;
       if (mounted) setState(() {});
     });
 
-    // 3. Setup Scanning State Listener
     _isScanningSubscription = FlutterBluePlus.isScanning.listen((state) {
       _isScanning = state;
       if (mounted) setState(() {});
     });
+
+    _connectionStateListener = () {
+      final state = _bluetoothService.connectionState.value;
+      if (state == BluetoothConnectionState.connected) {
+        setState(() {
+          _connectingDevice = null;
+        });
+        if (mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const DeviceDetailPage()),
+          );
+        }
+      } else if (state == BluetoothConnectionState.disconnected) {
+        setState(() {
+          _connectingDevice = null;
+        });
+      }
+    };
+    _bluetoothService.connectionState.addListener(_connectionStateListener!);
+  }
+
+  Future<void> _checkPermissions() async {
+    if (Platform.isAndroid) {
+      var scanPermission = await Permission.bluetoothScan.request();
+      var connectPermission = await Permission.bluetoothConnect.request();
+      var locationPermission = await Permission.location.request();
+
+      if (scanPermission.isDenied ||
+          connectPermission.isDenied ||
+          locationPermission.isDenied) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Bluetooth and location permissions are required for scanning.',
+              ),
+            ),
+          );
+        }
+      }
+    }
+    // iOS permissions are handled by the system when the API is called.
   }
 
   @override
@@ -49,321 +103,559 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
     _scanResultsSubscription.cancel();
     _isScanningSubscription.cancel();
     _adapterStateSubscription.cancel();
+    if (_connectionStateListener != null) {
+      _bluetoothService.connectionState.removeListener(
+        _connectionStateListener!,
+      );
+      _connectionStateListener = null;
+    }
+    FlutterBluePlus.stopScan();
     super.dispose();
   }
 
   Future<void> _startScan() async {
-    // 0. Check for Bluetooth State
     if (_adapterState != BluetoothAdapterState.on) {
-      try {
-        if (Platform.isAndroid) {
-          await FlutterBluePlus.turnOn();
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('请先开启蓝牙')));
-          }
-        }
-      } catch (e) {
+      if (Platform.isAndroid) {
+        await FlutterBluePlus.turnOn();
+      } else {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('无法开启蓝牙: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please turn on Bluetooth to scan.')),
+          );
         }
       }
       return;
     }
 
     try {
-      // 1. Android Specific: Clean up previous connections if needed?
-      // Not strictly necessary with latest lib, but good practice to ensure clean state implies stopScan first.
-
-      // 2. Start Scanning
-      // Note: android uses withServices to filter, ios uses withServices to perform "background" scan
-      await FlutterBluePlus.startScan(
-        timeout: const Duration(seconds: 15),
-        // androidUsesFineLocation: true, // No longer needed in new versions, handled internally
-      );
+      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('扫描失败: $e')));
+        ).showSnackBar(SnackBar(content: Text('Scan failed: $e')));
       }
-    }
-  }
-
-  Future<void> _stopScan() async {
-    try {
-      await FlutterBluePlus.stopScan();
-    } catch (e) {
-      debugPrint("Stop scan error: $e");
     }
   }
 
   Future<void> _connectToDevice(BluetoothDevice device) async {
-    // 1. Stop scanning before connecting
-    await _stopScan();
+    if (_connectingDevice != null) return;
 
-    try {
-      // 2. Connect
-      // Note: autoConnect can be unstable on some Android devices, use with caution.
-      // We use false here for predictable behavior, implementing reconnection logic manually if needed.
-      await device.connect(
-        license: License.free,
-        timeout: BluetoothConfig.connectionTimeout,
-        mtu: BluetoothConfig.defaultMtu,
-        autoConnect: false,
-      );
+    setState(() {
+      _connectingDevice = device;
+    });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '已连接到 ${device.platformName.isNotEmpty ? device.platformName : "设备"}',
-            ),
-          ),
-        );
-      }
-
-      // TODO: Navigate to device control page
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('连接失败: $e')));
-      }
-    }
+    await FlutterBluePlus.stopScan();
+    await _bluetoothService.connect(device);
   }
 
-  Future<void> _disconnectFromDevice(BluetoothDevice device) async {
-    try {
-      await device.disconnect();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('已断开与 ${device.platformName} 的连接')),
-        );
-      }
-    } catch (e) {
-      debugPrint("Disconnect error: $e");
-    }
+  /// 判断是否为寻呼机设备
+  ///
+  /// 通过设备名称关键词识别寻呼机设备
+  bool _isPagerDevice(BluetoothDevice device) {
+    final name = device.platformName.toLowerCase();
+    return name.contains('pager') ||
+        name.contains('beeper') ||
+        name.contains('bp-') ||
+        name.contains('bipupu') ||
+        name.startsWith('bp') ||
+        name.startsWith('pg');
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('蓝牙扫描'),
-        actions: [
-          if (_isScanning)
-            TextButton(onPressed: _stopScan, child: const Text('停止'))
-          else
-            TextButton(onPressed: _startScan, child: const Text('扫描')),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Bluetooth Status Banner
-          _buildStatusBanner(),
+  // 获取过滤后的扫描结果（始终只显示寻呼机设备）
+  List<ScanResult> get _filteredScanResults {
+    return _scanResults
+        .where((result) => _isPagerDevice(result.device))
+        .toList();
+  }
 
-          // Scan Progress Indicator
-          if (_isScanning) const LinearProgressIndicator(),
+  Widget _buildScanResultTile(ScanResult result) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isConnecting = _connectingDevice?.remoteId == result.device.remoteId;
 
-          // Device List
-          Expanded(
-            child: _scanResults.isEmpty && !_isScanning
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+    final deviceName = result.device.platformName.isNotEmpty
+        ? result.device.platformName
+        : '未知设备';
+
+    return Card(
+      elevation: 2,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: isConnecting ? null : () => _connectToDevice(result.device),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              // 设备图标
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _getDeviceIcon(result.device),
+                  color: colorScheme.onPrimaryContainer,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+
+              // 设备信息
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 设备名称
+                    Text(
+                      deviceName,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+
+                    // 设备地址
+                    Row(
                       children: [
                         Icon(
-                          Icons.bluetooth_searching,
-                          size: 64,
-                          color: Colors.grey,
+                          Icons.location_on,
+                          size: 14,
+                          color: colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
-                        SizedBox(height: 16),
-                        Text('未找到设备，请点击扫描'),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            result.device.remoteId.str,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.6,
+                              ),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                     ),
-                  )
-                : ListView.separated(
-                    itemCount: _scanResults.length,
-                    separatorBuilder: (context, index) =>
-                        const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final result = _scanResults[index];
-                      return _ScanResultTile(
-                        result: result,
-                        onConnect: () => _connectToDevice(result.device),
-                        onDisconnect: () =>
-                            _disconnectFromDevice(result.device),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusBanner() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      color: _adapterState == BluetoothAdapterState.on
-          ? Colors.green[50]
-          : Colors.red[50],
-      child: Row(
-        children: [
-          Icon(
-            _adapterState == BluetoothAdapterState.on
-                ? Icons.bluetooth
-                : Icons.bluetooth_disabled,
-            color: _adapterState == BluetoothAdapterState.on
-                ? Colors.green
-                : Colors.red,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              _adapterState == BluetoothAdapterState.on
-                  ? '蓝牙已准备就绪'
-                  : '蓝牙未开启/不可用 (${_adapterState.toString().split('.').last})',
-              style: TextStyle(
-                color: _adapterState == BluetoothAdapterState.on
-                    ? Colors.green[700]
-                    : Colors.red[700],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          if (_adapterState != BluetoothAdapterState.on && Platform.isAndroid)
-            TextButton(
-              onPressed: () async {
-                try {
-                  await FlutterBluePlus.turnOn();
-                } catch (e) {
-                  // ignore
-                }
-              },
-              child: const Text("开启"),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ScanResultTile extends StatelessWidget {
-  final ScanResult result;
-  final VoidCallback onConnect;
-  final VoidCallback onDisconnect;
-
-  const _ScanResultTile({
-    required this.result,
-    required this.onConnect,
-    required this.onDisconnect,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Use StreamBuilder to listen to connection state of EACH device
-    return StreamBuilder<BluetoothConnectionState>(
-      stream: result.device.connectionState,
-      initialData: BluetoothConnectionState.disconnected,
-      builder: (context, snapshot) {
-        final connectionState =
-            snapshot.data ?? BluetoothConnectionState.disconnected;
-        final isConnected =
-            connectionState == BluetoothConnectionState.connected;
-
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: isConnected ? Colors.green : Colors.grey.shade300,
-            child: Icon(
-              isConnected ? Icons.bluetooth_connected : Icons.bluetooth,
-              color: isConnected ? Colors.white : Colors.grey,
-              size: 20,
-            ),
-          ),
-          title: Text(
-            result.device.platformName.isNotEmpty
-                ? result.device.platformName
-                : '未知设备 (${result.device.remoteId})',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                result.device.remoteId.toString(),
-                style: const TextStyle(fontSize: 12),
-              ),
-              Row(
-                children: [
-                  Container(
-                    margin: const EdgeInsets.only(top: 4),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 2,
+                    const SizedBox(height: 2),
+                    // 信号强度
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.signal_cellular_alt,
+                          size: 14,
+                          color: _getSignalColor(result.rssi),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${result.rssi} dBm',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
                     ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      "RSSI: ${result.rssi} dBm",
-                      style: const TextStyle(fontSize: 10),
-                    ),
-                  ),
-                  if (result.advertisementData.connectable) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      margin: const EdgeInsets.only(top: 4),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 2,
+
+                    // 连接状态
+                    if (isConnecting)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Row(
+                          children: [
+                            const SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '连接中...',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      decoration: BoxDecoration(
-                        color: Colors.blue[50],
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: Colors.blue.shade100),
+                  ],
+                ),
+              ),
+
+              // 连接按钮
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: isConnecting
+                      ? colorScheme.surface
+                      : colorScheme.primary,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isConnecting
+                        ? colorScheme.outline
+                        : colorScheme.primary,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isConnecting)
+                      const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation(Colors.grey),
+                        ),
+                      )
+                    else
+                      Icon(
+                        Icons.bluetooth_connected,
+                        size: 16,
+                        color: colorScheme.onPrimary,
                       ),
-                      child: const Text(
-                        "可连接",
-                        style: TextStyle(fontSize: 10, color: Colors.blue),
+                    const SizedBox(width: 6),
+                    Text(
+                      isConnecting ? '连接中' : '连接',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isConnecting
+                            ? colorScheme.onSurface
+                            : colorScheme.onPrimary,
                       ),
                     ),
                   ],
-                ],
+                ),
               ),
             ],
           ),
-          trailing: isConnected
-              ? TextButton(
-                  onPressed: onDisconnect,
-                  child: const Text("断开", style: TextStyle(color: Colors.red)),
-                )
-              : ElevatedButton(
-                  onPressed: result.advertisementData.connectable
-                      ? onConnect
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    minimumSize: const Size(60, 36),
-                  ),
-                  child: const Text("连接"),
-                ),
-          onTap: () {
-            // Optional: Navigate to detail page if connected
-            if (isConnected) {
-              // Navigate
-            } else if (result.advertisementData.connectable) {
-              onConnect();
-            }
-          },
-        );
-      },
+        ),
+      ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final filteredResults = _filteredScanResults;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('连接蓝牙设备'),
+        backgroundColor: colorScheme.primaryContainer,
+        foregroundColor: colorScheme.onPrimaryContainer,
+        elevation: 0,
+        actions: [
+          // 蓝牙状态指示器
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: _adapterState == BluetoothAdapterState.on
+                  ? Colors.green.withValues(alpha: 0.1)
+                  : Colors.red.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _adapterState == BluetoothAdapterState.on
+                    ? Colors.green
+                    : Colors.red,
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _adapterState == BluetoothAdapterState.on
+                      ? Icons.bluetooth
+                      : Icons.bluetooth_disabled,
+                  size: 16,
+                  color: _adapterState == BluetoothAdapterState.on
+                      ? Colors.green
+                      : Colors.red,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  _adapterState == BluetoothAdapterState.on ? '开启' : '关闭',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: _adapterState == BluetoothAdapterState.on
+                        ? Colors.green
+                        : Colors.red,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              colorScheme.primaryContainer.withValues(alpha: 0.1),
+              colorScheme.surface,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // 状态和说明区域
+              if (_adapterState != BluetoothAdapterState.on)
+                Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.orange.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.orange,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '蓝牙未开启',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange.shade800,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '请开启蓝牙以搜索和连接设备',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.orange.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorScheme.shadow.withValues(alpha: 0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: colorScheme.primary,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '正在搜索附近的寻呼机设备...\n找到设备后点击"连接"进行配对。',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: colorScheme.onSurface.withValues(
+                                  alpha: 0.7,
+                                ),
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.shield_outlined,
+                                    size: 14,
+                                    color: colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '智能设备识别中',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: colorScheme.primary,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // 设备列表
+              Expanded(
+                child: filteredResults.isEmpty && !_isScanning
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.bluetooth_searching,
+                              size: 64,
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              '未找到寻呼机设备',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                                color: colorScheme.onSurface.withValues(
+                                  alpha: 0.6,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '确保设备已开启并在蓝牙范围内',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: colorScheme.onSurface.withValues(
+                                  alpha: 0.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _startScan,
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: filteredResults.length,
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: _buildScanResultTile(
+                                filteredResults[index],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      floatingActionButton: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        child: FloatingActionButton.extended(
+          onPressed: _isScanning ? null : _startScan,
+          backgroundColor: _isScanning
+              ? colorScheme.surface
+              : colorScheme.primary,
+          foregroundColor: _isScanning
+              ? colorScheme.onSurface
+              : colorScheme.onPrimary,
+          elevation: 4,
+          icon: _isScanning
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                  ),
+                )
+              : const Icon(Icons.bluetooth_searching),
+          label: Text(_isScanning ? '扫描中...' : '扫描设备'),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  IconData _getDeviceIcon(BluetoothDevice device) {
+    // 根据设备名称或类型返回合适的图标
+    final name = device.platformName.toLowerCase();
+    if (name.contains('phone') || name.contains('手机')) {
+      return Icons.phone_android;
+    } else if (name.contains('watch') || name.contains('手表')) {
+      return Icons.watch;
+    } else if (name.contains('headphone') || name.contains('耳机')) {
+      return Icons.headphones;
+    } else if (name.contains('speaker') || name.contains('音箱')) {
+      return Icons.speaker;
+    } else if (name.contains('keyboard') || name.contains('键盘')) {
+      return Icons.keyboard;
+    } else if (name.contains('mouse') || name.contains('鼠标')) {
+      return Icons.mouse;
+    } else {
+      return Icons.bluetooth;
+    }
+  }
+
+  Color _getSignalColor(int rssi) {
+    // 根据信号强度返回颜色
+    if (rssi >= -50) {
+      return Colors.green; // 强信号
+    } else if (rssi >= -70) {
+      return Colors.orange; // 中等信号
+    } else {
+      return Colors.red; // 弱信号
+    }
   }
 }

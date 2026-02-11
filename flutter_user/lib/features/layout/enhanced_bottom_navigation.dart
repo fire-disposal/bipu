@@ -155,8 +155,8 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 
-                  theme.brightness == Brightness.dark ? 0.3 : 0.08,
+                color: Colors.black.withValues(
+                  alpha: theme.brightness == Brightness.dark ? 0.3 : 0.08,
                 ),
                 blurRadius: 20,
                 offset: const Offset(0, -2),
@@ -233,7 +233,9 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
                           key: ValueKey(isSelected),
                           color: isSelected
                               ? colorScheme.primary
-                              : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                              : colorScheme.onSurfaceVariant.withValues(
+                                  alpha: 0.6,
+                                ),
                           size: 24,
                         ),
                       ),
@@ -305,13 +307,15 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
     return Expanded(
       child: GestureDetector(
         onTap: () => widget.onTap(item.index),
-        onLongPress: () {
+        onLongPressStart: (_) {
           if (isSelected) {
             widget.onPagerLongPress?.call();
           } else {
             widget.onTap(item.index);
           }
         },
+        onLongPressEnd: (_) => widget.onPagerLongPressEnd?.call(),
+        onLongPressCancel: () => widget.onPagerLongPressEnd?.call(),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -339,7 +343,9 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
                       boxShadow: isSelected || widget.isPagerListening
                           ? [
                               BoxShadow(
-                                color: colorScheme.primary.withValues(alpha: 0.3),
+                                color: colorScheme.primary.withValues(
+                                  alpha: 0.3,
+                                ),
                                 blurRadius: widget.isPagerListening ? 12 : 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -358,8 +364,9 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
                                 height: 48 * _breathingAnimation.value,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: colorScheme.primary.withValues(alpha: 
-                                    0.1 * (1 - _breathingController.value),
+                                  color: colorScheme.primary.withValues(
+                                    alpha:
+                                        0.1 * (1 - _breathingController.value),
                                   ),
                                 ),
                               );

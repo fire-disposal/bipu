@@ -3,11 +3,13 @@ import 'dart:developer';
 import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../../api/contact_api.dart';
 import '../../api/message_api.dart';
 import '../../models/message/message_response.dart';
 import '../../models/contact/contact.dart';
 import 'auth_service.dart';
+import 'bluetooth_device_service.dart';
 
 /// Unified IM Service
 class ImService extends ChangeNotifier with WidgetsBindingObserver {
@@ -17,6 +19,7 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
 
   ContactApi? _contactApi;
   MessageApi? _messageApi;
+  final BluetoothDeviceService _bluetoothService = BluetoothDeviceService();
 
   Timer? _messageTimer;
   Timer? _contactsTimer;
@@ -42,6 +45,8 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
   int _unreadCount = 0;
   // ignore: unused_field
   bool _isLoading = false;
+  int _previousMessageCount =
+      0; // Track previous message count for new message detection
 
   // Configuration
   static const Duration _contactsPullInterval = Duration(minutes: 10);
@@ -179,9 +184,16 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
       // Calculate unread (from received messages)
       _unreadCount = receivedData.items.where((m) => !m.isRead).length;
 
+      // Check for new messages and forward to Bluetooth device
+      if (_messages.length > _previousMessageCount) {
+        final newMessages = _messages.sublist(_previousMessageCount);
+        _forwardNewMessagesToBluetooth(newMessages);
+      }
+      _previousMessageCount = _messages.length;
+
       notifyListeners();
     } catch (e) {
-      log('IM Service: Fetch messages failed: ');
+      log('IM Service: Fetch messages failed: $e');
       // Simple exponential backoff on error
       if (_backoffMultiplier < 8) {
         _backoffMultiplier *= 2;
@@ -190,12 +202,57 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  /// Manual Refresh
+  /// Forward new messages to connected Bluetooth device
+  void _forwardNewMessagesToBluetooth(List<MessageResponse> newMessages) {
+    // Only forward if Bluetooth is connected
+    if (_bluetoothService.connectionState.value !=
+        BluetoothConnectionState.connected) {
+      return;
+    }
+
+    for (final message in newMessages) {
+      // Only forward received messages (not sent messages)
+      // Check if this is a received message by comparing sender with current user
+      final currentUserId = AuthService().currentUser?.bipupuId;
+      if (currentUserId != null && message.senderBipupuId != currentUserId) {
+        try {
+          // Format message for forwarding
+          final formattedMessage = _formatMessageForBluetooth(message);
+          _bluetoothService.forwardMessage(formattedMessage);
+          log(
+            'IM Service: Forwarded message ${message.id} to Bluetooth device',
+          );
+        } catch (e) {
+          log(
+            'IM Service: Failed to forward message ${message.id} to Bluetooth: $e',
+          );
+        }
+      }
+    }
+  }
+
+  /// Refresh data manually
   Future<void> refresh() async {
-    // reset backoff
-    _backoffMultiplier = 1;
-    _startMessagePolling();
-    await _fetchInitialData();
+    await Future.wait([_fetchContacts(), _fetchMessages()]);
+  }
+
+  /// Format message for Bluetooth forwarding
+  String _formatMessageForBluetooth(MessageResponse message) {
+    // Find sender name
+    final senderContact = _contacts.firstWhere(
+      (contact) => contact.contactBipupuId == message.senderBipupuId,
+      orElse: () => Contact(
+        id: 0,
+        contactBipupuId: message.senderBipupuId,
+        remark: 'Unknown',
+        createdAt: DateTime.now(),
+      ),
+    );
+
+    final senderName = senderContact.remark ?? senderContact.contactBipupuId;
+
+    // Format: "From [Sender]: [Message]"
+    return 'From $senderName: ${message.content}';
   }
 
   // Helper to get contact by ID

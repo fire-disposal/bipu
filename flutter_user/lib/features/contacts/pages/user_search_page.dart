@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_user/api/api.dart';
 import 'package:flutter_user/api/user_api.dart';
-import 'package:flutter_user/api/block_api.dart';
 import 'package:flutter_user/core/services/im_service.dart';
 import 'package:flutter_user/models/user/user_response.dart';
 import 'package:easy_localization/easy_localization.dart';
