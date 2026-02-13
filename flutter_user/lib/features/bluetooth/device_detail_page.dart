@@ -36,24 +36,6 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Device Status',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            ValueListenableBuilder<int?>(
-              valueListenable: _bluetoothService.batteryLevel,
-              builder: (context, batteryLevel, child) {
-                if (batteryLevel == null) {
-                  return const Text('Battery Level: Reading...');
-                }
-                return Text(
-                  'Battery Level: $batteryLevel%',
-                  style: const TextStyle(fontSize: 16),
-                );
-              },
-            ),
-            const Divider(height: 40),
-            const Text(
               'Send Message',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),

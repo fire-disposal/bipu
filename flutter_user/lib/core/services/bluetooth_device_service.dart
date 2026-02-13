@@ -5,9 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 // Standard BLE Service and Characteristic UUIDs
-const String batteryServiceUuid = "0000180f-0000-1000-8000-00805f9b34fb";
-const String batteryLevelCharacteristicUuid =
-    "00002a19-0000-1000-8000-00805f9b34fb";
 const String currentTimeServiceUuid = "00001805-0000-1000-8000-00805f9b34fb";
 const String currentTimeCharacteristicUuid =
     "00002a2b-0000-1000-8000-00805f9b34fb";
@@ -30,7 +27,6 @@ class BluetoothDeviceService {
   StreamSubscription<BluetoothConnectionState>? _connectionStateSubscription;
 
   // Characteristics
-  BluetoothCharacteristic? _batteryLevelCharacteristic;
   BluetoothCharacteristic? _currentTimeCharacteristic;
   BluetoothCharacteristic? _messageForwardingCharacteristic;
 
@@ -38,7 +34,6 @@ class BluetoothDeviceService {
   final ValueNotifier<BluetoothConnectionState> connectionState = ValueNotifier(
     BluetoothConnectionState.disconnected,
   );
-  final ValueNotifier<int?> batteryLevel = ValueNotifier(null);
 
   Future<void> connect(BluetoothDevice device) async {
     if (_connectedDevice != null) {
@@ -77,17 +72,8 @@ class BluetoothDeviceService {
     List<BluetoothService> services = await _connectedDevice!
         .discoverServices();
     for (var service in services) {
-      // Find Battery Service
-      if (service.uuid.str.toLowerCase() == batteryServiceUuid) {
-        for (var c in service.characteristics) {
-          if (c.uuid.str.toLowerCase() == batteryLevelCharacteristicUuid) {
-            _batteryLevelCharacteristic = c;
-            await _setupBatteryLevelNotifications();
-          }
-        }
-      }
       // Find Current Time Service
-      else if (service.uuid.str.toLowerCase() == currentTimeServiceUuid) {
+      if (service.uuid.str.toLowerCase() == currentTimeServiceUuid) {
         for (var c in service.characteristics) {
           if (c.uuid.str.toLowerCase() == currentTimeCharacteristicUuid) {
             _currentTimeCharacteristic = c;
@@ -106,26 +92,12 @@ class BluetoothDeviceService {
     }
   }
 
-  Future<void> _setupBatteryLevelNotifications() async {
-    if (_batteryLevelCharacteristic != null &&
-        _batteryLevelCharacteristic!.properties.notify) {
-      await _batteryLevelCharacteristic!.setNotifyValue(true);
-      _batteryLevelCharacteristic!.lastValueStream.listen((value) {
-        if (value.isNotEmpty) {
-          batteryLevel.value = value[0];
-        }
-      });
-      // Also read initial value
-      final initialValue = await _batteryLevelCharacteristic!.read();
-      if (initialValue.isNotEmpty) {
-        batteryLevel.value = initialValue[0];
-      }
-    }
-  }
-
   Future<void> syncTime() async {
-    if (_currentTimeCharacteristic != null &&
-        _currentTimeCharacteristic!.properties.write) {
+    if (_currentTimeCharacteristic == null ||
+        !_currentTimeCharacteristic!.properties.write) {
+      return;
+    }
+    try {
       final now = DateTime.now();
       // Exact Time 256 format
       // See: https://www.bluetooth.com/specifications/specs/gatt-specification-supplement-6/
@@ -144,12 +116,19 @@ class BluetoothDeviceService {
         timeData.buffer.asUint8List(),
         withoutResponse: false,
       );
+    } catch (e) {
+      if (kDebugMode) {
+        print('Failed to sync time: $e');
+      }
     }
   }
 
   Future<void> forwardMessage(String message) async {
-    if (_messageForwardingCharacteristic != null &&
-        _messageForwardingCharacteristic!.properties.write) {
+    if (_messageForwardingCharacteristic == null ||
+        !_messageForwardingCharacteristic!.properties.write) {
+      return;
+    }
+    try {
       // Split message into chunks of MTU size - 20 is a safe default
       final mtu = _connectedDevice?.mtuNow ?? 23;
       final chunkSize = mtu - 3;
@@ -164,16 +143,18 @@ class BluetoothDeviceService {
           withoutResponse: true,
         );
       }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Failed to forward message: $e');
+      }
     }
   }
 
   void _cleanup() {
     _connectionStateSubscription?.cancel();
     _connectedDevice = null;
-    _batteryLevelCharacteristic = null;
     _currentTimeCharacteristic = null;
     _messageForwardingCharacteristic = null;
-    batteryLevel.value = null;
     if (connectionState.value != BluetoothConnectionState.disconnected) {
       connectionState.value = BluetoothConnectionState.disconnected;
     }
