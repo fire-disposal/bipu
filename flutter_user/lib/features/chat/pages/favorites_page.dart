@@ -71,7 +71,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
               )
             : ListView.separated(
                 itemCount: _favorites.length,
-                separatorBuilder: (_, __) => const Divider(),
+                separatorBuilder: (_, _) => const Divider(),
                 itemBuilder: (context, index) {
                   final fav = _favorites[index];
                   final msg = fav.message;

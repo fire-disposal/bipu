@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 class InteractionOptimizer {
   static bool _isInitialized = false;
   static bool _hapticEnabled = true;
-  static bool _soundEnabled = true;
+  static final bool _soundEnabled = true;
   static double _animationScale = 1.0;
 
   /// 初始化交互优化器

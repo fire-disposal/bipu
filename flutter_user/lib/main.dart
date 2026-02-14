@@ -15,8 +15,10 @@ import 'features/profile/pages/notifications_page.dart';
 import 'features/profile/pages/privacy_page.dart';
 import 'features/profile/pages/profile_edit_page.dart';
 import 'features/profile/pages/security_page.dart';
+import 'features/profile/pages/settings_page.dart';
 import 'package:flutter_user/features/chat/pages/conversation_list_page.dart';
-import 'package:flutter_user/features/chat/pages/chat_page.dart';
+import 'package:flutter_user/features/chat/pages/message_detail_page.dart';
+import 'package:flutter_user/models/message/message_response.dart';
 import 'package:flutter_user/features/chat/pages/favorites_page.dart';
 import 'package:flutter_user/features/contacts/pages/contacts_page.dart';
 import 'package:flutter_user/features/contacts/pages/user_search_page.dart';
@@ -33,6 +35,7 @@ import 'core/utils/logger.dart';
 import 'features/auth/login_page.dart';
 import 'features/auth/register_page.dart';
 import 'features/bluetooth/bluetooth_scan_page.dart';
+import 'features/voice_test/voice_test_page.dart';
 import 'features/home/home_page.dart';
 
 Future<void> main() async {
@@ -147,7 +150,25 @@ final GoRouter _router = GoRouter(
         GoRoute(path: '/pager', builder: (context, state) => const PagerPage()),
         GoRoute(
           path: '/messages',
-          builder: (context, state) => const ConversationListPage(),
+          builder: (context, state) => const MessagesPage(),
+        ),
+        GoRoute(
+          path: '/messages/detail',
+          builder: (context, state) {
+            final extra = state.extra as dynamic;
+            if (extra is Map) {
+              // sometimes JSON map may be passed
+              final msg = MessageResponse.fromJson(
+                Map<String, dynamic>.from(extra),
+              );
+              return MessageDetailPage(message: msg);
+            }
+            if (extra is MessageResponse) {
+              return MessageDetailPage(message: extra);
+            }
+            // Fallback: show empty scaffold
+            return const Scaffold(body: Center(child: Text('消息未找到')));
+          },
         ),
         GoRoute(
           path: '/messages/favorites',
@@ -200,6 +221,10 @@ final GoRouter _router = GoRouter(
               builder: (context, state) => const LanguagePage(),
             ),
             GoRoute(
+              path: 'settings',
+              builder: (context, state) => const SettingsPage(),
+            ),
+            GoRoute(
               path: 'about',
               builder: (context, state) => const AboutPage(),
             ),
@@ -219,12 +244,10 @@ final GoRouter _router = GoRouter(
         return UserDetailPage(bipupuId: id);
       },
     ),
+    // Chat (conversation bubble) UI removed in favor of message-based flow.
     GoRoute(
-      path: '/chat',
-      builder: (context, state) {
-        final extra = state.extra as String?;
-        return ChatPage(peerId: extra ?? '');
-      },
+      path: '/voice_test',
+      builder: (context, state) => const VoiceTestPage(),
     ),
     GoRoute(
       path: '/bluetooth/scan',

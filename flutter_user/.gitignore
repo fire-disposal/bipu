@@ -33,6 +33,10 @@ migrate_working_dir/
 /build/
 /coverage/
 
+.flutter-plugins
+.packages
+.metadata
+
 # Symbolication related
 app.*.symbols
 

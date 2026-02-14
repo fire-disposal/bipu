@@ -3,6 +3,9 @@ import '../../../../core/services/im_service.dart';
 import '../../../../core/services/auth_service.dart';
 import '../../../../models/message/message_response.dart';
 import 'package:easy_localization/easy_localization.dart';
+import '../../pager/widgets/waveform_widget.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 
 class ChatPage extends StatefulWidget {
   final String peerId;
@@ -143,6 +146,63 @@ class _ChatPageState extends State<ChatPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(msg.content),
+                          if (msg.contentJson != null &&
+                              msg.contentJson!['waveform_b64'] != null)
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 8),
+                                StaticWaveform(
+                                  waveformBase64:
+                                      msg.contentJson!['waveform_b64'],
+                                  height: 64,
+                                  color: isMe ? Colors.blue : Colors.green,
+                                ),
+                                Row(
+                                  children: [
+                                    TextButton.icon(
+                                      onPressed: () async {
+                                        try {
+                                          final pngBytes =
+                                              await exportWaveformPng(
+                                                msg.contentJson!['waveform_b64'],
+                                              );
+                                          final tmp =
+                                              await getTemporaryDirectory();
+                                          final file = File(
+                                            '${tmp.path}/waveform_${msg.id}.png',
+                                          );
+                                          await file.writeAsBytes(pngBytes);
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  '已导出声纹：${file.path}',
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        } catch (e) {
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text('导出失败：$e'),
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      },
+                                      icon: const Icon(Icons.download),
+                                      label: const Text('导出声纹'),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           if (msg.pattern != null)
                             Text(
                               '${msg.pattern}',

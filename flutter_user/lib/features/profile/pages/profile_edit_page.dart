@@ -264,7 +264,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                 ),
                 const SizedBox(height: 20),
                 DropdownButtonFormField<String>(
-                  value: _mbtiCtrl.text.isNotEmpty ? _mbtiCtrl.text : null,
+                  initialValue: _mbtiCtrl.text.isNotEmpty ? _mbtiCtrl.text : null,
                   decoration: const InputDecoration(
                     labelText: 'MBTI',
                     prefixIcon: Icon(Icons.psychology_outlined),

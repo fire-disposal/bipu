@@ -71,7 +71,7 @@ class _ContactsPageState extends State<ContactsPage> {
                   title: Text(contact.remark ?? contact.contactBipupuId),
                   subtitle: Text('ID: ${contact.contactBipupuId}'),
                   onTap: () {
-                    context.push('/chat', extra: contact.contactBipupuId);
+                    context.push('/user/detail/${contact.contactBipupuId}');
                   },
                 );
               },

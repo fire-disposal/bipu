@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_user/api/api.dart';
 
 class SecurityPage extends StatefulWidget {
   const SecurityPage({super.key});
@@ -105,14 +107,50 @@ class _SecurityPageState extends State<SecurityPage> {
   void _onUpdatePassword() {
     if (!_formKey.currentState!.validate()) return;
 
-    // TODO: 将此处与后端接口对接以完成实际密码修改
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('密码已更新（示例，本地验证通过）')));
+    _updatePassword();
+  }
 
-    // 清空表单
-    _oldPasswordController.clear();
-    _newPasswordController.clear();
-    _confirmPasswordController.clear();
+  Future<void> _updatePassword() async {
+    final oldPwd = _oldPasswordController.text.trim();
+    final newPwd = _newPasswordController.text.trim();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final response = await bipupuHttp.put(
+        '/api/profile/password',
+        data: {'old_password': oldPwd, 'new_password': newPwd},
+      );
+
+      if (context.mounted) {
+        Navigator.pop(context); // dismiss loading
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('密码已更新')));
+      }
+
+      _oldPasswordController.clear();
+      _newPasswordController.clear();
+      _confirmPasswordController.clear();
+    } on DioException catch (e) {
+      if (context.mounted) Navigator.pop(context);
+      final msg = e.response?.data?.toString() ?? e.message;
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('更新失败: $msg')));
+      }
+    } catch (e) {
+      if (context.mounted) Navigator.pop(context);
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('更新失败: $e')));
+      }
+    }
   }
 }

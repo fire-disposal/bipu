@@ -2,10 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:sound_stream/sound_stream.dart';
+import '../assistant/assistant_controller.dart';
 import '../../core/services/toast_service.dart';
 import '../../core/state/app_state_management.dart';
-import '../../core/services/speech_recognition_service.dart';
+import '../../core/voice/asr_engine.dart';
+import '../../core/voice/audio_resource_manager.dart';
 import 'enhanced_bottom_navigation.dart';
 
 /// 重构后的主布局
@@ -19,8 +20,7 @@ class MainLayout extends StatefulWidget {
 }
 
 class _MainLayoutState extends State<MainLayout> {
-  final RecorderStream _recorder = RecorderStream();
-  final SpeechRecognitionService _speechService = SpeechRecognitionService();
+  final AssistantController _assistant = AssistantController();
   bool _isSpeechInitialized = false;
   bool _isListening = false;
 
@@ -32,8 +32,7 @@ class _MainLayoutState extends State<MainLayout> {
 
   Future<void> _initSpeech() async {
     try {
-      await _recorder.initialize();
-      await _speechService.init();
+      await _assistant.init();
       if (mounted) {
         setState(() {
           _isSpeechInitialized = true;
@@ -97,10 +96,7 @@ class _MainLayoutState extends State<MainLayout> {
 
     try {
       setState(() => _isListening = true);
-
-      await _recorder.start();
-      _speechService.startListening(_recorder.audioStream);
-
+      await _assistant.startListening();
       ToastService().showInfo(
         'Listening...',
         duration: const Duration(minutes: 1),
@@ -117,8 +113,7 @@ class _MainLayoutState extends State<MainLayout> {
 
     ToastService().scaffoldMessengerKey.currentState?.removeCurrentSnackBar();
 
-    await _recorder.stop();
-    _speechService.stop();
+    await _assistant.stopListening();
 
     if (mounted) {
       if (context.mounted) {

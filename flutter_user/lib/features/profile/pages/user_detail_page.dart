@@ -49,29 +49,34 @@ class _UserDetailPageState extends State<UserDetailPage> {
     if (_user == null) return;
     try {
       await _blockApi.blockUser(_user!.id);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('blocked'.tr())));
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('block_failed'.tr(args: [e.toString()]))),
         );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading)
+    if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    if (_error != null)
+    }
+    if (_error != null) {
       return Scaffold(
         appBar: AppBar(),
         body: Center(child: Text('Error: $_error')),
       );
-    if (_user == null)
+    }
+    if (_user == null) {
       return Scaffold(body: Center(child: Text('user_not_found'.tr())));
+    }
 
     return Scaffold(
       appBar: AppBar(title: Text(_user!.nickname ?? _user!.username)),

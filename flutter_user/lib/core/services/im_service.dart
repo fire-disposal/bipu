@@ -30,7 +30,7 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
   // ignore: unused_field
   StreamSubscription<dynamic>? _connectivitySub;
   // ignore: unused_field
-  bool _isOnline = true; // Default true
+  final bool _isOnline = true; // Default true
   bool _isAppInForeground = true;
 
   // adaptive polling config
@@ -44,7 +44,7 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
   List<Contact> _contacts = [];
   int _unreadCount = 0;
   // ignore: unused_field
-  bool _isLoading = false;
+  final bool _isLoading = false;
   int _previousMessageCount =
       0; // Track previous message count for new message detection
 
@@ -234,6 +234,13 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
   /// Refresh data manually
   Future<void> refresh() async {
     await Future.wait([_fetchContacts(), _fetchMessages()]);
+  }
+
+  /// Clear local cached messages
+  void clearLocalCache() {
+    _messages = [];
+    _unreadCount = 0;
+    notifyListeners();
   }
 
   /// Format message for Bluetooth forwarding

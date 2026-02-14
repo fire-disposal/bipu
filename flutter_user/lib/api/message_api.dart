@@ -41,19 +41,17 @@ class MessageApi {
 
   Future<MessageResponse> sendMessage({
     required String receiverId, // bipupu_id or service name
-    required String content,
+    required Object content, // can be String or Map (JSON)
     String msgType = 'USER_POSTCARD',
     Map<String, dynamic>? pattern,
   }) async {
-    final response = await _dio.post(
-      '/api/messages/',
-      data: {
-        'receiver_id': receiverId,
-        'content': content,
-        'msg_type': msgType,
-        'pattern': pattern,
-      },
-    );
+    final body = {
+      'receiver_id': receiverId,
+      'content': content,
+      'msg_type': msgType,
+      'pattern': pattern,
+    };
+    final response = await _dio.post('/api/messages/', data: body);
     return MessageResponse.fromJson(response.data);
   }
 

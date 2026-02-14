@@ -44,4 +44,15 @@
   "enter_message": "请输入消息内容",
   "select_recipient_error": "请选择接收者",
   "pager_sent": "寻呼已发送！"
+  ,
+  "messages_menu_received": "收到的消息",
+  "messages_menu_sent": "发出的消息",
+  "messages_menu_subscription": "订阅消息",
+  "messages_menu_management": "消息管理",
+  "management_refresh": "刷新消息",
+  "management_clear_local": "清除本地缓存",
+  "management_delete_all_local": "删除所有本地消息（不可恢复）",
+  "message_detail_title": "消息详情",
+  "action_favorite": "收藏",
+  "action_copy": "复制"
 }

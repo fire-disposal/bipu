@@ -10,6 +10,3 @@ export 'profile_service.dart';
 // UI相关服务
 export 'theme_service.dart';
 export 'toast_service.dart';
-
-// 语音相关服务
-export 'speech_recognition_service.dart';
