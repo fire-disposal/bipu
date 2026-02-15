@@ -1,6 +1,18 @@
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional, Dict, Any, List
+
+
+class CosmicProfile(BaseModel):
+    """结构化的宇宙信息（可在未来扩展）"""
+    birthday: Optional[date] = Field(None, description="公历生日，格式 YYYY-MM-DD")
+    zodiac: Optional[str] = Field(None, description="西方星座，例如 '白羊座'")
+    age: Optional[int] = Field(None, description="年龄（整数岁）")
+    bazi: Optional[str] = Field(None, description="生辰八字字符串（可由用户提供或第三方服务计算）")
+    gender: Optional[str] = Field(None, description="性别，例如 'male','female','other'，可选")
+    mbti: Optional[str] = Field(None, description="MBTI 类型，例如 'INTJ'")
+    birth_time: Optional[str] = Field(None, description="出生时间，例如 '08:30'")
+    birthplace: Optional[str] = Field(None, description="出生地，城市/经纬度等")
 
 
 class UserBase(BaseModel):
@@ -9,7 +21,7 @@ class UserBase(BaseModel):
     bipupu_id: str
     nickname: Optional[str] = None
     avatar_url: Optional[str] = None
-    cosmic_profile: Optional[Dict[str, Any]] = None
+    cosmic_profile: Optional[CosmicProfile] = None
     is_active: bool = True
     is_superuser: bool = False
     last_active: Optional[datetime] = Field(None, description="最后活跃时间")

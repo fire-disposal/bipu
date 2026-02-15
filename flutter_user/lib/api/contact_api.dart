@@ -21,22 +21,22 @@ class ContactApi {
     );
   }
 
-  Future<Contact> addContact(String bipupuId, {String? remark}) async {
+  Future<Contact> addContact(String bipupuId, {String? alias}) async {
     final response = await _dio.post(
       '/api/contacts/',
-      data: {'contact_id': bipupuId, 'remark': remark},
+      data: {'contact_bipupu_id': bipupuId, 'alias': alias},
     );
     return Contact.fromJson(response.data);
   }
 
-  Future<void> deleteContact(int contactId) async {
-    await _dio.delete('/api/contacts/$contactId');
+  Future<void> deleteContact(String contactBipupuId) async {
+    await _dio.delete('/api/contacts/$contactBipupuId');
   }
 
-  Future<Contact> updateContact(int contactId, {String? remark}) async {
+  Future<Contact> updateContact(String contactBipupuId, {String? alias}) async {
     final response = await _dio.put(
-      '/api/contacts/$contactId',
-      data: {'remark': remark},
+      '/api/contacts/$contactBipupuId',
+      data: {'alias': alias},
     );
     return Contact.fromJson(response.data);
   }

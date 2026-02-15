@@ -3,6 +3,7 @@ import pickle
 from typing import Optional, Any, Union
 from app.db.database import get_redis
 from app.models.message import Message
+from app.schemas.enums import MessageType
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -15,19 +16,18 @@ class RedisService:
         """发布新消息通知"""
         try:
             redis = await get_redis()
-            # 为接收者发布消息
-            channel = f"user:{message.receiver_id}:messages"
-            
+            # 为接收者发布消息（使用 bipupu_id 作为 channel 识别）
+            channel = f"user:{message.receiver_bipupu_id}:messages"
+
             # 构建消息数据
             data = {
                 "event": "new_message",
                 "data": {
                     "id": message.id,
-                    "sender_id": message.sender_id,
-                    "receiver_id": message.receiver_id,
-                    "title": message.title,
+                    "sender_id": message.sender_bipupu_id,
+                    "receiver_id": message.receiver_bipupu_id,
                     "content": message.content,
-                    "message_type": message.message_type,
+                    "message_type": message.message_type.value if message.message_type else None,
                     "created_at": message.created_at.isoformat() if message.created_at else None,
                     "pattern": message.pattern
                 }
@@ -37,7 +37,7 @@ class RedisService:
             logger.info(f"Published message {message.id} to channel {channel}")
             
             # 同时也为发送者发布（用于多端同步）
-            sender_channel = f"user:{message.sender_id}:messages"
+            sender_channel = f"user:{message.sender_bipupu_id}:messages"
             await redis.publish(sender_channel, json.dumps(data))
             
         except Exception as e:

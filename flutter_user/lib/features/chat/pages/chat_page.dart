@@ -227,7 +227,7 @@ class _ChatPageState extends State<ChatPage> {
                   child: TextField(
                     controller: _textController,
                     decoration: const InputDecoration(
-                      hintText: '������Ϣ...',
+                      hintText: '输入消息...',
                       border: OutlineInputBorder(),
                     ),
                     onSubmitted: (_) => _sendMessage(),

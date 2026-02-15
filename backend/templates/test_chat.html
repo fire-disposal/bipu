@@ -32,11 +32,11 @@
                         <div class="form-text">例如: weather.service 或 8位数字ID</div>
                     </div>
                     <div class="mb-3">
-                        <label for="msg_type" class="form-label">消息类型</label>
-                        <select class="form-select" id="msg_type" name="msg_type">
-                            <option value="USER_POSTCARD">USER_POSTCARD (普通)</option>
-                            <option value="VOICE_TRANSCRIPT">VOICE_TRANSCRIPT (语音转录)</option>
-                            <option value="COSMIC_BROADCAST">COSMIC_BROADCAST (广播)</option>
+                        <label for="message_type" class="form-label">消息类型</label>
+                        <select class="form-select" id="message_type" name="message_type">
+                            <option value="NORMAL">NORMAL (普通消息)</option>
+                            <option value="VOICE">VOICE (含声纹的语音导出)</option>
+                            <option value="SYSTEM">SYSTEM (系统/服务号消息)</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -79,7 +79,7 @@
                             <small class="text-muted">{{ msg.created_at.strftime('%m-%d %H:%M') }}</small>
                         </div>
                         <p class="mb-1">{{ msg.content }}</p>
-                        <small class="text-muted">Type: {{ msg.msg_type }}</small>
+                        <small class="text-muted">Type: {{ msg.message_type.value }}</small>
                     </div>
                     {% else %}
                     <div class="text-center p-4 text-muted">暂无收到消息</div>
@@ -97,7 +97,7 @@
                             <small class="text-muted">{{ msg.created_at.strftime('%m-%d %H:%M') }}</small>
                         </div>
                         <p class="mb-1">{{ msg.content }}</p>
-                        <small class="text-muted">Type: {{ msg.msg_type }}</small>
+                        <small class="text-muted">Type: {{ msg.message_type.value }}</small>
                     </div>
                     {% else %}
                     <div class="text-center p-4 text-muted">暂无发送消息</div>

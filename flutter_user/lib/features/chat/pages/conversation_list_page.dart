@@ -85,6 +85,32 @@ class _MessagesPageState extends State<MessagesPage> {
       ),
       body: Column(
         children: [
+          // Socket connection status (simple indicator)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _imService.socketConnected,
+              builder: (context, connected, _) {
+                return Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: connected ? Colors.green : Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      connected ? '系统Socket：已连接' : '系统Socket：未连接',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
           // Four horizontal full-width menu bars
           _buildMenuBar('messages_menu_received'.tr(), MessageFilter.received),
           _buildMenuBar('messages_menu_sent'.tr(), MessageFilter.sent),

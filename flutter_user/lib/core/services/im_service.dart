@@ -1,15 +1,19 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer';
 import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:web_socket_channel/io.dart';
 import '../../api/contact_api.dart';
 import '../../api/message_api.dart';
 import '../../models/message/message_response.dart';
 import '../../models/contact/contact.dart';
 import 'auth_service.dart';
 import 'bluetooth_device_service.dart';
+import '../storage/mobile_token_storage.dart';
+import '../../api/api.dart';
 
 /// Unified IM Service
 class ImService extends ChangeNotifier with WidgetsBindingObserver {
@@ -20,6 +24,9 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
   ContactApi? _contactApi;
   MessageApi? _messageApi;
   final BluetoothDeviceService _bluetoothService = BluetoothDeviceService();
+
+  /// Socket connection placeholder state (true = connected)
+  final ValueNotifier<bool> socketConnected = ValueNotifier<bool>(false);
 
   Timer? _messageTimer;
   Timer? _contactsTimer;
@@ -67,6 +74,21 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     log('IM Service: Initialized');
 
+    // initialize socketConnected based on network connectivity as a placeholder
+    _connectivity.checkConnectivity().then((c) {
+      socketConnected.value = c != ConnectivityResult.none;
+    });
+    _connectivitySub = _connectivity.onConnectivityChanged.listen((c) {
+      socketConnected.value = c != ConnectivityResult.none;
+    });
+
+    // attempt to connect socket if authenticated
+    final status = AuthService().authState.value;
+    if (status == AuthStatus.authenticated) {
+      // fire-and-forget connect; path '/ws' is a common default — backend may use different path
+      unawaited(connectSocket());
+    }
+
     // Listen to Auth State
     AuthService().authState.addListener(_onAuthStateChanged);
     // Initial check
@@ -80,12 +102,14 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
       // Only start if not already polling or if we need to restart
       if (_messageTimer == null || !_messageTimer!.isActive) {
         startPolling();
+        unawaited(connectSocket());
       }
     } else {
       _stopTimers();
       _messages = [];
       _contacts = [];
       _unreadCount = 0;
+      disconnectSocket();
       notifyListeners();
     }
   }
@@ -120,6 +144,131 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
         _fetchMessages();
       },
     );
+  }
+
+  // WebSocket
+  IOWebSocketChannel? _wsChannel;
+  StreamSubscription? _wsSub;
+  Duration _reconnectDelay = const Duration(seconds: 5);
+  Timer? _pingTimer;
+
+  /// Connect to backend WebSocket at `/api/ws`.
+  /// Backend expects token as query parameter: ws(s)://host[:port]/api/ws?token=xxx
+  Future<void> connectSocket({String path = '/api/ws'}) async {
+    try {
+      final uri = Uri.parse(AppConfig.baseUrl);
+      final scheme = uri.scheme == 'https' ? 'wss' : 'ws';
+      final port = uri.hasPort ? uri.port : (scheme == 'wss' ? 443 : 80);
+
+      final token = await MobileTokenStorage().getAccessToken();
+
+      final wsUri = Uri(
+        scheme: scheme,
+        host: uri.host,
+        port: port,
+        path: path,
+        queryParameters: token != null && token.isNotEmpty
+            ? {'token': token}
+            : null,
+      );
+
+      // clean previous
+      try {
+        _wsSub?.cancel();
+        _wsChannel?.sink.close();
+      } catch (_) {}
+
+      _wsChannel = IOWebSocketChannel.connect(wsUri.toString());
+      socketConnected.value = true;
+
+      // When WebSocket connected, stop long-polling to avoid duplicates
+      try {
+        _messageTimer?.cancel();
+      } catch (_) {}
+
+      _wsSub = _wsChannel!.stream.listen(
+        (event) {
+          _handleSocketEvent(event);
+        },
+        onDone: () async {
+          socketConnected.value = false;
+          _stopPing();
+          // try reconnect
+          await Future.delayed(_reconnectDelay);
+          if (AuthService().authState.value == AuthStatus.authenticated) {
+            unawaited(connectSocket(path: path));
+          }
+        },
+        onError: (err) async {
+          socketConnected.value = false;
+          _stopPing();
+          await Future.delayed(_reconnectDelay);
+          if (AuthService().authState.value == AuthStatus.authenticated) {
+            unawaited(connectSocket(path: path));
+          }
+        },
+      );
+
+      // start heartbeat
+      _startPing();
+    } catch (e) {
+      socketConnected.value = false;
+    }
+  }
+
+  void disconnectSocket() {
+    try {
+      _stopPing();
+      _wsSub?.cancel();
+      _wsChannel?.sink.close();
+    } catch (_) {}
+    _wsSub = null;
+    _wsChannel = null;
+    socketConnected.value = false;
+
+    // WebSocket disconnected — resume long-polling as fallback
+    try {
+      _applyPollingInterval();
+    } catch (_) {}
+  }
+
+  void _handleSocketEvent(dynamic event) {
+    try {
+      final String payload = event is String
+          ? event
+          : utf8.decode(event as List<int>);
+      final Map<String, dynamic> data = json.decode(payload);
+
+      final type = data['type'];
+      if (type == 'new_message') {
+        final payloadObj = data['payload'] ?? {};
+        final content = payloadObj['content']?.toString() ?? '';
+
+        if (_bluetoothService.connectionState.value ==
+                BluetoothConnectionState.connected &&
+            content.isNotEmpty) {
+          _bluetoothService.forwardMessage(content);
+        }
+      }
+    } catch (e) {
+      // ignore parse errors
+    }
+  }
+
+  void _startPing() {
+    _stopPing();
+    _pingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      try {
+        if (_wsChannel != null) {
+          _wsChannel!.sink.add(json.encode({'type': 'ping'}));
+        }
+      } catch (_) {}
+    });
+  }
+
+  void _stopPing() {
+    _pingTimer?.cancel();
+    _pingTimer = null;
   }
 
   void _startContactsPolling() {
@@ -274,6 +423,9 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  /// Format outgoing (sent) message for Bluetooth forwarding
+  // no outgoing forwarding helper (outgoing messages should not be forwarded)
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final wasForeground = _isAppInForeground;
@@ -292,6 +444,10 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
   void dispose() {
     AuthService().authState.removeListener(_onAuthStateChanged);
     stopPolling();
+    _connectivitySub?.cancel();
+    try {
+      socketConnected.dispose();
+    } catch (_) {}
     super.dispose();
   }
 }

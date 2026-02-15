@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'package:flutter/services.dart';
 import 'dart:io';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/profile_service.dart';
@@ -24,6 +25,9 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   late final TextEditingController _zodiacCtrl;
   late final TextEditingController _baziCtrl;
   late final TextEditingController _mbtiCtrl;
+  late final TextEditingController _birthTimeCtrl;
+  late final TextEditingController _birthplaceCtrl;
+  String? _gender;
 
   bool _saving = false;
 
@@ -42,6 +46,13 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     );
     _baziCtrl = TextEditingController(text: user?.cosmicProfile?['bazi'] ?? '');
     _mbtiCtrl = TextEditingController(text: user?.cosmicProfile?['mbti'] ?? '');
+    _birthTimeCtrl = TextEditingController(
+      text: user?.cosmicProfile?['birth_time'] ?? '',
+    );
+    _birthplaceCtrl = TextEditingController(
+      text: user?.cosmicProfile?['birthplace'] ?? '',
+    );
+    _gender = user?.cosmicProfile?['gender'] as String?;
   }
 
   @override
@@ -53,6 +64,9 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     _zodiacCtrl.dispose();
     _baziCtrl.dispose();
     _mbtiCtrl.dispose();
+    _birthTimeCtrl.dispose();
+    _birthplaceCtrl.dispose();
+    // _gender 不需要 dispose
     super.dispose();
   }
 
@@ -65,6 +79,9 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         if (_zodiacCtrl.text.isNotEmpty) 'zodiac': _zodiacCtrl.text,
         if (_baziCtrl.text.isNotEmpty) 'bazi': _baziCtrl.text,
         if (_mbtiCtrl.text.isNotEmpty) 'mbti': _mbtiCtrl.text,
+        if (_birthTimeCtrl.text.isNotEmpty) 'birth_time': _birthTimeCtrl.text,
+        if (_birthplaceCtrl.text.isNotEmpty) 'birthplace': _birthplaceCtrl.text,
+        if (_gender != null && _gender!.isNotEmpty) 'gender': _gender,
       };
       final updated = await ProfileService().updateProfile(
         nickname: _nicknameCtrl.text.trim(),
@@ -170,6 +187,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Form(
+            autovalidateMode: AutovalidateMode.onUserInteraction,
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -244,6 +262,17 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                     prefixIcon: Icon(Icons.cake_outlined),
                     suffixIcon: Icon(Icons.calendar_today),
                   ),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return null;
+                    final reg = RegExp(r'^\d{4}-\d{2}-\d{2}\$');
+                    if (!reg.hasMatch(v)) return '生日格式应为 YYYY-MM-DD';
+                    try {
+                      DateTime.parse(v);
+                      return null;
+                    } catch (_) {
+                      return '无效的日期';
+                    }
+                  },
                 ),
                 const SizedBox(height: 20),
                 TextFormField(
@@ -263,8 +292,69 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                   ),
                 ),
                 const SizedBox(height: 20),
+                TextFormField(
+                  controller: _birthTimeCtrl,
+                  decoration: const InputDecoration(
+                    labelText: '出生时间',
+                    prefixIcon: Icon(Icons.access_time),
+                    helperText: '可选，格式如 08:30',
+                  ),
+                  keyboardType: TextInputType.datetime,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9:]')),
+                    LengthLimitingTextInputFormatter(8),
+                  ],
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return null;
+                    final reg = RegExp(
+                      r'^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?\$',
+                    );
+                    if (!reg.hasMatch(v)) return '时间格式应为 HH:MM 或 HH:MM:SS';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _birthplaceCtrl,
+                  decoration: const InputDecoration(
+                    labelText: '出生地',
+                    prefixIcon: Icon(Icons.location_on_outlined),
+                    helperText: '可选，填写城市或详细地址',
+                  ),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return null;
+                    if (v.length > 100) return '出生地不应超过100字符';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
                 DropdownButtonFormField<String>(
-                  initialValue: _mbtiCtrl.text.isNotEmpty ? _mbtiCtrl.text : null,
+                  value: _gender != null && _gender!.isNotEmpty
+                      ? _gender
+                      : null,
+                  decoration: const InputDecoration(
+                    labelText: '性别',
+                    prefixIcon: Icon(Icons.transgender),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'male', child: Text('男')),
+                    DropdownMenuItem(value: 'female', child: Text('女')),
+                    DropdownMenuItem(value: 'other', child: Text('其他')),
+                  ],
+                  onChanged: (v) => setState(() => _gender = v),
+                  validator: (v) {
+                    // optional, but if provided ensure value from list
+                    if (v == null || v.isEmpty) return null;
+                    if (!['male', 'female', 'other'].contains(v))
+                      return '请选择有效性别';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+                DropdownButtonFormField<String>(
+                  initialValue: _mbtiCtrl.text.isNotEmpty
+                      ? _mbtiCtrl.text
+                      : null,
                   decoration: const InputDecoration(
                     labelText: 'MBTI',
                     prefixIcon: Icon(Icons.psychology_outlined),
@@ -293,7 +383,10 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                 const SizedBox(height: 48),
                 AppButton(
                   text: '保存修改',
-                  onPressed: _save,
+                  onPressed:
+                      (!_saving && (_formKey.currentState?.validate() ?? true))
+                      ? _save
+                      : null,
                   isLoading: _saving,
                   backgroundColor: Theme.of(context).colorScheme.primary,
                   foregroundColor: Colors.white,

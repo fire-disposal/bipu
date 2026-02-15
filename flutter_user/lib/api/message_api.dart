@@ -42,17 +42,39 @@ class MessageApi {
   Future<MessageResponse> sendMessage({
     required String receiverId, // bipupu_id or service name
     required Object content, // can be String or Map (JSON)
-    String msgType = 'USER_POSTCARD',
+    String msgType = 'NORMAL',
     Map<String, dynamic>? pattern,
   }) async {
+    // Normalize to new `message_type` key while keeping legacy `msg_type` for compatibility
+    final normalized = _normalizeToNewType(msgType);
     final body = {
       'receiver_id': receiverId,
       'content': content,
-      'msg_type': msgType,
+      'message_type': normalized,
+      'msg_type': msgType, // legacy
       'pattern': pattern,
     };
     final response = await _dio.post('/api/messages/', data: body);
     return MessageResponse.fromJson(response.data);
+  }
+
+  String _normalizeToNewType(String raw) {
+    final s = raw.toUpperCase();
+    switch (s) {
+      case 'SYSTEM':
+      case 'ALERT':
+      case 'NOTIFICATION':
+        return 'SYSTEM';
+      case 'VOICE':
+      case 'VOICE_TRANSCRIPT':
+        return 'VOICE';
+      case 'USER':
+      case 'USER_POSTCARD':
+      case 'COSMIC_BROADCAST':
+      case 'SERVICE_REPLY':
+      default:
+        return 'NORMAL';
+    }
   }
 
   Future<void> deleteMessage(int messageId) async {

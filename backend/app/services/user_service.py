@@ -9,6 +9,8 @@ from app.core.exceptions import ValidationException, NotFoundException
 import asyncio
 from app.services.redis_service import RedisService
 from app.core.user_utils import generate_bipupu_id
+from app.core.user_utils import get_western_zodiac
+from app.core.lunar_service import compute_bazi, compute_lunar_date
 from app.models.user_block import UserBlock
 from app.schemas.common import PaginationParams
 from datetime import datetime
@@ -68,6 +70,64 @@ class UserService:
         """更新用户信息（仅限昵称和cosmic_profile）"""
         update_data = user_update.dict(exclude_unset=True)
 
+        # 处理 cosmic_profile 的合并与派生字段填充
+        if "cosmic_profile" in update_data:
+            incoming = update_data.pop("cosmic_profile") or {}
+            # 保证原有 profile 为 dict
+            existing = user.cosmic_profile or {}
+            # 合并字段（incoming 优先）
+            merged = {**existing, **incoming}
+
+            # 如果提供 birthday，则尝试解析并填充 zodiac 与 age
+            birthday = merged.get("birthday")
+            if birthday:
+                try:
+                    from datetime import datetime, date
+                    if isinstance(birthday, str):
+                        try:
+                            bdate = datetime.fromisoformat(birthday).date()
+                        except Exception:
+                            bdate = datetime.strptime(birthday, "%Y-%m-%d").date()
+                    elif isinstance(birthday, datetime):
+                        bdate = birthday.date()
+                    elif isinstance(birthday, date):
+                        bdate = birthday
+                    else:
+                        bdate = None
+
+                    if bdate:
+                        merged["birthday"] = bdate.isoformat()
+                        merged["zodiac"] = get_western_zodiac(bdate)
+                        # age 计算（整年）
+                        today = date.today()
+                        age = today.year - bdate.year - (
+                            (today.month, today.day) < (bdate.month, bdate.day)
+                        )
+                        merged["age"] = age
+                        # 如果用户未提供 bazi，可尝试用 lunar_service 生成（失败安全）
+                        if not merged.get("bazi"):
+                            birth_time = merged.get("birth_time")
+                            try:
+                                bazi_text = compute_bazi(merged["birthday"], birth_time)
+                                if bazi_text:
+                                    merged["bazi"] = bazi_text
+                            except Exception:
+                                pass
+                        # 尝试填充农历信息
+                        try:
+                            lunar_info = compute_lunar_date(merged["birthday"])
+                            if lunar_info:
+                                merged.setdefault("lunar", {}).update(lunar_info)
+                        except Exception:
+                            pass
+                except Exception:
+                    # 不阻塞更新，仅记录/忽略错误
+                    pass
+
+            # 保持用户提供的生辰八字（bazi）和 mbti 等字段
+            user.cosmic_profile = merged
+
+        # 处理剩余普通字段
         for key, value in update_data.items():
             setattr(user, key, value)
 

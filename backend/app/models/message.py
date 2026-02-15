@@ -1,5 +1,9 @@
 """消息模型 - 重构版本"""
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON, Index
+from sqlalchemy import Column, Integer, String, DateTime, Text, JSON, Index
+from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+from sqlalchemy import Enum as SAEnum
+from app.schemas.enums import MessageType
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.models.base import Base
@@ -27,10 +31,10 @@ class Message(Base):
     # 消息内容
     content = Column(Text, nullable=False)
     
-    # 消息类型
-    msg_type = Column(String(50), nullable=False, index=True)  # USER_POSTCARD, VOICE_TRANSCRIPT, COSMIC_BROADCAST
+    # 消息类型（全局枚举）
+    message_type = Column(SAEnum(MessageType, name="messagetype"), nullable=False, index=True)
     
-    # sender_id和receiver_id现在存储bipupu_id（字符串）或服务号ID
+
     # 为了兼容性，暂时保留Integer类型，但会添加字符串字段
     sender_bipupu_id = Column(String(50), nullable=False, index=True)  # bipupu_id 或 服务号 ID
     receiver_bipupu_id = Column(String(50), nullable=False, index=True)  # 必须是真实用户的 bipupu_id
@@ -45,8 +49,8 @@ class Message(Base):
     __table_args__ = (
         Index('idx_receiver_created', 'receiver_bipupu_id', 'created_at'),
         Index('idx_sender_created', 'sender_bipupu_id', 'created_at'),
-        Index('idx_msg_type', 'msg_type', 'created_at'),
+        Index('idx_msg_type', 'message_type', 'created_at'),
     )
 
     def __repr__(self):
-        return f"<Message(id={self.id}, sender='{self.sender_bipupu_id}', receiver='{self.receiver_bipupu_id}', type='{self.msg_type}')>"
+        return f"<Message(id={self.id}, sender='{self.sender_bipupu_id}', receiver='{self.receiver_bipupu_id}', type='{self.message_type.value if self.message_type else None}')>"

@@ -947,23 +947,23 @@
         ]
       }
     },
-    "/api/profile/avatar/{user_id}": {
+    "/api/profile/avatar/{bipupu_id}": {
       "get": {
         "tags": [
           "用户资料",
           "用户资料"
         ],
         "summary": "Get User Avatar",
-        "description": "获取用户头像（从数据库提供）",
-        "operationId": "get_user_avatar_api_profile_avatar__user_id__get",
+        "description": "获取用户头像（通过用户业务 ID bipupu_id 提供）",
+        "operationId": "get_user_avatar_api_profile_avatar__bipupu_id__get",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "bipupu_id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "title": "User Id"
+              "type": "string",
+              "title": "Bipupu Id"
             }
           }
         ],
@@ -1147,14 +1147,14 @@
         ]
       }
     },
-    "/api/contacts/{contact_id}": {
+    "/api/contacts/{contact_bipupu_id}": {
       "put": {
         "tags": [
           "联系人"
         ],
         "summary": "Update Contact",
-        "description": "更新联系人（主要是更新备注）",
-        "operationId": "update_contact_api_contacts__contact_id__put",
+        "description": "更新联系人（通过 contact 的 bipupu_id 更新备注）",
+        "operationId": "update_contact_api_contacts__contact_bipupu_id__put",
         "security": [
           {
             "HTTPBearer": []
@@ -1162,12 +1162,12 @@
         ],
         "parameters": [
           {
-            "name": "contact_id",
+            "name": "contact_bipupu_id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "title": "Contact Id"
+              "type": "string",
+              "title": "Contact Bipupu Id"
             }
           }
         ],
@@ -1207,8 +1207,8 @@
           "联系人"
         ],
         "summary": "Delete Contact",
-        "description": "删除联系人",
-        "operationId": "delete_contact_api_contacts__contact_id__delete",
+        "description": "删除联系人（通过 contact 的 bipupu_id）",
+        "operationId": "delete_contact_api_contacts__contact_bipupu_id__delete",
         "security": [
           {
             "HTTPBearer": []
@@ -1216,12 +1216,12 @@
         ],
         "parameters": [
           {
-            "name": "contact_id",
+            "name": "contact_bipupu_id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "title": "Contact Id"
+              "type": "string",
+              "title": "Contact Bipupu Id"
             }
           }
         ],
@@ -1945,6 +1945,10 @@
             "type": "integer",
             "title": "Id"
           },
+          "bipupu_id": {
+            "type": "string",
+            "title": "Bipupu Id"
+          },
           "username": {
             "type": "string",
             "title": "Username"
@@ -1960,6 +1964,17 @@
             ],
             "title": "Nickname"
           },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
           "blocked_at": {
             "type": "string",
             "format": "date-time",
@@ -1969,6 +1984,7 @@
         "type": "object",
         "required": [
           "id",
+          "bipupu_id",
           "username",
           "blocked_at"
         ],
@@ -2003,16 +2019,16 @@
             "type": "string",
             "title": "Content"
           },
-          "msg_type": {
+          "message_type": {
             "type": "string",
-            "title": "Msg Type"
+            "title": "Message Type"
           }
         },
         "type": "object",
         "required": [
           "receiver_id",
           "content",
-          "msg_type"
+          "message_type"
         ],
         "title": "Body_admin_send_message_admin_test_chat_send_post"
       },
@@ -2063,9 +2079,9 @@
       },
       "ContactCreate": {
         "properties": {
-          "contact_id": {
+          "contact_bipupu_id": {
             "type": "string",
-            "title": "Contact Id",
+            "title": "Contact Bipupu Id",
             "description": "联系人的 bipupu_id"
           },
           "alias": {
@@ -2083,7 +2099,7 @@
         },
         "type": "object",
         "required": [
-          "contact_id"
+          "contact_bipupu_id"
         ],
         "title": "ContactCreate",
         "description": "添加联系人"
@@ -2115,10 +2131,6 @@
           "id": {
             "type": "integer",
             "title": "Id"
-          },
-          "contact_id": {
-            "type": "integer",
-            "title": "Contact Id"
           },
           "contact_bipupu_id": {
             "type": "string",
@@ -2159,7 +2171,6 @@
         "type": "object",
         "required": [
           "id",
-          "contact_id",
           "contact_bipupu_id",
           "contact_username",
           "contact_nickname",
@@ -2187,6 +2198,110 @@
         "type": "object",
         "title": "ContactUpdate",
         "description": "更新联系人"
+      },
+      "CosmicProfile": {
+        "properties": {
+          "birthday": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birthday",
+            "description": "公历生日，格式 YYYY-MM-DD"
+          },
+          "zodiac": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zodiac",
+            "description": "西方星座，例如 '白羊座'"
+          },
+          "age": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age",
+            "description": "年龄（整数岁）"
+          },
+          "bazi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bazi",
+            "description": "生辰八字字符串（可由用户提供或第三方服务计算）"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender",
+            "description": "性别，例如 'male','female','other'，可选"
+          },
+          "mbti": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mbti",
+            "description": "MBTI 类型，例如 'INTJ'"
+          },
+          "birth_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Time",
+            "description": "出生时间，例如 '08:30'"
+          },
+          "birthplace": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birthplace",
+            "description": "出生地，城市/经纬度等"
+          }
+        },
+        "type": "object",
+        "title": "CosmicProfile",
+        "description": "结构化的宇宙信息（可在未来扩展）"
       },
       "FavoriteCreate": {
         "properties": {
@@ -2346,11 +2461,10 @@
             "title": "Content",
             "description": "消息内容"
           },
-          "msg_type": {
-            "type": "string",
-            "title": "Msg Type",
-            "description": "消息类型：USER_POSTCARD, VOICE_TRANSCRIPT, COSMIC_BROADCAST",
-            "default": "USER_POSTCARD"
+          "message_type": {
+            "$ref": "#/components/schemas/MessageType",
+            "description": "消息类型：NORMAL, VOICE, SYSTEM",
+            "default": "NORMAL"
           },
           "pattern": {
             "anyOf": [
@@ -2424,9 +2538,8 @@
             "type": "string",
             "title": "Content"
           },
-          "msg_type": {
-            "type": "string",
-            "title": "Msg Type"
+          "message_type": {
+            "$ref": "#/components/schemas/MessageType"
           },
           "pattern": {
             "anyOf": [
@@ -2452,11 +2565,20 @@
           "sender_bipupu_id",
           "receiver_bipupu_id",
           "content",
-          "msg_type",
+          "message_type",
           "created_at"
         ],
         "title": "MessageResponse",
         "description": "消息响应"
+      },
+      "MessageType": {
+        "type": "string",
+        "enum": [
+          "NORMAL",
+          "VOICE",
+          "SYSTEM"
+        ],
+        "title": "MessageType"
       },
       "PaginatedResponse_BlockedUserResponse_": {
         "properties": {
@@ -2772,14 +2894,12 @@
           "cosmic_profile": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/CosmicProfile"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Cosmic Profile"
+            ]
           },
           "is_active": {
             "type": "boolean",

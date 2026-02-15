@@ -35,6 +35,7 @@ import 'core/utils/logger.dart';
 import 'features/auth/login_page.dart';
 import 'features/auth/register_page.dart';
 import 'features/bluetooth/bluetooth_scan_page.dart';
+import 'features/bluetooth/device_detail_page.dart';
 import 'features/voice_test/voice_test_page.dart';
 import 'features/home/home_page.dart';
 
@@ -252,6 +253,10 @@ final GoRouter _router = GoRouter(
     GoRoute(
       path: '/bluetooth/scan',
       builder: (context, state) => const BluetoothScanPage(),
+    ),
+    GoRoute(
+      path: '/bluetooth/device',
+      builder: (context, state) => const DeviceDetailPage(),
     ),
   ],
 );

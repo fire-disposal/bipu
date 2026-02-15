@@ -44,34 +44,26 @@ class MessageCreateRequest {
 }
 
 MessageType _parseMessageType(String value) {
-  switch (value) {
-    case 'system':
+  final v = value.toUpperCase();
+  switch (v) {
+    case 'SYSTEM':
       return MessageType.system;
-    case 'device':
-      return MessageType.device;
-    case 'user':
-      return MessageType.user;
-    case 'alert':
-      return MessageType.alert;
-    case 'notification':
-      return MessageType.notification;
+    case 'VOICE':
+      return MessageType.voice;
+    case 'NORMAL':
     default:
-      return MessageType.user;
+      return MessageType.normal;
   }
 }
 
 String _messageTypeToString(MessageType type) {
   switch (type) {
     case MessageType.system:
-      return 'system';
-    case MessageType.device:
-      return 'device';
-    case MessageType.user:
-      return 'user';
-    case MessageType.alert:
-      return 'alert';
-    case MessageType.notification:
-      return 'notification';
+      return 'SYSTEM';
+    case MessageType.voice:
+      return 'VOICE';
+    case MessageType.normal:
+      return 'NORMAL';
   }
 }
 

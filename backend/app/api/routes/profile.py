@@ -170,17 +170,17 @@ async def update_password(
         raise ValidationException("Password update failed")
 
 
-@router.get("/avatar/{user_id}", tags=["用户资料"])
+@router.get("/avatar/{bipupu_id}", tags=["用户资料"])
 async def get_user_avatar(
-    user_id: int,
+    bipupu_id: str,
     db: Session = Depends(get_db)
 ):
-    """获取用户头像（从数据库提供）"""
-    user = db.query(User).filter(User.id == user_id).first()
+    """获取用户头像（通过用户业务 ID bipupu_id 提供）"""
+    user = db.query(User).filter(User.bipupu_id == bipupu_id).first()
     if not user or not user.avatar_data:
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Avatar not found")
-    
+
     from fastapi.responses import Response
     return Response(
         content=user.avatar_data,

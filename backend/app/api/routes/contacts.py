@@ -22,7 +22,7 @@ async def add_contact(
 ):
     """添加联系人"""
     # 查找联系人用户
-    contact_user = db.query(User).filter(User.bipupu_id == contact_data.contact_id).first()
+    contact_user = db.query(User).filter(User.bipupu_id == contact_data.contact_bipupu_id).first()
     if not contact_user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -52,10 +52,9 @@ async def add_contact(
     
     logger.info(f"User {current_user.bipupu_id} added contact {contact_user.bipupu_id}")
     
-    # 构造响应
+    # 构造响应（返回业务 ID 而非内部主键）
     return {
         "id": new_contact.id,
-        "contact_id": contact_user.id,
         "contact_bipupu_id": contact_user.bipupu_id,
         "contact_username": contact_user.username,
         "contact_nickname": contact_user.nickname,
@@ -80,7 +79,6 @@ async def get_contacts(
         if contact_user:
             contact_responses.append({
                 "id": contact.id,
-                "contact_id": contact_user.id,
                 "contact_bipupu_id": contact_user.bipupu_id,
                 "contact_username": contact_user.username,
                 "contact_nickname": contact_user.nickname,
@@ -94,51 +92,59 @@ async def get_contacts(
     }
 
 
-@router.put("/{contact_id}")
+@router.put("/{contact_bipupu_id}")
 async def update_contact(
-    contact_id: int,
+    contact_bipupu_id: str,
     contact_update: ContactUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """更新联系人（主要是更新备注）"""
+    """更新联系人（通过 contact 的 bipupu_id 更新备注）"""
+    contact_user = db.query(User).filter(User.bipupu_id == contact_bipupu_id).first()
+    if not contact_user:
+        raise HTTPException(status_code=404, detail="Contact user not found")
+
     contact = db.query(TrustedContact).filter(
-        TrustedContact.id == contact_id,
-        TrustedContact.owner_id == current_user.id
+        TrustedContact.owner_id == current_user.id,
+        TrustedContact.contact_id == contact_user.id
     ).first()
-    
+
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
-    
+
     if contact_update.alias is not None:
         contact.alias = contact_update.alias
-    
+
     db.commit()
     db.refresh(contact)
-    
-    logger.info(f"User {current_user.bipupu_id} updated contact {contact_id}")
-    
+
+    logger.info(f"User {current_user.bipupu_id} updated contact {contact_user.bipupu_id}")
+
     return {"message": "Contact updated successfully"}
 
 
-@router.delete("/{contact_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{contact_bipupu_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_contact(
-    contact_id: int,
+    contact_bipupu_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """删除联系人"""
+    """删除联系人（通过 contact 的 bipupu_id）"""
+    contact_user = db.query(User).filter(User.bipupu_id == contact_bipupu_id).first()
+    if not contact_user:
+        raise HTTPException(status_code=404, detail="Contact user not found")
+
     contact = db.query(TrustedContact).filter(
-        TrustedContact.id == contact_id,
-        TrustedContact.owner_id == current_user.id
+        TrustedContact.owner_id == current_user.id,
+        TrustedContact.contact_id == contact_user.id
     ).first()
-    
+
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
-    
+
     db.delete(contact)
     db.commit()
-    
-    logger.info(f"User {current_user.bipupu_id} deleted contact {contact_id}")
-    
+
+    logger.info(f"User {current_user.bipupu_id} deleted contact {contact_user.bipupu_id}")
+
     return None

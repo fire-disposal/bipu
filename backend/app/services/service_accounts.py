@@ -7,6 +7,7 @@ from app.models.service_account import ServiceAccount
 from app.core.logging import get_logger
 import random
 import asyncio
+from app.schemas.enums import MessageType
 
 logger = get_logger(__name__)
 
@@ -74,8 +75,8 @@ async def send_reply(
         sender_bipupu_id=service_name,
         receiver_bipupu_id=receiver_bipupu_id,
         content=content,
-        msg_type="SERVICE_REPLY", 
-        pattern=pattern or {} 
+        message_type=MessageType.SYSTEM,
+        pattern=pattern or {}
     )
     
     db.add(new_message)
@@ -93,7 +94,7 @@ async def send_reply(
                 "id": new_message.id,
                 "sender_id": new_message.sender_bipupu_id,
                 "content": new_message.content,
-                "msg_type": new_message.msg_type,
+                "message_type": new_message.message_type.value if new_message.message_type else None,
                 "pattern": new_message.pattern,
                 "created_at": new_message.created_at.isoformat()
             }

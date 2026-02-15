@@ -92,10 +92,27 @@ class _UserDetailPageState extends State<UserDetailPage> {
               ),
             ),
             const SizedBox(height: 16),
-            Text('ID: ${_user!.id}'),
+            Text('Bipupu ID: ${_user!.bipupuId}'),
             const SizedBox(height: 16),
-            if (_user!.cosmicProfile != null)
-              Text('Profile: ${_user!.cosmicProfile}'),
+            if (_user!.cosmicProfile != null) ...[
+              if (_user!.cosmicProfile!['gender'] != null)
+                Text('性别: ${_user!.cosmicProfile!['gender']}'),
+              if (_user!.cosmicProfile!['birthday'] != null)
+                Text('生日: ${_user!.cosmicProfile!['birthday']}'),
+              if (_user!.cosmicProfile!['age'] != null)
+                Text('年龄: ${_user!.cosmicProfile!['age']}'),
+              if (_user!.cosmicProfile!['zodiac'] != null)
+                Text('星座: ${_user!.cosmicProfile!['zodiac']}'),
+              if (_user!.cosmicProfile!['bazi'] != null)
+                Text('生辰八字: ${_user!.cosmicProfile!['bazi']}'),
+              if (_user!.cosmicProfile!['mbti'] != null)
+                Text('MBTI: ${_user!.cosmicProfile!['mbti']}'),
+              if (_user!.cosmicProfile!['birth_time'] != null)
+                Text('出生时间: ${_user!.cosmicProfile!['birth_time']}'),
+              if (_user!.cosmicProfile!['birthplace'] != null)
+                Text('出生地: ${_user!.cosmicProfile!['birthplace']}'),
+              const SizedBox(height: 16),
+            ],
 
             const SizedBox(height: 32),
             ElevatedButton(

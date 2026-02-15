@@ -4,6 +4,7 @@ from typing import Optional, List
 from app.models.message import Message
 from app.models.user import User
 from app.schemas.message_new import MessageCreate
+from app.schemas.enums import MessageType
 from app.core.websocket import manager
 from app.core.logging import get_logger
 from app.core.user_utils import is_service_account
@@ -37,7 +38,7 @@ class MessageService:
             sender_bipupu_id=sender.bipupu_id,
             receiver_bipupu_id=message_data.receiver_id,
             content=message_data.content,
-            msg_type=message_data.msg_type,
+            message_type=message_data.message_type,
             pattern=message_data.pattern
         )
         
@@ -91,7 +92,7 @@ class MessageService:
                 "id": message.id,
                 "sender_id": message.sender_bipupu_id,
                 "content": message.content,
-                "msg_type": message.msg_type,
+                "message_type": message.message_type.value if message.message_type else None,
                 "pattern": message.pattern,
                 "created_at": message.created_at.isoformat()
             }
