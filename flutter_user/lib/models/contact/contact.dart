@@ -9,12 +9,12 @@ class Contact {
   info; // The user profile of the contact (optional, depends on API)
 
   Contact({
-    required this.id,
+    this.id = 0,
     required this.contactBipupuId,
     this.remark,
-    required this.createdAt,
+    DateTime? createdAt,
     this.info,
-  });
+  }) : createdAt = createdAt ?? DateTime.now();
 
   factory Contact.fromJson(Map<String, dynamic> json) {
     return Contact(

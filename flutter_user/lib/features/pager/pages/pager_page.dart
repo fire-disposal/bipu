@@ -2,13 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_user/core/services/im_service.dart';
-// VoiceGuideService removed — use AssistantController where needed
 import 'package:flutter_user/features/assistant/assistant_controller.dart';
 import 'package:flutter_user/models/contact/contact.dart';
 import '../../common/widgets/app_button.dart';
 import '../widgets/voice_assistant_panel.dart';
-// waveform visual removed — keep UI lean and avoid floating overlays
-import '../widgets/status_indicator_widget.dart';
+// status_indicator_widget removed — assistant-driven UI now provides status
 
 enum SendStage { idle, recording, transcribing, sending, sent, error }
 
@@ -24,48 +22,88 @@ class _PagerPageState extends State<PagerPage> {
   final TextEditingController _idController = TextEditingController();
   final ImService _imService = ImService();
   final AssistantController _assistant = AssistantController();
+  StreamSubscription? _assistantEventSub;
   StreamSubscription? _speechSubscription;
+  bool _guideStarted = false;
 
   // Target Selection
   bool _isDirectInput = false;
   Contact? _selectedContact;
-  List<Contact> _filteredContacts = [];
-  final TextEditingController _searchController = TextEditingController();
+  // search controller removed - contacts read directly from ImService
 
   // Vibration
   bool _isSending = false;
 
   // Voice assistant
-  bool _isVoiceAssistantActive = false;
   // Manual send visual state
   bool _manualSent = false;
   SendStage _sendStage = SendStage.idle;
   Timer? _sentResetTimer;
 
+  void _onAssistantPhaseChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
-    _speechSubscription = _assistant.onResult.listen((text) {
-      if (mounted) {
-        _textController.text = text;
+
+    // Subscribe to assistant events for richer UI syncing
+    _assistantEventSub = _assistant.onEvent.listen((event) {
+      if (!mounted) return;
+
+      // Sync text if provided
+      if (event.text != null && event.text!.isNotEmpty) {
+        setState(() {
+          _textController.text = event.text!;
+        });
+      }
+
+      // When assistant reports recipient change, reflect in UI
+      final rid = _assistant.currentRecipientId;
+      if (rid != null && rid.isNotEmpty) {
+        final match = _imService.contacts.firstWhere(
+          (c) => c.contactBipupuId == rid,
+          orElse: () => Contact(contactBipupuId: rid),
+        );
+        setState(() {
+          if (_imService.contacts.contains(match)) {
+            _selectedContact = match;
+            _isDirectInput = false;
+            _idController.clear();
+          } else {
+            _selectedContact = null;
+            _isDirectInput = true;
+            _idController.text = rid;
+          }
+        });
+      }
+
+      // Ensure guideStarted flag if assistant begins a session
+      if (event.state == AssistantState.listening) {
+        setState(() => _guideStarted = true);
       }
     });
 
     // waveform controller removed — visual kept minimal
 
-    // Initialize filtered contacts
-    _filteredContacts = _imService.contacts;
-
-    // Listen to contacts changes
-    _imService.addListener(_onContactsChanged);
+    // contacts are read directly from ImService when needed
 
     // Initialize voice assistant
-    _assistant.addListener(() {
-      if (mounted) {
-        setState(() {
-          _isVoiceAssistantActive =
-              _assistant.state.value != AssistantState.idle;
-        });
+
+    // Ensure assistant init if needed (safe to call repeatedly)
+    _assistant.init().catchError((_) {});
+
+    // Listen to granular assistant phase changes for progress UI
+    _assistant.phase.addListener(_onAssistantPhaseChanged);
+
+    // Keep assistant recipient in sync with manual id input
+    _idController.addListener(() {
+      final id = _idController.text.trim();
+      if (id.isNotEmpty) {
+        try {
+          _assistant.setRecipient(id);
+        } catch (_) {}
       }
     });
 
@@ -77,9 +115,9 @@ class _PagerPageState extends State<PagerPage> {
     _speechSubscription?.cancel();
     _textController.dispose();
     _idController.dispose();
-    _searchController.dispose();
-    _imService.removeListener(_onContactsChanged);
-    _assistant.dispose();
+    // Do not dispose singleton AssistantController here.
+    _assistantEventSub?.cancel();
+    _assistant.phase.removeListener(_onAssistantPhaseChanged);
     // _waveformController.dispose();
     _sentResetTimer?.cancel();
     super.dispose();
@@ -97,6 +135,28 @@ class _PagerPageState extends State<PagerPage> {
         backgroundColor: colorScheme.primaryContainer,
         foregroundColor: colorScheme.onPrimaryContainer,
         elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: () async {
+              try {
+                await _assistant.replay();
+                if (mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('重放提示已触发')));
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('重放失败：$e')));
+                }
+              }
+            },
+            icon: const Icon(Icons.replay),
+            tooltip: '重放',
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: Size.fromHeight(80),
           child: Container(
@@ -105,7 +165,7 @@ class _PagerPageState extends State<PagerPage> {
               children: [
                 Expanded(flex: 2, child: _buildSendProgress()),
                 const SizedBox(width: 8),
-                Expanded(flex: 1, child: StatusIndicatorWidget()),
+                Expanded(flex: 1, child: _buildStatusIndicator()),
               ],
             ),
           ),
@@ -133,6 +193,9 @@ class _PagerPageState extends State<PagerPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // Voice assistant panel (prominent, assistant-first flow)
+                        const VoiceAssistantPanel(),
+
                         // Target Selector Card
                         Card(
                           elevation: 2,
@@ -177,6 +240,23 @@ class _PagerPageState extends State<PagerPage> {
                                     setState(
                                       () => _isDirectInput = selection.first,
                                     );
+                                    // Sync recipient when switching modes
+                                    if (selection.first) {
+                                      final id = _idController.text.trim();
+                                      if (id.isNotEmpty) {
+                                        try {
+                                          _assistant.setRecipient(id);
+                                        } catch (_) {}
+                                      }
+                                    } else {
+                                      if (_selectedContact != null) {
+                                        try {
+                                          _assistant.setRecipient(
+                                            _selectedContact!.contactBipupuId,
+                                          );
+                                        } catch (_) {}
+                                      }
+                                    }
                                   },
                                 ),
                                 const SizedBox(height: 16),
@@ -250,6 +330,11 @@ class _PagerPageState extends State<PagerPage> {
                                           setState(
                                             () => _selectedContact = contact,
                                           );
+                                          try {
+                                            _assistant.setRecipient(
+                                              contact.contactBipupuId,
+                                            );
+                                          } catch (_) {}
                                         },
                                         fieldViewBuilder:
                                             (
@@ -355,6 +440,9 @@ class _PagerPageState extends State<PagerPage> {
                                               setState(
                                                 () => _selectedContact = null,
                                               );
+                                              try {
+                                                _assistant.setRecipient('');
+                                              } catch (_) {}
                                             },
                                           ),
                                         ),
@@ -366,6 +454,185 @@ class _PagerPageState extends State<PagerPage> {
                         ),
 
                         // Message Input Card
+                        // Assistant guidance / stage hints
+                        Builder(
+                          builder: (context) {
+                            final aState = _assistant.state.value;
+                            if (aState == AssistantState.listening) {
+                              return Card(
+                                color: colorScheme.surfaceVariant.withOpacity(
+                                  0.06,
+                                ),
+                                margin: const EdgeInsets.only(bottom: 16),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.mic, size: 20),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'assistant_listening_hint'.tr(),
+                                          style: theme.textTheme.bodyMedium,
+                                        ),
+                                      ),
+                                      TextButton(
+                                        onPressed: () async {
+                                          try {
+                                            await _assistant.stopListening();
+                                          } catch (_) {}
+                                        },
+                                        child: Text('停止'.tr()),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            } else if (aState == AssistantState.thinking) {
+                              return Card(
+                                color: colorScheme.surfaceVariant.withOpacity(
+                                  0.04,
+                                ),
+                                margin: const EdgeInsets.only(bottom: 16),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Row(
+                                    children: [
+                                      const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'assistant_processing_hint'.tr(),
+                                          style: theme.textTheme.bodyMedium,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            } else if (aState == AssistantState.speaking) {
+                              return Card(
+                                color: colorScheme.primaryContainer.withOpacity(
+                                  0.06,
+                                ),
+                                margin: const EdgeInsets.only(bottom: 16),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.volume_up,
+                                        color: colorScheme.primary,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'assistant_reading_hint'.tr(),
+                                          style: theme.textTheme.bodyMedium,
+                                        ),
+                                      ),
+                                      IconButton(
+                                        onPressed: () async {
+                                          try {
+                                            await _assistant.replay();
+                                          } catch (_) {}
+                                        },
+                                        icon: Icon(
+                                          Icons.replay,
+                                          color: colorScheme.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            } else {
+                              // idle
+                              if (!_guideStarted) {
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            'assistant_start_prompt'.tr(),
+                                            style: theme.textTheme.bodyMedium,
+                                          ),
+                                        ),
+                                        ElevatedButton.icon(
+                                          onPressed: () async {
+                                            setState(
+                                              () => _guideStarted = true,
+                                            );
+                                            try {
+                                              await _assistant.speakScript(
+                                                'greeting',
+                                              );
+                                            } catch (e) {
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      'assistant_start_failed'
+                                                          .tr(
+                                                            args: [
+                                                              e.toString(),
+                                                            ],
+                                                          ),
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          },
+                                          icon: const Icon(Icons.play_arrow),
+                                          label: Text('开始引导'.tr()),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }
+
+                              // guide started but idle -> show small hint with replay
+                              return Align(
+                                alignment: Alignment.centerLeft,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: TextButton.icon(
+                                    onPressed: () async {
+                                      try {
+                                        await _assistant.speakScript(
+                                          'greeting',
+                                        );
+                                      } catch (_) {}
+                                    },
+                                    icon: Icon(
+                                      Icons.replay,
+                                      color: colorScheme.primary,
+                                    ),
+                                    label: Text(
+                                      '重放引导'.tr(),
+                                      style: TextStyle(
+                                        color: colorScheme.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                        ),
                         Card(
                           elevation: 2,
                           margin: const EdgeInsets.only(bottom: 16),
@@ -392,18 +659,34 @@ class _PagerPageState extends State<PagerPage> {
                                     Row(
                                       children: [
                                         IconButton(
-                                          onPressed: () {
-                                            // Voice input hint
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  '长按底部麦克风按钮或点击语音助手开始语音输入',
-                                                ),
-                                                duration: Duration(seconds: 2),
-                                              ),
-                                            );
+                                          onPressed: () async {
+                                            try {
+                                              if (_assistant.state.value ==
+                                                  AssistantState.listening) {
+                                                await _assistant
+                                                    .stopListening();
+                                              } else {
+                                                await _assistant
+                                                    .startListening();
+                                              }
+                                            } catch (e) {
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      'assistant_start_failed'
+                                                          .tr(
+                                                            args: [
+                                                              e.toString(),
+                                                            ],
+                                                          ),
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            }
                                           },
                                           icon: Icon(
                                             Icons.mic,
@@ -508,44 +791,6 @@ class _PagerPageState extends State<PagerPage> {
                 ),
 
                 // Send Button
-                // Voice assistant panel
-                const VoiceAssistantPanel(),
-
-                // Compact controls section
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Replay button
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          try {
-                            await _assistant.replay();
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('重放提示已触发')),
-                              );
-                            }
-                          } catch (e) {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('重放失败：$e')),
-                              );
-                            }
-                          }
-                        },
-                        icon: const Icon(Icons.replay, size: 16),
-                        label: const Text('重来', style: TextStyle(fontSize: 12)),
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(80, 36),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
                 // compact spacing where waveform used to be
                 const SizedBox(height: 8),
 
@@ -564,12 +809,72 @@ class _PagerPageState extends State<PagerPage> {
                       ),
                     ],
                   ),
-                  child: AppButton(
-                    text: _isSending ? 'sending'.tr() : 'send_pager'.tr(),
-                    onPressed: _isSending ? null : _sendMessage,
-                    backgroundColor: colorScheme.primary,
-                    foregroundColor: colorScheme.onPrimary,
-                    height: 56,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_assistant.state.value == AssistantState.speaking)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colorScheme.primaryContainer.withOpacity(
+                                0.12,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.volume_up,
+                                  size: 18,
+                                  color: colorScheme.primary,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'assistant_reading_hint'.tr(),
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: colorScheme.onPrimaryContainer,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () async {
+                                    try {
+                                      await _assistant.replay();
+                                    } catch (_) {}
+                                  },
+                                  icon: Icon(
+                                    Icons.replay,
+                                    color: colorScheme.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: AppButton(
+                              text: _isSending
+                                  ? 'sending'.tr()
+                                  : 'send_pager'.tr(),
+                              onPressed: _isSending ? null : _sendMessage,
+                              backgroundColor: colorScheme.primary,
+                              foregroundColor: colorScheme.onPrimary,
+                              height: 48,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -580,24 +885,7 @@ class _PagerPageState extends State<PagerPage> {
     );
   }
 
-  void _onContactsChanged() {
-    setState(() {
-      _filterContacts(_searchController.text);
-    });
-  }
-
-  void _filterContacts(String query) {
-    if (query.isEmpty) {
-      _filteredContacts = _imService.contacts;
-    } else {
-      _filteredContacts = _imService.contacts.where((contact) {
-        final bipupuId = contact.contactBipupuId.toLowerCase();
-        final remark = contact.remark?.toLowerCase() ?? '';
-        final searchQuery = query.toLowerCase();
-        return bipupuId.contains(searchQuery) || remark.contains(searchQuery);
-      }).toList();
-    }
-  }
+  // contact list filtering removed — UI reads contacts on demand from ImService
 
   Future<void> _sendMessage() async {
     final text = _textController.text.trim();
@@ -665,16 +953,19 @@ class _PagerPageState extends State<PagerPage> {
   }
 
   Widget _buildSendProgress() {
-    // Determine stage index based on assistant state or manual send state
+    // Determine stage index based on assistant granular phase or manual send state
     int index = 0;
-    final assistantState = _assistant.state.value;
-    if (assistantState == AssistantState.listening) {
+    final assistantPhase = _assistant.currentPhase;
+    if (assistantPhase == AssistantPhase.recording) {
       index = 0;
       _sendStage = SendStage.recording;
-    } else if (assistantState == AssistantState.thinking) {
+    } else if (assistantPhase == AssistantPhase.transcribing) {
       index = 1;
       _sendStage = SendStage.transcribing;
-    } else if (assistantState == AssistantState.speaking) {
+    } else if (assistantPhase == AssistantPhase.sending) {
+      index = 2;
+      _sendStage = SendStage.sending;
+    } else if (assistantPhase == AssistantPhase.sent) {
       index = 3;
       _sendStage = SendStage.sent;
     } else {
@@ -744,6 +1035,60 @@ class _PagerPageState extends State<PagerPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStatusIndicator() {
+    final phase = _assistant.currentPhase;
+    Color color;
+    String label;
+    switch (phase) {
+      case AssistantPhase.recording:
+        color = Colors.orange;
+        label = '录音中';
+        break;
+      case AssistantPhase.transcribing:
+        color = Colors.blue;
+        label = '转写中';
+        break;
+      case AssistantPhase.sending:
+        color = Colors.teal;
+        label = '发送中';
+        break;
+      case AssistantPhase.sent:
+        color = Colors.green;
+        label = '已发送';
+        break;
+      case AssistantPhase.error:
+        color = Colors.red;
+        label = '错误';
+        break;
+      default:
+        color = Colors.grey;
+        label = '空闲';
+    }
+
+    return Card(
+      elevation: 0,
+      color: Colors.transparent,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

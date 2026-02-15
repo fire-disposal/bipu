@@ -11,6 +11,22 @@ import 'assistant_config.dart';
 /// 语音助手状态枚举
 enum AssistantState { idle, listening, thinking, speaking }
 
+/// 更细粒度的业务阶段，用于驱动引导式 UI 与进度条
+enum AssistantPhase {
+  idle,
+  greeting,
+  askRecipientId,
+  confirmRecipientId,
+  guideRecordMessage,
+  recording,
+  transcribing,
+  confirmMessage,
+  sending,
+  sent,
+  farewell,
+  error,
+}
+
 /// 语音助手事件
 class AssistantEvent {
   final AssistantState state;
@@ -36,11 +52,24 @@ class AssistantController extends ChangeNotifier {
   final ValueNotifier<AssistantState> state = ValueNotifier(
     AssistantState.idle,
   );
+  final ValueNotifier<AssistantPhase> phase = ValueNotifier<AssistantPhase>(
+    AssistantPhase.idle,
+  );
   String? _currentText;
   String? get currentText => _currentText;
 
   String? _currentRecipientId;
   String? get currentRecipientId => _currentRecipientId;
+
+  AssistantPhase get currentPhase => phase.value;
+
+  /// 手动设置业务阶段（UI 可以监听 `phase`）
+  void setPhase(AssistantPhase p) {
+    if (phase.value != p) {
+      phase.value = p;
+      notifyListeners();
+    }
+  }
 
   String _currentOperatorId = 'op_system'; // 默认操作员
   String get currentOperatorId => _currentOperatorId;
@@ -80,6 +109,7 @@ class AssistantController extends ChangeNotifier {
 
     try {
       _setState(AssistantState.listening);
+      setPhase(AssistantPhase.recording);
 
       // 获取音频资源
       _audioRelease = await _audioManager.acquire();
@@ -118,6 +148,8 @@ class AssistantController extends ChangeNotifier {
       _volumeSubscription?.cancel();
 
       if (_currentText?.isNotEmpty == true) {
+        // 进入处理阶段
+        setPhase(AssistantPhase.transcribing);
         await _processText(_currentText!);
       } else {
         _setState(AssistantState.idle);
@@ -135,6 +167,7 @@ class AssistantController extends ChangeNotifier {
 
     try {
       _setState(AssistantState.thinking);
+      setPhase(AssistantPhase.sending);
 
       // 发送消息
       await _imService.messageApi.sendMessage(
@@ -144,10 +177,12 @@ class AssistantController extends ChangeNotifier {
       );
 
       _currentText = null;
+      setPhase(AssistantPhase.sent);
       _setState(AssistantState.idle);
       notifyListeners();
     } catch (e) {
       logger.e('Send failed: $e');
+      setPhase(AssistantPhase.error);
       _setState(AssistantState.idle);
       rethrow;
     }
@@ -159,6 +194,7 @@ class AssistantController extends ChangeNotifier {
 
     try {
       _setState(AssistantState.speaking);
+      setPhase(AssistantPhase.sent);
 
       // 获取音频资源
       _audioRelease = await _audioManager.acquire();
@@ -173,11 +209,13 @@ class AssistantController extends ChangeNotifier {
       _audioRelease?.call();
       _audioRelease = null;
       _setState(AssistantState.idle);
+      setPhase(AssistantPhase.idle);
     } catch (e) {
       logger.e('Replay failed: $e');
       _audioRelease?.call();
       _audioRelease = null;
       _setState(AssistantState.idle);
+      setPhase(AssistantPhase.error);
       rethrow;
     }
   }
@@ -193,6 +231,7 @@ class AssistantController extends ChangeNotifier {
     await stopListening();
     _currentText = null;
     _setState(AssistantState.idle);
+    setPhase(AssistantPhase.idle);
     notifyListeners();
   }
 
@@ -220,29 +259,35 @@ class AssistantController extends ChangeNotifier {
     } else if (matchesKeyword(text, 'rerecord')) {
       await speakScript('guideRecordMessage');
       _currentText = null;
+      setPhase(AssistantPhase.guideRecordMessage);
       _setState(AssistantState.idle);
     } else if (_currentRecipientId == null) {
       // 如果还没有接收者ID，认为是接收者ID
       _currentRecipientId = _extractRecipientId(text);
       if (_currentRecipientId != null) {
+        setPhase(AssistantPhase.confirmRecipientId);
         await speakScript('confirmRecipientId', {
           'recipientId': _currentRecipientId!,
         });
       } else {
+        setPhase(AssistantPhase.askRecipientId);
         await speakScript('clarify');
       }
       _setState(AssistantState.idle);
     } else if (matchesKeyword(text, 'confirm')) {
       // 确认接收者ID，开始录制消息
+      setPhase(AssistantPhase.guideRecordMessage);
       await speakScript('guideRecordMessage');
       _setState(AssistantState.idle);
     } else if (matchesKeyword(text, 'modify')) {
       // 修改接收者ID
       _currentRecipientId = null;
+      setPhase(AssistantPhase.askRecipientId);
       await speakScript('askRecipientId');
       _setState(AssistantState.idle);
     } else {
       // 认为是消息内容
+      setPhase(AssistantPhase.confirmMessage);
       await speakScript('confirmMessage', {'message': text});
       _setState(AssistantState.idle);
     }
