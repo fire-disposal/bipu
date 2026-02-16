@@ -28,16 +28,8 @@ uv run python -m app.check_deps || {
 # 根据容器角色执行不同操作
 case "${CONTAINER_ROLE:-backend}" in
     backend)
-        echo -e "${YELLOW}检查数据库迁移状态...${NC}"
-        # 检查是否有记录版本
-        if ! uv run alembic current 2>/dev/null | grep -q .; then
-            echo -e "${YELLOW}未检测到迁移版本，尝试标记为最新版本...${NC}"
-            uv run alembic stamp head || {
-                echo -e "${RED}版本标记失败，继续尝试迁移...${NC}"
-            }
-        fi
         echo -e "${YELLOW}运行数据库迁移...${NC}"
-        uv run alembic upgrade head  || {
+        uv run alembic upgrade head || {
             echo -e "${RED}数据库迁移失败${NC}"
             exit 1
         }

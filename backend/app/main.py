@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware import Middleware
 from contextlib import asynccontextmanager
 import os
 from app.api.router import api_router
@@ -49,9 +50,6 @@ async def lifespan(app: FastAPI):
     # )
     # 初始化数据库
     try:
-        await init_db()
-        logger.info("✅ 数据库初始化完成")
-        
         # 初始化默认数据
         await init_default_data()
         logger.info("✅ 默认数据初始化完成")
@@ -113,26 +111,28 @@ def create_app() -> FastAPI:
         {"name": "订阅", "description": "用户侧订阅的查询与管理"},
     ]
 
+    middleware = [
+        Middleware(
+            CORSMiddleware,
+            allow_origins=settings.ALLOWED_HOSTS,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+    ]
+
     app = FastAPI(
         title=settings.PROJECT_NAME,
         version=settings.VERSION,
         description=settings.DESCRIPTION,
         lifespan=lifespan,
+        middleware=middleware,
         openapi_url="/api/openapi.json",
         docs_url="/api/docs",
         redoc_url="/api/redoc",
         openapi_tags=tags_metadata,
     )
-    
-    # 配置 CORS
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.ALLOWED_HOSTS,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-    
+
     # 配置Jinja2模板
     templates = Jinja2Templates(directory="templates")
     

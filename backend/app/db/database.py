@@ -140,11 +140,9 @@ async def init_db():
         
         # 在函数内部导入模型，确保它们被注册到 Base.metadata
         # 这样可以避免循环导入问题
-        from app.models import User 
+        from app.models import User
         
-        # 创建所有表
-        Base.metadata.create_all(bind=engine)
-        logger.info("🌳 数据库表创建成功")
+        logger.info("🌳 数据库连接成功")
         
     except Exception as e:
         if not fallback_used and not settings.DATABASE_URL.startswith("sqlite"):
@@ -173,15 +171,16 @@ async def init_db():
             
             current_db_type = "sqlite"
             
+            # 测试 SQLite 连接
             try:
-                # 创建所有表
-                Base.metadata.create_all(bind=engine)
-                logger.info("🌳 SQLite数据库表创建成功")
+                with engine.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+                logger.info("🌳 SQLite数据库连接成功")
             except Exception as sqlite_e:
                 logger.error(f"❌ SQLite数据库初始化失败: {sqlite_e}")
                 raise
         else:
-            logger.error(f"❌ 创建数据库表时出错: {e}")
+            logger.error(f"❌ 数据库连接失败: {e}")
             raise
 
 
