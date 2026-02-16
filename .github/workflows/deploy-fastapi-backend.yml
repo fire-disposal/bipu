@@ -1,5 +1,9 @@
 name: fastapi后端部署
 
+concurrency:
+  group: deploy-backend-${{ github.ref }}
+  cancel-in-progress: false
+
 on:
   workflow_dispatch:
     inputs:
@@ -100,6 +104,19 @@ jobs:
           fi
           echo "✅ Secrets 格式检查通过"
 
+      - name: 📝 记录当前运行的镜像标签（用于回滚）
+        run: |
+          # 获取当前运行的容器镜像标签，并保存到远程服务器的文件中
+          echo "📦 获取当前运行的容器镜像标签..."
+          CURRENT_IMAGE=$(docker inspect --format='{{.Config.Image}}' bipupu-backend 2>/dev/null || echo "")
+          if [ -n "$CURRENT_IMAGE" ]; then
+            echo "当前镜像: $CURRENT_IMAGE"
+            ssh remote-server "echo '$CURRENT_IMAGE' > ~/previous_backend_image.txt"
+            echo "✅ 已保存到 ~/previous_backend_image.txt"
+          else
+            echo "⚠️ 当前没有运行中的容器，跳过记录"
+          fi
+
       - name: 🚀 执行远程滚动部署
         env:
           BACKEND_IMAGE: ${{ steps.ver.outputs.BACKEND_IMAGE }}
@@ -151,6 +168,45 @@ jobs:
           
           # 如果此时还有正在运行但状态不佳的容器，将其停止以便后续重试
           exit 1
+
+      - name: 🔄 自动回滚（当健康检查失败时）
+        if: failure()
+        run: |
+          echo "🔄 检测到部署失败，尝试回滚到之前的版本..."
+          # 从远程服务器读取之前保存的镜像标签
+          PREVIOUS_IMAGE=$(ssh remote-server "cat ~/previous_backend_image.txt 2>/dev/null || echo ''")
+          if [ -z "$PREVIOUS_IMAGE" ]; then
+            echo "⚠️ 没有找到之前保存的镜像标签，无法回滚"
+            exit 0
+          fi
+          echo "📦 回滚到镜像: $PREVIOUS_IMAGE"
+          # 设置环境变量以使用之前的镜像
+          export BACKEND_IMAGE="$PREVIOUS_IMAGE"
+          # 重新生成 .env 文件（使用相同的 secrets）
+          cat > backend/docker/.env <<EOF
+          BIPUPU_SECRET_KEY=$SECRET_KEY
+          BIPUPU_POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+          BIPUPU_ADMIN_EMAIL=$ADMIN_EMAIL
+          BIPUPU_ADMIN_PASSWORD=$ADMIN_PASSWORD
+          BIPUPU_ADMIN_USERNAME=$ADMIN_USERNAME
+          BIPUPU_LOG_LEVEL=INFO
+          EOF
+          # 执行 docker compose up 使用之前的镜像
+          docker compose \
+            -f backend/docker/docker-compose.yml \
+            -f backend/docker/docker-compose.prod.yml \
+            -p bipupu-backend \
+            up -d --remove-orphans
+          echo "✅ 回滚完成，等待服务恢复..."
+          # 等待一段时间让容器启动
+          sleep 30
+          # 检查回滚后的容器状态
+          ROLLBACK_STATUS=$(docker inspect --format='{{.State.Health.Status}}' bipupu-backend 2>/dev/null || echo "not-found")
+          if [ "$ROLLBACK_STATUS" == "healthy" ]; then
+            echo "✅ 回滚成功，服务已恢复健康"
+          else
+            echo "⚠️ 回滚后容器状态为 $ROLLBACK_STATUS，可能需要手动干预"
+          fi
 
       - name: 🧹 清理旧镜像
         run: |
