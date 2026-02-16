@@ -8,7 +8,7 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     container_name: bipupu-backend
-    #restart: unless-stopped
+    restart: on-failure:1
     # 使用 .env 文件减少重复映射，环境中的 BIPUPU_ 前缀变量也会被自动加载
     env_file:
       - .env
@@ -43,7 +43,7 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     container_name: bipupu-celery-worker
-    #restart: unless-stopped
+    restart: on-failure:1
     env_file:
       - .env
     environment:
@@ -67,7 +67,7 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     container_name: bipupu-celery-beat
-    #restart: unless-stopped
+    restart: on-failure:1
     env_file:
       - .env
     environment:
@@ -88,7 +88,7 @@ services:
   db:
     image: postgres:15
     container_name: bipupu-db
-    #restart: unless-stopped
+    restart: on-failure:1
     environment:
       POSTGRES_USER: ${BIPUPU_POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${BIPUPU_POSTGRES_PASSWORD:-postgres}
@@ -114,7 +114,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: bipupu-redis
-    #restart: unless-stopped
+    restart: on-failure:1
     volumes:
       - redis_data:/data
     networks:
