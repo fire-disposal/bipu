@@ -1,80 +1,86 @@
+version: "3.9"
+
+# ----------------------------------------------------
+# Common backend service definition (anchor)
+# ----------------------------------------------------
 x-backend-common: &backend-common
   image: ${BACKEND_IMAGE:-bipupu-backend:local}
   restart: on-failure:1
+
   environment:
-    # --- 数据库明文配置 ---
-    - DB_HOST=db
-    - DB_PORT=5432
-    - DB_USER=postgres
-    - DB_PASSWORD=postgres
-    - DB_NAME=bipupu
-    # --- Redis明文配置 ---
-    - REDIS_HOST=redis
-    - REDIS_PORT=6379
-    # --- 系统公共配置 ---
-    - TZ=Asia/Shanghai
-    - LOG_LEVEL=INFO
-    # --- 敏感配置（通过外部注入，不写死） ---
-    - SECRET_KEY=${SECRET_KEY}
-    - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-    - ADMIN_USERNAME=${ADMIN_USERNAME}
+    # --- Database ---
+    DB_HOST: db
+    DB_PORT: "5432"
+    DB_USER: postgres
+    DB_PASSWORD: postgres
+    DB_NAME: bipupu
+    # --- Redis ---
+    REDIS_HOST: redis
+    REDIS_PORT: "6379"
+    # --- System ---
+    TZ: Asia/Shanghai
+    LOG_LEVEL: INFO
+    # --- Secrets (injected by CI / runtime) ---
+    SECRET_KEY: "${SECRET_KEY}"
+    ADMIN_USERNAME: "${ADMIN_USERNAME}"
+    ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
+
   depends_on:
     db:
       condition: service_healthy
     redis:
       condition: service_healthy
+
   networks:
     - bipupu-net
 
+# ----------------------------------------------------
+# Services
+# ----------------------------------------------------
 services:
-  # ----------------------------------------------------
-  # 1. FastAPI Backend Service
-  # ----------------------------------------------------
+  # 1. FastAPI backend
   backend:
     <<: *backend-common
     container_name: bipupu-backend
     environment:
-      <<: *backend-common
-      - CONTAINER_ROLE=backend
+      CONTAINER_ROLE: backend
     volumes:
       - upload_data:/app/uploads
       - logs_data:/app/logs
     ports:
       - "8000:8000"
     healthcheck:
-      test: ["CMD", "uv", "run", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+        ]
       interval: 15s
       timeout: 10s
       retries: 8
       start_period: 30s
 
-  # ----------------------------------------------------
-  # 2. Celery Worker Service
-  # ----------------------------------------------------
+  # 2. Celery worker
   celery-worker:
     <<: *backend-common
     container_name: bipupu-celery-worker
     environment:
-      <<: *backend-common
-      - CONTAINER_ROLE=worker
+      CONTAINER_ROLE: worker
     volumes:
       - logs_data:/app/logs
 
-  # ----------------------------------------------------
-  # 3. Celery Beat Service
-  # ----------------------------------------------------
+  # 3. Celery beat
   celery-beat:
     <<: *backend-common
     container_name: bipupu-celery-beat
     environment:
-      <<: *backend-common
-      - CONTAINER_ROLE=beat
+      CONTAINER_ROLE: beat
     volumes:
       - logs_data:/app/logs
 
-  # ----------------------------------------------------
-  # 4. PostgreSQL Database
-  # ----------------------------------------------------
+  # 4. PostgreSQL
   db:
     image: postgres:15
     container_name: bipupu-db
@@ -88,6 +94,7 @@ services:
       - pg_data:/var/lib/postgresql/data
     networks:
       - bipupu-net
+
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -95,9 +102,7 @@ services:
       retries: 10
       start_period: 10s
 
-  # ----------------------------------------------------
-  # 5. Redis Cache/Broker
-  # ----------------------------------------------------
+  # 5. Redis
   redis:
     image: redis:7-alpine
     container_name: bipupu-redis
@@ -107,14 +112,14 @@ services:
     networks:
       - bipupu-net
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
       start_period: 5s
 
 # ----------------------------------------------------
-# Named Volumes and Network Configuration
+# Volumes
 # ----------------------------------------------------
 volumes:
   pg_data:
@@ -126,6 +131,9 @@ volumes:
   logs_data:
     name: bipupu_logs
 
+# ----------------------------------------------------
+# Network
+# ----------------------------------------------------
 networks:
   bipupu-net:
     driver: bridge
