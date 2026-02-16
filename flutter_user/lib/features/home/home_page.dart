@@ -266,7 +266,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        isConnected ? '设备已连接' : '寻呼功能',
+                                        isConnected ? '设备已连接' : '设备控制',
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
@@ -278,8 +278,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                       const SizedBox(height: 4),
                                       Text(
                                         isConnected
-                                            ? '您的设备已准备好接收消息'
-                                            : '连接蓝牙设备以启用寻呼功能',
+                                            ? '您的设备已准备好进行控制操作'
+                                            : '连接蓝牙设备以启用控制功能',
                                         style: TextStyle(
                                           color: Theme.of(
                                             context,
@@ -296,7 +296,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             ElevatedButton(
                               onPressed: () {
                                 if (isConnected) {
-                                  context.push('/pager');
+                                  context.push('/bluetooth/device');
                                 } else {
                                   context.push('/bluetooth/scan');
                                 }
@@ -317,12 +317,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 children: [
                                   Icon(
                                     isConnected
-                                        ? Icons.message
+                                        ? Icons.settings_remote
                                         : Icons.bluetooth_searching,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    isConnected ? '开始寻呼' : '连接设备',
+                                    isConnected ? '设备控制' : '连接设备',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -349,6 +349,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   children: [
                     _buildQuickActionCard(
                       context,
+                      '订阅管理',
+                      Icons.subscriptions,
+                      Colors.purple.shade600,
+                      () => context.push('/messages/subscriptions'),
+                    ),
+                    _buildQuickActionCard(
+                      context,
                       '好友',
                       Icons.people_alt_rounded,
                       Colors.blue.shade600,
@@ -356,24 +363,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     ),
                     _buildQuickActionCard(
                       context,
-                      '发现',
-                      Icons.explore_rounded,
-                      Colors.orange.shade700,
-                      () => context.push('/discover'),
-                    ),
-                    _buildQuickActionCard(
-                      context,
-                      '订阅',
-                      Icons.card_membership_rounded,
-                      Colors.teal.shade600,
-                      () => context.push('/subscription'),
-                    ),
-                    _buildQuickActionCard(
-                      context,
-                      '聊天',
-                      Icons.chat_bubble_rounded,
-                      Colors.indigo.shade600,
-                      () => context.push('/messages'),
+                      '语音测试',
+                      Icons.mic,
+                      const Color.fromARGB(255, 73, 255, 97),
+                      () => context.push('/voice_test'),
                     ),
                   ],
                 ),

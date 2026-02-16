@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_user/features/assistant/assistant_config.dart';
 import 'package:flutter_user/features/assistant/assistant_controller.dart';
-// VoiceGuideService calls removed — use AssistantController for operator state
 
 class OperatorGallery extends StatefulWidget {
   const OperatorGallery({super.key});
@@ -11,7 +10,6 @@ class OperatorGallery extends StatefulWidget {
 }
 
 class _OperatorGalleryState extends State<OperatorGallery> {
-  // total slots (3 per row * 2 rows)
   final int totalSlots = 6;
   final AssistantController _assistant = AssistantController();
 
@@ -31,134 +29,170 @@ class _OperatorGalleryState extends State<OperatorGallery> {
 
   @override
   Widget build(BuildContext context) {
-    // Prepare list of items: unlocked from defaultOperators, remainder locked placeholders
     final List<Widget> cards = [];
     for (var i = 0; i < totalSlots; i++) {
       if (i < defaultOperators.length) {
         final op = defaultOperators[i];
         final selected = op.id == _assistant.currentOperatorId;
-        cards.add(_buildCard(context, op, false, selected));
+        cards.add(_buildOperatorCard(context, op, selected));
       } else {
         cards.add(_buildLockedCard(context));
       }
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('选择接线员'), centerTitle: true),
-      body: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: GridView.count(
-          crossAxisCount: 3,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          children: cards,
-        ),
+      appBar: AppBar(
+        title: const Text('选择接线员'),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
-    );
-  }
-
-  Widget _buildCard(
-    BuildContext context,
-    VirtualOperator op,
-    bool locked,
-    bool selected,
-  ) {
-    return GestureDetector(
-      onTap: () {
-        _showDetail(context, op);
-      },
-      child: Stack(
+      body: Column(
         children: [
           Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20.0),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: op.themeColor.withOpacity(0.06),
-                  blurRadius: 8,
-                  spreadRadius: 1,
-                ),
-              ],
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
+              ),
             ),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.rectangle,
-                    borderRadius: BorderRadius.circular(8),
-                    color: op.themeColor.withOpacity(0.08),
-                    border: selected
-                        ? Border.all(color: op.themeColor, width: 2)
-                        : null,
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    op.name.isNotEmpty ? op.name[0] : 'O',
-                    style: TextStyle(
-                      color: op.themeColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 28,
-                    ),
+                Text(
+                  '选择您的接线员',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  op.name,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  op.description,
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  '不同的接线员提供独特的语音风格和功能',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
           ),
-          if (selected)
-            Positioned(
-              top: 6,
-              right: 6,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(4.0),
-                  child: Icon(
-                    Icons.check_circle,
-                    color: op.themeColor,
-                    size: 18,
-                  ),
+
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: GridView.count(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 0.9,
+                children: cards,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOperatorCard(
+    BuildContext context,
+    VirtualOperator op,
+    bool selected,
+  ) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () {
+        _assistant.setOperator(op.id);
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('已选择接线员: ${op.name}')));
+      },
+      onLongPress: () => _showOperatorDialog(context, op),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: selected
+              ? op.themeColor.withOpacity(0.06)
+              : Theme.of(context).colorScheme.surface,
+          border: selected ? Border.all(color: op.themeColor, width: 2) : null,
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
+              blurRadius: 6,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: op.themeColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: op.themeColor.withOpacity(0.18)),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                op.name.isNotEmpty ? op.name[0] : 'O',
+                style: TextStyle(
+                  color: op.themeColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 28,
                 ),
               ),
             ),
-        ],
+            const SizedBox(height: 12),
+            Text(
+              op.name,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              op.description,
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildLockedCard(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('此接线员尚未解锁')));
-      },
+      onTap: () => ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('此接线员尚未解锁'))),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: Colors.grey.shade100,
-          border: Border.all(color: Colors.grey.shade300),
+          color: Theme.of(context).colorScheme.surface,
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.12),
+          ),
         ),
+        padding: const EdgeInsets.all(12),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -166,17 +200,32 @@ class _OperatorGalleryState extends State<OperatorGallery> {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(8),
+                color: Theme.of(
+                  context,
+                ).colorScheme.surfaceVariant.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.lock, size: 36, color: Colors.grey),
+              child: Icon(
+                Icons.lock,
+                size: 36,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
-            const SizedBox(height: 8),
-            const Text('未解锁', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            const Text(
+            const SizedBox(height: 10),
+            Text(
+              '未解锁',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
               '完成任务后可解锁',
-              style: TextStyle(fontSize: 12, color: Colors.black54),
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -185,8 +234,8 @@ class _OperatorGalleryState extends State<OperatorGallery> {
     );
   }
 
-  void _showDetail(BuildContext context, VirtualOperator op) {
-    showDialog(
+  void _showOperatorDialog(BuildContext context, VirtualOperator op) {
+    showDialog<void>(
       context: context,
       builder: (c) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -207,8 +256,8 @@ class _OperatorGalleryState extends State<OperatorGallery> {
                   op.name.isNotEmpty ? op.name[0] : 'O',
                   style: TextStyle(
                     color: op.themeColor,
-                    fontWeight: FontWeight.bold,
                     fontSize: 48,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -216,12 +265,18 @@ class _OperatorGalleryState extends State<OperatorGallery> {
               Text(
                 op.name,
                 style: const TextStyle(
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 8),
-              Text(op.description, textAlign: TextAlign.center),
+              Text(
+                op.description,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -232,10 +287,8 @@ class _OperatorGalleryState extends State<OperatorGallery> {
                   ),
                   ElevatedButton(
                     onPressed: () {
-                      // select operator: delegate to AssistantController
                       _assistant.setOperator(op.id);
                       Navigator.of(c).pop();
-                      Navigator.of(context).pop(); // close gallery
                       ScaffoldMessenger.of(context).hideCurrentSnackBar();
                       ScaffoldMessenger.of(
                         context,

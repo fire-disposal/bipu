@@ -24,6 +24,10 @@ class User(Base):
     # 时间戳
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    # 用户时区（例如: Asia/Shanghai），默认上海时区
+    timezone = Column(String(64), nullable=False, server_default="Asia/Shanghai")
+    # 用户每日运势推送时间，格式 HH:MM（本地时区）
+    fortune_time = Column(String(5), nullable=True)
 
     # 黑名单关系
     blocks_initiated = relationship("UserBlock", foreign_keys="[UserBlock.blocker_id]", back_populates="blocker", cascade="all, delete-orphan")

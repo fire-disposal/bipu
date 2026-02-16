@@ -247,7 +247,7 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
         if (_bluetoothService.connectionState.value ==
                 BluetoothConnectionState.connected &&
             content.isNotEmpty) {
-          _bluetoothService.forwardMessage(content);
+          _bluetoothService.sendTextMessage(content);
         }
       }
     } catch (e) {
@@ -367,7 +367,7 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
         try {
           // Format message for forwarding
           final formattedMessage = _formatMessageForBluetooth(message);
-          _bluetoothService.forwardMessage(formattedMessage);
+          _bluetoothService.sendTextMessage(formattedMessage);
           log(
             'IM Service: Forwarded message ${message.id} to Bluetooth device',
           );

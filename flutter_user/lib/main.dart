@@ -20,6 +20,7 @@ import 'package:flutter_user/features/chat/pages/conversation_list_page.dart';
 import 'package:flutter_user/features/chat/pages/message_detail_page.dart';
 import 'package:flutter_user/models/message/message_response.dart';
 import 'package:flutter_user/features/chat/pages/favorites_page.dart';
+import 'package:flutter_user/features/chat/pages/subscription_management_page.dart';
 import 'package:flutter_user/features/contacts/pages/contacts_page.dart';
 import 'package:flutter_user/features/contacts/pages/user_search_page.dart';
 import 'package:flutter_user/features/profile/pages/user_detail_page.dart';
@@ -152,28 +153,34 @@ final GoRouter _router = GoRouter(
         GoRoute(
           path: '/messages',
           builder: (context, state) => const MessagesPage(),
-        ),
-        GoRoute(
-          path: '/messages/detail',
-          builder: (context, state) {
-            final extra = state.extra as dynamic;
-            if (extra is Map) {
-              // sometimes JSON map may be passed
-              final msg = MessageResponse.fromJson(
-                Map<String, dynamic>.from(extra),
-              );
-              return MessageDetailPage(message: msg);
-            }
-            if (extra is MessageResponse) {
-              return MessageDetailPage(message: extra);
-            }
-            // Fallback: show empty scaffold
-            return const Scaffold(body: Center(child: Text('消息未找到')));
-          },
-        ),
-        GoRoute(
-          path: '/messages/favorites',
-          builder: (context, state) => const FavoritesPage(),
+          routes: [
+            GoRoute(
+              path: 'detail',
+              builder: (context, state) {
+                final extra = state.extra as dynamic;
+                if (extra is Map) {
+                  // sometimes JSON map may be passed
+                  final msg = MessageResponse.fromJson(
+                    Map<String, dynamic>.from(extra),
+                  );
+                  return MessageDetailPage(message: msg);
+                }
+                if (extra is MessageResponse) {
+                  return MessageDetailPage(message: extra);
+                }
+                // Fallback: show empty scaffold
+                return const Scaffold(body: Center(child: Text('消息未找到')));
+              },
+            ),
+            GoRoute(
+              path: 'favorites',
+              builder: (context, state) => const FavoritesPage(),
+            ),
+            GoRoute(
+              path: 'subscriptions',
+              builder: (context, state) => const SubscriptionManagementPage(),
+            ),
+          ],
         ),
         GoRoute(
           path: '/contacts',

@@ -51,8 +51,10 @@
   "messages_menu_management": "消息管理",
   "management_refresh": "刷新消息",
   "management_clear_local": "清除本地缓存",
+  "subscription_management": "订阅管理",
   "management_delete_all_local": "删除所有本地消息（不可恢复）",
   "message_detail_title": "消息详情",
   "action_favorite": "收藏",
-  "action_copy": "复制"
+  "action_copy": "复制",
+  "no_services": "暂无服务号"
 }

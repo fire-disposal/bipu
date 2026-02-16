@@ -51,8 +51,10 @@
   "messages_menu_management": "Message Management",
   "management_refresh": "Refresh Messages",
   "management_clear_local": "Clear Local Cache",
+  "subscription_management": "Subscription Management",
   "management_delete_all_local": "Delete All Local Messages (Irrecoverable)",
   "message_detail_title": "Message Detail",
   "action_favorite": "Favorite",
-  "action_copy": "Copy"
+  "action_copy": "Copy",
+  "no_services": "No services available"
 }

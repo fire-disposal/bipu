@@ -20,7 +20,7 @@ uv run python -m app.check_deps || {
 case "${CONTAINER_ROLE:-backend}" in
     backend)
         echo -e "${YELLOW}运行数据库迁移...${NC}"
-        uv run alembic upgrade head || {
+        uv run db.py migrate || {
             echo -e "${RED}数据库迁移失败${NC}"
             exit 1
         }

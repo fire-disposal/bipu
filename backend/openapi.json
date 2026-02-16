@@ -1390,6 +1390,123 @@
         }
       }
     },
+    "/api/service_accounts/subscriptions/": {
+      "get": {
+        "tags": [
+          "服务号"
+        ],
+        "summary": "Get User Subscriptions",
+        "description": "获取用户订阅的服务号列表",
+        "operationId": "get_user_subscriptions_api_service_accounts_subscriptions__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceAccountList"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/service_accounts/{name}/subscribe": {
+      "post": {
+        "tags": [
+          "服务号"
+        ],
+        "summary": "Subscribe Service Account",
+        "description": "订阅服务号",
+        "operationId": "subscribe_service_account_api_service_accounts__name__subscribe_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "服务号"
+        ],
+        "summary": "Unsubscribe Service Account",
+        "description": "取消订阅服务号",
+        "operationId": "unsubscribe_service_account_api_service_accounts__name__subscribe_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/login": {
       "get": {
         "tags": [

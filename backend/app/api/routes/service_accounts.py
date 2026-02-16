@@ -52,3 +52,48 @@ async def get_service_avatar(
         media_type=service.avatar_mimetype or "image/png",
         headers={"Cache-Control": "public, max-age=3600"}
     )
+
+@router.get("/subscriptions/", response_model=ServiceAccountList)
+async def get_user_subscriptions(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取用户订阅的服务号列表"""
+    subscriptions = current_user.subscriptions
+    return {"items": subscriptions, "total": len(subscriptions)}
+
+@router.post("/{name}/subscribe")
+async def subscribe_service_account(
+    name: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """订阅服务号"""
+    service = db.query(ServiceAccount).filter(ServiceAccount.name == name, ServiceAccount.is_active == True).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service account not found")
+    
+    if service in current_user.subscriptions:
+        raise HTTPException(status_code=400, detail="Already subscribed")
+    
+    current_user.subscriptions.append(service)
+    db.commit()
+    return {"message": "Subscribed successfully"}
+
+@router.delete("/{name}/subscribe")
+async def unsubscribe_service_account(
+    name: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """取消订阅服务号"""
+    service = db.query(ServiceAccount).filter(ServiceAccount.name == name).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service account not found")
+    
+    if service not in current_user.subscriptions:
+        raise HTTPException(status_code=400, detail="Not subscribed")
+    
+    current_user.subscriptions.remove(service)
+    db.commit()
+    return {"message": "Unsubscribed successfully"}

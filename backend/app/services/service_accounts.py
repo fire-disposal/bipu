@@ -52,11 +52,12 @@ async def handle_service_message(db: Session, sender: User, message: Message):
 
 
 async def send_reply(
-    db: Session, 
-    service_name: str, 
-    receiver_bipupu_id: str, 
-    content: str, 
-    pattern: Optional[dict] = None
+    db: Session,
+    service_name: str,
+    receiver_bipupu_id: str,
+    content: str,
+    pattern: Optional[dict] = None,
+    message_type: MessageType = MessageType.SYSTEM,
 ):
     """发送回复消息 / 推送消息
     
@@ -75,7 +76,7 @@ async def send_reply(
         sender_bipupu_id=service_name,
         receiver_bipupu_id=receiver_bipupu_id,
         content=content,
-        message_type=MessageType.SYSTEM,
+        message_type=message_type,
         pattern=pattern or {}
     )
     
