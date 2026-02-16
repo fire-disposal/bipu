@@ -29,32 +29,38 @@ cd ~/bipupu-compose
 
 ### 3. 从仓库复制 Docker Compose 配置文件
 
-**方式 A：从 GitHub 仓库复制（推荐）**
+**方式 A：自动推送（推荐）** ✅
 
+GitHub Actions 工作流会自动通过 SCP 推送配置文件，**无需手动操作**。
+
+只需确保目录存在：
 ```bash
-# 假设你有 git 访问权限
-git clone https://github.com/your-org/your-repo.git
-cp your-repo/backend/docker/docker-compose.yml ~/bipupu-compose/
-cp your-repo/backend/docker/docker-compose.prod.yml ~/bipupu-compose/
+mkdir -p ~/bipupu-compose
+mkdir -p ~/bipupu-backups
 ```
 
-**方式 B：手动创建**
+**方式 B：手动复制（可选备份）**
 
+如果需要提前手动维护，可以从本地机器通过 scp 复制：
 ```bash
-# 或者从本地机器通过 scp 复制
 # 在本地机器执行：
 scp backend/docker/docker-compose.yml user@server:~/bipupu-compose/
 scp backend/docker/docker-compose.prod.yml user@server:~/bipupu-compose/
 ```
 
-### 4. 验证文件
+### 4. 验证目录结构
 
 ```bash
 cd ~/bipupu-compose
 ls -la
-# 应该看到：
-# - docker-compose.yml
-# - docker-compose.prod.yml
+# 应该看到以下目录结构（首次部署前可能是空的）：
+# - docker-compose.yml        (首次部署时由 GitHub Actions 推送)
+# - docker-compose.prod.yml   (首次部署时由 GitHub Actions 推送)
+# - .env                       (首次部署时由工作流创建)
+
+cd ~/bipupu-backups
+ls -la
+# - last-image.txt            (首次部署时由工作流创建，用于回滚)
 ```
 
 ### 5. 测试 Docker 权限

@@ -16,9 +16,9 @@ services:
       # 数据库配置
       - DB_HOST=db
       - DB_PORT=5432
-      - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD:-postgres}
-      - DB_NAME=${DB_NAME:-bipupu}
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=bipupu
       # Redis配置
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -57,9 +57,9 @@ services:
       # 数据库配置
       - DB_HOST=db
       - DB_PORT=5432
-      - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD:-postgres}
-      - DB_NAME=${DB_NAME:-bipupu}
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=bipupu
       # Redis配置
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -92,9 +92,9 @@ services:
       # 数据库配置
       - DB_HOST=db
       - DB_PORT=5432
-      - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD:-postgres}
-      - DB_NAME=${DB_NAME:-bipupu}
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=bipupu
       # Redis配置
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -118,16 +118,16 @@ services:
     container_name: bipupu-db
     restart: on-failure:1
     environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-bipupu}
-      TZ: ${TZ:-Asia/Shanghai}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: bipupu
+      TZ: Asia/Shanghai
     volumes:
       - pg_data:/var/lib/postgresql/data
     networks:
       - bipupu-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 3s
       retries: 10
