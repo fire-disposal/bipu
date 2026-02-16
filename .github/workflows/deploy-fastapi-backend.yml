@@ -77,7 +77,7 @@ jobs:
 
       - name: 💾 备份与预处理
         run: |
-          ssh bipupu-server <<'SSH_SCRIPT'
+          ssh -o BatchMode=yes -o ConnectTimeout=10 -T bipupu-server 'sh -s' <<'SSH_SCRIPT'
           set -e
           mkdir -p ~/bipupu-backups ~/bipupu-compose
           # 备份当前镜像名用于回滚
@@ -94,10 +94,10 @@ jobs:
 
       - name: 🚀 执行部署 (变量注入)
         run: |
-          ssh bipupu-server <<SSH_DEPLOY
+          ssh -o BatchMode=yes -o ConnectTimeout=10 -T bipupu-server 'sh -s' <<SSH_DEPLOY
           set -e
           cd ~/bipupu-compose
-          
+
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
           # 敏感变量注入
@@ -112,18 +112,23 @@ jobs:
 
       - name: 🩺 健康检查
         run: |
-          ssh bipupu-server <<'SSH_HEALTH'
-          for i in {1..10}; do
-            STATUS=$(docker inspect --format='{{.State.Health.Status}}' bipupu-backend 2>/dev/null || echo "not-found")
-            if [ "$STATUS" = "healthy" ]; then
-              echo "✅ 服务已就绪"
-              exit 0
-            fi
-            echo "⏳ 等待服务启动... ($i/10)"
-            sleep 10
-          done
-          exit 1
-          SSH_HEALTH
+          ssh -o BatchMode=yes -o ConnectTimeout=10 -T bipupu-server 'sh -s' <<'SSH_HEALTH'
+          ssh -o BatchMode=yes -o ConnectTimeout=10 -T bipupu-server 'sh -s' <<'SSH_ROLLBACK'
+          set -e
+          if [ -f ~/bipupu-backups/last-image.txt ]; then
+            PREVIOUS_IMAGE=$(cat ~/bipupu-backups/last-image.txt)
+            [ -f ~/bipupu-backups/compose-bak.yml ] && cp ~/bipupu-backups/compose-bak.yml ~/bipupu-compose/docker-compose.yml
+
+            cd ~/bipupu-compose
+            export SECRET_KEY="${{ secrets.SECRET_KEY }}"
+            export ADMIN_PASSWORD="${{ secrets.ADMIN_PASSWORD }}"
+            export ADMIN_USERNAME="${{ secrets.ADMIN_USERNAME }}"
+            export BACKEND_IMAGE="$PREVIOUS_IMAGE"
+
+            docker compose -p bipupu-backend up -d
+            echo "🔄 已回滚至上次稳定版本"
+          fi
+          SSH_ROLLBACK
 
       - name: 🔄 自动回滚
         if: failure()
@@ -148,4 +153,4 @@ jobs:
       - name: 🧹 清理旧镜像
         if: always()
         run: |
-          ssh bipupu-server "docker image prune -f --filter 'until=48h'"
+          ssh -o BatchMode=yes -o ConnectTimeout=10 -T bipupu-server "docker image prune -f --filter 'until=48h'"
