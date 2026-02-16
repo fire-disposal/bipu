@@ -10,7 +10,7 @@ import asyncio
 from app.services.redis_service import RedisService
 from app.core.user_utils import generate_bipupu_id
 from app.core.user_utils import get_western_zodiac
-from app.core.lunar_service import compute_bazi, compute_lunar_date
+from app.services.lunar_service import compute_bazi, compute_lunar_date
 from app.models.user_block import UserBlock
 from app.schemas.common import PaginationParams
 from datetime import datetime
