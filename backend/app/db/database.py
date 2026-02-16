@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 import redis.asyncio as redis
@@ -130,7 +130,7 @@ async def init_db():
             logger.info("🐘 尝试连接 PostgreSQL...")
             # 测试连接
             with engine.connect() as conn:
-                conn.execute("SELECT 1")
+                conn.execute(text("SELECT 1"))
             
             current_db_type = "postgresql"
             logger.info("✅ PostgreSQL连接成功")

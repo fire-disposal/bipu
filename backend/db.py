@@ -11,8 +11,8 @@ def run_command(command):
     """运行系统命令的辅助函数"""
     try:
         print(f"🚀 正在执行: {' '.join(command)}")
-        # shell=True 在 Windows 下对 uv 命令更友好
-        subprocess.run(command, check=True, shell=True)
+        # 使用 shell=False 以避免参数丢失问题，在 Linux/Windows 下均适用
+        subprocess.run(command, check=True, shell=False)
     except subprocess.CalledProcessError as e:
         print(f"❌ 命令执行失败: {e}")
         sys.exit(1)
