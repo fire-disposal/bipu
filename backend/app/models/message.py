@@ -2,8 +2,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Text, JSON, Index
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from sqlalchemy import Enum as SAEnum
-from app.schemas.enums import MessageType
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.models.base import Base
@@ -31,8 +29,8 @@ class Message(Base):
     # 消息内容
     content = Column(Text, nullable=False)
     
-    # 消息类型（全局枚举）
-    message_type = Column(SAEnum(MessageType, name="messagetype"), nullable=False, index=True)
+    # 消息类型（存为字符串以避免数据库枚举类型）
+    message_type = Column(String(20), nullable=False, index=True)
     
 
     # 为了兼容性，暂时保留Integer类型，但会添加字符串字段
@@ -53,4 +51,4 @@ class Message(Base):
     )
 
     def __repr__(self):
-        return f"<Message(id={self.id}, sender='{self.sender_bipupu_id}', receiver='{self.receiver_bipupu_id}', type='{self.message_type.value if self.message_type else None}')>"
+        return f"<Message(id={self.id}, sender='{self.sender_bipupu_id}', receiver='{self.receiver_bipupu_id}', type='{self.message_type if self.message_type else None}')>"

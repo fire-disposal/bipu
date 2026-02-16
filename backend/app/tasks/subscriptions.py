@@ -2,10 +2,10 @@ from celery import shared_task
 from app.db.database import SessionLocal
 from app.core.logging import get_logger
 from app.models.service_account import ServiceAccount
-from app.schemas.enums import MessageType
+
 from app.services import service_accounts
 import pytz
-from datetime import datetime
+from datetime import datetime, timezone
 import hashlib
 
 logger = get_logger(__name__)
@@ -34,7 +34,7 @@ def fortune_task():
             return 0
 
         sent = 0
-        now_utc = datetime.utcnow()
+        now_utc = datetime.now(timezone.utc)
 
         for user in service.subscribers:
             # 确定用户时区和预设时间
@@ -55,7 +55,7 @@ def fortune_task():
                 # 以服务号身份发送，使用 SERVICE 类型
                 import asyncio
                 asyncio.get_event_loop().run_until_complete(
-                    service_accounts.send_reply(db, "cosmic.fortune", user.bipupu_id, content, None, MessageType.SYSTEM)
+                    service_accounts.send_reply(db, "cosmic.fortune", user.bipupu_id, content, None, "SYSTEM")
                 )
                 sent += 1
 

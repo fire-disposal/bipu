@@ -1,8 +1,8 @@
 """"initial_schema"
 
-Revision ID: 65e21f7698b7
+Revision ID: 0c5320d8f6c4
 Revises: 
-Create Date: 2026-02-16 16:58:52.752175
+Create Date: 2026-02-16 18:15:25.001716
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '65e21f7698b7'
+revision = '0c5320d8f6c4'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -21,7 +21,7 @@ def upgrade() -> None:
     op.create_table('messages',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('content', sa.Text(), nullable=False),
-    sa.Column('message_type', sa.Enum('NORMAL', 'VOICE', 'SYSTEM', name='messagetype'), nullable=False),
+    sa.Column('message_type', sa.String(length=20), nullable=False),
     sa.Column('sender_bipupu_id', sa.String(length=50), nullable=False),
     sa.Column('receiver_bipupu_id', sa.String(length=50), nullable=False),
     sa.Column('pattern', sa.JSON(), nullable=True),
@@ -36,6 +36,21 @@ def upgrade() -> None:
     op.create_index(op.f('ix_messages_message_type'), 'messages', ['message_type'], unique=False)
     op.create_index(op.f('ix_messages_receiver_bipupu_id'), 'messages', ['receiver_bipupu_id'], unique=False)
     op.create_index(op.f('ix_messages_sender_bipupu_id'), 'messages', ['sender_bipupu_id'], unique=False)
+    op.create_table('service_accounts',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('name', sa.String(length=50), nullable=False),
+    sa.Column('description', sa.String(length=255), nullable=True),
+    sa.Column('avatar_data', sa.LargeBinary(), nullable=True),
+    sa.Column('avatar_filename', sa.String(length=255), nullable=True),
+    sa.Column('avatar_mimetype', sa.String(length=50), nullable=True),
+    sa.Column('bot_logic', sa.JSON(), nullable=True),
+    sa.Column('is_active', sa.Boolean(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_service_accounts_id'), 'service_accounts', ['id'], unique=False)
+    op.create_index(op.f('ix_service_accounts_name'), 'service_accounts', ['name'], unique=True)
     op.create_table('users',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('bipupu_id', sa.String(length=8), nullable=False),
@@ -73,6 +88,13 @@ def upgrade() -> None:
     op.create_index(op.f('ix_favorites_id'), 'favorites', ['id'], unique=False)
     op.create_index(op.f('ix_favorites_message_id'), 'favorites', ['message_id'], unique=False)
     op.create_index(op.f('ix_favorites_user_id'), 'favorites', ['user_id'], unique=False)
+    op.create_table('subscriptions',
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('service_account_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['service_account_id'], ['service_accounts.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('user_id', 'service_account_id')
+    )
     op.create_table('trusted_contacts',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('owner_id', sa.Integer(), nullable=False),
@@ -110,6 +132,7 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_trusted_contacts_id'), table_name='trusted_contacts')
     op.drop_index(op.f('ix_trusted_contacts_contact_id'), table_name='trusted_contacts')
     op.drop_table('trusted_contacts')
+    op.drop_table('subscriptions')
     op.drop_index(op.f('ix_favorites_user_id'), table_name='favorites')
     op.drop_index(op.f('ix_favorites_message_id'), table_name='favorites')
     op.drop_index(op.f('ix_favorites_id'), table_name='favorites')
@@ -118,6 +141,9 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_users_id'), table_name='users')
     op.drop_index(op.f('ix_users_bipupu_id'), table_name='users')
     op.drop_table('users')
+    op.drop_index(op.f('ix_service_accounts_name'), table_name='service_accounts')
+    op.drop_index(op.f('ix_service_accounts_id'), table_name='service_accounts')
+    op.drop_table('service_accounts')
     op.drop_index(op.f('ix_messages_sender_bipupu_id'), table_name='messages')
     op.drop_index(op.f('ix_messages_receiver_bipupu_id'), table_name='messages')
     op.drop_index(op.f('ix_messages_message_type'), table_name='messages')

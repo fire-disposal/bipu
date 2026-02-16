@@ -3,7 +3,6 @@ import pickle
 from typing import Optional, Any, Union
 from app.db.database import get_redis
 from app.models.message import Message
-from app.schemas.enums import MessageType
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -27,7 +26,7 @@ class RedisService:
                     "sender_id": message.sender_bipupu_id,
                     "receiver_id": message.receiver_bipupu_id,
                     "content": message.content,
-                    "message_type": message.message_type.value if message.message_type else None,
+                    "message_type": message.message_type if message.message_type else None,
                     "created_at": message.created_at.isoformat() if message.created_at else None,
                     "pattern": message.pattern
                 }

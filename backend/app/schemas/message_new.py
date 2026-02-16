@@ -2,14 +2,14 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional, Dict, Any
-from app.schemas.enums import MessageType
 
 
 class MessageCreate(BaseModel):
     """创建消息"""
     receiver_id: str = Field(..., description="接收者的 bipupu_id")
     content: str = Field(..., min_length=1, description="消息内容")
-    message_type: MessageType = Field(default=MessageType.NORMAL, description="消息类型：NORMAL, VOICE, SYSTEM")
+    # 使用字符串表示类型，避免全局枚举依赖。可选值: "NORMAL", "VOICE", "SYSTEM"
+    message_type: str = Field(default="NORMAL", description="消息类型：NORMAL, VOICE, SYSTEM")
     pattern: Optional[Dict[str, Any]] = Field(None, description="控制 pupu 机显示/光效/屏保等")
 
 
@@ -19,7 +19,7 @@ class MessageResponse(BaseModel):
     sender_bipupu_id: str
     receiver_bipupu_id: str
     content: str
-    message_type: MessageType
+    message_type: str
     pattern: Optional[Dict[str, Any]] = None
     created_at: datetime
 

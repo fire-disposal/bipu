@@ -1,9 +1,7 @@
-import '../common/enums.dart';
-
 class MessageCreateRequest {
   final String title;
   final String content;
-  final MessageType messageType;
+  final String messageType; // 'NORMAL' | 'VOICE' | 'SYSTEM'
   final int priority;
   final Map<String, dynamic>? pattern;
   final int? receiverId;
@@ -11,17 +9,20 @@ class MessageCreateRequest {
   MessageCreateRequest({
     required this.title,
     required this.content,
-    required this.messageType,
+    this.messageType = 'NORMAL',
     this.priority = 0,
     this.pattern,
     this.receiverId,
   });
 
   factory MessageCreateRequest.fromJson(Map<String, dynamic> json) {
+    final rawType = (json['message_type'] ?? json['msg_type'] ?? 'NORMAL')
+        .toString();
+    final type = rawType.toUpperCase();
     return MessageCreateRequest(
       title: json['title'] as String,
       content: json['content'] as String,
-      messageType: _parseMessageType(json['message_type'] as String),
+      messageType: type,
       priority: json['priority'] ?? 0,
       pattern: (json['pattern'] as Map<String, dynamic>?)
           ?.cast<String, dynamic>(),
@@ -36,35 +37,11 @@ class MessageCreateRequest {
   Map<String, dynamic> toJson() => {
     'title': title,
     'content': content,
-    'message_type': _messageTypeToString(messageType),
+    'message_type': messageType,
     'priority': priority,
     'pattern': pattern,
     'receiver_id': receiverId,
   };
-}
-
-MessageType _parseMessageType(String value) {
-  final v = value.toUpperCase();
-  switch (v) {
-    case 'SYSTEM':
-      return MessageType.system;
-    case 'VOICE':
-      return MessageType.voice;
-    case 'NORMAL':
-    default:
-      return MessageType.normal;
-  }
-}
-
-String _messageTypeToString(MessageType type) {
-  switch (type) {
-    case MessageType.system:
-      return 'SYSTEM';
-    case MessageType.voice:
-      return 'VOICE';
-    case MessageType.normal:
-      return 'NORMAL';
-  }
 }
 
 class MessageAckEventCreate {

@@ -5,7 +5,6 @@ from app.models.message import Message
 from app.services.service_accounts import register_service
 from app.services.message_service_new import MessageService
 from app.schemas.message_new import MessageCreate
-from app.schemas.enums import MessageType
 from app.core.logging import get_logger
 import redis.asyncio as redis
 from app.db.database import redis_client
@@ -38,7 +37,7 @@ async def handle_cosmic_fortune(db: Session, sender: User, received_message: Mes
     reply_message_data = MessageCreate(
         receiver_id=sender.bipupu_id,
         content=reply_content,
-        message_type=MessageType.SYSTEM
+        message_type="SYSTEM"
     )
     
     # 创建一个虚拟的 "service" 用户来发送回复

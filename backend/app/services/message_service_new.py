@@ -4,7 +4,6 @@ from typing import Optional, List
 from app.models.message import Message
 from app.models.user import User
 from app.schemas.message_new import MessageCreate
-from app.schemas.enums import MessageType
 from app.core.websocket import manager
 from app.core.logging import get_logger
 from app.core.user_utils import is_service_account
@@ -33,12 +32,32 @@ class MessageService:
         6. 如果是普通消息，通过 WebSocket 推送（如果在线）
         """
         
-        # 创建消息对象（不立即存入DB）
+        # 决定消息类型：优先由发送方/内容决定（不信任外部传入的枚举）
+        # 规则：
+        # - 如果发送者是服务号 => SYSTEM
+        # - 否则如果包含音频相关信息（pattern 中含 audio/voice 字段） => VOICE
+        # - 否则（无额外 pattern） => NORMAL
+        sender_is_service = is_service_account(getattr(sender, "bipupu_id", ""))
+
+        def _pattern_has_audio(pat: dict) -> bool:
+            if not pat:
+                return False
+            keys = set(k.lower() for k in pat.keys())
+            audio_keys = {"audio", "audio_url", "voice", "voice_url", "transcript", "audio_path"}
+            return len(keys & audio_keys) > 0
+
+        if sender_is_service:
+            mt = "SYSTEM"
+        elif _pattern_has_audio(message_data.pattern if hasattr(message_data, "pattern") else None):
+            mt = "VOICE"
+        else:
+            mt = "NORMAL"
+
         new_message = Message(
             sender_bipupu_id=sender.bipupu_id,
             receiver_bipupu_id=message_data.receiver_id,
             content=message_data.content,
-            message_type=message_data.message_type,
+            message_type=mt,
             pattern=message_data.pattern
         )
         
@@ -92,7 +111,7 @@ class MessageService:
                 "id": message.id,
                 "sender_id": message.sender_bipupu_id,
                 "content": message.content,
-                "message_type": message.message_type.value if message.message_type else None,
+                "message_type": message.message_type if message.message_type else None,
                 "pattern": message.pattern,
                 "created_at": message.created_at.isoformat()
             }

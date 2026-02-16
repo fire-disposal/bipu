@@ -64,8 +64,8 @@ class _MessagesPageState extends State<MessagesPage> {
         case MessageFilter.sent:
           return msg.senderBipupuId == myId;
         case MessageFilter.subscription:
-          final mt = msg.msgType.toLowerCase();
-          return mt.contains('service') || mt.contains('subscription');
+          // 服务号 / 订阅类消息在后端统一为 SYSTEM
+          return msg.msgType.toUpperCase() == 'SYSTEM';
         case MessageFilter.management:
           return true;
       }

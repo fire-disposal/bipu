@@ -7,7 +7,7 @@ from app.models.service_account import ServiceAccount
 from app.core.logging import get_logger
 import random
 import asyncio
-from app.schemas.enums import MessageType
+
 
 logger = get_logger(__name__)
 
@@ -57,7 +57,7 @@ async def send_reply(
     receiver_bipupu_id: str,
     content: str,
     pattern: Optional[dict] = None,
-    message_type: MessageType = MessageType.SYSTEM,
+    message_type: str = "SYSTEM",
 ):
     """发送回复消息 / 推送消息
     
@@ -71,12 +71,13 @@ async def send_reply(
     # 避免循环导入
     from app.core.websocket import manager
 
-    # 创建回复消息
+    # 创建回复消息（确保存入字符串）
+    mt = message_type
     new_message = Message(
         sender_bipupu_id=service_name,
         receiver_bipupu_id=receiver_bipupu_id,
         content=content,
-        message_type=message_type,
+        message_type=mt,
         pattern=pattern or {}
     )
     
@@ -95,7 +96,7 @@ async def send_reply(
                 "id": new_message.id,
                 "sender_id": new_message.sender_bipupu_id,
                 "content": new_message.content,
-                "message_type": new_message.message_type.value if new_message.message_type else None,
+                "message_type": new_message.message_type if new_message.message_type else None,
                 "pattern": new_message.pattern,
                 "created_at": new_message.created_at.isoformat()
             }

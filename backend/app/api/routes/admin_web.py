@@ -10,7 +10,6 @@ from app.models.message import Message
 from app.core.security import get_current_superuser_web, authenticate_user, create_access_token
 from app.services.message_service_new import MessageService
 from app.schemas.message_new import MessageCreate
-from app.schemas.enums import MessageType
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -277,7 +276,7 @@ async def admin_send_message(
         msg_data = MessageCreate(
             receiver_id=receiver_id,
             content=content,
-            message_type=MessageType(message_type)
+            message_type=message_type
         )
         
         await MessageService.send_message(db, current_user, msg_data)

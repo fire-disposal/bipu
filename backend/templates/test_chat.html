@@ -79,7 +79,7 @@
                             <small class="text-muted">{{ msg.created_at.strftime('%m-%d %H:%M') }}</small>
                         </div>
                         <p class="mb-1">{{ msg.content }}</p>
-                        <small class="text-muted">Type: {{ msg.message_type.value }}</small>
+                        <small class="text-muted">Type: {{ msg.message_type }}</small>
                     </div>
                     {% else %}
                     <div class="text-center p-4 text-muted">暂无收到消息</div>
@@ -97,7 +97,7 @@
                             <small class="text-muted">{{ msg.created_at.strftime('%m-%d %H:%M') }}</small>
                         </div>
                         <p class="mb-1">{{ msg.content }}</p>
-                        <small class="text-muted">Type: {{ msg.message_type.value }}</small>
+                        <small class="text-muted">Type: {{ msg.message_type }}</small>
                     </div>
                     {% else %}
                     <div class="text-center p-4 text-muted">暂无发送消息</div>
