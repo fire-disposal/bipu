@@ -1,6 +1,27 @@
-# backend/docker/docker-compose.prod.yml (生产环境专用)
+# backend/docker/docker-compose.prod.yml (生产环境专用覆盖配置)
+# 这个文件会与 docker-compose.yml 合并，用于生产环境特定配置
 services:
   backend:
+    # 生产环境移除本地构建，使用推送的镜像
+    build: null
+    # 移除本地目录挂载，使用Docker 管理的数据卷
+    volumes:
+      - upload_data:/app/uploads
+      - logs_data:/app/logs
     restart: unless-stopped
-    # 生产环境不需要 build 块，因为我们拉取镜像
-    # 生产环境不需要本地目录挂载
+
+  celery-worker:
+    build: null
+    restart: unless-stopped
+
+  celery-beat:
+    build: null
+    restart: unless-stopped
+
+  # 生产环境数据库额外配置
+  db:
+    restart: unless-stopped
+    # 确保 PostgreSQL 未暴露到公网，仅内网访问
+
+  redis:
+    restart: unless-stopped

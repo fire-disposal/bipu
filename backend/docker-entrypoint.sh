@@ -9,7 +9,16 @@ NC='\033[0m' # No Color
 
 echo -e "${GREEN}开始启动 bipupu Backend...${NC}"
 
-# 依赖服务自检（使用应用内部逻辑，不再重复定义变量）
+# ====================================================
+# 初始化环境：确保日志目录可访问
+# ====================================================
+if [ ! -d "/app/logs" ]; then
+    mkdir -p /app/logs
+fi
+# 确保日志目录对当前用户可写
+chmod 755 /app/logs
+
+# 依赖服务自检
 echo -e "${YELLOW}正在通过应用配置自检依赖服务...${NC}"
 uv run python -m app.check_deps || {
     echo -e "${RED}依赖服务自检失败，请检查配置或网络${NC}"
@@ -19,6 +28,14 @@ uv run python -m app.check_deps || {
 # 根据容器角色执行不同操作
 case "${CONTAINER_ROLE:-backend}" in
     backend)
+        echo -e "${YELLOW}检查数据库迁移状态...${NC}"
+        # 检查是否有记录版本
+        if ! uv run alembic current 2>/dev/null | grep -q .; then
+            echo -e "${YELLOW}未检测到迁移版本，尝试标记为最新版本...${NC}"
+            uv run alembic stamp head || {
+                echo -e "${RED}版本标记失败，继续尝试迁移...${NC}"
+            }
+        fi
         echo -e "${YELLOW}运行数据库迁移...${NC}"
         uv run alembic upgrade head  || {
             echo -e "${RED}数据库迁移失败${NC}"
@@ -48,7 +65,10 @@ case "${CONTAINER_ROLE:-backend}" in
             exec $OVERRIDE_CMD
         else
             echo -e "${GREEN}启动Celery Beat...${NC}"
-            exec uv run celery -A app.celery beat -l info --pidfile=/app/logs/celerybeat.pid --schedule=/app/logs/celerybeat-schedule
+            # 使用临时目录避免权限问题
+            exec uv run celery -A app.celery beat -l info \
+                --pidfile=/tmp/celerybeat.pid \
+                --schedule=/tmp/celerybeat-schedule
         fi
         ;;
         

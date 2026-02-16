@@ -24,14 +24,6 @@ jobs:
       contents: read
       packages: write
 
-    env:
-      # 全局注入敏感配置，确保部署、健康检查和日志查看的所有步骤都能访问
-      SECRET_KEY: ${{ secrets.SECRET_KEY }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
-      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
-      ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
-
     steps:
       - name: 📥 获取源代码
         uses: actions/checkout@v4
@@ -65,88 +57,105 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: 🔑 配置 SSH 密钥 (直接文件模式)
+      - name: 🔑 配置 SSH 密钥
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           
-          # 扫描指纹
-          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+          # 扫描指纹并添加到 known_hosts
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
           
-          # 使用 EOF 语法一次性写入 config，更整洁
-          cat >> ~/.ssh/config <<EOF
-          Host remote-server
-              HostName ${{ secrets.SERVER_HOST }}
-              User ${{ secrets.SERVER_USER }}
-              IdentityFile ~/.ssh/id_rsa
-              StrictHostKeyChecking no
-              ServerAliveInterval 60
-          EOF
-          
-          echo "Testing SSH Connection..."
-          ssh remote-server "echo '✅ SSH Connection OK'"
+          echo "✅ SSH 密钥已配置"
 
-      - name: 🌐 激活远程 Docker 上下文
+      - name: 🧪 验证 SSH 连接
         run: |
-          # 使用 config 中定义的 Host 别名
-          docker context create remote-context --docker "host=ssh://remote-server"
-          # 持久化上下文选择到环境变量，确保后续步骤生效
-          echo "DOCKER_CONTEXT=remote-context" >> $GITHUB_ENV
+          ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "echo '✅ SSH Connection OK'"
 
-      - name: 🔍 预检查 Secrets 配置
+      - name: 📝 验证 Secrets 配置
         run: |
-          # 检查关键变量是否为空（不打印值）
-          if [[ -z "$SECRET_KEY" || -z "$POSTGRES_PASSWORD" || -z "$ADMIN_EMAIL" ]]; then
-            echo "::error::关键 Secrets 未设置！请检查 GitHub 仓库 Settings -> Secrets -> Actions"
-            echo "缺少: SECRET_KEY, POSTGRES_PASSWORD 或 ADMIN_EMAIL"
+          # 检查必需的 secrets 是否存在
+          if [[ -z "${{ secrets.SECRET_KEY }}" || -z "${{ secrets.ADMIN_PASSWORD }}" || -z "${{ secrets.ADMIN_USERNAME }}" ]]; then
+            echo "::error::关键 Secrets 未设置！"
+            echo "缺少: SECRET_KEY、ADMIN_PASSWORD 或 ADMIN_USERNAME"
             exit 1
           fi
-          echo "✅ Secrets 格式检查通过"
+          echo "✅ Secrets 验证通过"
 
-      - name: 📝 记录当前运行的镜像标签（用于回滚）
+      - name: 💾 备份当前镜像信息（用于回滚）
         run: |
-          # 获取当前运行的容器镜像标签，并保存到远程服务器的文件中
-          echo "📦 获取当前运行的容器镜像标签..."
+          echo "📦 备份当前运行的镜像信息..."
+          ssh -o StrictHostKeyChecking=no \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} <<'SSH_SCRIPT'
+          set -e
           CURRENT_IMAGE=$(docker inspect --format='{{.Config.Image}}' bipupu-backend 2>/dev/null || echo "")
           if [ -n "$CURRENT_IMAGE" ]; then
-            echo "当前镜像: $CURRENT_IMAGE"
-            ssh remote-server "echo '$CURRENT_IMAGE' > ~/previous_backend_image.txt"
-            echo "✅ 已保存到 ~/previous_backend_image.txt"
+            mkdir -p ~/bipupu-backups
+            echo "$CURRENT_IMAGE" > ~/bipupu-backups/last-image.txt
+            echo "✅ 已保存当前镜像: $CURRENT_IMAGE"
           else
-            echo "⚠️ 当前没有运行中的容器，跳过记录"
+            echo "⚠️ 当前没有运行的容器"
           fi
-
-      - name: 🚀 执行远程滚动部署
+          SSH_SCRIPT
+      - name: 🚀 在远程主机执行部署
         env:
           BACKEND_IMAGE: ${{ steps.ver.outputs.BACKEND_IMAGE }}
         run: |
-          echo "🔑 刷新远程登录状态..."
+          ssh -o StrictHostKeyChecking=no \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} <<'SSH_DEPLOY'
+          set -e
+          
+          echo "🔐 登录镜像仓库..."
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-          echo "📝 生成生产环境 .env 文件..."
-          # 在 GitHub Runner 本地生成 .env，docker compose 会读取并将其内容推送到远程容器
-          cat > backend/docker/.env <<EOF
-          BIPUPU_SECRET_KEY=$SECRET_KEY
-          BIPUPU_POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-          BIPUPU_ADMIN_EMAIL=$ADMIN_EMAIL
-          BIPUPU_ADMIN_PASSWORD=$ADMIN_PASSWORD
-          BIPUPU_ADMIN_USERNAME=$ADMIN_USERNAME
-          BIPUPU_LOG_LEVEL=INFO
-          EOF
-
-          echo "📡 拉取新镜像并启动服务..."
+          
+          echo "📝 生成环境配置文件..."
+          mkdir -p ~/bipupu-compose
+          cat > ~/bipupu-compose/.env <<'ENV_EOF'
+          # 数据库配置 (内网仅访问)
+          DB_USER=postgres
+          DB_PASSWORD=postgres
+          DB_NAME=bipupu
+          
+          # 应用敏感配置
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+          ADMIN_USERNAME=${{ secrets.ADMIN_USERNAME }}
+          
+          # 日志级别
+          LOG_LEVEL=INFO
+          TZ=Asia/Shanghai
+          ENV_EOF
+          
+          echo "📡 拉取新镜像..."
+          docker pull ${{ env.IMAGE_BASE }}:latest
+          
+          echo "🚀 启动服务 (应用新镜像)..."
+          cd ~/bipupu-compose
+          
+          # 如果本地没有 docker-compose 文件，从项目仓库复制（可选）
+          # 或者使用绝对路径指向已有的文件
+          # 这里假设文件已经存在，使用当前目录的 docker-compose.yml
+          
           docker compose \
-            -f backend/docker/docker-compose.yml \
-            -f backend/docker/docker-compose.prod.yml \
+            -f docker-compose.yml \
+            -f docker-compose.prod.yml \
+            --env-file .env \
             -p bipupu-backend \
             up -d --remove-orphans
+          
+          echo "✅ 部署命令已执行"
+          SSH_DEPLOY
 
       - name: 🩺 运行远程健康检查
         run: |
-          echo "🔍 正在通过 Docker 状态确认服务可用性 (最多 10 次)..."
+          ssh -o StrictHostKeyChecking=no \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} <<'SSH_HEALTH'
+          set -e
+          
+          echo "🔍 检查服务健康状态 (最多 10 次)..."
           for i in {1..10}; do
-            # 获取容器健康状态：healthy, unhealthy, starting
             STATUS=$(docker inspect --format='{{.State.Health.Status}}' bipupu-backend 2>/dev/null || echo "not-found")
             
             if [ "$STATUS" == "healthy" ]; then
@@ -155,67 +164,74 @@ jobs:
             fi
             
             echo "⏳ 检查中 ($i/10): 当前状态为 $STATUS..."
-            # 步长稍微拉长一点，给容器启动时间
             sleep 12
           done
-
+          
           echo "❌ 健康检查失败或超时！"
-          echo "📊 容器当前详细状态："
+          echo "📊 容器详细状态："
           docker inspect --format='状态: {{.State.Status}}, 健康: {{.State.Health.Status}}, 退出码: {{.State.ExitCode}}' bipupu-backend
           
-          echo "📝 输出异常日志 (最后 100 行)："
-          docker logs bipupu-backend --tail 100
+          echo "📝 应用日志 (最后 50 行)："
+          docker logs bipupu-backend --tail 50
           
-          # 如果此时还有正在运行但状态不佳的容器，将其停止以便后续重试
           exit 1
+          SSH_HEALTH
 
       - name: 🔄 自动回滚（当健康检查失败时）
         if: failure()
         run: |
-          echo "🔄 检测到部署失败，尝试回滚到之前的版本..."
-          # 从远程服务器读取之前保存的镜像标签
-          PREVIOUS_IMAGE=$(ssh remote-server "cat ~/previous_backend_image.txt 2>/dev/null || echo ''")
-          if [ -z "$PREVIOUS_IMAGE" ]; then
-            echo "⚠️ 没有找到之前保存的镜像标签，无法回滚"
+          ssh -o StrictHostKeyChecking=no \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} <<'SSH_ROLLBACK'
+          set -e
+          
+          echo "🔄 检测到部署失败，执行回滚..."
+          
+          # 读取之前保存的镜像
+          BACKUP_DIR="$HOME/bipupu-backups"
+          if [ ! -f "$BACKUP_DIR/last-image.txt" ]; then
+            echo "⚠️ 没有找到备份镜像信息，无法回滚"
             exit 0
           fi
+          
+          PREVIOUS_IMAGE=$(cat "$BACKUP_DIR/last-image.txt")
           echo "📦 回滚到镜像: $PREVIOUS_IMAGE"
-          # 设置环境变量以使用之前的镜像
+          
+          cd ~/bipupu-compose
           export BACKEND_IMAGE="$PREVIOUS_IMAGE"
-          # 重新生成 .env 文件（使用相同的 secrets）
-          cat > backend/docker/.env <<EOF
-          BIPUPU_SECRET_KEY=$SECRET_KEY
-          BIPUPU_POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-          BIPUPU_ADMIN_EMAIL=$ADMIN_EMAIL
-          BIPUPU_ADMIN_PASSWORD=$ADMIN_PASSWORD
-          BIPUPU_ADMIN_USERNAME=$ADMIN_USERNAME
-          BIPUPU_LOG_LEVEL=INFO
-          EOF
-          # 执行 docker compose up 使用之前的镜像
           docker compose \
-            -f backend/docker/docker-compose.yml \
-            -f backend/docker/docker-compose.prod.yml \
+            -f docker-compose.yml \
+            -f docker-compose.prod.yml \
+            --env-file .env \
             -p bipupu-backend \
             up -d --remove-orphans
-          echo "✅ 回滚完成，等待服务恢复..."
-          # 等待一段时间让容器启动
+          
+          echo "✅ 回滚已执行，等待服务恢复..."
           sleep 30
-          # 检查回滚后的容器状态
-          ROLLBACK_STATUS=$(docker inspect --format='{{.State.Health.Status}}' bipupu-backend 2>/dev/null || echo "not-found")
-          if [ "$ROLLBACK_STATUS" == "healthy" ]; then
+          
+          STATUS=$(docker inspect --format='{{.State.Health.Status}}' bipupu-backend 2>/dev/null || echo "not-found")
+          if [ "$STATUS" == "healthy" ]; then
             echo "✅ 回滚成功，服务已恢复健康"
           else
-            echo "⚠️ 回滚后容器状态为 $ROLLBACK_STATUS，可能需要手动干预"
+            echo "⚠️ 回滚后容器状态为 $STATUS，需要手动检查"
           fi
+          SSH_ROLLBACK
 
       - name: 🧹 清理旧镜像
+        if: success()
         run: |
-          # 自动删除服务器上超过 24 小时的无用镜像，释放磁盘空间
-          docker image prune -f --filter "until=24h"
+          ssh -o StrictHostKeyChecking=no \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} <<'SSH_CLEANUP'
+          # 删除超过 48 小时的无用镜像，释放磁盘空间
+          docker image prune -f --filter "until=48h"
+          echo "✅ 旧镜像已清理"
+          SSH_CLEANUP
 
       - name: 🎉 部署完成通知
-        if: success() # 确保只有成功时才记录
+        if: success()
         run: |
-          echo "🚀 成功部署版本: ${{ steps.ver.outputs.TAG }}"
-          # 直接使用别名远程写入
-          ssh remote-server "echo ${{ steps.ver.outputs.TAG }} > ~/last_version.txt"
+          ssh -o StrictHostKeyChecking=no \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} <<'SSH_NOTIFY'
+          mkdir -p ~/bipupu-backups
+          echo "${{ steps.ver.outputs.TAG }}" > ~/bipupu-backups/last-version.txt
+          echo "✅ 部署完成：版本 ${{ steps.ver.outputs.TAG }}"
+          SSH_NOTIFY

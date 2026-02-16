@@ -9,12 +9,23 @@ services:
       dockerfile: Dockerfile
     container_name: bipupu-backend
     restart: on-failure:1
-    # 使用 .env 文件减少重复映射，环境中的 BIPUPU_ 前缀变量也会被自动加载
-    env_file:
-      - .env
+    # 环境变量配置
     environment:
       - CONTAINER_ROLE=backend
       - BACKEND_IMAGE=${BACKEND_IMAGE:-bipupu-backend:local}
+      # 数据库配置
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_NAME=${DB_NAME:-bipupu}
+      # Redis配置
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # 应用配置
+      - SECRET_KEY=${SECRET_KEY:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-}
     depends_on:
       db:
         condition: service_healthy
@@ -34,9 +45,6 @@ services:
       retries: 8
       start_period: 30s
 
-  # ----------------------------------------------------
-  # 2. Celery Worker Service
-  # ----------------------------------------------------
   celery-worker:
     image: ${BACKEND_IMAGE:-bipupu-backend:local}
     build:
@@ -44,10 +52,21 @@ services:
       dockerfile: Dockerfile
     container_name: bipupu-celery-worker
     restart: on-failure:1
-    env_file:
-      - .env
     environment:
       - CONTAINER_ROLE=worker
+      # 数据库配置
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_NAME=${DB_NAME:-bipupu}
+      # Redis配置
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # 应用配置
+      - SECRET_KEY=${SECRET_KEY:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-}
     depends_on:
       db:
         condition: service_healthy
@@ -68,10 +87,21 @@ services:
       dockerfile: Dockerfile
     container_name: bipupu-celery-beat
     restart: on-failure:1
-    env_file:
-      - .env
     environment:
       - CONTAINER_ROLE=beat
+      # 数据库配置
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_NAME=${DB_NAME:-bipupu}
+      # Redis配置
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # 应用配置
+      - SECRET_KEY=${SECRET_KEY:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-}
     depends_on:
       db:
         condition: service_healthy
@@ -82,26 +112,22 @@ services:
     networks:
       - bipupu-net
 
-  # ----------------------------------------------------
-  # 4. PostgreSQL Database
-  # ----------------------------------------------------
+  # 4. PostgreSQL Database (内网仅访问，不暴露公网端口)
   db:
     image: postgres:15
     container_name: bipupu-db
     restart: on-failure:1
     environment:
-      POSTGRES_USER: ${BIPUPU_POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${BIPUPU_POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${BIPUPU_POSTGRES_DB:-bipupu}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-bipupu}
       TZ: ${TZ:-Asia/Shanghai}
     volumes:
       - pg_data:/var/lib/postgresql/data
     networks:
       - bipupu-net
-    ports:
-      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${BIPUPU_POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 5s
       timeout: 3s
       retries: 10
