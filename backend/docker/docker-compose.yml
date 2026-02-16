@@ -1,41 +1,44 @@
+x-backend-common: &backend-common
+  image: ${BACKEND_IMAGE:-bipupu-backend:local}
+  restart: on-failure:1
+  environment:
+    # --- 数据库明文配置 ---
+    - DB_HOST=db
+    - DB_PORT=5432
+    - DB_USER=postgres
+    - DB_PASSWORD=postgres
+    - DB_NAME=bipupu
+    # --- Redis明文配置 ---
+    - REDIS_HOST=redis
+    - REDIS_PORT=6379
+    # --- 系统公共配置 ---
+    - TZ=Asia/Shanghai
+    - LOG_LEVEL=INFO
+    # --- 敏感配置（通过外部注入，不写死） ---
+    - SECRET_KEY=${SECRET_KEY}
+    - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    - ADMIN_USERNAME=${ADMIN_USERNAME}
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  networks:
+    - bipupu-net
+
 services:
   # ----------------------------------------------------
   # 1. FastAPI Backend Service
   # ----------------------------------------------------
   backend:
-    image: ${BACKEND_IMAGE:-bipupu-backend:local}
-    build:
-      context: ../backend
-      dockerfile: Dockerfile
+    <<: *backend-common
     container_name: bipupu-backend
-    restart: on-failure:1
-    # 环境变量配置
     environment:
+      <<: *backend-common
       - CONTAINER_ROLE=backend
-      - BACKEND_IMAGE=${BACKEND_IMAGE:-bipupu-backend:local}
-      # 数据库配置
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_NAME=bipupu
-      # Redis配置
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      # 应用配置
-      - SECRET_KEY=${SECRET_KEY:-}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
-      - ADMIN_USERNAME=${ADMIN_USERNAME:-}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     volumes:
       - upload_data:/app/uploads
       - logs_data:/app/logs
-    networks:
-      - bipupu-net
     ports:
       - "8000:8000"
     healthcheck:
@@ -45,74 +48,33 @@ services:
       retries: 8
       start_period: 30s
 
+  # ----------------------------------------------------
+  # 2. Celery Worker Service
+  # ----------------------------------------------------
   celery-worker:
-    image: ${BACKEND_IMAGE:-bipupu-backend:local}
-    build:
-      context: ../backend
-      dockerfile: Dockerfile
+    <<: *backend-common
     container_name: bipupu-celery-worker
-    restart: on-failure:1
     environment:
+      <<: *backend-common
       - CONTAINER_ROLE=worker
-      # 数据库配置
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_NAME=bipupu
-      # Redis配置
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      # 应用配置
-      - SECRET_KEY=${SECRET_KEY:-}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
-      - ADMIN_USERNAME=${ADMIN_USERNAME:-}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     volumes:
       - logs_data:/app/logs
-    networks:
-      - bipupu-net
 
   # ----------------------------------------------------
   # 3. Celery Beat Service
   # ----------------------------------------------------
   celery-beat:
-    image: ${BACKEND_IMAGE:-bipupu-backend:local}
-    build:
-      context: ../backend
-      dockerfile: Dockerfile
+    <<: *backend-common
     container_name: bipupu-celery-beat
-    restart: on-failure:1
     environment:
+      <<: *backend-common
       - CONTAINER_ROLE=beat
-      # 数据库配置
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_NAME=bipupu
-      # Redis配置
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      # 应用配置
-      - SECRET_KEY=${SECRET_KEY:-}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
-      - ADMIN_USERNAME=${ADMIN_USERNAME:-}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     volumes:
       - logs_data:/app/logs
-    networks:
-      - bipupu-net
 
-  # 4. PostgreSQL Database (内网仅访问，不暴露公网端口)
+  # ----------------------------------------------------
+  # 4. PostgreSQL Database
+  # ----------------------------------------------------
   db:
     image: postgres:15
     container_name: bipupu-db
@@ -132,7 +94,6 @@ services:
       timeout: 3s
       retries: 10
       start_period: 10s
-
 
   # ----------------------------------------------------
   # 5. Redis Cache/Broker
