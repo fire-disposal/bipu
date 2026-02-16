@@ -115,7 +115,7 @@ jobs:
           ssh bipupu-server <<'SSH_HEALTH'
           for i in {1..10}; do
             STATUS=$(docker inspect --format='{{.State.Health.Status}}' bipupu-backend 2>/dev/null || echo "not-found")
-            if [ "$STATUS" == "healthy" ]; then
+            if [ "$STATUS" = "healthy" ]; then
               echo "✅ 服务已就绪"
               exit 0
             fi
