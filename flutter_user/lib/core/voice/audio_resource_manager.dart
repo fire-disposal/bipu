@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 import 'package:flutter/foundation.dart';
+import 'package:audio_session/audio_session.dart';
 
 /// Simple async mutex for coordinating audio resource usage between
 /// TTS playback and ASR/recording across the app.
@@ -16,6 +17,7 @@ class AudioResourceManager {
   Future<VoidCallback> acquire({Duration? timeout}) async {
     if (!_locked) {
       _locked = true;
+      await _ensureAudioSessionActive();
       return _makeReleaser();
     }
 
@@ -41,9 +43,22 @@ class AudioResourceManager {
   Future<VoidCallback?> tryAcquire() async {
     if (!_locked) {
       _locked = true;
+      await _ensureAudioSessionActive();
       return _makeReleaser();
     }
     return null;
+  }
+
+  AudioSession? _session;
+  Future<void> _ensureAudioSessionActive() async {
+    try {
+      _session ??= await AudioSession.instance;
+      await _session!.configure(const AudioSessionConfiguration.speech());
+      await _session!.setActive(true);
+    } catch (e) {
+      // If audio_session isn't available or fails, we still proceed with _locked state.
+      if (kDebugMode) print('AudioSession activation failed: $e');
+    }
   }
 
   VoidCallback _makeReleaser() {
@@ -57,6 +72,10 @@ class AudioResourceManager {
         Future.microtask(() => next.complete());
       } else {
         _locked = false;
+        // deactivate audio session when nobody holds the lock
+        try {
+          _session?.setActive(false);
+        } catch (_) {}
       }
     };
   }

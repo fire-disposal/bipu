@@ -5,7 +5,6 @@ import 'package:permission_handler/permission_handler.dart';
 import '../assistant/assistant_controller.dart';
 import '../../core/services/toast_service.dart';
 import '../../core/state/app_state_management.dart';
-import '../../core/voice/asr_engine.dart';
 import '../../core/voice/audio_resource_manager.dart';
 import 'enhanced_bottom_navigation.dart';
 
@@ -56,8 +55,20 @@ class _MainLayoutState extends State<MainLayout> {
   }
 
   void _onItemTapped(int index, BuildContext context) {
+    _onItemTappedAsync(index, context);
+  }
+
+  Future<void> _onItemTappedAsync(int index, BuildContext context) async {
     final uiCubit = StateProviders.getUiCubit(context);
     uiCubit.updateBottomNavIndex(index);
+
+    // If currently listening and navigating away from pager, stop listening first
+    if (_isListening && index != 1) {
+      try {
+        await _assistant.stopListening();
+      } catch (_) {}
+      setState(() => _isListening = false);
+    }
 
     switch (index) {
       case 0:
@@ -94,13 +105,40 @@ class _MainLayoutState extends State<MainLayout> {
       return;
     }
 
+    // 非阻塞地检查音频资源是否可用，避免长时间阻塞（若被TTS占用则放弃）
+    final audioMgr = AudioResourceManager();
+    VoidCallback? token;
+    try {
+      token = await audioMgr.tryAcquire();
+      if (token == null) {
+        if (mounted) {
+          ToastService().showWarning('设备正忙，请稍后重试');
+        }
+        return;
+      }
+    } catch (e) {
+      // 若检查失败则继续尝试启动，但用户应看到错误
+    } finally {
+      // 立即释放检查到的临时占用（真正的占用由 startListening 内部获取）
+      try {
+        token?.call();
+      } catch (_) {}
+    }
+
     try {
       setState(() => _isListening = true);
-      await _assistant.startListening();
+      // 给 startListening 一个短超时，避免长期阻塞
+      await _assistant
+          .startListening(messageFirst: true)
+          .timeout(const Duration(seconds: 6));
       ToastService().showInfo(
         'Listening...',
         duration: const Duration(minutes: 1),
       );
+    } on TimeoutException catch (e) {
+      setState(() => _isListening = false);
+      debugPrint('Start listening timed out: $e');
+      ToastService().showWarning('录音启动超时，请稍后重试');
     } catch (e) {
       setState(() => _isListening = false);
       debugPrint('Failed to start recording: $e');
