@@ -1,11 +1,8 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:developer';
-import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:web_socket_channel/io.dart';
 import '../../api/contact_api.dart';
 import '../../api/message_api.dart';
 import '../../models/message/message_response.dart';
@@ -14,6 +11,9 @@ import 'auth_service.dart';
 import 'bluetooth_device_service.dart';
 import '../storage/mobile_token_storage.dart';
 import '../../api/api.dart';
+import 'im_socket_service.dart';
+import 'im_polling_service.dart';
+import 'im_forwarder.dart';
 
 /// Unified IM Service
 class ImService extends ChangeNotifier with WidgetsBindingObserver {
@@ -25,11 +25,13 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
   MessageApi? _messageApi;
   final BluetoothDeviceService _bluetoothService = BluetoothDeviceService();
 
+  /// Socket and polling helpers (extracted)
+  late final ImSocketService _socketService;
+  late final ImPollingService _pollingService;
+  late final MessageForwarder _forwarder;
+
   /// Socket connection placeholder state (true = connected)
   final ValueNotifier<bool> socketConnected = ValueNotifier<bool>(false);
-
-  Timer? _messageTimer;
-  Timer? _contactsTimer;
 
   // lifecycle & network
   // ignore: unused_field
@@ -39,12 +41,6 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
   // ignore: unused_field
   final bool _isOnline = true; // Default true
   bool _isAppInForeground = true;
-
-  // adaptive polling config
-  static const Duration _foregroundMessageInterval = Duration(seconds: 15);
-  static const Duration _backgroundMessageInterval = Duration(minutes: 5);
-  Duration _currentMessageInterval = _foregroundMessageInterval;
-  int _backoffMultiplier = 1;
 
   // State
   List<MessageResponse> _messages = [];
@@ -83,11 +79,19 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
       socketConnected.value = c != ConnectivityResult.none;
     });
 
+    // instantiate helper services
+    _socketService = ImSocketService(onEvent: _onSocketEvent);
+    _pollingService = ImPollingService(
+      contactApi: contactApi,
+      messageApi: messageApi,
+      onData: _onPollingData,
+    );
+    _forwarder = MessageForwarder(_bluetoothService, () => _contacts);
+
     // attempt to connect socket if authenticated
     final status = AuthService().authState.value;
     if (status == AuthStatus.authenticated) {
-      // fire-and-forget connect; path '/ws' is a common default — backend may use different path
-      unawaited(connectSocket());
+      unawaited(_socketService.connectSocket());
     }
 
     // Listen to Auth State
@@ -101,289 +105,80 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
     log('IM Service: Auth state changed to $status');
     if (status == AuthStatus.authenticated) {
       // Only start if not already polling or if we need to restart
-      if (_messageTimer == null || !_messageTimer!.isActive) {
-        startPolling();
-        unawaited(connectSocket());
-      }
+      startPolling();
+      unawaited(_socketService.connectSocket());
     } else {
-      _stopTimers();
+      _pollingService.stopPolling();
       _messages = [];
       _contacts = [];
       _unreadCount = 0;
-      disconnectSocket();
+      _socketService.disconnectSocket();
       notifyListeners();
     }
   }
 
   /// Start Polling
   void startPolling() {
-    _startMessagePolling();
-    _startContactsPolling();
-    _fetchInitialData();
+    _pollingService.startPolling();
   }
 
   /// Stop Polling
   void stopPolling() {
-    _stopTimers();
+    _pollingService.stopPolling();
     WidgetsBinding.instance.removeObserver(this);
   }
 
-  void _stopTimers() {
-    _messageTimer?.cancel();
-    _contactsTimer?.cancel();
-  }
+  void _onSocketEvent(Map<String, dynamic> event) {
+    final type = event['type'];
+    if (type == 'new_message') {
+      final payloadObj = event['payload'] ?? {};
+      final content = payloadObj['content']?.toString() ?? '';
 
-  Future<void> _fetchInitialData() async {
-    await Future.wait([_fetchContacts(), _fetchMessages()]);
-  }
-
-  void _startMessagePolling() {
-    _messageTimer?.cancel();
-    _messageTimer = Timer.periodic(
-      _currentMessageInterval * _backoffMultiplier,
-      (timer) {
-        _fetchMessages();
-      },
-    );
-  }
-
-  // WebSocket
-  IOWebSocketChannel? _wsChannel;
-  StreamSubscription? _wsSub;
-  Duration _reconnectDelay = const Duration(seconds: 5);
-  Timer? _pingTimer;
-
-  /// Connect to backend WebSocket at `/api/ws`.
-  /// Backend expects token as query parameter: ws(s)://host[:port]/api/ws?token=xxx
-  Future<void> connectSocket({String path = '/api/ws'}) async {
-    try {
-      final uri = Uri.parse(AppConfig.baseUrl);
-      final scheme = uri.scheme == 'https' ? 'wss' : 'ws';
-      final port = uri.hasPort ? uri.port : (scheme == 'wss' ? 443 : 80);
-
-      final token = await MobileTokenStorage().getAccessToken();
-
-      final wsUri = Uri(
-        scheme: scheme,
-        host: uri.host,
-        port: port,
-        path: path,
-        queryParameters: token != null && token.isNotEmpty
-            ? {'token': token}
-            : null,
-      );
-
-      // clean previous
-      try {
-        _wsSub?.cancel();
-        _wsChannel?.sink.close();
-      } catch (_) {}
-
-      _wsChannel = IOWebSocketChannel.connect(wsUri.toString());
-      socketConnected.value = true;
-
-      // When WebSocket connected, stop long-polling to avoid duplicates
-      try {
-        _messageTimer?.cancel();
-      } catch (_) {}
-
-      _wsSub = _wsChannel!.stream.listen(
-        (event) {
-          _handleSocketEvent(event);
-        },
-        onDone: () async {
-          socketConnected.value = false;
-          _stopPing();
-          // try reconnect
-          await Future.delayed(_reconnectDelay);
-          if (AuthService().authState.value == AuthStatus.authenticated) {
-            unawaited(connectSocket(path: path));
-          }
-        },
-        onError: (err) async {
-          socketConnected.value = false;
-          _stopPing();
-          await Future.delayed(_reconnectDelay);
-          if (AuthService().authState.value == AuthStatus.authenticated) {
-            unawaited(connectSocket(path: path));
-          }
-        },
-      );
-
-      // start heartbeat
-      _startPing();
-    } catch (e) {
-      socketConnected.value = false;
+      if (_bluetoothService.connectionState.value ==
+              BluetoothConnectionState.connected &&
+          content.isNotEmpty) {
+        _bluetoothService.sendTextMessage(content);
+      }
     }
   }
 
-  void disconnectSocket() {
-    try {
-      _stopPing();
-      _wsSub?.cancel();
-      _wsChannel?.sink.close();
-    } catch (_) {}
-    _wsSub = null;
-    _wsChannel = null;
-    socketConnected.value = false;
-
-    // WebSocket disconnected — resume long-polling as fallback
-    try {
-      _applyPollingInterval();
-    } catch (_) {}
-  }
-
-  void _handleSocketEvent(dynamic event) {
-    try {
-      final String payload = event is String
-          ? event
-          : utf8.decode(event as List<int>);
-      final Map<String, dynamic> data = json.decode(payload);
-
-      final type = data['type'];
-      if (type == 'new_message') {
-        final payloadObj = data['payload'] ?? {};
-        final content = payloadObj['content']?.toString() ?? '';
-
-        if (_bluetoothService.connectionState.value ==
-                BluetoothConnectionState.connected &&
-            content.isNotEmpty) {
-          _bluetoothService.sendTextMessage(content);
+  void _onPollingData({
+    List<MessageResponse>? messages,
+    List<Contact>? contacts,
+    int? unreadCount,
+  }) {
+    var changed = false;
+    if (contacts != null) {
+      _contacts = contacts;
+      changed = true;
+    }
+    if (messages != null) {
+      // detect new messages to forward
+      if (messages.length > _messages.length) {
+        final newMessages = messages.sublist(_messages.length);
+        final currentUserId = AuthService().currentUser?.bipupuId;
+        final receivedOnly = currentUserId == null
+            ? newMessages
+            : newMessages
+                  .where((m) => m.senderBipupuId != currentUserId)
+                  .toList();
+        if (receivedOnly.isNotEmpty) {
+          _forwarder.forwardNewMessages(receivedOnly);
         }
       }
-    } catch (e) {
-      // ignore parse errors
+      _messages = messages;
+      changed = true;
     }
-  }
-
-  void _startPing() {
-    _stopPing();
-    _pingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      try {
-        if (_wsChannel != null) {
-          _wsChannel!.sink.add(json.encode({'type': 'ping'}));
-        }
-      } catch (_) {}
-    });
-  }
-
-  void _stopPing() {
-    _pingTimer?.cancel();
-    _pingTimer = null;
-  }
-
-  void _startContactsPolling() {
-    _contactsTimer?.cancel();
-    _contactsTimer = Timer.periodic(_contactsPullInterval, (timer) {
-      _fetchContacts();
-    });
-  }
-
-  void _applyPollingInterval() {
-    // restart timers with new intervals
-    if (_isAppInForeground) {
-      _currentMessageInterval = _foregroundMessageInterval;
-    } else {
-      _currentMessageInterval = _backgroundMessageInterval;
+    if (unreadCount != null) {
+      _unreadCount = unreadCount;
+      changed = true;
     }
-    _startMessagePolling();
-  }
-
-  /// Fetch Contacts
-  Future<void> _fetchContacts() async {
-    if (_contactApi == null) return;
-    try {
-      final response = await _contactApi!.getContacts(page: 1, size: 100);
-      _contacts = response.items;
-      notifyListeners();
-    } catch (e) {
-      log('IM Service: Fetch contacts failed: ');
-    }
-  }
-
-  /// Fetch Messages (combine sent and received)
-  Future<void> _fetchMessages() async {
-    if (_messageApi == null) return;
-    try {
-      final receivedData = await _messageApi!.getMessages(
-        direction: 'received',
-        page: 1,
-        size: 50,
-      );
-      final sentData = await _messageApi!.getMessages(
-        direction: 'sent',
-        page: 1,
-        size: 50,
-      );
-
-      final Map<int, MessageResponse> merged = {};
-
-      for (var m in receivedData.items) {
-        merged[m.id] = m;
-      }
-      for (var m in sentData.items) {
-        merged[m.id] = m;
-      }
-
-      final list = merged.values.toList();
-      // sort by created_at ascending (oldest first)
-      list.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-
-      _messages = list;
-
-      // Calculate unread (from received messages)
-      _unreadCount = receivedData.items.where((m) => !m.isRead).length;
-
-      // Check for new messages and forward to Bluetooth device
-      if (_messages.length > _previousMessageCount) {
-        final newMessages = _messages.sublist(_previousMessageCount);
-        _forwardNewMessagesToBluetooth(newMessages);
-      }
-      _previousMessageCount = _messages.length;
-
-      notifyListeners();
-    } catch (e) {
-      log('IM Service: Fetch messages failed: $e');
-      // Simple exponential backoff on error
-      if (_backoffMultiplier < 8) {
-        _backoffMultiplier *= 2;
-        _startMessagePolling();
-      }
-    }
-  }
-
-  /// Forward new messages to connected Bluetooth device
-  void _forwardNewMessagesToBluetooth(List<MessageResponse> newMessages) {
-    // Only forward if Bluetooth is connected
-    if (_bluetoothService.connectionState.value !=
-        BluetoothConnectionState.connected) {
-      return;
-    }
-
-    for (final message in newMessages) {
-      // Only forward received messages (not sent messages)
-      // Check if this is a received message by comparing sender with current user
-      final currentUserId = AuthService().currentUser?.bipupuId;
-      if (currentUserId != null && message.senderBipupuId != currentUserId) {
-        try {
-          // Format message for forwarding
-          final formattedMessage = _formatMessageForBluetooth(message);
-          _bluetoothService.sendTextMessage(formattedMessage);
-          log(
-            'IM Service: Forwarded message ${message.id} to Bluetooth device',
-          );
-        } catch (e) {
-          log(
-            'IM Service: Failed to forward message ${message.id} to Bluetooth: $e',
-          );
-        }
-      }
-    }
+    if (changed) notifyListeners();
   }
 
   /// Refresh data manually
   Future<void> refresh() async {
-    await Future.wait([_fetchContacts(), _fetchMessages()]);
+    await _pollingService.refresh();
   }
 
   /// Clear local cached messages
@@ -435,9 +230,9 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
       log('IM Service: app lifecycle changed. foreground=');
       // reset backoff when returning to foreground
       if (_isAppInForeground) {
-        _backoffMultiplier = 1;
+        // nothing to reset in facade; polling service handles intervals
       }
-      _applyPollingInterval();
+      _pollingService.applyPollingInterval(isForeground: _isAppInForeground);
     }
   }
 
@@ -448,6 +243,12 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
     _connectivitySub?.cancel();
     try {
       socketConnected.dispose();
+    } catch (_) {}
+    try {
+      _socketService.dispose();
+    } catch (_) {}
+    try {
+      _pollingService.dispose();
     } catch (_) {}
     super.dispose();
   }
