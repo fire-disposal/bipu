@@ -68,9 +68,10 @@ class ImService extends ChangeNotifier with WidgetsBindingObserver {
   MessageApi get messageApi => _messageApi!;
 
   /// Initialize service
-  void initialize(Dio dio) {
-    _contactApi ??= ContactApi(dio);
-    _messageApi ??= MessageApi(dio);
+  void initialize([ApiClient? client]) {
+    final clientInst = client ?? api;
+    _contactApi ??= ContactApi(clientInst);
+    _messageApi ??= MessageApi(clientInst);
     WidgetsBinding.instance.addObserver(this);
     log('IM Service: Initialized');
 

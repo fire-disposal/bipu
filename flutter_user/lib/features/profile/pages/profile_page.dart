@@ -50,7 +50,7 @@ class ProfilePage extends StatelessWidget {
                           ? CachedNetworkImageProvider(
                               user!.avatarUrl!.startsWith('http')
                                   ? user.avatarUrl!
-                                  : '${bipupuHttp.options.baseUrl.replaceFirst(RegExp(r"/api/?$"), '')}${user.avatarUrl}',
+                                  : '${api.baseUrl.replaceFirst(RegExp(r"/api/?$"), '')}${user.avatarUrl}',
                             )
                           : null,
                       child: user?.avatarUrl == null

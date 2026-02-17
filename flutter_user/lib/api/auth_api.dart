@@ -1,54 +1,64 @@
 import 'package:dio/dio.dart';
+import 'core/api_client.dart';
 import '../models/auth/token.dart';
 import '../models/auth/auth_request.dart';
 import '../models/user/user_response.dart';
 import '../models/user/user_request.dart';
 
 class AuthApi {
-  final Dio _dio;
+  final ApiClient _api;
 
-  AuthApi(this._dio);
+  AuthApi([ApiClient? api]) : _api = api ?? ApiClient();
 
   Future<Token> login(LoginRequest body) async {
-    final response = await _dio.post('/api/public/login', data: body.toJson());
-    return Token.fromJson(response.data);
+    final response = await _api.post<Map<String, dynamic>>(
+      '/api/public/login',
+      data: body.toJson(),
+    );
+    return Token.fromJson(response);
   }
 
   Future<UserResponse> register(RegisterRequest body) async {
-    final response = await _dio.post(
+    final response = await _api.post<Map<String, dynamic>>(
       '/api/public/register',
       data: body.toJson(),
     );
-    return UserResponse.fromJson(response.data);
+    return UserResponse.fromJson(response);
   }
 
   Future<Token> refreshToken(RefreshTokenRequest body) async {
-    final response = await _dio.post(
+    final response = await _api.post<Map<String, dynamic>>(
       '/api/public/refresh',
       data: body.toJson(),
     );
-    return Token.fromJson(response.data);
+    return Token.fromJson(response);
   }
 
   Future<void> logout() async {
-    await _dio.post('/api/public/logout');
+    await _api.post('/api/public/logout');
   }
 
   Future<UserResponse> getMe() async {
-    final response = await _dio.get('/api/profile/me');
-    return UserResponse.fromJson(response.data);
+    final response = await _api.get<Map<String, dynamic>>('/api/profile/me');
+    return UserResponse.fromJson(response);
   }
 
   Future<UserResponse> updateProfile(UserUpdateRequest body) async {
-    final response = await _dio.put('/api/profile/', data: body.toJson());
-    return UserResponse.fromJson(response.data);
+    final response = await _api.put<Map<String, dynamic>>(
+      '/api/profile/',
+      data: body.toJson(),
+    );
+    return UserResponse.fromJson(response);
   }
 
   Future<UserResponse> updateAvatar(String filePath) async {
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(filePath),
     });
-    final response = await _dio.post('/api/profile/avatar', data: formData);
-    return UserResponse.fromJson(response.data);
+    final response = await _api.upload<Map<String, dynamic>>(
+      '/api/profile/avatar',
+      formData,
+    );
+    return UserResponse.fromJson(response);
   }
 }

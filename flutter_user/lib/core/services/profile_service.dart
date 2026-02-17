@@ -9,7 +9,7 @@ class ProfileService {
   factory ProfileService() => _instance;
   ProfileService._internal();
 
-  late final AuthApi _api = AuthApi(bipupuHttp);
+  late final AuthApi _api = AuthApi();
 
   Future<User> getMe() async {
     final userData = await _api.getMe();

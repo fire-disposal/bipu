@@ -13,7 +13,7 @@ class AuthService {
 
   final _authStateController = ValueNotifier<AuthStatus>(AuthStatus.unknown);
   final TokenStorage _tokenStorage = MobileTokenStorage();
-  late final AuthApi _api = AuthApi(bipupuHttp);
+  late final AuthApi _api = AuthApi();
 
   UserResponse? _currentUser;
 

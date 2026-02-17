@@ -1,15 +1,15 @@
-import 'package:dio/dio.dart';
+import 'api.dart';
 
 class BlockApi {
-  final Dio _dio;
+  final ApiClient _api;
 
-  BlockApi(this._dio);
+  BlockApi([ApiClient? client]) : _api = client ?? api;
 
   Future<void> blockUser(int userId) async {
-    await _dio.post('/api/blocks/', data: {'user_id': userId});
+    await _api.post<void>('/api/blocks/', data: {'user_id': userId});
   }
 
   Future<void> unblockUser(int userId) async {
-    await _dio.delete('/api/blocks/$userId');
+    await _api.delete<void>('/api/blocks/$userId');
   }
 }

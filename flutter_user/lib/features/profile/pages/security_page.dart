@@ -121,7 +121,7 @@ class _SecurityPageState extends State<SecurityPage> {
     );
 
     try {
-      final response = await bipupuHttp.put(
+      await api.put<void>(
         '/api/profile/password',
         data: {'old_password': oldPwd, 'new_password': newPwd},
       );
@@ -136,20 +136,13 @@ class _SecurityPageState extends State<SecurityPage> {
       _oldPasswordController.clear();
       _newPasswordController.clear();
       _confirmPasswordController.clear();
-    } on DioException catch (e) {
+    } catch (e) {
       if (context.mounted) Navigator.pop(context);
-      final msg = e.response?.data?.toString() ?? e.message;
+      final msg = e.toString();
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('更新失败: $msg')));
-      }
-    } catch (e) {
-      if (context.mounted) Navigator.pop(context);
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('更新失败: $e')));
       }
     }
   }

@@ -1,13 +1,13 @@
-import 'package:dio/dio.dart';
+import 'api.dart';
 import '../models/user/user_response.dart';
 
 class UserApi {
-  final Dio _dio;
+  final ApiClient _api;
 
-  UserApi(this._dio);
+  UserApi([ApiClient? client]) : _api = client ?? api;
 
   Future<UserResponse> getUserByBipupuId(String bipupuId) async {
-    final response = await _dio.get('/api/users/$bipupuId');
-    return UserResponse.fromJson(response.data);
+    final data = await _api.get<Map<String, dynamic>>('/api/users/$bipupuId');
+    return UserResponse.fromJson(data);
   }
 }

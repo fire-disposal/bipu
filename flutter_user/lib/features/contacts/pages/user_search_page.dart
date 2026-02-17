@@ -13,7 +13,7 @@ class UserSearchPage extends StatefulWidget {
 }
 
 class _UserSearchPageState extends State<UserSearchPage> {
-  late final UserApi _userApi = UserApi(bipupuHttp);
+  late final UserApi _userApi = UserApi();
   late final ImService _imService = ImService();
   final TextEditingController _searchController = TextEditingController();
   UserResponse? _result;

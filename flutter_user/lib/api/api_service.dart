@@ -1,13 +1,13 @@
-import 'package:dio/dio.dart';
+import 'api.dart';
 import '../models/common/paginated_response.dart';
 
 // Unified API Service
 class ApiService {
-  final Dio _dio;
+  final ApiClient _api;
   // ignore: unused_field
   final String baseUrl;
 
-  ApiService(this._dio, {required this.baseUrl});
+  ApiService(this._api, {required this.baseUrl});
 
   // Helper method for pagination
   Future<PaginatedResponse<T>> fetchPaginated<T>(
@@ -15,9 +15,12 @@ class ApiService {
     T Function(Map<String, dynamic>) fromJson, {
     Map<String, dynamic>? queryParameters,
   }) async {
-    final response = await _dio.get(path, queryParameters: queryParameters);
+    final data = await _api.get<Map<String, dynamic>>(
+      path,
+      queryParameters: queryParameters,
+    );
     return PaginatedResponse.fromJson(
-      response.data,
+      data,
       (json) => fromJson(json as Map<String, dynamic>),
     );
   }

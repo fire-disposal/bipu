@@ -1,21 +1,20 @@
-import 'package:dio/dio.dart';
+import 'api.dart';
 import '../models/service/service_account.dart';
 import '../models/common/paginated_response.dart';
 
 class ServiceAccountApi {
-  final Dio _dio;
+  final ApiClient _api;
 
-  ServiceAccountApi(this._dio);
+  ServiceAccountApi([ApiClient? client]) : _api = client ?? api;
 
   Future<PaginatedResponse<ServiceAccount>> getServices({
     int page = 1,
     int size = 20,
   }) async {
-    final response = await _dio.get(
+    final data = await _api.get<Map<String, dynamic>>(
       '/api/service_accounts/',
       queryParameters: {'skip': (page - 1) * size, 'limit': size},
     );
-    final data = response.data;
     return PaginatedResponse(
       items: (data['items'] as List)
           .map((e) => ServiceAccount.fromJson(e))
@@ -31,11 +30,10 @@ class ServiceAccountApi {
     int page = 1,
     int size = 20,
   }) async {
-    final response = await _dio.get(
+    final data = await _api.get<Map<String, dynamic>>(
       '/api/service_accounts/subscriptions/',
       queryParameters: {'skip': (page - 1) * size, 'limit': size},
     );
-    final data = response.data;
     return PaginatedResponse(
       items: (data['items'] as List)
           .map((e) => ServiceAccount.fromJson(e))
@@ -48,10 +46,10 @@ class ServiceAccountApi {
   }
 
   Future<void> subscribe(String serviceName) async {
-    await _dio.post('/api/service_accounts/$serviceName/subscribe');
+    await _api.post<void>('/api/service_accounts/$serviceName/subscribe');
   }
 
   Future<void> unsubscribe(String serviceName) async {
-    await _dio.delete('/api/service_accounts/$serviceName/subscribe');
+    await _api.delete<void>('/api/service_accounts/$serviceName/subscribe');
   }
 }

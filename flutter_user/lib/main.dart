@@ -67,7 +67,7 @@ Future<void> main() async {
   await AuthService().initialize();
 
   // Initialize IM Service
-  ImService().initialize(bipupuHttp);
+  ImService().initialize();
 
   await EasyLocalization.ensureInitialized();
 

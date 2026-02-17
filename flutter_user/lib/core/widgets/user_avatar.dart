@@ -92,10 +92,7 @@ class _UserAvatarState extends State<UserAvatar> {
       return CachedNetworkImageProvider(url, headers: headers);
     } else {
       // 相对路径，拼接基础URL
-      final baseUrl = bipupuHttp.options.baseUrl.replaceFirst(
-        RegExp(r'/api/?$'),
-        '',
-      );
+      final baseUrl = api.baseUrl.replaceFirst(RegExp(r'/api/?$'), '');
       return CachedNetworkImageProvider('$baseUrl$url', headers: headers);
     }
   }

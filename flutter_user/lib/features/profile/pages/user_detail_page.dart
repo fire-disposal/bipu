@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_user/api/api.dart'; // for bipupuHttp
+import 'package:flutter_user/api/api.dart';
 import 'package:flutter_user/api/user_api.dart';
 import 'package:flutter_user/api/block_api.dart';
 import 'package:flutter_user/models/user/user_response.dart';
@@ -15,8 +15,8 @@ class UserDetailPage extends StatefulWidget {
 }
 
 class _UserDetailPageState extends State<UserDetailPage> {
-  late final UserApi _userApi = UserApi(bipupuHttp);
-  late final BlockApi _blockApi = BlockApi(bipupuHttp);
+  late final UserApi _userApi = UserApi();
+  late final BlockApi _blockApi = BlockApi();
 
   UserResponse? _user;
   bool _isLoading = true;

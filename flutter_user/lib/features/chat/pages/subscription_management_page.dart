@@ -14,7 +14,7 @@ class SubscriptionManagementPage extends StatefulWidget {
 
 class _SubscriptionManagementPageState
     extends State<SubscriptionManagementPage> {
-  late final ServiceAccountApi _api = ServiceAccountApi(bipupuHttp);
+  late final ServiceAccountApi _api = ServiceAccountApi();
   List<ServiceAccount> _allServices = [];
   Set<String> _subscribedServiceNames = {};
   bool _isLoading = true;
