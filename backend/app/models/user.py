@@ -24,7 +24,6 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     timezone = Column(String(64), default='Asia/Shanghai', nullable=False)  # 用户时区
-    fortune_time = Column(String(5), nullable=True)  # 运势推送时间，格式: "HH:MM"
 
 
     # 黑名单关系

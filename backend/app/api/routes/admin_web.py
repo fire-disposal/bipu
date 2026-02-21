@@ -290,8 +290,15 @@ async def trigger_service_push(
 
     # 触发推送任务（内容由send_push自动生成）
     try:
-        count = await broadcast_push(db, service_name, None, None)
-        msg = f"推送已立即发送给 {count} 位订阅者"
+        result = await broadcast_push(db, service_name, None, None)
+
+        # 构建详细反馈信息
+        if result.get("failed", 0) == 0:
+            msg = f"✅ 推送成功发送给 {result['success']} 位订阅者"
+        else:
+            success_rate = result.get("success_rate", 0) * 100
+            msg = f"⚠️ 推送完成：{result['success']} 成功，{result['failed']} 失败 (成功率: {success_rate:.1f}%)"
+
     except Exception as e:
         logger.error(f"触发推送任务失败: {e}")
         return RedirectResponse(url=f"/admin/service_accounts?error=Failed to trigger push: {str(e)}", status_code=302)

@@ -85,13 +85,16 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     tags_metadata = [
-        {"name": "系统", "description": "系统健康检查与服务信息"},
-        {"name": "认证", "description": "用户注册、登录、刷新、登出"},
-        {"name": "消息", "description": "IM 消息、回执、收藏、归档、搜索"},
-        {"name": "好友", "description": "好友请求、同意/拒绝、好友列表"},
-        {"name": "黑名单", "description": "拉黑、解除拉黑、黑名单查询"},
-        {"name": "用户资料", "description": "用户信息、个人资料、在线状态"},
-        {"name": "订阅", "description": "用户侧订阅的查询与管理"},
+        {"name": "系统", "description": "系统健康检查、服务信息与API根路径"},
+        {"name": "认证", "description": "用户注册、登录、令牌刷新、登出等认证相关接口"},
+        {"name": "消息", "description": "即时消息发送、接收、收藏、删除等消息管理功能"},
+        {"name": "联系人", "description": "联系人添加、查询、更新、删除等联系人管理功能"},
+        {"name": "黑名单", "description": "用户拉黑、解除拉黑、黑名单查询功能"},
+        {"name": "用户资料", "description": "用户个人信息、头像、密码、推送设置等资料管理"},
+        {"name": "用户", "description": "用户公开信息查询，包括用户资料和头像获取"},
+        {"name": "服务号", "description": "服务号列表、详情、订阅管理、推送设置等功能"},
+        {"name": "订阅", "description": "用户订阅的服务号列表及订阅设置管理"},
+        {"name": "管理后台", "description": "管理员后台管理界面，包括用户、消息、服务号管理"},
     ]
     app = FastAPI(
         title=settings.PROJECT_NAME,

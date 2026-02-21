@@ -47,13 +47,7 @@ class UserPasswordUpdate(BaseModel):
     new_password: str = Field(..., min_length=6, max_length=128)
 
 
-class PushTimeUpdate(BaseModel):
-    """推送时间更新"""
-    fortune_time: Optional[str] = Field(
-        None,
-        description="运势推送时间，格式: HH:MM (24小时制)，例如 '08:30'",
-        pattern=r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'
-    )
+
 
 
 class TimezoneUpdate(BaseModel):

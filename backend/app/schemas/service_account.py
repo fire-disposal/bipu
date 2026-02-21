@@ -39,6 +39,7 @@ class SubscriptionSettingsResponse(SubscriptionSettingsBase):
     service_description: Optional[str]
     subscribed_at: datetime
     updated_at: Optional[datetime]
+    push_time_source: Optional[str] = Field(None, description="推送时间来源: subscription(订阅设置), service_default(服务号默认), none(无)")
 
 
 class UserSubscriptionResponse(BaseModel):

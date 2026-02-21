@@ -14,13 +14,22 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.post("/", response_model=ContactResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=ContactResponse, status_code=status.HTTP_201_CREATED, tags=["联系人"])
 async def add_contact(
     contact_data: ContactCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """添加联系人"""
+    """添加联系人
+
+    参数：
+    - contact_bipupu_id: 要添加的联系人的 bipupu_id
+    - alias: 可选的联系人备注/别名
+
+    返回：
+    - 成功：返回新创建的联系人信息
+    - 失败：404（用户不存在）或 400（已是联系人或添加自己）
+    """
     # 查找联系人用户
     contact_user = db.query(User).filter(User.bipupu_id == contact_data.contact_bipupu_id).first()
     if not contact_user:
@@ -68,12 +77,19 @@ async def add_contact(
         raise HTTPException(status_code=500, detail="操作失败")
 
 
-@router.get("/", response_model=ContactListResponse)
+@router.get("/", response_model=ContactListResponse, tags=["联系人"])
 async def get_contacts(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """获取联系人列表"""
+    """获取当前用户的联系人列表
+
+    返回：
+    - contacts: 联系人列表，包含联系人基本信息及备注
+    - total: 联系人总数
+
+    注意：只返回当前用户主动添加的联系人
+    """
     contacts = db.query(TrustedContact).filter(
         TrustedContact.owner_id == current_user.id
     ).all()
@@ -97,14 +113,23 @@ async def get_contacts(
     }
 
 
-@router.put("/{contact_bipupu_id}")
+@router.put("/{contact_bipupu_id}", tags=["联系人"])
 async def update_contact(
     contact_bipupu_id: str,
     contact_update: ContactUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """更新联系人（通过 contact 的 bipupu_id 更新备注）"""
+    """更新联系人备注
+
+    参数：
+    - contact_bipupu_id: 要更新的联系人的 bipupu_id
+    - alias: 新的联系人备注/别名
+
+    返回：
+    - 成功：返回更新成功消息
+    - 失败：404（联系人不存在）或 500（数据库操作失败）
+    """
     contact_user = db.query(User).filter(User.bipupu_id == contact_bipupu_id).first()
     if not contact_user:
         raise HTTPException(status_code=404, detail="Contact user not found")
@@ -133,13 +158,21 @@ async def update_contact(
         raise HTTPException(status_code=500, detail="操作失败")
 
 
-@router.delete("/{contact_bipupu_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{contact_bipupu_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["联系人"])
 async def delete_contact(
     contact_bipupu_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """删除联系人（通过 contact 的 bipupu_id）"""
+    """删除联系人
+
+    参数：
+    - contact_bipupu_id: 要删除的联系人的 bipupu_id
+
+    返回：
+    - 成功：204 No Content
+    - 失败：404（联系人不存在）或 500（数据库操作失败）
+    """
     contact_user = db.query(User).filter(User.bipupu_id == contact_bipupu_id).first()
     if not contact_user:
         raise HTTPException(status_code=404, detail="Contact user not found")

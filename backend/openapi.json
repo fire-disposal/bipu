@@ -101,7 +101,7 @@
           "认证"
         ],
         "summary": "Register User",
-        "description": "用户注册",
+        "description": "用户注册\n\n参数：\n- username: 用户名，用于登录\n- password: 密码，长度限制为6-128字符\n- nickname: 昵称，可选\n\n返回：\n- 成功：返回新创建的用户信息\n- 失败：400（验证失败）或429（注册频率限制）或500（数据库操作失败）\n\n特性：\n- 速率限制：每个用户名每小时最多10次注册尝试\n- 密码自动哈希存储\n- 自动生成唯一的 bipupu_id\n- 验证用户名和密码格式\n\n注意：\n- 用户名必须是唯一的\n- 密码在传输和存储中都会加密\n- 注册后用户自动处于活跃状态",
         "operationId": "register_user_api_public_register_post",
         "requestBody": {
           "content": {
@@ -144,7 +144,7 @@
           "认证"
         ],
         "summary": "Login",
-        "description": "用户登录",
+        "description": "用户登录\n\n参数：\n- username: 用户名\n- password: 密码\n\n返回：\n- 成功：返回访问令牌和刷新令牌\n- 失败：401（用户名或密码错误）或400（用户未激活）或429（登录频率限制）\n\n包含信息：\n- access_token: 访问令牌，用于API认证\n- refresh_token: 刷新令牌，用于获取新的访问令牌\n- token_type: 令牌类型，固定为\"bearer\"\n- expires_in: 访问令牌过期时间（秒）\n- user: 当前用户基本信息\n\n特性：\n- 速率限制：每个用户名每分钟最多5次登录尝试\n- 支持JWT令牌认证\n- 自动验证用户激活状态\n\n注意：\n- 访问令牌有过期时间，需定期刷新\n- 刷新令牌用于获取新的访问令牌\n- 非活跃用户无法登录",
         "operationId": "login_api_public_login_post",
         "requestBody": {
           "content": {
@@ -187,7 +187,7 @@
           "认证"
         ],
         "summary": "Refresh Token",
-        "description": "刷新访问令牌",
+        "description": "刷新访问令牌\n\n参数：\n- refresh_token: 刷新令牌\n\n返回：\n- 成功：返回新的访问令牌和刷新令牌\n- 失败：401（无效的刷新令牌）或429（刷新频率限制）\n\n包含信息：\n- access_token: 新的访问令牌\n- refresh_token: 新的刷新令牌（支持令牌轮换）\n- token_type: 令牌类型，固定为\"bearer\"\n- expires_in: 访问令牌过期时间（秒）\n\n特性：\n- 速率限制：每个刷新令牌每小时最多10次刷新尝试\n- 支持令牌轮换，每次刷新生成新的刷新令牌\n- 验证刷新令牌类型和用户状态\n- 自动验证用户是否活跃\n\n注意：\n- 刷新令牌只能用于刷新访问令牌，不能用于API访问\n- 旧的刷新令牌在刷新后失效\n- 非活跃用户的刷新令牌无效",
         "operationId": "refresh_token_api_public_refresh_post",
         "requestBody": {
           "content": {
@@ -230,7 +230,7 @@
           "认证"
         ],
         "summary": "Logout",
-        "description": "用户登出",
+        "description": "用户登出\n\n参数：\n- Bearer Token: 通过Authorization头传递的访问令牌\n\n返回：\n- 成功：返回登出成功消息\n- 失败：401（无效令牌）或500（服务器错误）\n\n特性：\n- 将当前访问令牌加入黑名单\n- 黑名单令牌在剩余有效期内无法使用\n- 支持令牌过期时间计算\n\n注意：\n- 需要有效的访问令牌\n- 登出后当前令牌立即失效\n- 其他设备的令牌仍然有效，需要分别登出\n- 刷新令牌不受登出影响，需要单独处理",
         "operationId": "logout_api_public_logout_post",
         "responses": {
           "200": {
@@ -254,6 +254,7 @@
     "/api/messages/": {
       "post": {
         "tags": [
+          "消息",
           "消息"
         ],
         "summary": "Send Message",
@@ -299,6 +300,7 @@
       },
       "get": {
         "tags": [
+          "消息",
           "消息"
         ],
         "summary": "Get Messages",
@@ -380,6 +382,7 @@
     "/api/messages/favorites": {
       "get": {
         "tags": [
+          "消息",
           "消息"
         ],
         "summary": "Get Favorites",
@@ -442,6 +445,7 @@
     "/api/messages/{message_id}/favorite": {
       "post": {
         "tags": [
+          "消息",
           "消息"
         ],
         "summary": "Add Favorite",
@@ -505,6 +509,7 @@
       },
       "delete": {
         "tags": [
+          "消息",
           "消息"
         ],
         "summary": "Remove Favorite",
@@ -546,6 +551,7 @@
     "/api/messages/{message_id}": {
       "delete": {
         "tags": [
+          "消息",
           "消息"
         ],
         "summary": "Delete Message",
@@ -591,7 +597,7 @@
           "黑名单"
         ],
         "summary": "Block User",
-        "description": "拉黑用户",
+        "description": "拉黑用户\n\n参数：\n- user_id: 要拉黑的用户ID\n\n返回：\n- 成功：返回操作成功消息\n- 失败：404（用户不存在）或400（已拉黑）或500（数据库操作失败）\n\n注意：\n- 需要用户认证\n- 不能拉黑自己\n- 拉黑后，双方将无法互相发送消息\n- 拉黑关系是单向的",
         "operationId": "block_user_api_blocks_post",
         "security": [
           {
@@ -637,7 +643,7 @@
           "黑名单"
         ],
         "summary": "Get Blocked Users",
-        "description": "获取黑名单列表",
+        "description": "获取当前用户的黑名单列表\n\n参数：\n- page: 页码，默认为1\n- size: 每页数量，默认为20，最大100\n\n返回：\n- items: 黑名单用户列表\n- total: 黑名单用户总数\n- page: 当前页码\n- size: 每页数量\n- pages: 总页数\n\n包含信息：\n- 用户基本信息（ID、bipupu_id、用户名、昵称、头像）\n- 拉黑时间\n\n注意：\n- 需要用户认证\n- 返回分页结果，支持分页查询",
         "operationId": "get_blocked_users_api_blocks_get",
         "security": [
           {
@@ -704,7 +710,7 @@
           "黑名单"
         ],
         "summary": "Unblock User",
-        "description": "解除拉黑",
+        "description": "解除拉黑用户\n\n参数：\n- user_id: 要解除拉黑的用户ID\n\n返回：\n- 成功：返回操作成功消息\n- 失败：404（用户不存在或未拉黑）或500（数据库操作失败）\n\n注意：\n- 需要用户认证\n- 解除拉黑后，双方可以重新互相发送消息\n- 解除拉黑不会自动添加为联系人",
         "operationId": "unblock_user_api_blocks__user_id__delete",
         "security": [
           {
@@ -947,54 +953,6 @@
         ]
       }
     },
-    "/api/profile/push-time": {
-      "put": {
-        "tags": [
-          "用户资料",
-          "用户资料"
-        ],
-        "summary": "Update Push Time",
-        "description": "更新用户推送时间设置",
-        "operationId": "update_push_time_api_profile_push_time_put",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PushTimeUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
     "/api/profile/timezone": {
       "put": {
         "tags": [
@@ -1118,11 +1076,11 @@
     "/api/users/{bipupu_id}": {
       "get": {
         "tags": [
-          "用户管理",
+          "用户",
           "用户"
         ],
         "summary": "Get User By Bipupu Id",
-        "description": "通过 bipupu_id 获取用户公开信息",
+        "description": "通过 bipupu_id 获取用户公开信息\n\n参数：\n- bipupu_id: 用户的业务标识符\n\n返回：\n- 成功：返回用户公开信息\n- 失败：404（用户不存在）\n\n包含信息：\n- 用户名、昵称、bipupu_id\n- 头像URL\n- 用户状态（是否活跃）\n- 创建时间等基本信息\n\n注意：\n- 无需认证，公开接口\n- 不返回敏感信息（如邮箱、密码等）\n- 只返回 is_active=True 的用户信息",
         "operationId": "get_user_by_bipupu_id_api_users__bipupu_id__get",
         "parameters": [
           {
@@ -1162,11 +1120,11 @@
     "/api/users/{bipupu_id}/avatar": {
       "get": {
         "tags": [
-          "用户管理",
+          "用户",
           "用户"
         ],
         "summary": "Get User Avatar By Bipupu Id",
-        "description": "通过 bipupu_id 获取用户头像 - 优化版本，支持缓存",
+        "description": "通过 bipupu_id 获取用户头像\n\n参数：\n- bipupu_id: 用户的业务标识符\n\n特性：\n- 支持ETag缓存，减少带宽消耗\n- 支持HTTP 304 Not Modified响应\n- 头像数据缓存24小时\n- 自动处理头像版本更新\n\n返回：\n- 成功：返回JPEG格式的头像图片\n- 失败：404（用户或头像不存在）\n\n注意：\n- 无需认证，公开接口\n- 支持缓存控制头（Cache-Control, ETag）\n- 如果用户没有头像，返回404错误\n- 前端应处理无头像情况（如显示首字母）",
         "operationId": "get_user_avatar_by_bipupu_id_api_users__bipupu_id__avatar_get",
         "parameters": [
           {
@@ -1204,10 +1162,11 @@
     "/api/contacts/": {
       "get": {
         "tags": [
+          "联系人",
           "联系人"
         ],
         "summary": "Get Contacts",
-        "description": "获取联系人列表",
+        "description": "获取当前用户的联系人列表\n\n返回：\n- contacts: 联系人列表，包含联系人基本信息及备注\n- total: 联系人总数\n\n注意：只返回当前用户主动添加的联系人",
         "operationId": "get_contacts_api_contacts__get",
         "responses": {
           "200": {
@@ -1229,10 +1188,11 @@
       },
       "post": {
         "tags": [
+          "联系人",
           "联系人"
         ],
         "summary": "Add Contact",
-        "description": "添加联系人",
+        "description": "添加联系人\n\n参数：\n- contact_bipupu_id: 要添加的联系人的 bipupu_id\n- alias: 可选的联系人备注/别名\n\n返回：\n- 成功：返回新创建的联系人信息\n- 失败：404（用户不存在）或 400（已是联系人或添加自己）",
         "operationId": "add_contact_api_contacts__post",
         "requestBody": {
           "content": {
@@ -1276,10 +1236,11 @@
     "/api/contacts/{contact_bipupu_id}": {
       "put": {
         "tags": [
+          "联系人",
           "联系人"
         ],
         "summary": "Update Contact",
-        "description": "更新联系人（通过 contact 的 bipupu_id 更新备注）",
+        "description": "更新联系人备注\n\n参数：\n- contact_bipupu_id: 要更新的联系人的 bipupu_id\n- alias: 新的联系人备注/别名\n\n返回：\n- 成功：返回更新成功消息\n- 失败：404（联系人不存在）或 500（数据库操作失败）",
         "operationId": "update_contact_api_contacts__contact_bipupu_id__put",
         "security": [
           {
@@ -1330,10 +1291,11 @@
       },
       "delete": {
         "tags": [
+          "联系人",
           "联系人"
         ],
         "summary": "Delete Contact",
-        "description": "删除联系人（通过 contact 的 bipupu_id）",
+        "description": "删除联系人\n\n参数：\n- contact_bipupu_id: 要删除的联系人的 bipupu_id\n\n返回：\n- 成功：204 No Content\n- 失败：404（联系人不存在）或 500（数据库操作失败）",
         "operationId": "delete_contact_api_contacts__contact_bipupu_id__delete",
         "security": [
           {
@@ -1371,10 +1333,11 @@
     "/api/service_accounts/": {
       "get": {
         "tags": [
+          "服务号",
           "服务号"
         ],
         "summary": "List Service Accounts",
-        "description": "获取所有活跃的服务号列表",
+        "description": "获取所有活跃的服务号列表\n\n参数：\n- skip: 跳过的记录数，用于分页\n- limit: 每页返回的记录数，最大100\n\n返回：\n- items: 服务号列表\n- total: 活跃服务号总数\n\n注意：只返回 is_active=True 的服务号",
         "operationId": "list_service_accounts_api_service_accounts__get",
         "security": [
           {
@@ -1430,10 +1393,11 @@
     "/api/service_accounts/{name}": {
       "get": {
         "tags": [
+          "服务号",
           "服务号"
         ],
         "summary": "Get Service Account",
-        "description": "获取指定服务号详情",
+        "description": "获取指定服务号详情\n\n参数：\n- name: 服务号名称\n\n返回：\n- 成功：返回服务号详细信息\n- 失败：404（服务号不存在）\n\n注意：需要用户认证",
         "operationId": "get_service_account_api_service_accounts__name__get",
         "security": [
           {
@@ -1478,10 +1442,11 @@
     "/api/service_accounts/{name}/avatar": {
       "get": {
         "tags": [
+          "服务号",
           "服务号"
         ],
         "summary": "Get Service Avatar",
-        "description": "获取服务号头像 - 优化版本，支持缓存",
+        "description": "获取服务号头像\n\n参数：\n- name: 服务号名称\n\n特性：\n- 支持ETag缓存，减少带宽消耗\n- 支持HTTP 304 Not Modified响应\n- 头像数据缓存24小时\n\n返回：\n- 成功：返回JPEG格式的头像图片\n- 失败：404（服务号或头像不存在）",
         "operationId": "get_service_avatar_api_service_accounts__name__avatar_get",
         "parameters": [
           {
@@ -1519,10 +1484,11 @@
     "/api/service_accounts/subscriptions/": {
       "get": {
         "tags": [
-          "服务号"
+          "服务号",
+          "订阅"
         ],
         "summary": "Get User Subscriptions",
-        "description": "获取用户订阅的服务号列表（包含订阅设置）",
+        "description": "获取当前用户订阅的所有服务号列表\n\n返回：\n- subscriptions: 订阅的服务号列表，包含服务信息和订阅设置\n- total: 订阅的服务号总数\n\n包含信息：\n- 服务号基本信息（名称、描述、头像等）\n- 订阅设置（推送时间、启用状态、订阅时间等）\n\n注意：需要用户认证",
         "operationId": "get_user_subscriptions_api_service_accounts_subscriptions__get",
         "responses": {
           "200": {
@@ -1546,10 +1512,11 @@
     "/api/service_accounts/{name}/settings": {
       "get": {
         "tags": [
-          "服务号"
+          "服务号",
+          "订阅"
         ],
         "summary": "Get Subscription Settings",
-        "description": "获取指定服务号的订阅设置",
+        "description": "获取指定服务号的订阅设置\n\n参数：\n- name: 服务号名称\n\n返回：\n- 成功：返回该服务号的订阅设置详情\n- 失败：404（服务号不存在或未订阅）\n\n包含信息：\n- 服务号基本信息\n- 推送时间设置及来源\n- 订阅启用状态\n- 订阅时间戳\n\n注意：需要用户认证且已订阅该服务号",
         "operationId": "get_subscription_settings_api_service_accounts__name__settings_get",
         "security": [
           {
@@ -1592,10 +1559,11 @@
       },
       "put": {
         "tags": [
-          "服务号"
+          "服务号",
+          "订阅"
         ],
         "summary": "Update Subscription Settings",
-        "description": "更新订阅设置（推送时间、启用状态）",
+        "description": "更新服务号订阅设置\n\n参数：\n- name: 服务号名称\n- push_time: 推送时间（HH:MM格式），可选\n- is_enabled: 是否启用推送，可选\n\n返回：\n- 成功：返回更新后的订阅设置\n- 失败：404（服务号不存在或未订阅）或400（时间格式无效）\n\n注意：\n- 需要用户认证且已订阅该服务号\n- 推送时间格式必须为 HH:MM（24小时制）\n- 如果只更新部分字段，其他字段保持不变\n- 设置 push_time=null 可清除个人化设置，恢复使用默认时间",
         "operationId": "update_subscription_settings_api_service_accounts__name__settings_put",
         "security": [
           {
@@ -1650,10 +1618,11 @@
     "/api/service_accounts/{name}/subscribe": {
       "post": {
         "tags": [
-          "服务号"
+          "服务号",
+          "订阅"
         ],
         "summary": "Subscribe Service Account",
-        "description": "订阅服务号（可设置初始推送时间）",
+        "description": "订阅服务号\n\n参数：\n- name: 要订阅的服务号名称\n- push_time: 初始推送时间（HH:MM格式），可选\n- is_enabled: 初始启用状态，可选，默认为True\n\n返回：\n- 成功：返回订阅成功信息\n- 失败：404（服务号不存在）或400（已订阅）或500（数据库操作失败）\n\n注意：\n- 需要用户认证\n- 只能订阅 is_active=True 的服务号\n- 推送时间格式必须为 HH:MM（24小时制）\n- 如果未提供推送时间，使用服务号默认推送时间",
         "operationId": "subscribe_service_account_api_service_accounts__name__subscribe_post",
         "security": [
           {
@@ -1703,10 +1672,11 @@
       },
       "delete": {
         "tags": [
-          "服务号"
+          "服务号",
+          "订阅"
         ],
         "summary": "Unsubscribe Service Account",
-        "description": "取消订阅服务号",
+        "description": "取消订阅服务号\n\n参数：\n- name: 要取消订阅的服务号名称\n\n返回：\n- 成功：返回取消订阅成功信息\n- 失败：404（服务号不存在）或400（未订阅）或500（数据库操作失败）\n\n注意：\n- 需要用户认证\n- 取消订阅后，该服务号的推送将停止\n- 订阅记录将被删除，相关设置不会保留",
         "operationId": "unsubscribe_service_account_api_service_accounts__name__subscribe_delete",
         "security": [
           {
@@ -3006,26 +2976,6 @@
         ],
         "title": "PaginatedResponse[BlockedUserResponse]"
       },
-      "PushTimeUpdate": {
-        "properties": {
-          "fortune_time": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fortune Time",
-            "description": "运势推送时间，格式: HH:MM (24小时制)，例如 '08:30'"
-          }
-        },
-        "type": "object",
-        "title": "PushTimeUpdate",
-        "description": "推送时间更新"
-      },
       "ReadyResponse": {
         "properties": {
           "status": {
@@ -3197,6 +3147,18 @@
               }
             ],
             "title": "Updated At"
+          },
+          "push_time_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Push Time Source",
+            "description": "推送时间来源: subscription(订阅设置), service_default(服务号默认), none(无)"
           }
         },
         "type": "object",
@@ -3604,31 +3566,43 @@
   "tags": [
     {
       "name": "系统",
-      "description": "系统健康检查与服务信息"
+      "description": "系统健康检查、服务信息与API根路径"
     },
     {
       "name": "认证",
-      "description": "用户注册、登录、刷新、登出"
+      "description": "用户注册、登录、令牌刷新、登出等认证相关接口"
     },
     {
       "name": "消息",
-      "description": "IM 消息、回执、收藏、归档、搜索"
+      "description": "即时消息发送、接收、收藏、删除等消息管理功能"
     },
     {
-      "name": "好友",
-      "description": "好友请求、同意/拒绝、好友列表"
+      "name": "联系人",
+      "description": "联系人添加、查询、更新、删除等联系人管理功能"
     },
     {
       "name": "黑名单",
-      "description": "拉黑、解除拉黑、黑名单查询"
+      "description": "用户拉黑、解除拉黑、黑名单查询功能"
     },
     {
       "name": "用户资料",
-      "description": "用户信息、个人资料、在线状态"
+      "description": "用户个人信息、头像、密码、推送设置等资料管理"
+    },
+    {
+      "name": "用户",
+      "description": "用户公开信息查询，包括用户资料和头像获取"
+    },
+    {
+      "name": "服务号",
+      "description": "服务号列表、详情、订阅管理、推送设置等功能"
     },
     {
       "name": "订阅",
-      "description": "用户侧订阅的查询与管理"
+      "description": "用户订阅的服务号列表及订阅设置管理"
+    },
+    {
+      "name": "管理后台",
+      "description": "管理员后台管理界面，包括用户、消息、服务号管理"
     }
   ]
 }

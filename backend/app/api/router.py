@@ -19,9 +19,9 @@ api_router.include_router(public_router, prefix="/public", tags=["认证"])
 api_router.include_router(messages_router, prefix="/messages", tags=["消息"])
 api_router.include_router(blocks_router, tags=["黑名单"])
 api_router.include_router(profile_router, prefix="/profile", tags=["用户资料"])
-api_router.include_router(users_router, tags=["用户管理"])
+api_router.include_router(users_router, tags=["用户"])
 api_router.include_router(contacts_router, prefix="/contacts", tags=["联系人"])
 api_router.include_router(service_accounts_router, prefix="/service_accounts", tags=["服务号"])
 
 # WebSocket 路由
-api_router.include_router(websocket_router, tags=["WebSocket"])
+api_router.include_router(websocket_router)

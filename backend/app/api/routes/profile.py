@@ -3,8 +3,7 @@
 包含：
 1. 用户基本信息管理
 2. 头像上传
-3. 推送时间设置
-4. 时区设置
+3. 时区设置
 """
 
 from fastapi import APIRouter, Depends, Request
@@ -12,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.models.user import User
-from app.schemas.user import UserResponse, UserUpdate, UserPasswordUpdate, PushTimeUpdate, TimezoneUpdate
+from app.schemas.user import UserResponse, UserUpdate, UserPasswordUpdate, TimezoneUpdate
 from app.schemas.common import StatusResponse
 from app.core.security import get_current_active_user, decode_token
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -206,50 +205,7 @@ async def update_password(
         raise ValidationException("密码更新失败")
 
 
-@router.put("/push-time", response_model=UserResponse, tags=["用户资料"])
-async def update_push_time(
-    push_time_update: PushTimeUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """更新用户推送时间设置"""
-    try:
-        if push_time_update.fortune_time is not None:
-            # 验证时间格式
-            try:
-                hour, minute = map(int, push_time_update.fortune_time.split(':'))
-                if not (0 <= hour <= 23 and 0 <= minute <= 59):
-                    raise ValidationException("时间格式无效，请使用 HH:MM 格式")
-                current_user.fortune_time = push_time_update.fortune_time
-            except (ValueError, AttributeError):
-                raise ValidationException("时间格式无效，请使用 HH:MM 格式")
 
-        db.add(current_user)
-        try:
-            db.commit()
-            db.refresh(current_user)
-        except Exception:
-            db.rollback()
-            raise
-
-        logger.info(f"用户推送时间更新: user_id={current_user.id}, fortune_time={current_user.fortune_time}")
-
-        # 更新缓存
-        user_id = getattr(current_user, 'id', None)
-        if user_id:
-            profile_data = UserResponse.model_validate(current_user).model_dump()
-            profile_data['created_at'] = profile_data['created_at'].isoformat() if profile_data.get('created_at') else None
-            profile_data['updated_at'] = profile_data['updated_at'].isoformat() if profile_data.get('updated_at') else None
-            profile_data['last_active'] = profile_data['last_active'].isoformat() if profile_data.get('last_active') else None
-            await RedisService.cache_user_data(user_id, profile_data)
-
-        return current_user
-
-    except ValidationException:
-        raise
-    except Exception as e:
-        logger.error(f"推送时间更新失败: {e}")
-        raise ValidationException("推送时间更新失败")
 
 
 @router.put("/timezone", response_model=UserResponse, tags=["用户资料"])
@@ -308,7 +264,6 @@ async def get_push_settings(
         # 获取用户的基本推送设置
         user_settings = {
             "timezone": current_user.timezone,
-            "fortune_time": current_user.fortune_time,
             "subscriptions": []
         }
 

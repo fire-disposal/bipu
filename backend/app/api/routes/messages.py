@@ -16,7 +16,7 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.post("/", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=MessageResponse, status_code=status.HTTP_201_CREATED, tags=["消息"])
 async def send_message(
     message_data: MessageCreate,
     current_user: User = Depends(get_current_user),
@@ -35,7 +35,7 @@ async def send_message(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/", response_model=MessageListResponse)
+@router.get("/", response_model=MessageListResponse, tags=["消息"])
 async def get_messages(
     direction: Optional[str] = Query("received", description="sent 或 received"),
     page: int = Query(1, ge=1),
@@ -63,7 +63,7 @@ async def get_messages(
     }
 
 
-@router.get("/favorites", response_model=FavoriteListResponse)
+@router.get("/favorites", response_model=FavoriteListResponse, tags=["消息"])
 async def get_favorites(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -80,7 +80,7 @@ async def get_favorites(
     }
 
 
-@router.post("/{message_id}/favorite", response_model=FavoriteResponse)
+@router.post("/{message_id}/favorite", response_model=FavoriteResponse, tags=["消息"])
 async def add_favorite(
     message_id: int,
     favorite_data: Optional[FavoriteCreate] = None,
@@ -96,7 +96,7 @@ async def add_favorite(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.delete("/{message_id}/favorite", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{message_id}/favorite", status_code=status.HTTP_204_NO_CONTENT, tags=["消息"])
 async def remove_favorite(
     message_id: int,
     current_user: User = Depends(get_current_user),
@@ -109,7 +109,7 @@ async def remove_favorite(
     return None
 
 
-@router.delete("/{message_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{message_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["消息"])
 async def delete_message(
     message_id: int,
     current_user: User = Depends(get_current_user),

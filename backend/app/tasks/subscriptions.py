@@ -144,8 +144,9 @@ async def _send_weather_to_user(db: Session, user: User) -> bool:
 def get_users_for_push_time(db: Session, service_name: str, target_hour_utc: int, target_minute_utc: int) -> list:
     """获取在指定UTC时间应该接收推送的用户
 
-    只考虑设置了个人化推送时间的用户
-    移除默认推送时间逻辑，简化设计
+    支持两级推送时间：
+    1. 服务号订阅的个人化推送时间（最高优先级）
+    2. 服务号的默认推送时间（default_push_time）
     """
     # 获取服务号
     service = db.query(ServiceAccount).filter(
@@ -156,20 +157,23 @@ def get_users_for_push_time(db: Session, service_name: str, target_hour_utc: int
     if not service:
         return []
 
-    # 查询所有订阅者及其设置（只查询设置了推送时间的用户）
+    # 查询所有订阅者及其设置
     stmt = select(
         User.id,
         User.bipupu_id,
         User.timezone,
-        subscription_table.c.push_time
+        subscription_table.c.push_time,
+        ServiceAccount.default_push_time
     ).join(
         subscription_table,
         User.id == subscription_table.c.user_id
+    ).join(
+        ServiceAccount,
+        ServiceAccount.id == subscription_table.c.service_account_id
     ).where(
         and_(
             subscription_table.c.service_account_id == service.id,
-            subscription_table.c.is_enabled == True,
-            subscription_table.c.push_time.is_not(None)  # 只处理设置了推送时间的用户
+            subscription_table.c.is_enabled == True
         )
     )
 
@@ -179,14 +183,28 @@ def get_users_for_push_time(db: Session, service_name: str, target_hour_utc: int
     current_utc = datetime.now(timezone.utc)
     target_time_utc = current_utc.replace(hour=target_hour_utc, minute=target_minute_utc, second=0, microsecond=0)
 
-    for user_id, bipupu_id, user_timezone, push_time in results:
+    for user_id, bipupu_id, user_timezone, subscription_push_time, service_default_push_time in results:
         try:
+            # 确定推送时间（优先级：订阅设置 > 服务号默认）
+            push_time_to_use = None
+
+            if subscription_push_time:
+                # 使用订阅设置中的推送时间
+                push_time_to_use = subscription_push_time
+            elif service_default_push_time:
+                # 使用服务号的默认推送时间
+                push_time_to_use = service_default_push_time
+
+            if not push_time_to_use:
+                # 没有可用的推送时间，跳过该用户
+                continue
+
             # 获取用户时区
             user_tz = pytz.timezone(user_timezone or 'Asia/Shanghai')
 
             # 在用户时区中创建目标时间
             user_target_time = user_tz.localize(
-                datetime.combine(target_time_utc.date(), push_time)
+                datetime.combine(target_time_utc.date(), push_time_to_use)
             )
 
             # 转换回UTC进行比较
