@@ -73,7 +73,7 @@ class ServiceAccount(Base):
         finally:
             db.close()
 
-    def update_subscription_settings(self, user_id: int, push_time: str = None, is_enabled: bool = None):
+    def update_subscription_settings(self, user_id: int, push_time: str | None = None, is_enabled: bool | None = None):
         """更新用户的订阅设置"""
         from sqlalchemy import update
         from datetime import time
@@ -106,9 +106,10 @@ class ServiceAccount(Base):
                     .values(**update_data)
                 )
 
-                result = db.execute(stmt)
+                db.execute(stmt)
                 db.commit()
-                return result.rowcount > 0
+                # 执行成功即返回True
+                return True
 
             return False
         except Exception as e:

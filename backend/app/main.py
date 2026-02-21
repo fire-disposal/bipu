@@ -130,8 +130,7 @@ def create_app() -> FastAPI:
     app.add_exception_handler(BaseCustomException, custom_exception_handler)  # type: ignore
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)  # type: ignore
     app.add_exception_handler(RequestValidationError, http_exception_handler)  # type: ignore
-    app.add_exception_handler(Exception, general_exception_handler)  # type: ignore
-
+    app.add_exception_handler(Exception, general_exception_handler)
     return app
 
 app = create_app()

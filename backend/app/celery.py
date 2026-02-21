@@ -36,7 +36,6 @@ celery_app.conf.update(
             "task": "subscriptions.check_push_times",
             "schedule": crontab(minute="*/15"),
         },
-    },
     }
 )
 

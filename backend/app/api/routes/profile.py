@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.models.user import User
+from app.models.service_account import ServiceAccount
 from app.schemas.user import UserResponse, UserUpdate, UserPasswordUpdate, TimezoneUpdate
 from app.schemas.common import StatusResponse
 from app.core.security import get_current_active_user, decode_token
@@ -259,8 +260,6 @@ async def get_push_settings(
 ):
     """获取用户推送设置信息"""
     try:
-        from app.tasks.subscriptions import get_push_schedule_stats
-
         # 获取用户的基本推送设置
         user_settings = {
             "timezone": current_user.timezone,
