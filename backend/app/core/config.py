@@ -6,7 +6,7 @@ from urllib.parse import quote_plus
 
 class Settings(BaseSettings):
     """应用配置"""
-    
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -14,17 +14,15 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
-    
+
     # 项目配置
     PROJECT_NAME: str = "bipupu"
     VERSION: str = "0.2.0"
     DESCRIPTION: str = "BIPUPU API 服务"
-    # CORS配置
-    ALLOWED_HOSTS: List[str] = ["*"]
     # 默认管理员配置
     ADMIN_PASSWORD: str = "admin123"
     ADMIN_USERNAME: str = "admin"
-    
+
     # JWT配置
     SECRET_KEY: str = "your-super-secret-jwt-key-change-this-in-production"
     ALGORITHM: str = "HS256"
@@ -34,11 +32,11 @@ class Settings(BaseSettings):
 
     # 安全配置
     PASSWORD_HASH_ALGORITHM: str = "bcrypt"
-    
+
     # 日志配置
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "text"
-    
+
     # 分页配置
     DEFAULT_PAGE_SIZE: int = 20
     MAX_PAGE_SIZE: int = 100
@@ -46,7 +44,7 @@ class Settings(BaseSettings):
     # 文件上传配置
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
     UPLOAD_DIR: str = "uploads"
-    
+
     # 时区配置
     TIMEZONE: str = "Asia/Shanghai"
 
@@ -56,16 +54,13 @@ class Settings(BaseSettings):
     POSTGRES_SERVER: str = "db"
     POSTGRES_PORT: str = "5432"
     POSTGRES_DB: str = "bipupu"
-    
-    # SQLite配置（fallback）
-    SQLITE_DB_PATH: str = "bipupu.db"
-    
+
     @property
     def DATABASE_URL(self) -> str:
         """构建数据库URL"""
         if url := os.getenv("DATABASE_URL"):
             return url
-        
+
         password = quote_plus(self.POSTGRES_PASSWORD)
         return f"postgresql://{self.POSTGRES_USER}:{password}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
@@ -74,12 +69,12 @@ class Settings(BaseSettings):
     REDIS_HOST: str = "redis"
     REDIS_PORT: str = "6379"
     USE_MEMORY_CACHE: bool = False
-    
+
     @property
     def REDIS_URL(self) -> str:
         if url := os.getenv("REDIS_URL"):
             return url
-        
+
         auth = f":{quote_plus(self.REDIS_PASSWORD)}@" if self.REDIS_PASSWORD else ""
         return f"redis://{auth}{self.REDIS_HOST}:{self.REDIS_PORT}/0"
 
@@ -87,7 +82,7 @@ class Settings(BaseSettings):
     def CELERY_BROKER_URL(self) -> str:
         if url := os.getenv("CELERY_BROKER_URL"):
             return url
-        
+
         auth = f":{quote_plus(self.REDIS_PASSWORD)}@" if self.REDIS_PASSWORD else ""
         return f"redis://{auth}{self.REDIS_HOST}:{self.REDIS_PORT}/1"
 
@@ -95,10 +90,10 @@ class Settings(BaseSettings):
     def CELERY_RESULT_BACKEND(self) -> str:
         if url := os.getenv("CELERY_RESULT_BACKEND"):
             return url
-        
+
         auth = f":{quote_plus(self.REDIS_PASSWORD)}@" if self.REDIS_PASSWORD else ""
         return f"redis://{auth}{self.REDIS_HOST}:{self.REDIS_PORT}/2"
-    
+
 
 
 # 创建配置实例

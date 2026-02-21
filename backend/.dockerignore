@@ -49,7 +49,6 @@ logs/
 *.log
 .env
 .env.*
-!.env.example
 
 # Documentation
 doc/

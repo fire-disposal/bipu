@@ -14,6 +14,7 @@ import random
 import hashlib
 import asyncio
 from datetime import datetime, timezone, timedelta
+from typing import Optional, List, Tuple
 from celery import shared_task
 from sqlalchemy.orm import Session
 from sqlalchemy import select, and_
@@ -119,10 +120,8 @@ def generate_weather_forecast(date: datetime) -> str:
 async def _send_fortune_to_user(db: Session, user: User) -> bool:
     """异步发送运势给单个用户"""
     try:
-        now_utc = datetime.now(timezone.utc)
         bipupu_id = str(user.bipupu_id)
-        content = generate_daily_fortune(bipupu_id, now_utc)
-        await send_push(db, "cosmic.fortune", bipupu_id, content)
+        await send_push(db, "cosmic.fortune", bipupu_id, None)
         logger.debug(f"运势推送成功：{bipupu_id}")
         return True
     except Exception as e:
@@ -133,10 +132,8 @@ async def _send_fortune_to_user(db: Session, user: User) -> bool:
 async def _send_weather_to_user(db: Session, user: User) -> bool:
     """异步发送天气给单个用户"""
     try:
-        now_utc = datetime.now(timezone.utc)
         bipupu_id = str(user.bipupu_id)
-        content = generate_weather_forecast(now_utc)
-        await send_push(db, "weather.service", bipupu_id, content)
+        await send_push(db, "weather.service", bipupu_id, None)
         logger.debug(f"天气推送成功：{bipupu_id}")
         return True
     except Exception as e:
@@ -261,7 +258,7 @@ def check_push_times_task(self) -> dict:
 
 
 @shared_task(name="subscriptions.fortune", bind=True, max_retries=3, default_retry_delay=60)
-def fortune_task(self, target_users: list = None) -> int:
+def fortune_task(self, target_users: Optional[List[Tuple[int, str]]] = None) -> int:
     """每日运势推送任务（支持个人化推送时间）
 
     根据用户的时区和个人化推送时间发送运势
@@ -319,7 +316,7 @@ def fortune_task(self, target_users: list = None) -> int:
 
 
 @shared_task(name="subscriptions.weather", bind=True, max_retries=3, default_retry_delay=60)
-def weather_task(self, target_users: list = None) -> int:
+def weather_task(self, target_users: Optional[List[Tuple[int, str]]] = None) -> int:
     """每日天气推送任务（支持个人化推送时间）
 
     根据用户的时区和个人化推送时间发送天气预报
@@ -483,15 +480,7 @@ def send_test_push(service_name: str, user_bipupu_id: str) -> bool:
         now_utc = datetime.now(timezone.utc)
 
         async def send_test():
-            if service_name == "cosmic.fortune":
-                content = generate_daily_fortune(user_bipupu_id, now_utc)
-            elif service_name == "weather.service":
-                content = generate_weather_forecast(now_utc)
-            else:
-                logger.error(f"不支持的服务号：{service_name}")
-                return False
-
-            await send_push(db, service_name, user_bipupu_id, content)
+            await send_push(db, service_name, user_bipupu_id, None)
             return True
 
         success = asyncio.run(send_test())
@@ -506,7 +495,7 @@ def send_test_push(service_name: str, user_bipupu_id: str) -> bool:
         db.close()
 
 
-def send_immediate_push(service_name: str, user_bipupu_id: str, content: str = None) -> bool:
+def send_immediate_push(service_name: str, user_bipupu_id: str, content: Optional[str] = None) -> bool:
     """立即发送推送（绕过时间检查，用于管理后台）
 
     Args:
@@ -525,17 +514,7 @@ def send_immediate_push(service_name: str, user_bipupu_id: str, content: str = N
             return False
 
         async def send_immediate():
-            if content:
-                push_content = content
-            elif service_name == "cosmic.fortune":
-                push_content = generate_daily_fortune(user_bipupu_id, datetime.now(timezone.utc))
-            elif service_name == "weather.service":
-                push_content = generate_weather_forecast(datetime.now(timezone.utc))
-            else:
-                logger.error(f"不支持的服务号：{service_name}")
-                return False
-
-            await send_push(db, service_name, user_bipupu_id, push_content)
+            await send_push(db, service_name, user_bipupu_id, content)
             return True
 
         success = asyncio.run(send_immediate())

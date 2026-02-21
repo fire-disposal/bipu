@@ -1,6 +1,5 @@
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 import redis.asyncio as redis
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -10,21 +9,13 @@ from app.models.base import Base
 
 logger = get_logger(__name__)
 
-# 全局变量用于存储当前使用的数据库类型
-current_db_type = "unknown"
-fallback_used = False
-
 # 创建SQLAlchemy引擎
-connect_args = {}
-if settings.DATABASE_URL.startswith("sqlite"):
-    connect_args = {"check_same_thread": False}
-
 engine = create_engine(
     settings.DATABASE_URL,
-    poolclass=StaticPool,
+    pool_size=20,
+    max_overflow=30,
     pool_pre_ping=True,
     echo=False,  # 强制关闭 SQLAlchemy 的 SQL 日志输出
-    connect_args=connect_args,
 )
 
 # 创建SessionLocal类
@@ -72,10 +63,10 @@ async def get_redis():
 
 class MemoryCacheWrapper:
     """内存缓存包装器，模拟Redis接口"""
-    
+
     async def get(self, key):
         return memory_cache.get(key)
-    
+
     async def set(self, key, value, ex=None):
         memory_cache[key] = value
         # 简单的过期机制（实际项目中可以改进）
@@ -86,13 +77,13 @@ class MemoryCacheWrapper:
                 memory_cache.pop(key, None)
             asyncio.create_task(expire())
         return True
-    
+
     async def delete(self, key):
         return memory_cache.pop(key, None) is not None
-    
+
     async def exists(self, key):
         return key in memory_cache
-    
+
     async def expire(self, key, time):
         # 简单的过期实现
         if key in memory_cache:
@@ -103,92 +94,96 @@ class MemoryCacheWrapper:
             asyncio.create_task(expire())
             return True
         return False
-    
+
     async def ttl(self, key):
         # 内存缓存不支持TTL，返回-1
         return -1 if key in memory_cache else -2
-    
+
     async def ping(self):
         return True
-    
+
     async def incr(self, key):
         current = int(memory_cache.get(key, 0))
         memory_cache[key] = current + 1
         return current + 1
-    
+
     async def close(self):
         pass
 
 
 async def init_db():
-    """初始化数据库，支持自动回退到SQLite"""
-    global current_db_type, fallback_used, engine, SessionLocal
-    
+    """初始化数据库"""
+    global engine, SessionLocal
+
     try:
-        # 首先尝试PostgreSQL
-        if not settings.DATABASE_URL.startswith("sqlite"):
-            logger.info("🐘 尝试连接 PostgreSQL...")
-            # 测试连接
-            with engine.connect() as conn:
-                conn.execute(text("SELECT 1"))
-            
-            current_db_type = "postgresql"
-            logger.info("✅ PostgreSQL连接成功")
+        # 打印数据库连接信息（不含密码）
+        db_url = str(engine.url)
+        # 隐藏密码信息
+        if "@" in db_url:
+            # 格式: postgresql://user:password@host:port/dbname
+            parts = db_url.split("@")
+            auth_part = parts[0]
+            if "://" in auth_part:
+                protocol = auth_part.split("://")[0] + "://"
+                credentials = auth_part.split("://")[1]
+                if ":" in credentials:
+                    user = credentials.split(":")[0]
+                    # 隐藏密码，只显示用户名
+                    safe_auth = f"{protocol}{user}:******"
+                else:
+                    safe_auth = auth_part
+            else:
+                safe_auth = auth_part
+            safe_db_url = f"{safe_auth}@{parts[1]}"
         else:
-            current_db_type = "sqlite"
-            logger.info("🗄️ 使用 SQLite 数据库")
-        
+            safe_db_url = db_url
+
+        logger.info(f"🐘 尝试连接 PostgreSQL: {safe_db_url}")
+
+        # 测试连接
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+
+        logger.info("✅ PostgreSQL连接成功")
+
         # 在函数内部导入模型，确保它们被注册到 Base.metadata
         # 这样可以避免循环导入问题
         from app.models import User
-        
+
         logger.info("🌳 数据库连接成功")
-        
+
     except Exception as e:
-        if not fallback_used and not settings.DATABASE_URL.startswith("sqlite"):
-            logger.warning(f"❌ PostgreSQL连接失败，尝试回退到SQLite: {e}")
-            fallback_used = True
-            
-            # 重新配置为SQLite
-            sqlite_url = f"sqlite:///{settings.SQLITE_DB_PATH}"
-            logger.info(f"🗄️ 回退到 SQLite: {sqlite_url}")
-            
-            # 重新创建引擎
-            engine = create_engine(
-                sqlite_url,
-                poolclass=StaticPool,
-                pool_pre_ping=True,
-                echo=False,
-                connect_args={"check_same_thread": False},
-            )
-            
-            # 重新创建SessionLocal
-            SessionLocal = sessionmaker(
-                autocommit=False,
-                autoflush=False,
-                bind=engine
-            )
-            
-            current_db_type = "sqlite"
-            
-            # 测试 SQLite 连接
-            try:
-                with engine.connect() as conn:
-                    conn.execute(text("SELECT 1"))
-                logger.info("🌳 SQLite数据库连接成功")
-            except Exception as sqlite_e:
-                logger.error(f"❌ SQLite数据库初始化失败: {sqlite_e}")
-                raise
-        else:
-            logger.error(f"❌ 数据库连接失败: {e}")
-            raise
+        logger.error(f"❌ PostgreSQL数据库初始化失败: {e}")
+        raise
 
 
 async def init_redis():
-    """初始化Redis连接，支持内存缓存fallback"""
+    """初始化Redis连接"""
     global redis_client
-    
+
     try:
+        # 打印Redis连接信息（不含密码）
+        redis_url = settings.REDIS_URL
+        # 隐藏密码信息
+        if "://" in redis_url:
+            protocol = redis_url.split("://")[0] + "://"
+            rest = redis_url.split("://")[1]
+            if "@" in rest:
+                # 有密码: redis://:password@host:port/db
+                auth_part = rest.split("@")[0]
+                if auth_part.startswith(":"):
+                    # 有密码无用户名
+                    safe_rest = f":******@{rest.split('@')[1]}"
+                else:
+                    safe_rest = rest
+            else:
+                safe_rest = rest
+            safe_redis_url = f"{protocol}{safe_rest}"
+        else:
+            safe_redis_url = redis_url
+
+        logger.info(f"🔗 尝试连接 Redis: {safe_redis_url}")
+
         redis_client = redis.from_url(
             settings.REDIS_URL,
             encoding="utf-8",
@@ -199,13 +194,12 @@ async def init_redis():
         logger.info("✅ Redis连接成功")
     except Exception as e:
         logger.warning(f"⚠️ Redis连接失败，使用内存缓存: {e}")
-        # 不抛出异常，让应用继续运行
+        # 使用内存缓存作为fallback
         redis_client = MemoryCacheWrapper()
-        logger.info("✅ 已启用内存缓存作为Redis替代方案")
 
 
 async def get_redis_client():
-    """获取Redis客户端，支持自动回退到内存缓存"""
+    """获取Redis客户端"""
     global redis_client
     if redis_client is None:
         await init_redis()

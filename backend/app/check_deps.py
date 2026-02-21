@@ -3,7 +3,7 @@ import asyncio
 import time
 from app.core.config import settings
 from app.core.logging import get_logger
-from app.db.database import init_db, init_redis, current_db_type
+from app.db.database import init_db, init_redis
 
 logger = get_logger(__name__)
 
@@ -14,8 +14,7 @@ async def check_db():
     while time.time() - start < 30:
         try:
             await init_db()
-            db_type = "PostgreSQL" if current_db_type == "postgresql" else "SQLite"
-            logger.info(f"✅ 数据库初始化成功 (类型: {db_type})")
+            logger.info(f"✅ 数据库初始化成功 (类型: PostgreSQL)")
             return True
         except Exception as e:
             logger.warning(f"⏳ 数据库初始化等待中: {e}")

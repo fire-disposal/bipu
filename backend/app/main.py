@@ -1,14 +1,13 @@
+from alembic.autogenerate.compare import log
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware import Middleware
 from contextlib import asynccontextmanager
 import os
 from app.api.router import api_router
 from app.api.routes.root import router as root_router
 from app.core.config import settings
-from app.db.database import current_db_type, fallback_used, redis_client, MemoryCacheWrapper, init_db, init_redis
+from app.db.database import redis_client, MemoryCacheWrapper, init_db, init_redis
 from app.db.init_data import init_default_data
 from app.core.logging import get_logger
 import uvicorn
@@ -29,16 +28,8 @@ async def lifespan(app: FastAPI):
 
     # 显示当前使用的数据库信息
     db_url = settings.DATABASE_URL
-    fallback_indicator = " (回退)" if fallback_used else ""
-
-    if current_db_type == "sqlite":
-        db_name = db_url.split("///")[-1] if "///" in db_url else "SQLite"
-        logger.info(f"🗄️  使用 SQLite 数据库: {db_name}{fallback_indicator}")
-    elif current_db_type == "postgresql":
-        db_name = db_url.split("/")[-1] if "/" in db_url else "PostgreSQL"
-        logger.info(f"🐘 使用 PostgreSQL 数据库: {db_name}{fallback_indicator}")
-    else:
-        logger.info(f"📊 使用数据库: {db_url}{fallback_indicator}")
+    db_name = db_url.split("/")[-1] if "/" in db_url else "PostgreSQL"
+    logger.info(f"✅ 使用数据库: {db_name}")
 
     # logger.info(
     #     "\n"
@@ -53,17 +44,10 @@ async def lifespan(app: FastAPI):
     try:
         # 初始化默认数据
         await init_default_data()
-        logger.info("✅ 默认数据初始化完成")
-
         # 初始化Redis（失败时自动使用内存缓存）
         await init_redis()
 
-        # 导入并注册服务号
-        from app.services import builtin_services
-        logger.info("✅ 内置服务号已加载")
-
         port = os.getenv("PORT", "8000")
-        logger.info("✅ 服务启动完成 ")
         logger.info(f"📚 API文档地址:    http://localhost:{port}/api/docs")
         logger.info(f"📋 OpenAPI.json 地址: http://localhost:{port}/api/openapi.json")
         logger.info(f"🔧 管理后台入口:  http://localhost:{port}/admin")
@@ -72,16 +56,14 @@ async def lifespan(app: FastAPI):
         cache_type = "内存缓存" if isinstance(redis_client, MemoryCacheWrapper) else "Redis"
         logger.info(f"💾 缓存服务: {cache_type}")
 
-        db_type = "SQLite" if current_db_type == "sqlite" else "PostgreSQL"
-        fallback_note = " (自动回退)" if fallback_used else ""
-        logger.info(f"🗄️  数据库: {db_type}{fallback_note}")
-
         # 生成 OpenAPI.json 文件
         try:
             export_openapi_json(app)
             logger.info("✅ OpenAPI.json 文件已生成")
         except Exception as e:
             logger.error(f"❌ OpenAPI.json 生成失败: {e}")
+
+        logger.info("✅ 服务启动完成")
 
 
 
@@ -111,23 +93,11 @@ def create_app() -> FastAPI:
         {"name": "用户资料", "description": "用户信息、个人资料、在线状态"},
         {"name": "订阅", "description": "用户侧订阅的查询与管理"},
     ]
-
-    middleware = [
-        Middleware(
-            CORSMiddleware,
-            allow_origins=settings.ALLOWED_HOSTS,
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
-    ]
-
     app = FastAPI(
         title=settings.PROJECT_NAME,
         version=settings.VERSION,
         description=settings.DESCRIPTION,
         lifespan=lifespan,
-        middleware=middleware,
         openapi_url="/api/openapi.json",
         docs_url="/api/docs",
         redoc_url="/api/redoc",
@@ -153,11 +123,11 @@ def create_app() -> FastAPI:
     app.include_router(admin_web_router, prefix="/admin")
 
     # 注册全局异常处理器
-    app.add_exception_handler(AdminAuthException, admin_auth_exception_handler)
-    app.add_exception_handler(BaseCustomException, custom_exception_handler)
-    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
-    app.add_exception_handler(RequestValidationError, http_exception_handler)
-    app.add_exception_handler(Exception, general_exception_handler)
+    app.add_exception_handler(AdminAuthException, admin_auth_exception_handler)  # type: ignore
+    app.add_exception_handler(BaseCustomException, custom_exception_handler)  # type: ignore
+    app.add_exception_handler(StarletteHTTPException, http_exception_handler)  # type: ignore
+    app.add_exception_handler(RequestValidationError, http_exception_handler)  # type: ignore
+    app.add_exception_handler(Exception, general_exception_handler)  # type: ignore
 
     return app
 

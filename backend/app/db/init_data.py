@@ -113,6 +113,31 @@ async def init_default_data():
 
     # 动态导入SessionLocal，确保使用最新的数据库配置
     from app.db.database import SessionLocal
+    from app.core.config import settings
+
+    # 打印数据库连接信息（不含密码）
+    db_url = settings.DATABASE_URL
+    # 隐藏密码信息
+    if "@" in db_url:
+        # 格式: postgresql://user:password@host:port/dbname
+        parts = db_url.split("@")
+        auth_part = parts[0]
+        if "://" in auth_part:
+            protocol = auth_part.split("://")[0] + "://"
+            credentials = auth_part.split("://")[1]
+            if ":" in credentials:
+                user = credentials.split(":")[0]
+                # 隐藏密码，只显示用户名
+                safe_auth = f"{protocol}{user}:******"
+            else:
+                safe_auth = auth_part
+        else:
+            safe_auth = auth_part
+        safe_db_url = f"{safe_auth}@{parts[1]}"
+    else:
+        safe_db_url = db_url
+
+    logger.info(f"数据库连接信息: {safe_db_url}")
 
     db = SessionLocal()
     try:

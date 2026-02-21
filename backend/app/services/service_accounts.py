@@ -14,7 +14,7 @@ async def send_push(
     db: Session,
     service_name: str,
     receiver_bipupu_id: str,
-    content: str,
+    content: Optional[str] = None,
     pattern: Optional[dict] = None,
     message_type: str = "SYSTEM",
 ) -> Message:
@@ -24,7 +24,7 @@ async def send_push(
         db: 数据库会话
         service_name: 发送方服务号名称
         receiver_bipupu_id: 接收方用户 BIPUPU ID
-        content: 消息内容
+        content: 消息内容，如果为None则根据服务号类型自动生成
         pattern: 可选的 pupu 机显示/光效配置
         message_type: 消息类型，默认为 SYSTEM
 
@@ -32,6 +32,18 @@ async def send_push(
         Message: 创建的消息对象
     """
     from app.core.websocket import manager
+    from datetime import datetime, timezone
+
+    # 如果内容为空，根据服务号类型自动生成
+    if content is None:
+        if service_name == "cosmic.fortune":
+            from app.tasks.subscriptions import generate_daily_fortune
+            content = generate_daily_fortune(receiver_bipupu_id, datetime.now(timezone.utc))
+        elif service_name == "weather.service":
+            from app.tasks.subscriptions import generate_weather_forecast
+            content = generate_weather_forecast(datetime.now(timezone.utc))
+        else:
+            content = f"来自 {service_name} 的推送"
 
     # 创建推送消息
     new_message = Message(
@@ -75,7 +87,7 @@ async def send_push(
 async def broadcast_push(
     db: Session,
     service_name: str,
-    content: str,
+    content: Optional[str] = None,
     pattern: Optional[dict] = None,
     message_type: str = "SYSTEM",
 ) -> int:
@@ -84,7 +96,7 @@ async def broadcast_push(
     Args:
         db: 数据库会话
         service_name: 服务号名称
-        content: 消息内容
+        content: 消息内容，如果为None则根据服务号类型自动生成
         pattern: 可选的 pupu 机配置
         message_type: 消息类型，默认为 SYSTEM
 
@@ -111,7 +123,7 @@ async def broadcast_to_users(
     db: Session,
     service_name: str,
     user_ids: List[str],
-    content: str,
+    content: Optional[str] = None,
     pattern: Optional[dict] = None,
     message_type: str = "SYSTEM",
 ) -> int:
@@ -121,7 +133,7 @@ async def broadcast_to_users(
         db: 数据库会话
         service_name: 服务号名称
         user_ids: 接收用户BIPUPU ID列表
-        content: 消息内容
+        content: 消息内容，如果为None则根据服务号类型自动生成
         pattern: 可选的 pupu 机配置
         message_type: 消息类型，默认为 SYSTEM
 

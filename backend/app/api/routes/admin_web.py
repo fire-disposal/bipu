@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from datetime import datetime, time
+from datetime import datetime, time, timezone
 from fastapi.responses import RedirectResponse
 import logging
 
@@ -268,25 +268,39 @@ async def update_service_push_time(
         logger.error(f"更新服务号推送时间失败: {e}")
         raise HTTPException(status_code=500, detail="操作失败")
 
-@router.post("/service_accounts/{service_name}/broadcast", tags=["管理后台"])
-async def broadcast_service_message(
+@router.post("/service_accounts/{service_name}/trigger-push", tags=["管理后台"])
+async def trigger_service_push(
     service_name: str,
-    content: str = Form(...),
-    led_pattern: str = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_superuser_web)
 ):
-    """服务号广播消息"""
-    from app.services.service_accounts import broadcast_message
+    """立即触发服务号推送任务（无视时间和用户限制）"""
+    from app.models.service_account import ServiceAccount
+    from app.services.service_accounts import broadcast_push
 
-    pattern = None
-    if led_pattern:
-        pattern = {"led": led_pattern, "animation": "flash"}
+    # 检查服务号是否存在
+    service = db.query(ServiceAccount).filter(ServiceAccount.name == service_name).first()
+    if not service:
+        return RedirectResponse(url=f"/admin/service_accounts?error=Service {service_name} not found", status_code=302)
 
-    count = await broadcast_message(db, service_name, content, pattern)
+    # 获取所有订阅者
+    subscribers = service.subscribers
+    if not subscribers:
+        return RedirectResponse(url=f"/admin/service_accounts?msg=No subscribers for {service_name}", status_code=302)
 
-    # 可以在URL参带上结果提示，或者简单跳转
-    return RedirectResponse(url=f"/admin/service_accounts?msg=Broadcast sent to {count} users", status_code=302)
+    # 触发推送任务（内容由send_push自动生成）
+    try:
+        count = await broadcast_push(db, service_name, None, None)
+        msg = f"推送已立即发送给 {count} 位订阅者"
+    except Exception as e:
+        logger.error(f"触发推送任务失败: {e}")
+        return RedirectResponse(url=f"/admin/service_accounts?error=Failed to trigger push: {str(e)}", status_code=302)
+
+    return RedirectResponse(url=f"/admin/service_accounts?msg={msg}", status_code=302)
+
+
+# 需要导入 send_push 函数
+from app.services.service_accounts import send_push
 
 @router.get("/test_chat", tags=["管理后台"])
 async def admin_test_chat(
