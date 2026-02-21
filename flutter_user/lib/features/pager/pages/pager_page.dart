@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_user/features/assistant/assistant_controller.dart';
 import 'package:flutter_user/features/assistant/assistant_config.dart';
 import '../widgets/operator_gallery.dart';
+import '../widgets/voice_assistant_panel.dart';
 
 enum PagerMode { voice, direct }
 
@@ -21,10 +23,12 @@ class _PagerPageState extends State<PagerPage> {
   final List<_ChatEntry> _messages = [];
   bool _drawerOpen = false;
   bool _isSending = false;
+  StreamSubscription? _eventSub;
 
   @override
   void dispose() {
     _assistant.removeListener(_onAssistantUpdate);
+    _eventSub?.cancel();
     _idController.dispose();
     _messageController.dispose();
     super.dispose();
@@ -34,300 +38,162 @@ class _PagerPageState extends State<PagerPage> {
   void initState() {
     super.initState();
     _assistant.addListener(_onAssistantUpdate);
+    _eventSub = _assistant.onEvent.listen(_handleAssistantEvent);
+    _initAssistant();
+  }
+
+  Future<void> _initAssistant() async {
+    try {
+      await _assistant.init();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('语音引擎初始化失败: $e')));
+      }
+    }
+  }
+
+  void _handleAssistantEvent(AssistantEvent event) {
+    if (!mounted) return;
+
+    // 处理操作员发出的文本（TTS 脚本或直接朗读）
+    if (event.isOperator && event.text != null && event.text!.isNotEmpty) {
+      setState(() {
+        _messages.insert(0, _ChatEntry(true, event.text!));
+      });
+    }
   }
 
   void _onAssistantUpdate() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+
+    // 同步助手状态到输入框
+    if (_assistant.currentRecipientId != null &&
+        _idController.text != _assistant.currentRecipientId) {
+      _idController.text = _assistant.currentRecipientId!;
+    }
+    if (_assistant.currentText != null &&
+        _messageController.text != _assistant.currentText) {
+      _messageController.text = _assistant.currentText!;
+    }
+
+    // 监听发送成功事件（用户侧）
+    if (_assistant.currentPhase == AssistantPhase.sent && !_isSending) {
+      _onUserMessageSent(_assistant.currentText ?? "");
+    }
+
+    setState(() {});
+  }
+
+  void _onUserMessageSent(String text) {
+    if (text.isEmpty) return;
+    // 检查是否已经添加过（避免重复）
+    if (_messages.isNotEmpty &&
+        _messages.first.text == text &&
+        !_messages.first.fromOperator) {
+      return;
+    }
+    setState(() {
+      _messages.insert(0, _ChatEntry(false, text));
+    });
   }
 
   void _toggleMode() => setState(
     () => _mode = _mode == PagerMode.voice ? PagerMode.direct : PagerMode.voice,
   );
 
-  void _forceSend() {
+  void _forceSend() async {
     final id = _idController.text.trim();
     final text = _messageController.text.trim();
-    if (id.isEmpty) {
+    if (id.isEmpty || text.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('请填写目标ID')));
-      return;
-    }
-    if (text.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('消息内容不能为空')));
+      ).showSnackBar(const SnackBar(content: Text('ID和内容不能为空')));
       return;
     }
 
-    setState(() {
-      _isSending = true;
-    });
-
-    _messages.insert(0, _ChatEntry(false, text));
-    _messageController.clear();
-
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (!mounted) return;
-      setState(() {
-        _isSending = false;
-        _drawerOpen = false;
-      });
+    setState(() => _isSending = true);
+    try {
+      _assistant.setRecipient(id);
+      await _assistant.send();
+      _onUserMessageSent(text);
+      _messageController.clear();
+      _drawerOpen = false;
+    } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('已强制发送')));
-    });
+      ).showSnackBar(SnackBar(content: Text('发送失败: $e')));
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
   }
 
-  void _sendDirect() {
+  void _sendDirect() async {
     final id = _idController.text.trim();
     final text = _messageController.text.trim();
-    if (id.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请填写目标ID')));
-      return;
-    }
-    if (text.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('消息内容不能为空')));
-      return;
-    }
+    if (id.isEmpty || text.isEmpty) return;
 
-    setState(() {
-      _messages.insert(0, _ChatEntry(false, text));
+    _assistant.setRecipient(id);
+    try {
+      await _assistant.send();
+      _onUserMessageSent(text);
       _messageController.clear();
-    });
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('消息已发送')));
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('发送失败: $e')));
+    }
   }
 
   Widget _buildVoiceMode(BuildContext context) {
-    final theme = Theme.of(context);
-    final op =
-        _config.getOperator(_assistant.currentOperatorId) ??
-        _config.getOperator(_config.defaultOperator)!;
-    final Map<String, dynamic>? opCfg = _assistant.getCurrentOperatorConfig();
-
     return Column(
       children: [
-        Card(
-          color: op.themeColor.withOpacity(0.02),
-          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
+        const VoiceAssistantPanel(),
+        Expanded(
+          child: Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Column(
               children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: op.themeColor.withOpacity(0.12),
-                  ),
-                  alignment: Alignment.center,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(28),
-                    child:
-                        opCfg != null && (opCfg['portrait'] as String?) != null
-                        ? Image.asset(
-                            opCfg['portrait'] as String,
-                            fit: BoxFit.cover,
-                            width: 56,
-                            height: 56,
-                            errorBuilder: (c, e, s) =>
-                                Text(op.name.isNotEmpty ? op.name[0] : 'O'),
-                          )
-                        : Text(
-                            op.name.isNotEmpty ? op.name[0] : 'O',
-                            style: TextStyle(
-                              color: op.themeColor,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              op.name,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.grid_view, color: op.themeColor),
-                            tooltip: '选择接线员',
-                            onPressed: () async {
-                              await Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const OperatorGallery(),
-                                ),
-                              );
-                              setState(() {});
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
                       TextField(
                         controller: _idController,
                         decoration: const InputDecoration(
-                          labelText: '目标ID（缓冲）',
+                          labelText: '目标ID',
+                          prefixIcon: Icon(Icons.person_outline),
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (v) => _assistant.setRecipient(v),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _messageController,
+                        maxLines: 2,
+                        decoration: const InputDecoration(
+                          labelText: '消息内容',
+                          prefixIcon: Icon(Icons.message_outlined),
                           border: OutlineInputBorder(),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                const Divider(),
                 Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: '消息内容（缓冲）',
-                      border: OutlineInputBorder(),
-                    ),
+                  child: ListView.builder(
+                    reverse: true,
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      final m = _messages[index];
+                      return _buildChatBubble(m);
+                    },
                   ),
                 ),
+                _buildBottomControls(),
               ],
-            ),
-          ),
-        ),
-
-        // 小控制区：播放引导脚本按钮
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4),
-          child: Row(
-            children: [
-              ElevatedButton.icon(
-                onPressed: () async {
-                  try {
-                    await _assistant.speakScript('greeting');
-                  } catch (_) {}
-                },
-                icon: const Icon(Icons.play_arrow),
-                label: const Text('播放接线员引导'),
-                style: ElevatedButton.styleFrom(backgroundColor: op.themeColor),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'TTS Voice SID: ${_assistant.getCurrentOperatorConfig()?['ttsSid'] ?? 0}',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ),
-        ),
-
-        Expanded(
-          child: Card(
-            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: ListView.builder(
-                      reverse: true,
-                      itemCount: _messages.length,
-                      itemBuilder: (context, index) {
-                        final m = _messages[index];
-                        return Align(
-                          alignment: m.fromOperator
-                              ? Alignment.centerLeft
-                              : Alignment.centerRight,
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(vertical: 6),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 10,
-                            ),
-                            constraints: BoxConstraints(
-                              maxWidth: MediaQuery.of(context).size.width * 0.7,
-                            ),
-                            decoration: BoxDecoration(
-                              color: m.fromOperator
-                                  ? Colors.grey.shade200
-                                  : Theme.of(context).colorScheme.primary,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              m.text,
-                              style: TextStyle(
-                                color: m.fromOperator
-                                    ? Colors.black87
-                                    : Colors.white,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      GestureDetector(
-                        onTap: () => setState(() => _drawerOpen = !_drawerOpen),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Icon(
-                            _drawerOpen
-                                ? Icons.keyboard_arrow_down
-                                : Icons.keyboard_arrow_up,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 220),
-                    height: _drawerOpen ? 92 : 0,
-                    child: _drawerOpen
-                        ? Center(
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red,
-                                minimumSize: const Size(200, 56),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(28),
-                                ),
-                              ),
-                              onPressed: _isSending ? null : _forceSend,
-                              child: _isSending
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Text(
-                                      '强制发送',
-                                      style: TextStyle(fontSize: 18),
-                                    ),
-                            ),
-                          )
-                        : const SizedBox.shrink(),
-                  ),
-                ],
-              ),
             ),
           ),
         ),
@@ -335,9 +201,93 @@ class _PagerPageState extends State<PagerPage> {
     );
   }
 
+  Widget _buildChatBubble(_ChatEntry m) {
+    final isOp = m.fromOperator;
+    return Align(
+      alignment: isOp ? Alignment.centerLeft : Alignment.centerRight,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isOp
+              ? Colors.grey.shade200
+              : Theme.of(context).colorScheme.primary,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(12),
+            topRight: const Radius.circular(12),
+            bottomLeft: Radius.circular(isOp ? 0 : 12),
+            bottomRight: Radius.circular(isOp ? 12 : 0),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: isOp
+              ? CrossAxisAlignment.start
+              : CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isOp)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  '接线员',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            Text(
+              m.text,
+              style: TextStyle(color: isOp ? Colors.black87 : Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomControls() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: Icon(
+            _drawerOpen ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up,
+          ),
+          onPressed: () => setState(() => _drawerOpen = !_drawerOpen),
+        ),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          height: _drawerOpen ? 80 : 0,
+          child: _drawerOpen
+              ? Center(
+                  child: ElevatedButton.icon(
+                    onPressed: _isSending ? null : _forceSend,
+                    icon: _isSending
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.send),
+                    label: const Text('强制发送'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(200, 48),
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+
   Widget _buildDirectMode(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           TextField(
@@ -347,7 +297,7 @@ class _PagerPageState extends State<PagerPage> {
               border: OutlineInputBorder(),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           Expanded(
             child: TextField(
               controller: _messageController,
@@ -356,19 +306,18 @@ class _PagerPageState extends State<PagerPage> {
               decoration: const InputDecoration(
                 labelText: '发送内容',
                 border: OutlineInputBorder(),
+                alignLabelWithHint: true,
               ),
             ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _sendDirect,
-                  child: const Text('发送'),
-                ),
-              ),
-            ],
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _sendDirect,
+              child: const Text('立即发送'),
+            ),
           ),
         ],
       ),
@@ -379,26 +328,18 @@ class _PagerPageState extends State<PagerPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('传呼'),
+        title: const Text('传呼机'),
         actions: [
           IconButton(
-            tooltip: _mode == PagerMode.voice ? '切换到直接发送' : '切换到语音交互',
-            icon: Icon(_mode == PagerMode.voice ? Icons.send : Icons.mic),
+            icon: Icon(_mode == PagerMode.voice ? Icons.keyboard : Icons.mic),
             onPressed: _toggleMode,
           ),
-          const SizedBox(width: 6),
-          // 快速打开接线员库
           IconButton(
-            tooltip: '选择接线员',
-            icon: const Icon(Icons.account_box_outlined),
-            onPressed: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const OperatorGallery()),
-              );
-              setState(() {});
-            },
+            icon: const Icon(Icons.people_outline),
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const OperatorGallery())),
           ),
-          const SizedBox(width: 8),
         ],
       ),
       body: SafeArea(
@@ -411,7 +352,7 @@ class _PagerPageState extends State<PagerPage> {
 }
 
 class _ChatEntry {
-  final bool fromOperator; // true = operator (left), false = user (right)
+  final bool fromOperator;
   final String text;
   _ChatEntry(this.fromOperator, this.text);
 }

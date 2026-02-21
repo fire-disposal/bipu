@@ -39,7 +39,7 @@ class ProfilePage extends StatelessWidget {
                 ),
               ),
               child: InkWell(
-                onTap: () => context.push('/profile/personal_info'),
+                onTap: () => context.push('/profile/edit'),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [

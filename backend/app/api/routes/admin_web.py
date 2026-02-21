@@ -1,15 +1,18 @@
 from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, time
 from fastapi.responses import RedirectResponse
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.db.database import get_db
 from app.models.user import User
 from app.models.message import Message
 from app.core.security import get_current_superuser_web, authenticate_user, create_access_token
-from app.services.message_service_new import MessageService
-from app.schemas.message_new import MessageCreate
+from app.services.message_service import MessageService
+from app.schemas.message import MessageCreate
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -33,16 +36,16 @@ async def admin_login(
             "request": request,
             "error": "用户名或密码错误"
         })
-    
+
     if not user.is_superuser:
         return templates.TemplateResponse("login.html", {
             "request": request,
             "error": "没有管理员权限"
         })
-    
+
     # 创建访问令牌
     access_token = create_access_token(data={"sub": user.id})
-    
+
     # 创建响应并设置cookie
     response = RedirectResponse(url="/admin", status_code=302)
     response.set_cookie(
@@ -52,7 +55,7 @@ async def admin_login(
         max_age=1800,  # 30分钟
         expires=1800
     )
-    
+
     return response
 
 @router.post("/logout", tags=["管理后台"])
@@ -70,13 +73,13 @@ async def admin_dashboard(
 ):
     """管理后台仪表板"""
     from app.services.stats_service import StatsService
-    
+
     # 获取统计数据 (使用重构后的服务)
     stats = StatsService.get_dashboard_stats(db)
-    
+
     # 最近用户
     recent_users = db.query(User).order_by(User.created_at.desc()).limit(5).all()
-    
+
     return templates.TemplateResponse("index.html", {
         "request": request,
         "stats": stats, # 注意: 模板中可能需要调整 data structure usage，改为 stats.users.total 形式
@@ -96,7 +99,7 @@ async def admin_users(
     offset = (page - 1) * per_page
     users = db.query(User).offset(offset).limit(per_page).all()
     total = db.query(User).count()
-    
+
     return templates.TemplateResponse("users.html", {
         "request": request,
         "users": users,
@@ -117,7 +120,7 @@ async def admin_user_detail(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-        
+
     return templates.TemplateResponse("user_detail.html", {
         "request": request,
         "user": user
@@ -135,7 +138,7 @@ async def admin_messages(
     offset = (page - 1) * per_page
     messages = db.query(Message).order_by(Message.created_at.desc()).offset(offset).limit(per_page).all()
     total = db.query(Message).count()
-    
+
     return templates.TemplateResponse("messages.html", {
         "request": request,
         "messages": messages,
@@ -160,7 +163,7 @@ async def admin_services(
     offset = (page - 1) * per_page
     services = db.query(ServiceAccount).offset(offset).limit(per_page).all()
     total = db.query(ServiceAccount).count()
-    
+
     return templates.TemplateResponse("service_accounts.html", {
         "request": request,
         "services": services,
@@ -180,11 +183,16 @@ async def toggle_service_status(
     service = db.query(ServiceAccount).filter(ServiceAccount.id == service_id).first()
     if not service:
         raise HTTPException(status_code=404, detail="Service not found")
-    
-    service.is_active = not service.is_active
-    db.commit()
-    
-    return RedirectResponse(url="/admin/service_accounts", status_code=302)
+
+    try:
+        service.is_active = not service.is_active
+        db.commit()
+
+        return RedirectResponse(url="/admin/service_accounts", status_code=302)
+    except Exception as e:
+        db.rollback()
+        logger.error(f"切换服务号状态失败: {e}")
+        raise HTTPException(status_code=500, detail="操作失败")
 
 @router.post("/service_accounts/{service_id}/avatar", tags=["管理后台"])
 async def upload_service_avatar(
@@ -197,24 +205,68 @@ async def upload_service_avatar(
     service = db.query(ServiceAccount).filter(ServiceAccount.id == service_id).first()
     if not service:
         raise HTTPException(status_code=404, detail="Service not found")
-    
+
     try:
         from app.services.storage_service import StorageService
-        # 注意: StorageService 默认按 user_id 存，这里需要变通。
-        # 我们可以复用逻辑，但要注意 service_id 和 user_id 可能冲突。
-        # 最好是重构 StorageService 支持 entity_type/entity_id，
-        # 或者 暂时手动读取并存储。
-        
-        file_content = await file.read()
-        service.avatar_data = file_content
-        service.avatar_filename = file.filename
-        service.avatar_mimetype = file.content_type
-        
-        db.commit()
-        
-        return RedirectResponse(url="/admin/service_accounts", status_code=302)
+        # 使用StorageService处理头像压缩
+
+        # 验证文件类型
+        if not file.content_type or not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="请上传图片文件")
+
+        # 使用StorageService处理头像压缩
+        avatar_data = await StorageService.save_avatar(file)
+
+        # 更新数据库
+        try:
+            service.avatar_data = avatar_data
+            service.increment_avatar_version()  # 增加版本号，使缓存失效
+            db.commit()
+
+            return RedirectResponse(url="/admin/service_accounts", status_code=302)
+        except Exception as e:
+            db.rollback()
+            logger.error(f"上传服务号头像失败: {e}")
+            raise HTTPException(status_code=500, detail="操作失败")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/service_accounts/{service_id}/push-time", tags=["管理后台"])
+async def update_service_push_time(
+    service_id: int,
+    push_time: str = Form(...),
+    description: str = Form(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser_web)
+):
+    """更新服务号推送时间和描述"""
+    service = db.query(ServiceAccount).filter(ServiceAccount.id == service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    try:
+        # 解析推送时间
+        try:
+            hour, minute = map(int, push_time.split(':'))
+            if not (0 <= hour <= 23 and 0 <= minute <= 59):
+                raise ValueError("时间格式无效")
+            service.default_push_time = time(hour, minute)
+        except (ValueError, AttributeError):
+            raise HTTPException(status_code=400, detail="时间格式无效，请使用 HH:MM 格式")
+
+        # 更新描述（如果提供）
+        if description is not None:
+            service.description = description
+
+        db.commit()
+
+        return RedirectResponse(url="/admin/service_accounts", status_code=302)
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"更新服务号推送时间失败: {e}")
+        raise HTTPException(status_code=500, detail="操作失败")
 
 @router.post("/service_accounts/{service_name}/broadcast", tags=["管理后台"])
 async def broadcast_service_message(
@@ -226,13 +278,13 @@ async def broadcast_service_message(
 ):
     """服务号广播消息"""
     from app.services.service_accounts import broadcast_message
-    
+
     pattern = None
     if led_pattern:
         pattern = {"led": led_pattern, "animation": "flash"}
-        
+
     count = await broadcast_message(db, service_name, content, pattern)
-    
+
     # 可以在URL参带上结果提示，或者简单跳转
     return RedirectResponse(url=f"/admin/service_accounts?msg=Broadcast sent to {count} users", status_code=302)
 
@@ -246,15 +298,15 @@ async def admin_test_chat(
     # 模拟客户端获取当前用户的消息列表
     # 注意: MessageService 没有直接返回所有消息的方法，通常是分页的
     # 这里直接查库简单展示最近20条
-    
+
     received_messages = db.query(Message).filter(
         Message.receiver_bipupu_id == current_user.bipupu_id
     ).order_by(Message.created_at.desc()).limit(20).all()
-    
+
     sent_messages = db.query(Message).filter(
         Message.sender_bipupu_id == current_user.bipupu_id
     ).order_by(Message.created_at.desc()).limit(20).all()
-    
+
     return templates.TemplateResponse("test_chat.html", {
         "request": request,
         "user": current_user,
@@ -278,9 +330,9 @@ async def admin_send_message(
             content=content,
             message_type=message_type
         )
-        
+
         await MessageService.send_message(db, current_user, msg_data)
-        
+
         # 重新加载页面并显示成功
         # 为了简单起见，这里再走一次查询逻辑，或者直接redirect带参数
         return templates.TemplateResponse("test_chat.html", {
@@ -290,7 +342,7 @@ async def admin_send_message(
             "received_messages": db.query(Message).filter(Message.receiver_bipupu_id == current_user.bipupu_id).order_by(Message.created_at.desc()).limit(20).all(),
             "sent_messages": db.query(Message).filter(Message.sender_bipupu_id == current_user.bipupu_id).order_by(Message.created_at.desc()).limit(20).all()
         })
-        
+
     except Exception as e:
         return templates.TemplateResponse("test_chat.html", {
             "request": request,
@@ -299,4 +351,3 @@ async def admin_send_message(
             "received_messages": db.query(Message).filter(Message.receiver_bipupu_id == current_user.bipupu_id).order_by(Message.created_at.desc()).limit(20).all(),
             "sent_messages": db.query(Message).filter(Message.sender_bipupu_id == current_user.bipupu_id).order_by(Message.created_at.desc()).limit(20).all()
         })
-

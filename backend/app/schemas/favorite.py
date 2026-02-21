@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, List
-from app.schemas.message_new import MessageResponse
+from app.schemas.message import MessageResponse
 
 class FavoriteCreate(BaseModel):
     note: Optional[str] = None
@@ -13,7 +13,7 @@ class FavoriteResponse(BaseModel):
     note: Optional[str]
     created_at: datetime
     message: Optional[MessageResponse] = None # 包含完整消息详情
-    
+
     class Config:
         from_attributes = True
 

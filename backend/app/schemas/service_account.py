@@ -1,6 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, time
 
 class ServiceAccountBase(BaseModel):
     name: str
@@ -12,13 +12,42 @@ class ServiceAccountResponse(ServiceAccountBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
-    
-    # 是否已订阅（需要结合当前用户上下文，这里先只返回基础信息，
-    # 或者前端自己判断用户订阅列表中是否有此号）
-    
+
+
     class Config:
         from_attributes = True
 
 class ServiceAccountList(BaseModel):
     items: List[ServiceAccountResponse]
+    total: int
+
+
+class SubscriptionSettingsBase(BaseModel):
+    """订阅设置基础模型"""
+    push_time: Optional[str] = Field(None, description="推送时间，格式: HH:MM", pattern=r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$')
+    is_enabled: Optional[bool] = Field(True, description="是否启用推送")
+
+
+class SubscriptionSettingsUpdate(SubscriptionSettingsBase):
+    """更新订阅设置"""
+    pass
+
+
+class SubscriptionSettingsResponse(SubscriptionSettingsBase):
+    """订阅设置响应"""
+    service_name: str
+    service_description: Optional[str]
+    subscribed_at: datetime
+    updated_at: Optional[datetime]
+
+
+class UserSubscriptionResponse(BaseModel):
+    """用户订阅详情响应"""
+    service: ServiceAccountResponse
+    settings: SubscriptionSettingsResponse
+
+
+class UserSubscriptionList(BaseModel):
+    """用户订阅列表响应"""
+    subscriptions: List[UserSubscriptionResponse]
     total: int

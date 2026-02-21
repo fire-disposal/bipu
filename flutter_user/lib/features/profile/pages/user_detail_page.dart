@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_user/api/api.dart';
-import 'package:flutter_user/api/user_api.dart';
-import 'package:flutter_user/api/block_api.dart';
 import 'package:flutter_user/models/user/user_response.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/services/auth_service.dart';
 
 class UserDetailPage extends StatefulWidget {
   final String bipupuId;
@@ -15,26 +16,37 @@ class UserDetailPage extends StatefulWidget {
 }
 
 class _UserDetailPageState extends State<UserDetailPage> {
-  late final UserApi _userApi = UserApi();
-  late final BlockApi _blockApi = BlockApi();
+  final UserApi _userApi = UserApi();
+  final BlockApi _blockApi = BlockApi();
 
   UserResponse? _user;
   bool _isLoading = true;
   String? _error;
+  bool _isOwnProfile = false;
 
   @override
   void initState() {
     super.initState();
-    _loadUser();
+    _loadData();
   }
 
-  Future<void> _loadUser() async {
+  Future<void> _loadData() async {
     try {
-      final userData = await _userApi.getUserByBipupuId(widget.bipupuId);
       setState(() {
-        _user = userData;
-        _isLoading = false;
+        _isLoading = true;
+        _error = null;
       });
+
+      final userData = await _userApi.getUserByBipupuId(widget.bipupuId);
+      final currentUser = AuthService().currentUser;
+      
+      if (mounted) {
+        setState(() {
+          _user = userData;
+          _isOwnProfile = currentUser != null && currentUser.bipupuId == widget.bipupuId;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -50,9 +62,9 @@ class _UserDetailPageState extends State<UserDetailPage> {
     try {
       await _blockApi.blockUser(_user!.id);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('blocked'.tr())));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('blocked'.tr())),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -68,15 +80,36 @@ class _UserDetailPageState extends State<UserDetailPage> {
     if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(),
-        body: Center(child: Text('Error: $_error')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Error: $_error'),
+              const SizedBox(height: 16),
+              ElevatedButton(onPressed: _loadData, child: const Text('Retry')),
+            ],
+          ),
+        ),
       );
     }
+
     if (_user == null) {
-      return Scaffold(body: Center(child: Text('user_not_found'.tr())));
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(child: Text('user_not_found'.tr())),
+      );
     }
+
+    final avatarUrl = _user!.avatarUrl;
+    final fullAvatarUrl = avatarUrl != null
+        ? (avatarUrl.startsWith('http')
+            ? avatarUrl
+            : '${api.baseUrl.replaceFirst(RegExp(r"/api/?$"), '')}$avatarUrl')
+        : null;
 
     return Scaffold(
       appBar: AppBar(title: Text(_user!.nickname ?? _user!.username)),
@@ -84,47 +117,81 @@ class _UserDetailPageState extends State<UserDetailPage> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            CircleAvatar(
-              radius: 40,
-              child: Text(
-                _user!.nickname?.substring(0, 1) ??
-                    _user!.username.substring(0, 1),
+            Center(
+              child: Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 40,
+                    backgroundImage: fullAvatarUrl != null ? CachedNetworkImageProvider(fullAvatarUrl) : null,
+                    child: fullAvatarUrl == null
+                        ? Text(_user!.nickname?.substring(0, 1) ?? _user!.username.substring(0, 1))
+                        : null,
+                  ),
+                  if (_isOwnProfile)
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: GestureDetector(
+                        onTap: () => context.push('/profile/edit'),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).primaryColor,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: const Icon(Icons.edit, size: 16, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-            Text('Bipupu ID: ${_user!.bipupuId}'),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
+            _buildInfoTile('Bipupu ID', _user!.bipupuId),
             if (_user!.cosmicProfile != null) ...[
               if (_user!.cosmicProfile!['gender'] != null)
-                Text('性别: ${_user!.cosmicProfile!['gender']}'),
+                _buildInfoTile('性别', _user!.cosmicProfile!['gender'].toString()),
               if (_user!.cosmicProfile!['birthday'] != null)
-                Text('生日: ${_user!.cosmicProfile!['birthday']}'),
+                _buildInfoTile('生日', _user!.cosmicProfile!['birthday'].toString()),
               if (_user!.cosmicProfile!['age'] != null)
-                Text('年龄: ${_user!.cosmicProfile!['age']}'),
+                _buildInfoTile('年龄', _user!.cosmicProfile!['age'].toString()),
               if (_user!.cosmicProfile!['zodiac'] != null)
-                Text('星座: ${_user!.cosmicProfile!['zodiac']}'),
-              if (_user!.cosmicProfile!['bazi'] != null)
-                Text('生辰八字: ${_user!.cosmicProfile!['bazi']}'),
+                _buildInfoTile('星座', _user!.cosmicProfile!['zodiac'].toString()),
               if (_user!.cosmicProfile!['mbti'] != null)
-                Text('MBTI: ${_user!.cosmicProfile!['mbti']}'),
-              if (_user!.cosmicProfile!['birth_time'] != null)
-                Text('出生时间: ${_user!.cosmicProfile!['birth_time']}'),
+                _buildInfoTile('MBTI', _user!.cosmicProfile!['mbti'].toString()),
               if (_user!.cosmicProfile!['birthplace'] != null)
-                Text('出生地: ${_user!.cosmicProfile!['birthplace']}'),
-              const SizedBox(height: 16),
+                _buildInfoTile('出生地', _user!.cosmicProfile!['birthplace'].toString()),
             ],
-
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: _blockUser,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
+            if (!_isOwnProfile) ...[
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _blockUser,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text('block_user'.tr()),
+                ),
               ),
-              child: Text('block_user'.tr()),
-            ),
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildInfoTile(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(value),
+        ],
       ),
     );
   }

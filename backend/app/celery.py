@@ -31,21 +31,12 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     worker_max_tasks_per_child=1000,
     beat_schedule={
-        # 基础统计任务
-        "user-counts-hourly": {
-            "task": "stats.user_counts",
-            "schedule": 3600.0,
+        # 高频检查推送时间：每15分钟检查一次
+        "subscriptions-check-push-times": {
+            "task": "subscriptions.check_push_times",
+            "schedule": crontab(minute="*/15"),
         },
-        # 天气订阅：每30分钟触发一次，由时间窗逻辑控制是否发送
-        "subscriptions-weather-30min": {
-            "task": "subscriptions.weather",
-            "schedule": 1800.0,
-        },
-        # 今日运势：每天早上 07:30 触发一次
-        "subscriptions-fortune-daily": {
-            "task": "subscriptions.fortune",
-            "schedule": crontab(minute=30, hour=7),
-        },
+    },
     }
 )
 

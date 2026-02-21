@@ -40,8 +40,12 @@ class UserService:
 
         db_user = User(**user_data)
         db.add(db_user)
-        db.commit()
-        db.refresh(db_user)
+        try:
+            db.commit()
+            db.refresh(db_user)
+        except Exception:
+            db.rollback()
+            raise
 
         return db_user
 
@@ -131,8 +135,12 @@ class UserService:
         for key, value in update_data.items():
             setattr(user, key, value)
 
-        db.commit()
-        db.refresh(user)
+        try:
+            db.commit()
+            db.refresh(user)
+        except Exception:
+            db.rollback()
+            raise
         try:
             loop = asyncio.get_running_loop()
             loop.create_task(RedisService.invalidate_user_cache(user.id))
@@ -150,8 +158,12 @@ class UserService:
             raise ValidationException("New password must be different from the old password")
 
         user.hashed_password = get_password_hash(password_update.new_password)
-        db.commit()
-        db.refresh(user)
+        try:
+            db.commit()
+            db.refresh(user)
+        except Exception:
+            db.rollback()
+            raise
         try:
             loop = asyncio.get_running_loop()
             loop.create_task(RedisService.invalidate_user_cache(user.id))
@@ -192,9 +204,13 @@ class UserService:
 
         ub = UserBlock(blocker_id=blocker.id, blocked_id=blocked_user_id)
         db.add(ub)
-        db.commit()
-        db.refresh(ub)
-        return ub
+        try:
+            db.commit()
+            db.refresh(ub)
+            return ub
+        except Exception:
+            db.rollback()
+            raise
 
     @staticmethod
     def unblock_user(db: Session, blocker: User, blocked_user_id: int) -> bool:
@@ -207,8 +223,12 @@ class UserService:
             raise ValidationException("Block entry not found")
 
         db.delete(ub)
-        db.commit()
-        return True
+        try:
+            db.commit()
+            return True
+        except Exception:
+            db.rollback()
+            raise
 
     @staticmethod
     def get_blocked_users(db: Session, blocker: User, params: PaginationParams) -> tuple[list[tuple[User, datetime]], int]:

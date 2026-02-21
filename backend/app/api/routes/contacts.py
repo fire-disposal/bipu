@@ -25,42 +25,47 @@ async def add_contact(
     contact_user = db.query(User).filter(User.bipupu_id == contact_data.contact_bipupu_id).first()
     if not contact_user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     # 不能添加自己为联系人
     if contact_user.id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot add yourself as contact")
-    
+
     # 检查是否已经是联系人
     existing = db.query(TrustedContact).filter(
         TrustedContact.owner_id == current_user.id,
         TrustedContact.contact_id == contact_user.id
     ).first()
-    
+
     if existing:
         raise HTTPException(status_code=400, detail="Contact already exists")
-    
-    # 创建联系人关系
-    new_contact = TrustedContact(
-        owner_id=current_user.id,
-        contact_id=contact_user.id,
-        alias=contact_data.alias
-    )
-    
-    db.add(new_contact)
-    db.commit()
-    db.refresh(new_contact)
-    
-    logger.info(f"User {current_user.bipupu_id} added contact {contact_user.bipupu_id}")
-    
-    # 构造响应（返回业务 ID 而非内部主键）
-    return {
-        "id": new_contact.id,
-        "contact_bipupu_id": contact_user.bipupu_id,
-        "contact_username": contact_user.username,
-        "contact_nickname": contact_user.nickname,
-        "alias": new_contact.alias,
-        "created_at": new_contact.created_at
-    }
+
+    try:
+        # 创建联系人关系
+        new_contact = TrustedContact(
+            owner_id=current_user.id,
+            contact_id=contact_user.id,
+            alias=contact_data.alias
+        )
+
+        db.add(new_contact)
+        db.commit()
+        db.refresh(new_contact)
+
+        logger.info(f"User {current_user.bipupu_id} added contact {contact_user.bipupu_id}")
+
+        # 构造响应（返回业务 ID 而非内部主键）
+        return {
+            "id": new_contact.id,
+            "contact_bipupu_id": contact_user.bipupu_id,
+            "contact_username": contact_user.username,
+            "contact_nickname": contact_user.nickname,
+            "alias": new_contact.alias,
+            "created_at": new_contact.created_at
+        }
+    except Exception as e:
+        db.rollback()
+        logger.error(f"添加联系人失败: {e}")
+        raise HTTPException(status_code=500, detail="操作失败")
 
 
 @router.get("/", response_model=ContactListResponse)
@@ -72,7 +77,7 @@ async def get_contacts(
     contacts = db.query(TrustedContact).filter(
         TrustedContact.owner_id == current_user.id
     ).all()
-    
+
     contact_responses = []
     for contact in contacts:
         contact_user = db.query(User).filter(User.id == contact.contact_id).first()
@@ -85,7 +90,7 @@ async def get_contacts(
                 "alias": contact.alias,
                 "created_at": contact.created_at
             })
-    
+
     return {
         "contacts": contact_responses,
         "total": len(contact_responses)
@@ -112,15 +117,20 @@ async def update_contact(
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
 
-    if contact_update.alias is not None:
-        contact.alias = contact_update.alias
+    try:
+        if contact_update.alias is not None:
+            contact.alias = contact_update.alias
 
-    db.commit()
-    db.refresh(contact)
+        db.commit()
+        db.refresh(contact)
 
-    logger.info(f"User {current_user.bipupu_id} updated contact {contact_user.bipupu_id}")
+        logger.info(f"User {current_user.bipupu_id} updated contact {contact_user.bipupu_id}")
 
-    return {"message": "Contact updated successfully"}
+        return {"message": "Contact updated successfully"}
+    except Exception as e:
+        db.rollback()
+        logger.error(f"更新联系人失败: {e}")
+        raise HTTPException(status_code=500, detail="操作失败")
 
 
 @router.delete("/{contact_bipupu_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -142,9 +152,14 @@ async def delete_contact(
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
 
-    db.delete(contact)
-    db.commit()
+    try:
+        db.delete(contact)
+        db.commit()
 
-    logger.info(f"User {current_user.bipupu_id} deleted contact {contact_user.bipupu_id}")
+        logger.info(f"User {current_user.bipupu_id} deleted contact {contact_user.bipupu_id}")
 
-    return None
+        return None
+    except Exception as e:
+        db.rollback()
+        logger.error(f"删除联系人失败: {e}")
+        raise HTTPException(status_code=500, detail="操作失败")

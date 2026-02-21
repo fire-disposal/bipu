@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_user/api/service_account_api.dart';
 import 'package:flutter_user/api/api.dart';
 import 'package:flutter_user/models/service/service_account.dart';
+import 'package:flutter_user/models/service/subscription_settings.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 class SubscriptionManagementPage extends StatefulWidget {
@@ -16,8 +17,10 @@ class _SubscriptionManagementPageState
     extends State<SubscriptionManagementPage> {
   late final ServiceAccountApi _api = ServiceAccountApi();
   List<ServiceAccount> _allServices = [];
-  Set<String> _subscribedServiceNames = {};
-  bool _isLoading = true;
+  Map<String, SubscriptionSettings> _subscriptionSettings = {};
+  final Map<String, bool> _isExpanded = {};
+  final Map<String, bool> _isLoading = {};
+  bool _isInitialLoading = true;
 
   @override
   void initState() {
@@ -26,48 +29,427 @@ class _SubscriptionManagementPageState
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    setState(() => _isInitialLoading = true);
     try {
       final all = await _api.getServices();
       final subs = await _api.getUserSubscriptions();
+
+      // 构建订阅设置映射
+      final settingsMap = <String, SubscriptionSettings>{};
+      for (final sub in subs.items) {
+        settingsMap[sub.name] = SubscriptionSettings(
+          serviceName: sub.name,
+          serviceDescription: sub.description,
+          pushTime: sub.pushTime,
+          isEnabled: sub.isEnabled,
+          subscribedAt: sub.subscribedAt,
+          updatedAt: sub.updatedAt,
+        );
+      }
+
       setState(() {
         _allServices = all.items;
-        _subscribedServiceNames = subs.items.map((s) => s.name).toSet();
+        _subscriptionSettings = settingsMap;
+        // 初始化展开状态
+        for (final service in all.items) {
+          _isExpanded[service.name] = false;
+          _isLoading[service.name] = false;
+        }
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('加载失败: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('load_failed'.tr(args: [e.toString()])),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() => _isInitialLoading = false);
       }
     }
   }
 
   Future<void> _toggleSubscription(ServiceAccount service) async {
-    final wasSubscribed = _subscribedServiceNames.contains(service.name);
+    final serviceName = service.name;
+    final isSubscribed = _subscriptionSettings.containsKey(serviceName);
+
+    setState(() => _isLoading[serviceName] = true);
+
     try {
-      if (wasSubscribed) {
-        await _api.unsubscribe(service.name);
+      if (isSubscribed) {
+        await _api.unsubscribe(serviceName);
         setState(() {
-          _subscribedServiceNames.remove(service.name);
+          _subscriptionSettings.remove(serviceName);
+          _isExpanded[serviceName] = false;
         });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'unsubscribed_success'.tr(
+                  args: [service.displayName ?? service.name],
+                ),
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       } else {
-        await _api.subscribe(service.name);
+        // 订阅时使用默认设置
+        await _api.subscribe(serviceName);
+
+        // 获取订阅后的设置
+        final settings = await _api.getSubscriptionSettings(serviceName);
         setState(() {
-          _subscribedServiceNames.add(service.name);
+          _subscriptionSettings[serviceName] = settings;
+          _isExpanded[serviceName] = true;
         });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'subscribed_success'.tr(
+                  args: [service.displayName ?? service.name],
+                ),
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('操作失败: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('operation_failed'.tr(args: [e.toString()])),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading[serviceName] = false);
       }
     }
+  }
+
+  Future<void> _updateSubscriptionSettings(
+    String serviceName,
+    SubscriptionSettings newSettings,
+  ) async {
+    setState(() => _isLoading[serviceName] = true);
+
+    try {
+      final updatedSettings = await _api.updateSubscriptionSettings(
+        serviceName,
+        newSettings,
+      );
+
+      setState(() {
+        _subscriptionSettings[serviceName] = updatedSettings;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('settings_updated'.tr()),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('update_failed'.tr(args: [e.toString()])),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading[serviceName] = false);
+      }
+    }
+  }
+
+  void _toggleExpanded(String serviceName) {
+    setState(() {
+      _isExpanded[serviceName] = !(_isExpanded[serviceName] ?? false);
+    });
+  }
+
+  Widget _buildServiceCard(ServiceAccount service) {
+    final serviceName = service.name;
+    final isSubscribed = _subscriptionSettings.containsKey(serviceName);
+    final settings = _subscriptionSettings[serviceName];
+    final isLoading = _isLoading[serviceName] ?? false;
+    final isExpanded = _isExpanded[serviceName] ?? false;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        children: [
+          // 服务号基本信息
+          ListTile(
+            leading: CircleAvatar(
+              backgroundColor: isSubscribed
+                  ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                  : Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      isSubscribed
+                          ? Icons.notifications_active
+                          : Icons.notifications_none,
+                      color: isSubscribed
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.outline,
+                    ),
+            ),
+            title: Text(
+              service.displayName ?? service.name,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            subtitle: service.description != null
+                ? Text(
+                    service.description!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  )
+                : null,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isSubscribed)
+                  IconButton(
+                    icon: Icon(
+                      isExpanded ? Icons.expand_less : Icons.expand_more,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    onPressed: () => _toggleExpanded(serviceName),
+                  ),
+                Switch(
+                  value: isSubscribed,
+                  onChanged: isLoading
+                      ? null
+                      : (_) => _toggleSubscription(service),
+                  activeThumbColor: Theme.of(context).colorScheme.primary,
+                ),
+              ],
+            ),
+            onTap: isLoading ? null : () => _toggleSubscription(service),
+          ),
+
+          // 展开的设置面板
+          if (isSubscribed && isExpanded && settings != null)
+            _buildSettingsPanel(service, settings),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsPanel(
+    ServiceAccount service,
+    SubscriptionSettings settings,
+  ) {
+    final serviceName = service.name;
+    final isLoading = _isLoading[serviceName] ?? false;
+    TimeOfDay? pushTime;
+
+    if (settings.pushTime != null && settings.pushTime!.isNotEmpty) {
+      final parts = settings.pushTime!.split(':');
+      if (parts.length == 2) {
+        try {
+          pushTime = TimeOfDay(
+            hour: int.parse(parts[0]),
+            minute: int.parse(parts[1]),
+          );
+        } catch (_) {
+          pushTime = null;
+        }
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Divider(height: 1),
+          const SizedBox(height: 16),
+
+          // 推送时间设置
+          Text(
+            'push_time_settings'.tr(),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.access_time),
+                  label: Text(
+                    pushTime != null
+                        ? DateFormat('HH:mm').format(
+                            DateTime(
+                              2024,
+                              1,
+                              1,
+                              pushTime.hour,
+                              pushTime.minute,
+                            ),
+                          )
+                        : 'set_push_time'.tr(),
+                    style: TextStyle(
+                      color: pushTime != null
+                          ? Theme.of(context).colorScheme.onSurface
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          final selectedTime = await showTimePicker(
+                            context: context,
+                            initialTime: pushTime ?? TimeOfDay.now(),
+                            builder: (context, child) {
+                              return Theme(
+                                data: Theme.of(context).copyWith(
+                                  colorScheme: ColorScheme.light(
+                                    primary: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                                ),
+                                child: child!,
+                              );
+                            },
+                          );
+
+                          if (selectedTime != null) {
+                            final newSettings = settings.copyWith(
+                              pushTime:
+                                  '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
+                            );
+                            await _updateSubscriptionSettings(
+                              serviceName,
+                              newSettings,
+                            );
+                          }
+                        },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Tooltip(
+                message: 'push_time_help'.tr(),
+                child: Icon(
+                  Icons.help_outline,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // 启用/禁用开关
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'enable_notifications'.tr(),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              Switch(
+                value: settings.isEnabled ?? true,
+                onChanged: isLoading
+                    ? null
+                    : (value) async {
+                        final newSettings = settings.copyWith(isEnabled: value);
+                        await _updateSubscriptionSettings(
+                          serviceName,
+                          newSettings,
+                        );
+                      },
+                activeThumbColor: Theme.of(context).colorScheme.primary,
+              ),
+            ],
+          ),
+
+          // 订阅信息
+          if (settings.subscribedAt != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Text(
+                'subscribed_since'.tr(args: [settings.subscribedAt.toString()]),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.notifications_none,
+            size: 64,
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'no_services_available'.tr(),
+            style: TextStyle(
+              fontSize: 16,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'check_back_later'.tr(),
+            style: TextStyle(
+              fontSize: 14,
+              color: Theme.of(context).colorScheme.outline,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -81,73 +463,53 @@ class _SubscriptionManagementPageState
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-            tooltip: '刷新',
+            onPressed: _isInitialLoading ? null : _loadData,
+            tooltip: 'refresh'.tr(),
           ),
         ],
       ),
-      body: _isLoading
+      body: _isInitialLoading
           ? const Center(child: CircularProgressIndicator())
           : _allServices.isEmpty
-          ? Center(child: Text('no_services'.tr()))
-          : ListView.builder(
-              itemCount: _allServices.length,
-              itemBuilder: (context, index) {
-                final service = _allServices[index];
-                final isSubscribed = _subscribedServiceNames.contains(
-                  service.name,
-                );
-
-                return Card(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 4,
-                  ),
-                  elevation: 1,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: isSubscribed
-                          ? Colors.green.withOpacity(0.1)
-                          : Colors.grey.withOpacity(0.1),
-                      child: Icon(
-                        isSubscribed
-                            ? Icons.check_circle
-                            : Icons.radio_button_unchecked,
-                        color: isSubscribed ? Colors.green : Colors.grey,
-                      ),
-                    ),
-                    title: Text(
-                      service.displayName ?? service.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    subtitle: service.description != null
-                        ? Text(
-                            service.description!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                            ),
-                          )
-                        : null,
-                    trailing: Switch(
-                      value: isSubscribed,
-                      onChanged: (value) => _toggleSubscription(service),
-                      activeColor: Colors.green,
-                    ),
-                    onTap: () => _toggleSubscription(service),
-                  ),
-                );
-              },
+          ? _buildEmptyState()
+          : RefreshIndicator(
+              onRefresh: _loadData,
+              child: ListView.builder(
+                padding: const EdgeInsets.only(bottom: 16),
+                itemCount: _allServices.length,
+                itemBuilder: (context, index) =>
+                    _buildServiceCard(_allServices[index]),
+              ),
             ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          // 显示订阅统计
+          final subscribedCount = _subscriptionSettings.length;
+          final totalCount = _allServices.length;
+
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('subscription_stats'.tr()),
+              content: Text(
+                'subscribed_services'.tr(
+                  args: [subscribedCount.toString(), totalCount.toString()],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('close'.tr()),
+                ),
+              ],
+            ),
+          );
+        },
+        icon: const Icon(Icons.analytics),
+        label: Text('stats'.tr()),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+      ),
     );
   }
 }

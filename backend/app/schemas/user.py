@@ -27,6 +27,7 @@ class UserBase(BaseModel):
     last_active: Optional[datetime] = Field(None, description="最后活跃时间")
 
 
+
 class UserCreate(BaseModel):
     """创建用户模式"""
     username: str
@@ -44,6 +45,24 @@ class UserPasswordUpdate(BaseModel):
     """用户密码更新"""
     old_password: str
     new_password: str = Field(..., min_length=6, max_length=128)
+
+
+class PushTimeUpdate(BaseModel):
+    """推送时间更新"""
+    fortune_time: Optional[str] = Field(
+        None,
+        description="运势推送时间，格式: HH:MM (24小时制)，例如 '08:30'",
+        pattern=r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'
+    )
+
+
+class TimezoneUpdate(BaseModel):
+    """时区更新"""
+    timezone: str = Field(
+        ...,
+        description="时区标识符，例如 'Asia/Shanghai', 'America/New_York', 'Europe/London'",
+        examples=["Asia/Shanghai", "America/New_York", "Europe/London", "UTC"]
+    )
 
 
 class UserResponse(UserBase):

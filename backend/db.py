@@ -62,11 +62,17 @@ def reinit():
         for filename in os.listdir(versions_dir):
             if filename.endswith(".py"):
                 file_path = os.path.join(versions_dir, filename)
-                os.remove(file_path)
-    
+                # 验证路径安全
+                abs_file_path = os.path.abspath(file_path)
+                abs_versions_dir = os.path.abspath(versions_dir)
+                if (os.path.commonpath([abs_file_path, abs_versions_dir]) == abs_versions_dir and
+                    filename.endswith(".py")):
+                    os.remove(file_path)
+                    print(f"  删除: {filename}")
+
     print("✨ 旧脚本已清理。")
     print("📢 下一步请手动在数据库中执行: 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'")
-    
+
     # 询问是否立即生成新的初始脚本
     make_now = input("是否现在生成全新的初始化脚本？(y/N): ").lower()
     if make_now == 'y':
@@ -89,7 +95,7 @@ if __name__ == "__main__":
         sys.exit(0)
 
     cmd = sys.argv[1]
-    
+
     if cmd == "migrate":
         migrate()
     elif cmd == "makemigrations":

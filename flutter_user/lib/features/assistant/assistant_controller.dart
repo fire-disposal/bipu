@@ -36,8 +36,9 @@ class AssistantEvent {
   final AssistantState state;
   final String? text;
   final String? error;
+  final bool isOperator; // 是否为操作员发出的文本
 
-  AssistantEvent(this.state, {this.text, this.error});
+  AssistantEvent(this.state, {this.text, this.error, this.isOperator = false});
 }
 
 /// 语音助手控制器 - 重新聚合精简的服务层
@@ -59,6 +60,7 @@ class AssistantController extends ChangeNotifier {
   final ValueNotifier<AssistantPhase> phase = ValueNotifier<AssistantPhase>(
     AssistantPhase.idle,
   );
+
   String? _currentText;
   String? get currentText => _currentText;
 
@@ -67,7 +69,6 @@ class AssistantController extends ChangeNotifier {
 
   AssistantPhase get currentPhase => phase.value;
 
-  /// 手动设置业务阶段（UI 可以监听 `phase`）
   void setPhase(AssistantPhase p) {
     if (phase.value != p) {
       phase.value = p;
@@ -79,7 +80,6 @@ class AssistantController extends ChangeNotifier {
   String get currentOperatorId => _currentOperatorId;
 
   StreamSubscription<String>? _asrSubscription;
-  StreamSubscription<double>? _volumeSubscription;
   StreamSubscription? _audioInterruptionSub;
   StreamSubscription? _becomingNoisySub;
 
@@ -87,61 +87,25 @@ class AssistantController extends ChangeNotifier {
       StreamController.broadcast();
   Stream<AssistantEvent> get onEvent => _eventController.stream;
 
-  // 兼容旧API
-  Stream<String> get onResult => _eventController.stream
-      .where((event) => event.text != null)
-      .map((event) => event.text!);
-
-  // 公开音量流用于波形显示
+  Stream<String> get onResult => _asr.onResult;
   Stream<double> get onVolume => _asr.onVolume;
 
-  /// 初始化所有引擎
   Future<void> init() async {
     try {
       await _asr.init();
       await _tts.init();
-      // 订阅系统音频中断与 noisy 事件
-      try {
-        final session = await AudioSession.instance;
-        _audioInterruptionSub = session.interruptionEventStream.listen((event) {
-          try {
-            // interruption event has 'begin' boolean
-            final begin = (event as dynamic).begin as bool? ?? true;
-            if (begin) {
-              // interruption began: stop listening or stop playback
-              if (state.value == AssistantState.listening) {
-                // stopListening will handle releasing resources
-                stopListening().catchError((_) {});
-              }
-              // if speaking, cancel playback and release audio
-              try {
-                _audioRelease?.call();
-              } catch (_) {}
-              _audioRelease = null;
-              _setState(AssistantState.idle);
-              setPhase(AssistantPhase.error);
-            } else {
-              // interruption ended - nothing for now
-            }
-          } catch (_) {}
-        });
 
-        _becomingNoisySub = session.becomingNoisyEventStream.listen((_) {
-          try {
-            // e.g. headphones unplugged
-            if (state.value == AssistantState.listening) {
-              stopListening().catchError((_) {});
-            }
-            try {
-              _audioRelease?.call();
-            } catch (_) {}
-            _audioRelease = null;
-            _setState(AssistantState.idle);
-          } catch (_) {}
-        });
-      } catch (e) {
-        // audio_session may fail on some platforms; ignore
-      }
+      final session = await AudioSession.instance;
+      _audioInterruptionSub = session.interruptionEventStream.listen((event) {
+        if (event.begin) {
+          _handleInterruption();
+        }
+      });
+
+      _becomingNoisySub = session.becomingNoisyEventStream.listen((_) {
+        _handleInterruption();
+      });
+
       logger.i('AssistantController initialized');
     } catch (e) {
       logger.e('AssistantController init failed: $e');
@@ -149,14 +113,19 @@ class AssistantController extends ChangeNotifier {
     }
   }
 
+  void _handleInterruption() {
+    if (state.value == AssistantState.listening) {
+      stopListening().catchError((_) {});
+    }
+    _audioRelease?.call();
+    _audioRelease = null;
+    _setState(AssistantState.idle);
+    setPhase(AssistantPhase.error);
+  }
+
   VoidCallback? _audioRelease;
   bool _messageFirstMode = false;
 
-  /// 开始语音监听
-  ///
-  /// 参数：
-  /// - messageFirst: 是否为先录音后填ID的流程
-  /// - acquireTimeout: 当音频资源不可用时，等待的最长时长（null = 无限等待）
   Future<void> startListening({
     bool messageFirst = false,
     Duration? acquireTimeout,
@@ -168,59 +137,46 @@ class AssistantController extends ChangeNotifier {
       _setState(AssistantState.listening);
       setPhase(AssistantPhase.recording);
 
-      // 尝试快速获取音频资源（非阻塞），若失败则等待 acquire（可带超时）
       _audioRelease = await _audioManager.tryAcquire();
       if (_audioRelease == null) {
         _audioRelease = await _audioManager.acquire(timeout: acquireTimeout);
       }
 
-      // 启动ASR
       await _asr.startRecording();
 
-      // 监听结果
       _asrSubscription = _asr.onResult.listen((text) {
         _currentText = text;
-        // 向外发布包含文本的事件，兼容旧API与UI同步
         _eventController.add(AssistantEvent(state.value, text: text));
         notifyListeners();
-      });
-
-      _volumeSubscription = _asr.onVolume.listen((volume) {
-        // 可用于UI波形更新
       });
     } catch (e) {
       logger.e('Start listening failed: $e');
       _setState(AssistantState.idle);
-      try {
-        _audioRelease?.call();
-      } catch (_) {}
+      _audioRelease?.call();
       _audioRelease = null;
       rethrow;
     }
   }
 
-  /// 停止监听并处理结果
   Future<void> stopListening() async {
     if (state.value != AssistantState.listening) return;
 
     try {
-      await _asr.stop();
+      final finalResult = await _asr.stop();
       _audioRelease?.call();
       _audioRelease = null;
 
-      _asrSubscription?.cancel();
-      _volumeSubscription?.cancel();
+      await _asrSubscription?.cancel();
+      _asrSubscription = null;
 
-      if (_currentText?.isNotEmpty == true) {
-        // 进入处理阶段
+      if (finalResult.isNotEmpty) {
+        _currentText = finalResult;
         setPhase(AssistantPhase.transcribing);
-        await _processText(_currentText!);
-        // 使用完后重置 message-first 模式
-        _messageFirstMode = false;
+        await _processText(finalResult);
       } else {
         _setState(AssistantState.idle);
-        _messageFirstMode = false;
       }
+      _messageFirstMode = false;
     } catch (e) {
       logger.e('Stop listening failed: $e');
       _setState(AssistantState.idle);
@@ -228,7 +184,6 @@ class AssistantController extends ChangeNotifier {
     }
   }
 
-  /// 发送当前文本
   Future<void> send() async {
     if ((_currentText?.isEmpty ?? true) || _currentRecipientId == null) return;
 
@@ -236,7 +191,6 @@ class AssistantController extends ChangeNotifier {
       _setState(AssistantState.thinking);
       setPhase(AssistantPhase.sending);
 
-      // 发送消息
       await _imService.messageApi.sendMessage(
         receiverId: _currentRecipientId!,
         content: _currentText!,
@@ -255,45 +209,15 @@ class AssistantController extends ChangeNotifier {
     }
   }
 
-  /// 重播最后的消息
   Future<void> replay() async {
     if (_currentText?.isEmpty ?? true) return;
-
-    try {
-      _setState(AssistantState.speaking);
-      setPhase(AssistantPhase.sent);
-
-      // 获取音频资源
-      _audioRelease = await _audioManager.acquire();
-
-      // 生成并播放TTS
-      final audio = await _tts.generate(text: _currentText!);
-      if (audio != null) {
-        // 生成并播放TTS音频（尝试将生成结果转换为可播放的 WAV/PCM）
-        await _playGeneratedAudio(audio);
-      }
-
-      _audioRelease?.call();
-      _audioRelease = null;
-      _setState(AssistantState.idle);
-      setPhase(AssistantPhase.idle);
-    } catch (e) {
-      logger.e('Replay failed: $e');
-      _audioRelease?.call();
-      _audioRelease = null;
-      _setState(AssistantState.idle);
-      setPhase(AssistantPhase.error);
-      rethrow;
-    }
+    await _speakText(_currentText!);
   }
 
-  /// 设置接收者
   void setRecipient(String recipientId) {
     _currentRecipientId = recipientId;
     notifyListeners();
 
-    // 如果当前处于等待填写接收者（比如 message-first 流程），
-    // 触发确认提示但不阻塞调用者。
     if (_currentRecipientId?.isNotEmpty == true &&
         phase.value == AssistantPhase.askRecipientId) {
       Future.microtask(() async {
@@ -305,9 +229,12 @@ class AssistantController extends ChangeNotifier {
     }
   }
 
-  /// 取消当前操作
   Future<void> cancel() async {
-    await stopListening();
+    if (state.value == AssistantState.listening) {
+      await _asr.stop();
+    }
+    _audioRelease?.call();
+    _audioRelease = null;
     _currentText = null;
     _setState(AssistantState.idle);
     setPhase(AssistantPhase.idle);
@@ -323,13 +250,9 @@ class AssistantController extends ChangeNotifier {
   }
 
   Future<void> _processText(String text) async {
-    // 简单的文本处理逻辑，可扩展NLP
     _setState(AssistantState.thinking);
-
-    // 模拟处理延迟
     await Future.delayed(const Duration(milliseconds: 500));
 
-    // 关键词识别和流程控制
     if (matchesKeyword(text, 'cancel')) {
       await speakScript('farewell');
       await cancel();
@@ -341,16 +264,13 @@ class AssistantController extends ChangeNotifier {
       setPhase(AssistantPhase.guideRecordMessage);
       _setState(AssistantState.idle);
     } else if (_currentRecipientId == null) {
-      // 支持“先录音后填ID”的模式：若设置了 messageFirst，则把识别到的文本当作消息内容
       if (_messageFirstMode) {
         _currentText = text;
         setPhase(AssistantPhase.confirmMessage);
         await speakScript('confirmMessage', {'message': text});
-        // 进入等待填入收信方ID的阶段
         setPhase(AssistantPhase.askRecipientId);
         _setState(AssistantState.idle);
       } else {
-        // 如果还没有接收者ID，认为是接收者ID
         _currentRecipientId = _extractRecipientId(text);
         if (_currentRecipientId != null) {
           setPhase(AssistantPhase.confirmRecipientId);
@@ -364,33 +284,27 @@ class AssistantController extends ChangeNotifier {
         _setState(AssistantState.idle);
       }
     } else if (matchesKeyword(text, 'confirm')) {
-      // 确认接收者ID，开始录制消息
       setPhase(AssistantPhase.guideRecordMessage);
       await speakScript('guideRecordMessage');
       _setState(AssistantState.idle);
     } else if (matchesKeyword(text, 'modify')) {
-      // 修改接收者ID
       _currentRecipientId = null;
       setPhase(AssistantPhase.askRecipientId);
       await speakScript('askRecipientId');
       _setState(AssistantState.idle);
     } else {
-      // 认为是消息内容
       setPhase(AssistantPhase.confirmMessage);
       await speakScript('confirmMessage', {'message': text});
       _setState(AssistantState.idle);
     }
   }
 
-  /// 从文本中提取接收者ID（简化实现）
   String? _extractRecipientId(String text) {
-    // 简单的数字提取逻辑
     final RegExp digitRegex = RegExp(r'\d+');
     final match = digitRegex.firstMatch(text);
     return match?.group(0);
   }
 
-  /// 设置当前操作员
   void setOperator(String operatorId) {
     if (_config.getOperatorConfig(operatorId) != null) {
       _currentOperatorId = operatorId;
@@ -398,12 +312,10 @@ class AssistantController extends ChangeNotifier {
     }
   }
 
-  /// 获取当前操作员配置
   Map<String, dynamic>? getCurrentOperatorConfig() {
     return _config.getOperatorConfig(_currentOperatorId);
   }
 
-  /// 播放操作员脚本
   Future<void> speakScript(
     String scriptKey, [
     Map<String, String>? params,
@@ -414,232 +326,88 @@ class AssistantController extends ChangeNotifier {
       params,
     );
     if (script.isNotEmpty) {
-      await _speakText(script);
+      // 立即发布文本事件，不等待 TTS 合成
+      _eventController.add(
+        AssistantEvent(state.value, text: script, isOperator: true),
+      );
+
+      // 异步尝试播放 TTS，不阻塞交互逻辑
+      unawaited(
+        _speakText(script).catchError((e) {
+          logger.e('TTS playback failed in speakScript: $e');
+        }),
+      );
     }
   }
 
-  /// 对外暴露的直接朗读文本接口（可指定说话人id和语速）
   Future<void> speakText(String text, {int sid = 0, double speed = 1.0}) async {
     if (text.isEmpty) return;
-
-    try {
-      _setState(AssistantState.speaking);
-
-      // 获取音频资源
-      final audioRelease = await _audioManager.acquire();
-
-      // 生成并播放TTS
-      final audio = await _tts.generate(text: text, sid: sid, speed: speed);
-      if (audio != null) {
-        await _playGeneratedAudio(audio);
-      }
-
-      audioRelease();
-      _setState(AssistantState.idle);
-    } catch (e) {
-      logger.e('Speak text failed: $e');
-      _setState(AssistantState.idle);
-    }
+    // 立即发布文本事件
+    _eventController.add(
+      AssistantEvent(state.value, text: text, isOperator: true),
+    );
+    // 异步尝试播放
+    unawaited(
+      _speakText(text, sid: sid, speed: speed).catchError((e) {
+        logger.e('TTS playback failed in speakText: $e');
+      }),
+    );
   }
 
-  /// 播放应用内音频资源（asset），并由 AssistantController 统一管理音频互斥
-  Future<void> playAsset(String assetPath) async {
-    if (assetPath.isEmpty) return;
-
+  Future<void> _speakText(String text, {int? sid, double speed = 1.0}) async {
     try {
       _setState(AssistantState.speaking);
-
-      // 获取音频资源互斥锁
-      final audioRelease = await _audioManager.acquire();
-
-      final player = AudioPlayer();
-      final Completer<void> played = Completer<void>();
-      final sub = player.playerStateStream.listen((state) {
-        if (state.processingState == ProcessingState.completed) {
-          if (!played.isCompleted) played.complete();
-        }
-      });
+      final release = await _audioManager.acquire();
 
       try {
-        // just_audio expects asset paths defined in pubspec; use setAsset
-        await player.setAsset(assetPath);
-        await player.play();
-        await played.future;
-      } catch (e) {
-        logger.e('playAsset failed: $e');
+        final targetSid = sid ?? _getCurrentOperatorTtsSid();
+        final result = await _tts.generate(
+          text: text,
+          sid: targetSid,
+          speed: speed,
+        );
+
+        if (result != null) {
+          final pcm = result.toPCM16();
+          if (pcm != null) {
+            final wav = _buildWav(pcm, 16000, 1);
+            await _playWav(wav);
+          }
+        }
       } finally {
-        try {
-          await player.stop();
-        } catch (_) {}
-        try {
-          await player.dispose();
-        } catch (_) {}
-        try {
-          await sub.cancel();
-        } catch (_) {}
-        // 释放资源
-        try {
-          audioRelease();
-        } catch (_) {}
+        release();
+        _setState(AssistantState.idle);
       }
-
-      _setState(AssistantState.idle);
     } catch (e) {
-      logger.e('playAsset failed: $e');
+      logger.e('Internal _speakText failed: $e');
       _setState(AssistantState.idle);
+      // 不再向上抛出异常，确保不中断调用者的逻辑
     }
   }
 
-  /// 检查文本是否匹配关键词
-  bool matchesKeyword(String text, String keywordGroup) {
-    return _config.matchesKeyword(text, keywordGroup);
-  }
-
-  /// 获取所有可用操作员
-  List<String> getAvailableOperators() {
-    return _config.getOperatorIds();
-  }
-
-  /// 语音播放文本（内部方法）
-  Future<void> _speakText(String text) async {
-    if (text.isEmpty) return;
-
-    try {
-      _setState(AssistantState.speaking);
-
-      // 获取音频资源
-      final audioRelease = await _audioManager.acquire();
-
-      // 生成并播放TTS
-      final audio = await _tts.generate(
-        text: text,
-        sid: _getCurrentOperatorTtsSid(),
-      );
-      if (audio != null) {
-        await _playGeneratedAudio(audio);
-      }
-
-      audioRelease();
-      _setState(AssistantState.idle);
-    } catch (e) {
-      logger.e('Speak text failed: $e');
-      _setState(AssistantState.idle);
-    }
-  }
-
-  /// 获取当前操作员的TTS说话人ID
   int _getCurrentOperatorTtsSid() {
     final config = getCurrentOperatorConfig();
     return config?['ttsSid'] ?? 0;
   }
 
-  /// 将生成的音频对象转换为 WAV（若需要）并播放。
-  Future<void> _playGeneratedAudio(dynamic audio) async {
-    if (audio == null) return;
-
-    Uint8List? wavBytes;
-
-    try {
-      // case 1: audio already Uint8List (raw wav/pcm)
-      if (audio is Uint8List) {
-        wavBytes = audio;
-      }
-
-      // case 2: check common field names dynamically
-      if (wavBytes == null) {
-        try {
-          final dynamic maybe = audio.pcm16 ?? audio.bytes ?? audio.data;
-          if (maybe is Uint8List) {
-            wavBytes = maybe;
-          }
-        } catch (_) {}
-      }
-
-      // case 3: convert float samples -> pcm16 + wav
-      if (wavBytes == null) {
-        try {
-          final dynamic samples = audio.samples ?? audio.floatSamples;
-          final int sampleRate =
-              (audio.sampleRate ?? audio.samplingRate ?? 16000) as int;
-          final int channels = (audio.channels ?? 1) as int;
-          if (samples != null) {
-            Float32List floatSamples;
-            if (samples is Float32List) {
-              floatSamples = samples;
-            } else if (samples is List<double>) {
-              floatSamples = Float32List.fromList(samples);
-            } else if (samples is List) {
-              floatSamples = Float32List.fromList(
-                samples.map((e) => (e as num).toDouble()).toList(),
-              );
-            } else {
-              floatSamples = Float32List(0);
-            }
-
-            if (floatSamples.isNotEmpty) {
-              final pcm = Uint8List(floatSamples.length * 2);
-              final bd = ByteData.view(pcm.buffer);
-              for (var i = 0; i < floatSamples.length; i++) {
-                var s = floatSamples[i];
-                if (s > 1.0) s = 1.0;
-                if (s < -1.0) s = -1.0;
-                final int val = (s * 32767).toInt();
-                bd.setInt16(i * 2, val, Endian.little);
-              }
-              wavBytes = _buildWav(pcm, sampleRate, channels);
-            }
-          }
-        } catch (e, st) {
-          logger.e('convert generated audio failed: $e\n$st');
-        }
-      }
-    } catch (e, st) {
-      logger.e('_playGeneratedAudio preparation failed: $e\n$st');
-    }
-
-    if (wavBytes == null) {
-      // fallback to a short delay so caller still observes timing
-      await Future.delayed(const Duration(seconds: 1));
-      return;
-    }
-
-    // write bytes to a temporary file and play via just_audio
+  Future<void> _playWav(Uint8List wavBytes) async {
     final dir = await getTemporaryDirectory();
     final tmp = File(
-      '${dir.path}/bipupu_tts_${DateTime.now().millisecondsSinceEpoch}.wav',
+      '${dir.path}/tts_${DateTime.now().millisecondsSinceEpoch}.wav',
     );
+    await tmp.writeAsBytes(wavBytes);
+
+    final player = AudioPlayer();
     try {
-      await tmp.writeAsBytes(wavBytes);
-
-      final player = AudioPlayer();
-      final Completer<void> played = Completer<void>();
-      final sub = player.playerStateStream.listen((state) {
-        if (state.processingState == ProcessingState.completed) {
-          if (!played.isCompleted) played.complete();
-        }
-      });
-
-      try {
-        await player.setFilePath(tmp.path);
-        await player.play();
-        await played.future;
-      } catch (e) {
-        logger.e('playback failed: $e');
-      } finally {
-        try {
-          await player.stop();
-        } catch (_) {}
-        try {
-          await player.dispose();
-        } catch (_) {}
-        try {
-          await sub.cancel();
-        } catch (_) {}
-      }
+      await player.setFilePath(tmp.path);
+      await player.play();
+      // Wait for completion
+      await player.processingStateStream.firstWhere(
+        (s) => s == ProcessingState.completed,
+      );
     } finally {
-      try {
-        if (await tmp.exists()) await tmp.delete();
-      } catch (_) {}
+      await player.dispose();
+      if (await tmp.exists()) await tmp.delete();
     }
   }
 
@@ -650,61 +418,44 @@ class AssistantController extends ChangeNotifier {
     final int riffChunkSize = 36 + dataLen;
 
     final bytes = BytesBuilder();
-    // RIFF header
-    bytes.add(asciiEncode('RIFF'));
+    bytes.add('RIFF'.codeUnits);
     bytes.add(_u32le(riffChunkSize));
-    bytes.add(asciiEncode('WAVE'));
-
-    // fmt subchunk
-    bytes.add(asciiEncode('fmt '));
-    bytes.add(_u32le(16)); // subchunk1 size
-    bytes.add(_u16le(1)); // PCM
+    bytes.add('WAVE'.codeUnits);
+    bytes.add('fmt '.codeUnits);
+    bytes.add(_u32le(16));
+    bytes.add(_u16le(1));
     bytes.add(_u16le(channels));
     bytes.add(_u32le(sampleRate));
     bytes.add(_u32le(byteRate));
     bytes.add(_u16le(blockAlign));
-    bytes.add(_u16le(16)); // bits per sample
-
-    // data subchunk
-    bytes.add(asciiEncode('data'));
+    bytes.add(_u16le(16));
+    bytes.add('data'.codeUnits);
     bytes.add(_u32le(dataLen));
     bytes.add(pcmBytes);
 
     return bytes.toBytes();
   }
 
-  List<int> asciiEncode(String s) => s.codeUnits;
-
-  List<int> _u16le(int v) {
-    final b = ByteData(2);
-    b.setUint16(0, v, Endian.little);
+  Uint8List _u16le(int v) {
+    final b = ByteData(2)..setUint16(0, v, Endian.little);
     return b.buffer.asUint8List();
   }
 
-  List<int> _u32le(int v) {
-    final b = ByteData(4);
-    b.setUint32(0, v, Endian.little);
+  Uint8List _u32le(int v) {
+    final b = ByteData(4)..setUint32(0, v, Endian.little);
     return b.buffer.asUint8List();
   }
 
-  /// 清理（可在应用退出时调用）
+  bool matchesKeyword(String text, String keywordGroup) {
+    return _config.matchesKeyword(text, keywordGroup);
+  }
+
   @override
   void dispose() {
-    try {
-      _audioInterruptionSub?.cancel();
-    } catch (_) {}
-    try {
-      _becomingNoisySub?.cancel();
-    } catch (_) {}
-    try {
-      _asrSubscription?.cancel();
-    } catch (_) {}
-    try {
-      _volumeSubscription?.cancel();
-    } catch (_) {}
-    try {
-      _eventController.close();
-    } catch (_) {}
+    _audioInterruptionSub?.cancel();
+    _becomingNoisySub?.cancel();
+    _asrSubscription?.cancel();
+    _eventController.close();
     super.dispose();
   }
 }

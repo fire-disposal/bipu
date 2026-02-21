@@ -26,11 +26,11 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     logger.info("🚀 服务启动中")
-    
+
     # 显示当前使用的数据库信息
     db_url = settings.DATABASE_URL
     fallback_indicator = " (回退)" if fallback_used else ""
-    
+
     if current_db_type == "sqlite":
         db_name = db_url.split("///")[-1] if "///" in db_url else "SQLite"
         logger.info(f"🗄️  使用 SQLite 数据库: {db_name}{fallback_indicator}")
@@ -39,6 +39,7 @@ async def lifespan(app: FastAPI):
         logger.info(f"🐘 使用 PostgreSQL 数据库: {db_name}{fallback_indicator}")
     else:
         logger.info(f"📊 使用数据库: {db_url}{fallback_indicator}")
+
     # logger.info(
     #     "\n"
     #     "██████╗ ██╗██████╗ ██╗   ██╗██████╗ ██╗   ██╗██████╗ ██╗   ██╗\n"
@@ -53,28 +54,28 @@ async def lifespan(app: FastAPI):
         # 初始化默认数据
         await init_default_data()
         logger.info("✅ 默认数据初始化完成")
-        
+
         # 初始化Redis（失败时自动使用内存缓存）
         await init_redis()
-        
+
         # 导入并注册服务号
         from app.services import builtin_services
         logger.info("✅ 内置服务号已加载")
-        
+
         port = os.getenv("PORT", "8000")
         logger.info("✅ 服务启动完成 ")
         logger.info(f"📚 API文档地址:    http://localhost:{port}/api/docs")
         logger.info(f"📋 OpenAPI.json 地址: http://localhost:{port}/api/openapi.json")
         logger.info(f"🔧 管理后台入口:  http://localhost:{port}/admin")
-        
+
         # 显示缓存状态
         cache_type = "内存缓存" if isinstance(redis_client, MemoryCacheWrapper) else "Redis"
         logger.info(f"💾 缓存服务: {cache_type}")
-        
+
         db_type = "SQLite" if current_db_type == "sqlite" else "PostgreSQL"
         fallback_note = " (自动回退)" if fallback_used else ""
         logger.info(f"🗄️  数据库: {db_type}{fallback_note}")
-        
+
         # 生成 OpenAPI.json 文件
         try:
             export_openapi_json(app)
@@ -82,14 +83,14 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"❌ OpenAPI.json 生成失败: {e}")
 
- 
-    
+
+
     except Exception as e:
         logger.error(f"❌ 初始化错误: {e}")
         raise
-    
+
     yield
-    
+
     # 清理资源
     try:
         if redis_client and hasattr(redis_client, 'close'):
@@ -97,7 +98,7 @@ async def lifespan(app: FastAPI):
         logger.info("✅ Redis连接已关闭")
     except Exception as e:
         logger.error(f"❌ 关闭Redis连接时出错: {e}")
-    
+
     logger.info("🛑 服务停止中")
 
 def create_app() -> FastAPI:
@@ -135,7 +136,7 @@ def create_app() -> FastAPI:
 
     # 配置Jinja2模板
     templates = Jinja2Templates(directory="templates")
-    
+
     # 挂载静态文件 (替代 Nginx 功能)
     # 确保上传目录存在
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
@@ -146,7 +147,7 @@ def create_app() -> FastAPI:
 
     # 注册你的业务路由
     app.include_router(api_router, prefix="/api")
-    
+
     # 注册管理后台Web路由
     from app.api.routes.admin_web import router as admin_web_router
     app.include_router(admin_web_router, prefix="/admin")

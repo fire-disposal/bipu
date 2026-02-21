@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
+import 'package:image/image.dart' as img;
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/profile_service.dart';
 import '../../../core/services/toast_service.dart';
@@ -27,6 +28,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   late final TextEditingController _mbtiCtrl;
   late final TextEditingController _birthTimeCtrl;
   late final TextEditingController _birthplaceCtrl;
+  late final TextEditingController _fortuneTimeCtrl;
   String? _gender;
 
   bool _saving = false;
@@ -37,6 +39,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     final user = AuthService().currentUser;
     _nicknameCtrl = TextEditingController(text: user?.nickname ?? '');
     _usernameCtrl = TextEditingController(text: user?.username ?? '');
+    _fortuneTimeCtrl = TextEditingController(text: ''); // TODO: 从用户资料获取推送时间
     _emailCtrl = TextEditingController(text: user?.email ?? '');
     _birthdayCtrl = TextEditingController(
       text: user?.cosmicProfile?['birthday'] ?? '',
@@ -66,6 +69,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     _mbtiCtrl.dispose();
     _birthTimeCtrl.dispose();
     _birthplaceCtrl.dispose();
+    _fortuneTimeCtrl.dispose();
     // _gender 不需要 dispose
     super.dispose();
   }
@@ -83,19 +87,36 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         if (_birthplaceCtrl.text.isNotEmpty) 'birthplace': _birthplaceCtrl.text,
         if (_gender != null && _gender!.isNotEmpty) 'gender': _gender,
       };
+
+      // 更新基本资料
       final updated = await ProfileService().updateProfile(
         nickname: _nicknameCtrl.text.trim(),
         username: _usernameCtrl.text.trim(),
         email: _emailCtrl.text.trim(),
         cosmicProfile: cosmicProfile.isNotEmpty ? cosmicProfile : null,
       );
+
+      // 更新推送时间设置（如果已设置）
+      if (_fortuneTimeCtrl.text.isNotEmpty) {
+        try {
+          await ProfileService().updatePushTime(
+            fortuneTime: _fortuneTimeCtrl.text.trim(),
+          );
+        } catch (e) {
+          // 推送时间更新失败不影响整体保存，但记录日志
+          if (mounted) {
+            ToastService().showWarning('资料已保存，但推送时间设置失败');
+          }
+        }
+      }
+
       AuthService().fetchCurrentUser();
       if (mounted) {
         ToastService().showSuccess('资料已更新');
         Navigator.pop(context, updated);
       }
     } catch (e) {
-      if (mounted) ToastService().showError('更新失败�?e');
+      if (mounted) ToastService().showError('更新失败: $e');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -107,6 +128,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
     if (image == null) return;
 
+    // 获取主题数据在异步操作之前
     final theme = Theme.of(context);
 
     final croppedFile = await ImageCropper().cropImage(
@@ -128,7 +150,9 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
     setState(() => _saving = true);
     try {
-      await ProfileService().uploadAvatar(File(croppedFile.path));
+      // 压缩图片：限制在100x100像素，质量0.7
+      final compressedFile = await _compressAvatar(File(croppedFile.path));
+      await ProfileService().uploadAvatar(compressedFile);
       await AuthService().fetchCurrentUser();
       if (mounted) {
         ToastService().showSuccess('头像已更新');
@@ -138,6 +162,31 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  Future<File> _compressAvatar(File originalFile) async {
+    // 读取原始图片
+    final bytes = await originalFile.readAsBytes();
+    final image = img.decodeImage(bytes);
+
+    if (image == null) {
+      throw Exception('无法解码图片');
+    }
+
+    // 压缩到100x100像素
+    final thumbnail = img.copyResize(image, width: 100, height: 100);
+
+    // 编码为JPEG，质量0.7
+    final compressedBytes = img.encodeJpg(thumbnail, quality: 70);
+
+    // 保存到临时文件
+    final tempDir = Directory.systemTemp;
+    final tempFile = File(
+      '${tempDir.path}/avatar_${DateTime.now().millisecondsSinceEpoch}.jpg',
+    );
+    await tempFile.writeAsBytes(compressedBytes);
+
+    return tempFile;
   }
 
   Future<void> _selectBirthday() async {
@@ -152,6 +201,47 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         _birthdayCtrl.text = picked.toIso8601String().split('T').first;
         // 自动计算星座
         _zodiacCtrl.text = _getZodiacSign(picked);
+      });
+    }
+  }
+
+  Future<void> _selectFortuneTime() async {
+    final currentTime = _fortuneTimeCtrl.text;
+    TimeOfDay? initialTime;
+
+    if (currentTime.isNotEmpty) {
+      try {
+        final parts = currentTime.split(':');
+        if (parts.length == 2) {
+          initialTime = TimeOfDay(
+            hour: int.parse(parts[0]),
+            minute: int.parse(parts[1]),
+          );
+        }
+      } catch (_) {
+        // 忽略解析错误，使用当前时间
+      }
+    }
+
+    final selectedTime = await showTimePicker(
+      context: context,
+      initialTime: initialTime ?? TimeOfDay.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (selectedTime != null) {
+      setState(() {
+        _fortuneTimeCtrl.text =
+            '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
       });
     }
   }
@@ -245,6 +335,33 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                 ),
                 const SizedBox(height: 48),
                 Text(
+                  '推送设置',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _fortuneTimeCtrl,
+                  readOnly: true,
+                  onTap: _selectFortuneTime,
+                  decoration: const InputDecoration(
+                    labelText: '运势推送时间',
+                    prefixIcon: Icon(Icons.notifications_active),
+                    suffixIcon: Icon(Icons.access_time),
+                    helperText: '设置每日运势推送的时间',
+                  ),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return null;
+                    final reg = RegExp(r'^([01]?\d|2[0-3]):[0-5]\d$');
+                    if (!reg.hasMatch(v)) return '时间格式应为 HH:MM';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 48),
+                Text(
                   '宇宙信息',
                   style: TextStyle(
                     fontSize: 14,
@@ -329,7 +446,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                 ),
                 const SizedBox(height: 20),
                 DropdownButtonFormField<String>(
-                  value: _gender != null && _gender!.isNotEmpty
+                  initialValue: _gender != null && _gender!.isNotEmpty
                       ? _gender
                       : null,
                   decoration: const InputDecoration(
@@ -345,8 +462,9 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                   validator: (v) {
                     // optional, but if provided ensure value from list
                     if (v == null || v.isEmpty) return null;
-                    if (!['male', 'female', 'other'].contains(v))
+                    if (!['male', 'female', 'other'].contains(v)) {
                       return '请选择有效性别';
+                    }
                     return null;
                   },
                 ),
@@ -377,8 +495,9 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                     DropdownMenuItem(value: 'ESTP', child: Text('ESTP - 企业家')),
                     DropdownMenuItem(value: 'ESFP', child: Text('ESFP - 娱乐家')),
                   ],
-                  onChanged: (value) =>
-                      setState(() => _mbtiCtrl.text = value ?? ''),
+                  onChanged: (value) {
+                    setState(() => _mbtiCtrl.text = value ?? '');
+                  },
                 ),
                 const SizedBox(height: 48),
                 AppButton(

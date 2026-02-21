@@ -1,91 +1,122 @@
+"""头像存储服务 - 简化版本，专注数据库存储"""
 import os
-import uuid
 from PIL import Image
 from fastapi import UploadFile
-from app.core.config import settings
-from sqlalchemy.orm import Session
-from app.models.user import User
-from typing import Tuple, Optional
+from io import BytesIO
+from typing import Optional
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 class StorageService:
+    """头像存储服务类 - 简化版本，专注数据库存储"""
+
     @staticmethod
-    async def save_avatar_to_db(file: UploadFile, user_id: int, db: Session) -> Tuple[bytes, str, str]:
-        """保存用户头像到数据库并进行压缩，返回二进制数据"""
-        # 读取文件内容
+    async def save_avatar(file: UploadFile) -> bytes:
+        """保存用户头像到数据库并进行压缩，返回二进制数据
+
+        流程：
+        1. 读取文件内容到内存
+        2. 验证图片格式和安全性
+        3. 压缩图片到100x100像素
+        4. 转换为JPEG格式，质量70%
+        5. 返回压缩后的二进制数据
+        """
+        # 读取文件内容到内存
         content = await file.read()
-        
-        # 保存并压缩图片
-        image = Image.open(file.file)
-        
-        # 转换为RGB以保存为JPEG
-        if image.mode in ("RGBA", "P"):
-            image = image.convert("RGB")
-            
-        # 设置最大尺寸
-        max_size = (400, 400)
-        image.thumbnail(max_size, Image.Resampling.LANCZOS)
-        
-        # 保存到内存中的BytesIO
-        from io import BytesIO
-        output = BytesIO()
-        image.save(output, "JPEG", quality=85, optimize=True)
-        compressed_data = output.getvalue()
-        
-        # 获取文件信息
-        filename = file.filename or "avatar.jpg"
-        mimetype = file.content_type or "image/jpeg"
-        
-        return compressed_data, filename, mimetype
 
-    @staticmethod
-    async def save_avatar(file: UploadFile, user_id: int) -> str:
-        """保存用户头像到文件系统并进行压缩（原有方法保持兼容）"""
-        # 确保上传目录存在（并发安全）
-        upload_dir = os.path.join("uploads", "avatars")
+        # 直接从内存数据解码图片，避免文件系统操作
+        image_buffer = BytesIO(content)
+
         try:
-            os.makedirs(upload_dir, exist_ok=True)
-        except FileExistsError:
-            # 目录已存在，继续
-            pass
-        
-        # 生成唯一文件名
-        extension = os.path.splitext(file.filename)[1].lower()
-        if extension not in [".jpg", ".jpeg", ".png"]:
-            extension = ".jpg"
-        
-        filename = f"user_{user_id}_{uuid.uuid4().hex}{extension}"
-        file_path = os.path.join(upload_dir, filename)
+            # 直接从内存缓冲区打开图片
+            image = Image.open(image_buffer)
 
-        # 保存并压缩图片
-        image = Image.open(file.file)
-        
-        # 转换为RGB以保存为JPEG
-        if image.mode in ("RGBA", "P"):
-            image = image.convert("RGB")
-            
-        # 设置最大尺寸
-        max_size = (400, 400)
-        image.thumbnail(max_size, Image.Resampling.LANCZOS)
-        
-        # 保存图片，质量设为85
-        image.save(file_path, "JPEG", quality=85, optimize=True)
-        
-        # 返回相对URL
-        return f"/uploads/avatars/{filename}"
+            # 验证图片完整性
+            image.verify()
+
+            # 重新打开图片（verify()会关闭图片）
+            image_buffer.seek(0)
+            image = Image.open(image_buffer)
+
+            # 转换为RGB以保存为JPEG
+            if image.mode in ("RGBA", "P", "LA"):
+                image = image.convert("RGB")
+
+            # 设置最大尺寸 - 根据MVP需求调整为100x100
+            max_size = (100, 100)
+            image.thumbnail(max_size, Image.Resampling.LANCZOS)
+
+            # 限制最大像素数量，防止超大图片
+            MAX_PIXELS = 100 * 100  # 10,000像素
+            if image.width * image.height > MAX_PIXELS:
+                # 如果图片仍然太大，进一步缩小
+                image.thumbnail((50, 50), Image.Resampling.LANCZOS)
+
+            # 保存到内存中的BytesIO，质量设置为70%符合MVP需求
+            output = BytesIO()
+            image.save(output, "JPEG", quality=70, optimize=True)
+            compressed_data = output.getvalue()
+
+            logger.debug(f"头像压缩完成: 原始大小={len(content)}bytes, 压缩后={len(compressed_data)}bytes")
+            return compressed_data
+
+        except Exception as e:
+            # 图片解码失败，抛出更详细的错误信息
+            logger.error(f"头像图片处理失败: {str(e)}")
+            raise ValueError(f"头像图片处理失败: {str(e)}")
+        finally:
+            # 确保缓冲区被正确清理
+            image_buffer.close()
+            if 'output' in locals():
+                output.close()
 
     @staticmethod
-    def delete_old_avatar(avatar_url: str):
-        """删除旧的头像文件"""
-        if not avatar_url or not avatar_url.startswith("/uploads/"):
-            return
-            
-        # 移除开头的 /
-        relative_path = avatar_url.lstrip("/")
-        # 注意：这里假设 uploads 目录在 backend 根目录下
-        file_path = os.path.join(os.getcwd(), relative_path)
-        
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except Exception:
-                pass
+    def validate_image_content(content: bytes) -> bool:
+        """验证图片内容安全性
+
+        检查图片是否可以被PIL正常打开和验证
+        防止恶意图片攻击
+        """
+        try:
+            image_buffer = BytesIO(content)
+            image = Image.open(image_buffer)
+            image.verify()
+            return True
+        except Exception:
+            return False
+        finally:
+            image_buffer.close()
+
+    @staticmethod
+    def get_avatar_cache_key(bipupu_id: str) -> str:
+        """获取头像缓存键
+
+        格式: avatar:{bipupu_id}
+        用于Redis缓存
+        """
+        return f"avatar:{bipupu_id}"
+
+    @staticmethod
+    def get_avatar_etag(avatar_data, version_info) -> str:
+        """生成头像ETag
+
+        基于头像数据和版本信息生成ETag
+        用于HTTP缓存控制
+
+        Args:
+            avatar_data: 头像二进制数据
+            version_info: 版本信息（可以是时间戳、版本号等）
+        """
+        import hashlib
+        # 确保参数是bytes类型
+        if not isinstance(avatar_data, bytes):
+            avatar_data = bytes(avatar_data) if avatar_data else b''
+        if not isinstance(version_info, bytes):
+            version_info = str(version_info).encode() if version_info else b''
+
+        # 结合头像数据和版本信息生成哈希
+        hash_input = avatar_data + version_info
+        etag = hashlib.md5(hash_input).hexdigest()
+        return f'"{etag}"'

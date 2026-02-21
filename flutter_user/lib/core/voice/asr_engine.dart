@@ -7,6 +7,14 @@ import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 import 'model_manager.dart';
 import '../utils/logger.dart';
 
+class ASRError {
+  final String message;
+  final StackTrace? stackTrace;
+  ASRError(this.message, [this.stackTrace]);
+  @override
+  String toString() => 'ASRError: $message';
+}
+
 class ASREngine {
   ASREngine._internal();
   static final ASREngine _instance = ASREngine._internal();
@@ -16,6 +24,8 @@ class ASREngine {
   sherpa.OnlineStream? _stream;
   bool _isInitialized = false;
   Completer<void>? _initCompleter;
+  bool _isDisposing = false;
+  bool _isRecording = false;
 
   final RecorderStream _recorder = RecorderStream();
   StreamSubscription? _recorderSub;
@@ -28,17 +38,24 @@ class ASREngine {
       StreamController.broadcast();
   Stream<double> get onVolume => _volumeController.stream;
 
+  final StreamController<ASRError> _errorController =
+      StreamController.broadcast();
+  Stream<ASRError> get onError => _errorController.stream;
+
   final List<int> _currentWaveData = [];
 
   bool get isInitialized => _isInitialized;
+  bool get isRecording => _isRecording;
 
   Future<void> init() async {
     if (_isInitialized) return;
     if (_initCompleter != null) return _initCompleter!.future;
+    if (_isDisposing) throw Exception('ASR Engine is disposing');
 
     _initCompleter = Completer<void>();
 
     try {
+      logger.i('Initializing ASR engine...');
       sherpa.initBindings();
 
       final modelFiles = {
@@ -56,7 +73,9 @@ class ASREngine {
       final modelPaths = <String, String>{};
       for (final key in modelFiles.keys) {
         final p = ModelManager.instance.getModelPath(key);
-        if (p == null) throw Exception('ModelManager failed to prepare $key');
+        if (p == null) {
+          throw Exception('ModelManager failed to prepare $key');
+        }
         modelPaths[key.split('/').last] = p;
       }
 
@@ -83,7 +102,7 @@ class ASREngine {
       _initCompleter!.complete();
     } catch (e, stackTrace) {
       logger.e(
-        'ASREngine initialization failed.',
+        'ASREngine initialization failed',
         error: e,
         stackTrace: stackTrace,
       );
@@ -94,72 +113,158 @@ class ASREngine {
   }
 
   Future<void> startRecording() async {
-    final status = await Permission.microphone.request();
-    if (status.isDenied) throw Exception('Microphone denied');
-    if (!_isInitialized) await init();
+    if (_isDisposing) throw Exception('ASR Engine is disposing');
+    if (_isRecording) {
+      logger.w('Recording already in progress');
+      return;
+    }
 
-    _stream = _recognizer!.createStream();
-    _currentWaveData.clear();
+    try {
+      logger.i('Starting ASR recording...');
 
-    await _recorder.initialize();
-    _recorderSub = _recorder.audioStream.listen(
-      (data) {
-        try {
-          final bytes = data;
-          _onAudioBuffer(_convertBytesToFloat(bytes));
-          if (_stream != null) {
-            _stream!.acceptWaveform(
-              samples: _convertBytesToFloat(bytes),
-              sampleRate: 16000,
+      final status = await Permission.microphone.request();
+      if (status.isDenied || status.isPermanentlyDenied) {
+        throw Exception('Microphone permission denied');
+      }
+
+      if (!_isInitialized) {
+        logger.i('ASR not initialized, initializing...');
+        await init();
+      }
+
+      _stream = _recognizer!.createStream();
+      _currentWaveData.clear();
+      _isRecording = true;
+
+      await _recorder.initialize();
+
+      _recorderSub = _recorder.audioStream.listen(
+        (data) {
+          try {
+            final bytes = data;
+            final floatSamples = _convertBytesToFloat(bytes);
+
+            if (floatSamples.isEmpty) return;
+
+            _onAudioBuffer(floatSamples);
+
+            if (_stream != null && !_isDisposing) {
+              _stream!.acceptWaveform(samples: floatSamples, sampleRate: 16000);
+
+              while (_recognizer!.isReady(_stream!)) {
+                _recognizer!.decode(_stream!);
+              }
+
+              final result = _recognizer!.getResult(_stream!);
+              if (result.text.isNotEmpty) {
+                _resultController.add(result.text);
+              }
+            }
+
+            double sum = 0.0;
+            for (var i = 0; i < floatSamples.length; i++) {
+              sum += floatSamples[i] * floatSamples[i];
+            }
+            final rms = math.sqrt(sum / floatSamples.length);
+            _volumeController.add(rms.clamp(0.0, 1.0));
+          } catch (e, stackTrace) {
+            logger.e(
+              'Error processing audio buffer',
+              error: e,
+              stackTrace: stackTrace,
             );
-            while (_recognizer!.isReady(_stream!)) {
-              _recognizer!.decode(_stream!);
-            }
-            final isEndpoint = _recognizer!.isEndpoint(_stream!);
-            if (isEndpoint) {
-              final text = _recognizer!.getResult(_stream!).text;
-              _resultController.add(text);
-            }
+            _errorController.add(
+              ASRError('Audio processing error: $e', stackTrace),
+            );
           }
-          final floatSamples = _convertBytesToFloat(bytes);
-          double sum = 0.0;
-          for (var i = 0; i < floatSamples.length; i++) {
-            sum += floatSamples[i] * floatSamples[i];
-          }
-          final rms = floatSamples.isEmpty
-              ? 0.0
-              : math.sqrt(sum / floatSamples.length);
-          _volumeController.add(rms.clamp(0.0, 1.0));
-        } catch (e) {
-          logger.e('Error processing audio buffer: $e');
-        }
-      },
-      onError: (e) {
-        logger.e('Audio stream error: $e');
-      },
-    );
-    await _recorder.start();
+        },
+        onError: (e, stackTrace) {
+          logger.e('Audio stream error', error: e, stackTrace: stackTrace);
+          _errorController.add(ASRError('Audio stream error: $e', stackTrace));
+          _cleanupRecording();
+        },
+        cancelOnError: true,
+      );
+
+      await _recorder.start();
+      logger.i('ASR recording started successfully');
+    } catch (e, stackTrace) {
+      logger.e(
+        'Failed to start ASR recording',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      _isRecording = false;
+      _cleanupRecording();
+      rethrow;
+    }
   }
 
   Future<String> stop() async {
+    if (!_isRecording) {
+      logger.w('No recording in progress');
+      return '';
+    }
+
+    logger.i('Stopping ASR recording...');
+
     try {
       await _recorder.stop();
-    } catch (_) {}
-    await _recorderSub?.cancel();
-    _recorderSub = null;
+      await _recorderSub?.cancel();
+      _recorderSub = null;
 
-    if (_stream != null) {
-      _recognizer!.decode(_stream!);
-      final result = _recognizer!.getResult(_stream!);
-      _stream!.free();
-      _stream = null;
-      return result.text;
+      String finalResult = '';
+      if (_stream != null && !_isDisposing) {
+        try {
+          _recognizer!.decode(_stream!);
+          final result = _recognizer!.getResult(_stream!);
+          finalResult = result.text;
+
+          _stream!.free();
+          _stream = null;
+        } catch (e, stackTrace) {
+          logger.e(
+            'Error during final recognition',
+            error: e,
+            stackTrace: stackTrace,
+          );
+        }
+      }
+
+      _isRecording = false;
+      logger.i('ASR recording stopped, final result: $finalResult');
+      return finalResult;
+    } catch (e, stackTrace) {
+      logger.e(
+        'Error stopping ASR recording',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      _isRecording = false;
+      _cleanupRecording();
+      rethrow;
     }
-    return '';
+  }
+
+  void _cleanupRecording() {
+    try {
+      _recorderSub?.cancel();
+      _recorderSub = null;
+
+      if (_stream != null) {
+        try {
+          _stream!.free();
+        } catch (_) {}
+        _stream = null;
+      }
+
+      _isRecording = false;
+    } catch (e) {
+      logger.e('Error during recording cleanup', error: e);
+    }
   }
 
   void _onAudioBuffer(Float32List buffer) {
-    // 激进压缩：每 1600 个采样点（0.1s）取一个最大值
     double max = 0;
     for (var s in buffer) {
       if (s.abs() > max) max = s.abs();
@@ -181,15 +286,39 @@ class ASREngine {
     return out;
   }
 
-  void dispose() {
-    _recorderSub?.cancel();
-    _stream?.free();
-    _recognizer?.free();
-    _recognizer = null;
-    _stream = null;
-    _isInitialized = false;
-    _initCompleter = null;
-    _resultController.close();
-    _volumeController.close();
+  Future<void> dispose() async {
+    if (_isDisposing) return;
+    _isDisposing = true;
+    logger.i('Disposing ASREngine...');
+
+    try {
+      await _recorderSub?.cancel();
+      try {
+        await _recorder.stop();
+      } catch (_) {}
+
+      if (_stream != null) {
+        try {
+          _stream!.free();
+        } catch (_) {}
+        _stream = null;
+      }
+
+      if (_recognizer != null) {
+        try {
+          _recognizer!.free();
+        } catch (_) {}
+        _recognizer = null;
+      }
+
+      await _resultController.close();
+      await _volumeController.close();
+      await _errorController.close();
+
+      _isInitialized = false;
+      _initCompleter = null;
+    } catch (e) {
+      logger.e('Error during ASREngine dispose', error: e);
+    }
   }
 }

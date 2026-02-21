@@ -5,9 +5,9 @@ from typing import Optional
 
 from app.db.database import get_db
 from app.models.user import User
-from app.schemas.message_new import MessageCreate, MessageResponse, MessageListResponse
+from app.schemas.message import MessageCreate, MessageResponse, MessageListResponse
 from app.schemas.favorite import FavoriteCreate, FavoriteResponse, FavoriteListResponse
-from app.services.message_service_new import MessageService
+from app.services.message_service import MessageService
 from app.services.favorite_service import FavoriteService
 from app.core.security import get_current_user
 from app.core.logging import get_logger
@@ -23,7 +23,7 @@ async def send_message(
     db: Session = Depends(get_db)
 ):
     """发送消息
-    
+
     支持：
     - 用户间传讯（receiver_id 为用户的 bipupu_id）
     - 向服务号发送消息（receiver_id 为服务号 ID，如 "cosmic.fortune"）
@@ -44,7 +44,7 @@ async def get_messages(
     db: Session = Depends(get_db)
 ):
     """获取消息列表
-    
+
     参数：
     - direction: sent（发件箱）或 received（收件箱）
     - page: 页码
@@ -54,7 +54,7 @@ async def get_messages(
         messages, total = MessageService.get_sent_messages(db, current_user, page, page_size)
     else:
         messages, total = MessageService.get_received_messages(db, current_user, page, page_size)
-    
+
     return {
         "messages": messages,
         "total": total,
@@ -117,8 +117,8 @@ async def delete_message(
 ):
     """删除消息（只能删除收到的消息）"""
     success = MessageService.delete_message(db, message_id, current_user)
-    
+
     if not success:
         raise HTTPException(status_code=404, detail="Message not found")
-    
+
     return None
