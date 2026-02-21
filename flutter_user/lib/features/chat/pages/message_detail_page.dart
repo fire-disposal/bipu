@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../../../../core/services/im_service.dart';
 import '../../../../core/services/auth_service.dart';
+import '../../../../core/widgets/user_avatar.dart';
 import '../../../../models/message/message_response.dart';
 import '../../pager/widgets/waveform_widget.dart';
 
@@ -160,30 +161,17 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
       decoration: BoxDecoration(
         color: Theme.of(
           context,
-        ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
           GestureDetector(
             onTap: _viewSenderProfile,
-            child: CircleAvatar(
-              radius: 28,
-              backgroundColor: Colors.grey[200],
-              backgroundImage: avatarUrl != null
-                  ? NetworkImage(avatarUrl)
-                  : null,
-              child: avatarUrl == null
-                  ? Text(
-                      displayName.isNotEmpty
-                          ? displayName.substring(0, 1).toUpperCase()
-                          : '?',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )
-                  : null,
+            child: UserAvatar(
+              avatarUrl: avatarUrl,
+              displayName: displayName,
+              radius: 24,
             ),
           ),
           const SizedBox(width: 16),
@@ -213,10 +201,10 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                         color: isMe
                             ? Theme.of(
                                 context,
-                              ).colorScheme.primary.withOpacity(0.1)
+                              ).colorScheme.primary.withValues(alpha: 0.1)
                             : Theme.of(
                                 context,
-                              ).colorScheme.secondary.withOpacity(0.1),
+                              ).colorScheme.secondary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -272,10 +260,12 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
             decoration: BoxDecoration(
               color: Theme.of(
                 context,
-              ).colorScheme.surfaceContainerHighest.withOpacity(0.1),
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                color: Theme.of(
+                  context,
+                ).colorScheme.outline.withValues(alpha: 0.2),
               ),
             ),
             child: Column(
@@ -309,10 +299,12 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
               decoration: BoxDecoration(
                 color: Theme.of(
                   context,
-                ).colorScheme.surfaceVariant.withOpacity(0.1),
+                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.2),
                 ),
               ),
               child: Column(
@@ -346,7 +338,9 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.tertiary.withOpacity(0.1),
+                color: Theme.of(
+                  context,
+                ).colorScheme.tertiary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -382,7 +376,7 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -441,7 +435,7 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: isLoading
@@ -480,7 +474,7 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
       decoration: BoxDecoration(
         color: Theme.of(
           context,
-        ).colorScheme.surfaceContainerHighest.withOpacity(0.1),
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -608,10 +602,12 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
               decoration: BoxDecoration(
                 color: Theme.of(
                   context,
-                ).colorScheme.surfaceContainerHighest.withOpacity(0.1),
+                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.2),
                 ),
               ),
               child: Row(

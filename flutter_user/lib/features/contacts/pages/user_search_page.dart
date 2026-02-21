@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_user/api/api.dart';
-import 'package:flutter_user/api/user_api.dart';
-import 'package:flutter_user/core/services/im_service.dart';
-import 'package:flutter_user/models/user/user_response.dart';
+import 'package:bipupu/api/api.dart';
+import 'package:bipupu/api/user_api.dart';
+import 'package:bipupu/core/services/im_service.dart';
+import 'package:bipupu/core/widgets/user_avatar.dart';
+import 'package:bipupu/models/user/user_response.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 class UserSearchPage extends StatefulWidget {
@@ -91,11 +92,10 @@ class _UserSearchPageState extends State<UserSearchPage> {
             if (_result != null)
               Card(
                 child: ListTile(
-                  leading: CircleAvatar(
-                    child: Text(
-                      _result!.nickname?.substring(0, 1) ??
-                          _result!.username.substring(0, 1),
-                    ),
+                  leading: UserAvatarSmall(
+                    avatarUrl: _result!.avatarUrl,
+                    displayName: _result!.nickname ?? _result!.username,
+                    size: 40,
                   ),
                   title: Text(_result!.nickname ?? _result!.username),
                   subtitle: Text('ID: ${_result!.bipupuId}'),

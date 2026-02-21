@@ -2,13 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../assistant/assistant_controller.dart';
+import '../assistant/intent_driven_assistant_controller.dart';
 import '../../core/services/toast_service.dart';
-import '../../core/state/app_state_management.dart';
-import '../../core/voice/audio_resource_manager.dart';
 import 'enhanced_bottom_navigation.dart';
 
-/// 重构后的主布局
+/// 重构后的主布局 - 使用意图驱动控制器
 class MainLayout extends StatefulWidget {
   final Widget child;
 
@@ -19,7 +17,8 @@ class MainLayout extends StatefulWidget {
 }
 
 class _MainLayoutState extends State<MainLayout> {
-  final AssistantController _assistant = AssistantController();
+  final IntentDrivenAssistantController _assistant =
+      IntentDrivenAssistantController();
   bool _isSpeechInitialized = false;
   bool _isListening = false;
 
@@ -31,6 +30,7 @@ class _MainLayoutState extends State<MainLayout> {
 
   Future<void> _initSpeech() async {
     try {
+      // 初始化语音命令中心
       await _assistant.init();
       if (mounted) {
         setState(() {
@@ -40,7 +40,7 @@ class _MainLayoutState extends State<MainLayout> {
     } catch (e) {
       debugPrint('Error initializing speech service: $e');
       if (mounted) {
-        ToastService().showError('Speech service init failed: $e');
+        ToastService().showError('语音服务初始化失败: $e');
       }
     }
   }
@@ -59,10 +59,7 @@ class _MainLayoutState extends State<MainLayout> {
   }
 
   Future<void> _onItemTappedAsync(int index, BuildContext context) async {
-    final uiCubit = StateProviders.getUiCubit(context);
-    uiCubit.updateBottomNavIndex(index);
-
-    // If currently listening and navigating away from pager, stop listening first
+    // 如果当前正在监听且导航离开传呼机页面，先停止监听
     if (_isListening && index != 1) {
       try {
         await _assistant.stopListening();
@@ -83,15 +80,15 @@ class _MainLayoutState extends State<MainLayout> {
       case 3:
         context.go('/profile');
         break;
+      default:
+        context.go('/home');
     }
   }
 
   Future<void> _onPagerLongPressed(BuildContext context) async {
     if (!_isSpeechInitialized) {
       if (mounted) {
-        ToastService().showWarning(
-          'Speech service initializing or failed. Check logs.',
-        );
+        ToastService().showWarning('语音服务正在初始化或失败，请检查日志');
         _initSpeech();
       }
       return;
@@ -100,49 +97,26 @@ class _MainLayoutState extends State<MainLayout> {
     var status = await Permission.microphone.request();
     if (status != PermissionStatus.granted) {
       if (mounted) {
-        ToastService().showWarning('Microphone permission required');
+        ToastService().showWarning('需要麦克风权限');
       }
       return;
     }
 
-    // 非阻塞地检查音频资源是否可用，避免长时间阻塞（若被TTS占用则放弃）
-    final audioMgr = AudioResourceManager();
-    VoidCallback? token;
-    try {
-      token = await audioMgr.tryAcquire();
-      if (token == null) {
-        if (mounted) {
-          ToastService().showWarning('设备正忙，请稍后重试');
-        }
-        return;
-      }
-    } catch (e) {
-      // 若检查失败则继续尝试启动，但用户应看到错误
-    } finally {
-      // 立即释放检查到的临时占用（真正的占用由 startListening 内部获取）
-      try {
-        token?.call();
-      } catch (_) {}
-    }
-
     try {
       setState(() => _isListening = true);
-      // 给 startListening 一个短超时，避免长期阻塞
-      await _assistant
-          .startListening(messageFirst: true)
-          .timeout(const Duration(seconds: 6));
-      ToastService().showInfo(
-        'Listening...',
-        duration: const Duration(minutes: 1),
-      );
+
+      // 使用意图驱动控制器开始监听
+      await _assistant.startListening();
+
+      ToastService().showInfo('正在监听...', duration: const Duration(minutes: 1));
     } on TimeoutException catch (e) {
       setState(() => _isListening = false);
-      debugPrint('Start listening timed out: $e');
+      debugPrint('开始监听超时: $e');
       ToastService().showWarning('录音启动超时，请稍后重试');
     } catch (e) {
       setState(() => _isListening = false);
-      debugPrint('Failed to start recording: $e');
-      ToastService().showError('Failed to start recording: $e');
+      debugPrint('开始录音失败: $e');
+      ToastService().showError('开始录音失败: $e');
     }
   }
 
@@ -151,6 +125,7 @@ class _MainLayoutState extends State<MainLayout> {
 
     ToastService().scaffoldMessengerKey.currentState?.removeCurrentSnackBar();
 
+    // 使用意图驱动控制器停止监听
     await _assistant.stopListening();
 
     if (mounted) {

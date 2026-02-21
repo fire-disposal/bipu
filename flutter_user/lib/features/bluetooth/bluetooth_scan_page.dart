@@ -3,8 +3,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:flutter_user/core/services/bluetooth_device_service.dart';
-import 'package:flutter_user/features/bluetooth/device_detail_page.dart';
+import 'package:bipupu/core/services/bluetooth_device_service.dart';
+import 'package:bipupu/features/bluetooth/device_detail_page.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class BluetoothScanPage extends StatefulWidget {
@@ -20,9 +20,6 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
   bool _isScanning = false;
   BluetoothAdapterState _adapterState = BluetoothAdapterState.unknown;
   BluetoothDevice? _connectingDevice;
-
-  static const String _pagerServiceUUID =
-      '6e400001-b5a3-f393-e0a9-e50e24dcca9e'; // Nordic UART Service
 
   late StreamSubscription<List<ScanResult>> _scanResultsSubscription;
   late StreamSubscription<bool> _isScanningSubscription;
@@ -79,11 +76,9 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
           connectPermission.isDenied ||
           locationPermission.isDenied) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('需要蓝牙和位置权限才能扫描设备。'),
-            ),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('需要蓝牙和位置权限才能扫描设备。')));
         }
       }
     }
@@ -95,7 +90,9 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
     _isScanningSubscription.cancel();
     _adapterStateSubscription.cancel();
     if (_connectionStateListener != null) {
-      _bluetoothService.connectionState.removeListener(_connectionStateListener!);
+      _bluetoothService.connectionState.removeListener(
+        _connectionStateListener!,
+      );
       _connectionStateListener = null;
     }
     FlutterBluePlus.stopScan();
@@ -108,9 +105,9 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
         await FlutterBluePlus.turnOn();
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('请先开启蓝牙。')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('请先开启蓝牙。')));
         }
       }
       return;
@@ -120,9 +117,9 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
       await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('扫描失败：$e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('扫描失败：$e')));
       }
     }
   }
@@ -146,7 +143,9 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
   }
 
   List<ScanResult> get _filteredScanResults {
-    return _scanResults.where((result) => _isPagerDevice(result.device)).toList();
+    return _scanResults
+        .where((result) => _isPagerDevice(result.device))
+        .toList();
   }
 
   Widget _buildScanResultTile(ScanResult result) {
@@ -185,16 +184,20 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.location_on,
-                            size: 14,
-                            color: colorScheme.onSurface.withValues(alpha: 0.6)),
+                        Icon(
+                          Icons.location_on,
+                          size: 14,
+                          color: colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
                         const SizedBox(width: 4),
                         Flexible(
                           child: Text(
                             result.device.remoteId.str,
                             style: TextStyle(
                               fontSize: 12,
-                              color: colorScheme.onSurface.withValues(alpha: 0.6),
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.6,
+                              ),
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -246,7 +249,10 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
               ),
               // 连接按钮
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: isConnecting
                       ? colorScheme.surface
@@ -268,7 +274,9 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
                         height: 12,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.grey,
+                          ),
                         ),
                       )
                     else
@@ -372,7 +380,11 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 24),
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.orange,
+                      size: 24,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -417,7 +429,11 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: colorScheme.primary, size: 24),
+                    Icon(
+                      Icons.info_outline,
+                      color: colorScheme.primary,
+                      size: 24,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -427,13 +443,18 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
                             '正在搜索附近的寻呼机设备...\n找到设备后点击"连接"进行配对。',
                             style: TextStyle(
                               fontSize: 14,
-                              color: colorScheme.onSurface.withValues(alpha: 0.7),
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.7,
+                              ),
                               height: 1.4,
                             ),
                           ),
                           const SizedBox(height: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: colorScheme.primaryContainer,
                               borderRadius: BorderRadius.circular(8),
@@ -441,7 +462,11 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.shield_outlined, size: 14, color: colorScheme.primary),
+                                Icon(
+                                  Icons.shield_outlined,
+                                  size: 14,
+                                  color: colorScheme.primary,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   '智能设备识别中',
@@ -479,7 +504,9 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w500,
-                              color: colorScheme.onSurface.withValues(alpha: 0.6),
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.6,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -487,7 +514,9 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
                             '确保设备已开启并在蓝牙范围内',
                             style: TextStyle(
                               fontSize: 14,
-                              color: colorScheme.onSurface.withValues(alpha: 0.5),
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.5,
+                              ),
                             ),
                           ),
                         ],
@@ -511,10 +540,12 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
         margin: const EdgeInsets.only(bottom: 16),
         child: FloatingActionButton.extended(
           onPressed: _isScanning ? null : _startScan,
-          backgroundColor:
-              _isScanning ? colorScheme.surface : colorScheme.primary,
-          foregroundColor:
-              _isScanning ? colorScheme.onSurface : colorScheme.onPrimary,
+          backgroundColor: _isScanning
+              ? colorScheme.surface
+              : colorScheme.primary,
+          foregroundColor: _isScanning
+              ? colorScheme.onSurface
+              : colorScheme.onPrimary,
           elevation: 4,
           icon: _isScanning
               ? const SizedBox(

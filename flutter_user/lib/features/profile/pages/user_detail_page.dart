@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_user/api/api.dart';
-import 'package:flutter_user/models/user/user_response.dart';
+import 'package:bipupu/api/api.dart';
+import 'package:bipupu/models/user/user_response.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/widgets/user_avatar.dart';
 
 class UserDetailPage extends StatefulWidget {
   final String bipupuId;
@@ -39,11 +39,12 @@ class _UserDetailPageState extends State<UserDetailPage> {
 
       final userData = await _userApi.getUserByBipupuId(widget.bipupuId);
       final currentUser = AuthService().currentUser;
-      
+
       if (mounted) {
         setState(() {
           _user = userData;
-          _isOwnProfile = currentUser != null && currentUser.bipupuId == widget.bipupuId;
+          _isOwnProfile =
+              currentUser != null && currentUser.bipupuId == widget.bipupuId;
           _isLoading = false;
         });
       }
@@ -62,9 +63,9 @@ class _UserDetailPageState extends State<UserDetailPage> {
     try {
       await _blockApi.blockUser(_user!.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('blocked'.tr())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('blocked'.tr())));
       }
     } catch (e) {
       if (mounted) {
@@ -104,13 +105,6 @@ class _UserDetailPageState extends State<UserDetailPage> {
       );
     }
 
-    final avatarUrl = _user!.avatarUrl;
-    final fullAvatarUrl = avatarUrl != null
-        ? (avatarUrl.startsWith('http')
-            ? avatarUrl
-            : '${api.baseUrl.replaceFirst(RegExp(r"/api/?$"), '')}$avatarUrl')
-        : null;
-
     return Scaffold(
       appBar: AppBar(title: Text(_user!.nickname ?? _user!.username)),
       body: SingleChildScrollView(
@@ -120,30 +114,15 @@ class _UserDetailPageState extends State<UserDetailPage> {
             Center(
               child: Stack(
                 children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundImage: fullAvatarUrl != null ? CachedNetworkImageProvider(fullAvatarUrl) : null,
-                    child: fullAvatarUrl == null
-                        ? Text(_user!.nickname?.substring(0, 1) ?? _user!.username.substring(0, 1))
+                  UserAvatar(
+                    avatarUrl: _user!.avatarUrl,
+                    displayName: _user!.nickname ?? _user!.username,
+                    radius: 36,
+                    showEditIcon: _isOwnProfile,
+                    onTap: _isOwnProfile
+                        ? () => context.push('/profile/edit')
                         : null,
                   ),
-                  if (_isOwnProfile)
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: GestureDetector(
-                        onTap: () => context.push('/profile/edit'),
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).primaryColor,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: const Icon(Icons.edit, size: 16, color: Colors.white),
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -151,17 +130,32 @@ class _UserDetailPageState extends State<UserDetailPage> {
             _buildInfoTile('Bipupu ID', _user!.bipupuId),
             if (_user!.cosmicProfile != null) ...[
               if (_user!.cosmicProfile!['gender'] != null)
-                _buildInfoTile('性别', _user!.cosmicProfile!['gender'].toString()),
+                _buildInfoTile(
+                  '性别',
+                  _user!.cosmicProfile!['gender'].toString(),
+                ),
               if (_user!.cosmicProfile!['birthday'] != null)
-                _buildInfoTile('生日', _user!.cosmicProfile!['birthday'].toString()),
+                _buildInfoTile(
+                  '生日',
+                  _user!.cosmicProfile!['birthday'].toString(),
+                ),
               if (_user!.cosmicProfile!['age'] != null)
                 _buildInfoTile('年龄', _user!.cosmicProfile!['age'].toString()),
               if (_user!.cosmicProfile!['zodiac'] != null)
-                _buildInfoTile('星座', _user!.cosmicProfile!['zodiac'].toString()),
+                _buildInfoTile(
+                  '星座',
+                  _user!.cosmicProfile!['zodiac'].toString(),
+                ),
               if (_user!.cosmicProfile!['mbti'] != null)
-                _buildInfoTile('MBTI', _user!.cosmicProfile!['mbti'].toString()),
+                _buildInfoTile(
+                  'MBTI',
+                  _user!.cosmicProfile!['mbti'].toString(),
+                ),
               if (_user!.cosmicProfile!['birthplace'] != null)
-                _buildInfoTile('出生地', _user!.cosmicProfile!['birthplace'].toString()),
+                _buildInfoTile(
+                  '出生地',
+                  _user!.cosmicProfile!['birthplace'].toString(),
+                ),
             ],
             if (!_isOwnProfile) ...[
               const SizedBox(height: 32),

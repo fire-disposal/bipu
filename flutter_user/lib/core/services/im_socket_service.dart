@@ -3,8 +3,7 @@ import 'dart:convert';
 import 'dart:developer';
 import 'package:web_socket_channel/io.dart';
 import 'package:flutter/widgets.dart';
-import '../storage/mobile_token_storage.dart';
-import '../../api/api.dart';
+import 'package:bipupu/api/api.dart';
 import 'auth_service.dart';
 
 typedef SocketEventHandler = void Function(Map<String, dynamic> event);
@@ -27,7 +26,7 @@ class ImSocketService {
       final scheme = uri.scheme == 'https' ? 'wss' : 'ws';
       final port = uri.hasPort ? uri.port : (scheme == 'wss' ? 443 : 80);
 
-      final token = await MobileTokenStorage().getAccessToken();
+      final token = await tokenStorage.getAccessToken();
 
       final wsUri = Uri(
         scheme: scheme,

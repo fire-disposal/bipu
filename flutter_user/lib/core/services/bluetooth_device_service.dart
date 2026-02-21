@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert'; // 必须引用，用于 utf8.encode
-import 'dart:typed_data';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -158,12 +157,30 @@ class BluetoothDeviceService {
       // 1. 将文本转为 UTF-8 字节数组
       final utf8Bytes = utf8.encode(text);
 
-      // 2. 检查 MTU 限制 (典型值 20-244 字节)
-      // 如果文本极长，建议在此处截断或分包，这里先做基础封装
+      // 2. 检查 MTU 限制并分包发送
+      await _sendTextWithChunking(characteristic, utf8Bytes, text);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Send text error: $e');
+      }
+      rethrow; // 重新抛出异常让调用者处理
+    }
+  }
+
+  /// 分包发送文本消息，考虑 MTU 限制
+  Future<void> _sendTextWithChunking(
+    BluetoothCharacteristic characteristic,
+    List<int> utf8Bytes,
+    String originalText,
+  ) async {
+    // 保守的 MTU 限制，减去协议头 1 字节
+    const maxPayloadSize = 200;
+    const maxChunkSize = maxPayloadSize - 1; // 减去协议头
+
+    if (utf8Bytes.length <= maxChunkSize) {
+      // 单包发送
       final packet = Uint8List(1 + utf8Bytes.length);
       packet[0] = 0xA2; // 协议头：消息转发
-
-      // 3. 将文本数据复制到数据包中（从索引 1 开始）
       packet.setRange(1, packet.length, utf8Bytes);
 
       await characteristic.write(
@@ -172,12 +189,47 @@ class BluetoothDeviceService {
       );
 
       if (kDebugMode) {
-        print('Sent A2 Message: $text (Length: ${utf8Bytes.length})');
+        print('Sent A2 Message: $originalText (Length: ${utf8Bytes.length})');
       }
-    } catch (e) {
+      return;
+    }
+
+    // 多包发送
+    if (kDebugMode) {
+      print('Sending long message in chunks: ${utf8Bytes.length} bytes');
+    }
+
+    for (var i = 0; i < utf8Bytes.length; i += maxChunkSize) {
+      final end = i + maxChunkSize;
+      final chunkEnd = end < utf8Bytes.length ? end : utf8Bytes.length;
+      final chunkSize = chunkEnd - i;
+
+      // 创建数据包：协议头 + 数据块
+      final packet = Uint8List(1 + chunkSize);
+      packet[0] = 0xA2; // 协议头：消息转发
+      packet.setRange(1, packet.length, utf8Bytes, i);
+
+      await characteristic.write(
+        packet,
+        withoutResponse: characteristic.properties.writeWithoutResponse,
+      );
+
       if (kDebugMode) {
-        print('Send text error: $e');
+        print(
+          'Sent chunk ${(i ~/ maxChunkSize) + 1}/'
+          '${(utf8Bytes.length / maxChunkSize).ceil()}: '
+          '$chunkSize bytes',
+        );
       }
+
+      // 块间延迟，避免蓝牙栈过载
+      if (chunkEnd < utf8Bytes.length) {
+        await Future.delayed(const Duration(milliseconds: 50));
+      }
+    }
+
+    if (kDebugMode) {
+      print('Completed sending long message');
     }
   }
 

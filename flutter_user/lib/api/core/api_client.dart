@@ -1,8 +1,7 @@
 import 'package:dio/dio.dart';
+import 'token_storage.dart';
+import '../../../core/utils/logger.dart';
 import 'exceptions.dart';
-import 'interceptors/auth_interceptor.dart';
-import 'interceptors/error_interceptor.dart';
-import 'interceptors/logging_interceptor.dart';
 
 /// App配置
 class AppConfig {
@@ -16,26 +15,28 @@ class AppConfig {
   static const int sendTimeout = 5000; // 5秒
 }
 
-/// Axios风格的API客户端
+/// 简化的API客户端，合并了所有拦截器逻辑
 class ApiClient {
   static ApiClient? _instance;
   late final Dio _dio;
+  final TokenStorage _tokenStorage;
 
   /// 私有构造函数
-  ApiClient._internal() {
+  ApiClient._internal({TokenStorage? tokenStorage})
+    : _tokenStorage = tokenStorage ?? MobileTokenStorage() {
     _dio = _createDio();
   }
 
   /// 获取单例实例
-  factory ApiClient() {
-    _instance ??= ApiClient._internal();
+  factory ApiClient({TokenStorage? tokenStorage}) {
+    _instance ??= ApiClient._internal(tokenStorage: tokenStorage);
     return _instance!;
   }
 
   /// 获取Dio实例（用于向后兼容）
   Dio get dio => _dio;
 
-  /// 创建Dio实例
+  /// 创建Dio实例并设置拦截器
   Dio _createDio() {
     final dio = Dio(
       BaseOptions(
@@ -50,14 +51,146 @@ class ApiClient {
       ),
     );
 
-    // 添加拦截器
-    dio.interceptors.addAll([
-      AuthInterceptor(),
-      ErrorInterceptor(),
-      LoggingInterceptor(),
-    ]);
+    // 添加合并的拦截器
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: _onRequest,
+        onResponse: _onResponse,
+        onError: _onError,
+      ),
+    );
 
     return dio;
+  }
+
+  /// 请求拦截器（合并了认证和日志）
+  Future<void> _onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
+    // 日志记录
+    logger.i('🚀 ${options.method.toUpperCase()} ${options.uri}');
+
+    // 跳过公共端点的认证
+    final publicWhitelist = [
+      '/public/login',
+      '/public/register',
+      '/public/refresh',
+    ];
+
+    final path = options.uri.path;
+    final shouldSkipAuth = publicWhitelist.any((p) => path.endsWith(p));
+
+    if (!shouldSkipAuth) {
+      // 添加认证头
+      final token = await _tokenStorage.getAccessToken();
+      if (token != null && token.isNotEmpty) {
+        options.headers['Authorization'] = 'Bearer $token';
+      }
+    }
+
+    handler.next(options);
+  }
+
+  /// 响应拦截器（合并了日志）
+  void _onResponse(Response response, ResponseInterceptorHandler handler) {
+    final statusCode = response.statusCode;
+    final method = response.requestOptions.method.toUpperCase();
+    final uri = response.requestOptions.uri;
+
+    final emoji = _getStatusEmoji(statusCode);
+    logger.i('$emoji $method $uri - Status: $statusCode');
+
+    handler.next(response);
+  }
+
+  /// 错误拦截器（合并了错误处理和日志）
+  Future<void> _onError(
+    DioException err,
+    ErrorInterceptorHandler handler,
+  ) async {
+    final statusCode = err.response?.statusCode ?? 'Unknown';
+    final method = err.requestOptions.method.toUpperCase();
+    final uri = err.requestOptions.uri;
+
+    logger.e('❌ $method $uri - Status: $statusCode - ${err.message}');
+
+    // 处理401错误 - 尝试刷新token
+    if (err.response?.statusCode == 401) {
+      final requestOptions = err.requestOptions;
+
+      try {
+        final refreshToken = await _tokenStorage.getRefreshToken();
+        if (refreshToken != null && refreshToken.isNotEmpty) {
+          // 尝试刷新token
+          final newToken = await _refreshToken(refreshToken);
+          final accessToken = newToken['access'] as String;
+          final refreshTokenNew = newToken['refresh'] as String;
+          await _tokenStorage.saveTokens(
+            accessToken: accessToken,
+            refreshToken: refreshTokenNew,
+          );
+
+          // 重试原始请求
+          requestOptions.headers['Authorization'] = 'Bearer $accessToken';
+          final retryResponse = await _dio.fetch<dynamic>(requestOptions);
+          handler.resolve(retryResponse);
+          return;
+        }
+      } catch (e) {
+        logger.e('Failed to refresh token or retry request', error: e);
+        // 刷新失败，清除token
+        await _tokenStorage.clearTokens();
+      }
+    }
+
+    // 转换为统一的API异常
+    final exception = _handleError(err);
+    handler.reject(
+      DioException(
+        requestOptions: err.requestOptions,
+        error: exception,
+        type: err.type,
+        response: err.response,
+        stackTrace: err.stackTrace,
+      ),
+    );
+  }
+
+  /// 刷新token
+  Future<Map<String, dynamic>> _refreshToken(String refreshToken) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/public/refresh',
+      data: {'refresh': refreshToken},
+    );
+    return response.data!;
+  }
+
+  /// 处理错误并转换为统一的异常
+  Exception _handleError(DioException e) {
+    // 如果错误已经被转换过，直接抛出
+    if (e.error is ApiException) {
+      return e.error as ApiException;
+    }
+
+    // 否则创建通用的API异常
+    final statusCode = e.response?.statusCode;
+    final message = e.message ?? 'Unknown error occurred';
+
+    return ServerException(
+      message,
+      statusCode: statusCode,
+      data: e.response?.data,
+    );
+  }
+
+  /// 获取状态表情符号
+  String _getStatusEmoji(int? statusCode) {
+    if (statusCode == null) return '❓';
+    if (statusCode >= 200 && statusCode < 300) return '✅';
+    if (statusCode >= 300 && statusCode < 400) return '🔄';
+    if (statusCode >= 400 && statusCode < 500) return '⚠️';
+    return '❌';
   }
 
   /// GET请求
@@ -182,20 +315,6 @@ class ApiClient {
     }
   }
 
-  /// 并发执行多个请求（类似axios.all）
-  static Future<List<T>> all<T>(List<Future<T>> requests) {
-    return Future.wait(requests);
-  }
-
-  /// 并发执行多个请求并解构结果（类似axios.spread）
-  static Future<R> spread<T, R>(
-    List<Future<T>> requests,
-    R Function(List<T>) callback,
-  ) async {
-    final results = await Future.wait(requests);
-    return callback(results);
-  }
-
   /// 下载文件
   Future<void> download(
     String urlPath,
@@ -249,24 +368,6 @@ class ApiClient {
     } on DioException catch (e) {
       throw _handleError(e);
     }
-  }
-
-  /// 处理错误
-  Exception _handleError(DioException e) {
-    // 如果错误已经被转换过，直接抛出
-    if (e.error is ApiException) {
-      return e.error as ApiException;
-    }
-
-    // 否则创建通用的API异常
-    final statusCode = e.response?.statusCode;
-    final message = e.message ?? 'Unknown error occurred';
-
-    return ServerException(
-      message,
-      statusCode: statusCode,
-      data: e.response?.data,
-    );
   }
 
   /// 设置基础URL

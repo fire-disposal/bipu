@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
-import 'package:flutter_user/api/api.dart';
+import 'package:bipupu/api/api.dart';
 
 class SecurityPage extends StatefulWidget {
   const SecurityPage({super.key});

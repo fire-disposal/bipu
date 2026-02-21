@@ -1,8 +1,8 @@
-import 'package:flutter_user/api/api.dart';
-import 'package:flutter_user/api/auth_api.dart';
-import 'package:flutter_user/api/user_api.dart';
-import 'package:flutter_user/models/user_model.dart';
-import 'package:flutter_user/models/user/user_request.dart';
+import 'package:bipupu/api/api.dart';
+import 'package:bipupu/api/auth_api.dart';
+import 'package:bipupu/api/user_api.dart';
+import 'package:bipupu/models/user/user_response.dart';
+import 'package:bipupu/models/user/user_request.dart';
 import 'dart:io';
 
 class ProfileService {
@@ -13,20 +13,17 @@ class ProfileService {
   late final AuthApi _authApi = AuthApi();
   late final UserApi _userApi = UserApi();
 
-  Future<User> getMe() async {
+  Future<UserResponse> getMe() async {
     final userData = await _authApi.getMe();
-    // Convert UserResponse to User if they are different, or UserResponse is aliased.
-    // Assuming User.fromJson can digest the same json.
-    return User.fromJson(userData.toJson());
+    return userData;
   }
 
-  Future<User> uploadAvatar(File file) async {
-    // AuthApi takes filePath
+  Future<UserResponse> uploadAvatar(File file) async {
     final userData = await _authApi.updateAvatar(file.path);
-    return User.fromJson(userData.toJson());
+    return userData;
   }
 
-  Future<User> updateProfile({
+  Future<UserResponse> updateProfile({
     String? nickname,
     String? username,
     String? email,
@@ -40,19 +37,19 @@ class ProfileService {
         cosmicProfile: cosmicProfile,
       ),
     );
-    return User.fromJson(userData.toJson());
+    return userData;
   }
 
   /// 更新推送时间设置
-  Future<User> updatePushTime({required String fortuneTime}) async {
+  Future<UserResponse> updatePushTime({required String fortuneTime}) async {
     final userData = await _userApi.updatePushTime(fortuneTime: fortuneTime);
-    return User.fromJson(userData.toJson());
+    return userData;
   }
 
   /// 更新时区设置
-  Future<User> updateTimezone({required String timezone}) async {
+  Future<UserResponse> updateTimezone({required String timezone}) async {
     final userData = await _userApi.updateTimezone(timezone: timezone);
-    return User.fromJson(userData.toJson());
+    return userData;
   }
 
   /// 获取推送设置信息

@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 class SubscriptionSettings {
   /// 服务号名称
   final String serviceName;

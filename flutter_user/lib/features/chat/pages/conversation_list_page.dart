@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_user/core/services/im_service.dart';
-import 'package:flutter_user/models/message/message_response.dart';
+import 'package:bipupu/core/services/im_service.dart';
+import 'package:bipupu/models/message/message_response.dart';
 import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 
@@ -90,10 +90,10 @@ class _MessagesPageState extends State<MessagesPage> {
           height: 48,
           decoration: BoxDecoration(
             color: isSystem
-                ? Colors.blue.withOpacity(0.1)
+                ? Colors.blue.withValues(alpha: 0.1)
                 : isSent
-                ? Colors.green.withOpacity(0.1)
-                : Colors.purple.withOpacity(0.1),
+                ? Colors.green.withValues(alpha: 0.1)
+                : Colors.purple.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -167,7 +167,9 @@ class _MessagesPageState extends State<MessagesPage> {
           setState(() => _selectedFilter = filter);
         }
       },
-      selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+      selectedColor: Theme.of(
+        context,
+      ).colorScheme.primary.withValues(alpha: 0.2),
       checkmarkColor: Theme.of(context).colorScheme.primary,
       backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
       labelStyle: TextStyle(
@@ -186,7 +188,7 @@ class _MessagesPageState extends State<MessagesPage> {
           Icon(
             Icons.message,
             size: 64,
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.5),
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(

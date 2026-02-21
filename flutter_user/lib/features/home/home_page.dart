@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:flutter_user/core/services/bluetooth_device_service.dart';
+import 'package:bipupu/core/services/bluetooth_device_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});

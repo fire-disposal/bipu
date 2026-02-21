@@ -65,7 +65,7 @@ class MessageApi {
       '/api/messages/',
       data: body,
     );
-    return MessageResponse.fromJson(resp as Map<String, dynamic>);
+    return MessageResponse.fromJson(resp);
   }
 
   String _normalizeToNewType(String raw) {
@@ -128,7 +128,7 @@ class MessageApi {
       '/api/messages/$messageId/favorite',
       data: note != null ? {'note': note} : null,
     );
-    return Favorite.fromJson(resp as Map<String, dynamic>);
+    return Favorite.fromJson(resp);
   }
 
   Future<void> removeFavorite(int messageId) async {

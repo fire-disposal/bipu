@@ -18,7 +18,7 @@ packages:
     source: hosted
     version: "10.0.1"
   archive:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       name: archive
       sha256: "16a4a4610a4375e2cfe0db0985bd817935219c627f8fd25a4b2a5b408ed34e64"
@@ -137,6 +137,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.4"
+  build_cli_annotations:
+    dependency: transitive
+    description:
+      name: build_cli_annotations
+      sha256: e563c2e01de8974566a1998410d3f6f03521788160a02503b0b1f1a46c7b3d95
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.1.1"
   build_config:
     dependency: transitive
     description:
@@ -369,14 +377,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.0.2"
-  equatable:
-    dependency: "direct main"
-    description:
-      name: equatable
-      sha256: "3e0141505477fd8ad55d6eb4e7776d3fe8430be8e497ccb1521370c3f21a3e2b"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.8"
   fake_async:
     dependency: transitive
     description:
@@ -926,7 +926,7 @@ packages:
     source: hosted
     version: "2.6.2"
   logging:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: logging
       sha256: c8245ada5f1717ed44271ed1c26b8ce85ca3228fd2ffdb75468ab01979309d61
@@ -1005,6 +1005,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.0"
+  onnxruntime:
+    dependency: transitive
+    description:
+      name: onnxruntime
+      sha256: e77ec05acafc135cc5fe7bcdf11b101b39f06513c9d5e9fa02cb1929f6bac72a
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.1"
   package_config:
     dependency: transitive
     description:
@@ -1089,18 +1097,18 @@ packages:
     dependency: "direct main"
     description:
       name: permission_handler
-      sha256: bc917da36261b00137bbc8896bf1482169cd76f866282368948f032c8c1caae1
+      sha256: "59adad729136f01ea9e35a48f5d1395e25cba6cea552249ddbe9cf950f5d7849"
       url: "https://pub.dev"
     source: hosted
-    version: "12.0.1"
+    version: "11.4.0"
   permission_handler_android:
     dependency: transitive
     description:
       name: permission_handler_android
-      sha256: "1e3bc410ca1bf84662104b100eb126e066cb55791b7451307f9708d4007350e6"
+      sha256: d3971dcdd76182a0c198c096b5db2f0884b0d4196723d21a866fc4cdea057ebc
       url: "https://pub.dev"
     source: hosted
-    version: "13.0.1"
+    version: "12.1.0"
   permission_handler_apple:
     dependency: transitive
     description:
@@ -1141,6 +1149,33 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.0.2"
+  piper_phonemizer_plugin:
+    dependency: transitive
+    description:
+      path: "."
+      ref: "dev-6768-v0.0.2"
+      resolved-ref: "3c94e2b8e10c094c1f21caf28f3733165845d445"
+      url: "https://github.com/dev-6768/piper_phonemizer_plugin.git"
+    source: git
+    version: "0.0.1"
+  piper_phonemizer_windows_plugin:
+    dependency: transitive
+    description:
+      path: "."
+      ref: main
+      resolved-ref: caddae22a67e12ed74bcc79b9be9a086a8361616
+      url: "https://github.com/dev-6768/piper_phonemizer_windows_plugin.git"
+    source: git
+    version: "0.0.1"
+  piper_tts_plugin:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: "dev-6768-v0.0.3"
+      resolved-ref: fe38f63ba953b51dcfd92c6627c5de6be0b42cd5
+      url: "https://github.com/dev-6768/piper_tts_plugin.git"
+    source: git
+    version: "0.0.1"
   platform:
     dependency: transitive
     description:
@@ -1277,54 +1312,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.0"
-  sherpa_onnx:
-    dependency: "direct main"
-    description:
-      name: sherpa_onnx
-      sha256: "6f14669c62bb0812c3f99adcd4cae8677037106618cc51ce09d285a4c5db828a"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.12.25"
-  sherpa_onnx_android:
-    dependency: transitive
-    description:
-      name: sherpa_onnx_android
-      sha256: f9881cd42347eac0619298186d86f286ce6b74947a27b8506f6729496ebccc5d
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.12.25"
-  sherpa_onnx_ios:
-    dependency: transitive
-    description:
-      name: sherpa_onnx_ios
-      sha256: a9c916340eda3bb24ce4598810fc141469f3d9afd0290390d1cc749044ae919d
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.12.25"
-  sherpa_onnx_linux:
-    dependency: transitive
-    description:
-      name: sherpa_onnx_linux
-      sha256: "82d4664ab6df87a76c12987cb420cbe112133d710f9b2e30c4e83d7ad1e93fb0"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.12.25"
-  sherpa_onnx_macos:
-    dependency: transitive
-    description:
-      name: sherpa_onnx_macos
-      sha256: "453fa9a6fdff47d4e8aeef5f9c3ed64327e14769401a16b36213b7a3a3b8aae0"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.12.25"
-  sherpa_onnx_windows:
-    dependency: transitive
-    description:
-      name: sherpa_onnx_windows
-      sha256: c70446773ddab00e8f78b415fe1a580723d49c1f78ad7ce751183620b35c1ffd
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.12.25"
   sky_engine:
     dependency: transitive
     description: flutter
@@ -1482,6 +1469,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "15.0.2"
+  vosk_flutter:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: HEAD
+      resolved-ref: e655a96f0ce0dadb5ea8900aa1ba23260c3ec904
+      url: "https://github.com/alphacep/vosk-flutter.git"
+    source: git
+    version: "0.3.48"
   watcher:
     dependency: transitive
     description:

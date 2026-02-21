@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import '../../../api/api.dart';
 import '../../../api/message_api.dart';
 import '../../../models/favorite/favorite.dart';
-import '../../../models/message/message_response.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/toast_service.dart';
 
@@ -26,7 +25,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
   bool _hasMore = true;
   int _currentPage = 1;
   final int _pageSize = 20;
-  bool _isRefreshing = false;
 
   @override
   void initState() {
@@ -42,7 +40,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
         setState(() {
           _currentPage = 1;
           _hasMore = true;
-          _isRefreshing = true;
+          // 刷新状态
         });
       } else {
         setState(() => _isLoading = true);
@@ -72,7 +70,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
     } finally {
       setState(() {
         _isLoading = false;
-        _isRefreshing = false;
+        // 刷新完成
       });
     }
   }
@@ -139,7 +137,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: Colors.amber.withOpacity(0.1),
+            color: Colors.amber.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: const Icon(Icons.favorite, color: Colors.amber),
@@ -218,7 +216,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
           Icon(
             Icons.favorite_border,
             size: 64,
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.5),
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
@@ -283,7 +281,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
                   bottom: BorderSide(
                     color: Theme.of(
                       context,
-                    ).colorScheme.outline.withOpacity(0.1),
+                    ).colorScheme.outline.withValues(alpha: 0.1),
                   ),
                 ),
               ),

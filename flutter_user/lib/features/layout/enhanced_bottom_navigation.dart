@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../core/state/app_state_management.dart';
 import '../../core/animations/animation_system.dart';
 import '../../core/services/im_service.dart';
 
@@ -142,41 +140,38 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return BlocBuilder<UiCubit, UiState>(
-      builder: (context, uiState) {
-        return Container(
-          decoration: BoxDecoration(
-            color: colorScheme.surface.withValues(alpha: 0.95),
-            border: Border(
-              top: BorderSide(
-                color: colorScheme.outlineVariant.withValues(alpha: 0.2),
-                width: 0.5,
-              ),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(
-                  alpha: theme.brightness == Brightness.dark ? 0.3 : 0.08,
-                ),
-                blurRadius: 20,
-                offset: const Offset(0, -2),
-              ),
-            ],
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface.withValues(alpha: 0.95),
+        border: Border(
+          top: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.2),
+            width: 0.5,
           ),
-          child: SafeArea(
-            child: Container(
-              height: 88,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: _navItems.map((item) {
-                  return _buildNavItem(context, item, colorScheme);
-                }).toList(),
-              ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.3 : 0.08,
             ),
+            blurRadius: 20,
+            offset: const Offset(0, -2),
           ),
-        );
-      },
+        ],
+      ),
+      child: SafeArea(
+        child: Container(
+          height: 88,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: _navItems.map((item) {
+              final isSelected = item.index == widget.currentIndex;
+              return _buildNavItem(context, item, colorScheme, isSelected);
+            }).toList(),
+          ),
+        ),
+      ),
     );
   }
 
@@ -184,8 +179,8 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
     BuildContext context,
     NavItem item,
     ColorScheme colorScheme,
+    bool isSelected,
   ) {
-    final isSelected = item.index == widget.currentIndex;
     final isSpecial = item.isSpecial;
 
     if (isSpecial) {

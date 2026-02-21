@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:logging/logging.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import 'core/state/app_state_management.dart';
 import 'core/utils/interaction_optimizer.dart';
@@ -16,28 +16,27 @@ import 'features/profile/pages/privacy_page.dart';
 import 'features/profile/pages/profile_edit_page.dart';
 import 'features/profile/pages/security_page.dart';
 import 'features/profile/pages/settings_page.dart';
-import 'package:flutter_user/features/chat/pages/conversation_list_page.dart';
-import 'package:flutter_user/features/chat/pages/message_detail_page.dart';
-import 'package:flutter_user/models/message/message_response.dart';
-import 'package:flutter_user/features/chat/pages/favorites_page.dart';
-import 'package:flutter_user/features/chat/pages/subscription_management_page.dart';
-import 'package:flutter_user/features/contacts/pages/contacts_page.dart';
-import 'package:flutter_user/features/contacts/pages/user_search_page.dart';
-import 'package:flutter_user/features/profile/pages/user_detail_page.dart';
+import 'features/chat/pages/conversation_list_page.dart';
+import 'features/chat/pages/message_detail_page.dart';
+import 'models/message/message_response.dart';
+import 'features/chat/pages/favorites_page.dart';
+import 'features/chat/pages/subscription_management_page.dart';
+import 'features/contacts/pages/contacts_page.dart';
+import 'features/contacts/pages/user_search_page.dart';
+import 'features/profile/pages/user_detail_page.dart';
 import 'core/services/im_service.dart';
 import 'features/layout/discover_page.dart';
 
-import 'api/api.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/toast_service.dart';
-import 'core/storage/storage_manager.dart';
-import 'core/theme/app_theme_optimized.dart';
+import 'core/theme/app_theme.dart';
 import 'core/utils/logger.dart';
 import 'features/auth/login_page.dart';
 import 'features/auth/register_page.dart';
 import 'features/bluetooth/bluetooth_scan_page.dart';
 import 'features/bluetooth/device_detail_page.dart';
 import 'features/voice_test/voice_test_page.dart';
+import 'features/voice_test/new_voice_test_page.dart';
 import 'features/home/home_page.dart';
 
 Future<void> main() async {
@@ -53,12 +52,8 @@ Future<void> main() async {
 
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize logger
-  Logger.root.level = Level.ALL;
-  // Logger listener removed to fix analyze error
-  // Logger.root.onRecord.listen((record) {});
-
-  await StorageManager.initialize();
+  // Initialize Hive for local storage
+  await Hive.initFlutter();
 
   // Initialize Optimizer
   await InteractionOptimizer.initialize();
@@ -157,7 +152,7 @@ final GoRouter _router = GoRouter(
             GoRoute(
               path: 'detail',
               builder: (context, state) {
-                final extra = state.extra as dynamic;
+                final extra = state.extra;
                 if (extra is Map) {
                   // sometimes JSON map may be passed
                   final msg = MessageResponse.fromJson(
@@ -169,7 +164,9 @@ final GoRouter _router = GoRouter(
                   return MessageDetailPage(message: extra);
                 }
                 // Fallback: show empty scaffold
-                return const Scaffold(body: Center(child: Text('消息未找到')));
+                return const Scaffold(
+                  body: Center(child: Text('No message data provided')),
+                );
               },
             ),
             GoRoute(
@@ -202,7 +199,7 @@ final GoRouter _router = GoRouter(
           builder: (context, state) => const ProfilePage(),
           routes: [
             GoRoute(
-              path: 'personal_info',
+              path: 'profile',
               builder: (context, state) {
                 final user = AuthService().currentUser;
                 return UserDetailPage(bipupuId: user?.bipupuId ?? '');
@@ -246,7 +243,7 @@ final GoRouter _router = GoRouter(
       builder: (context, state) => const UserRegisterPage(),
     ),
     GoRoute(
-      path: '/user/detail/:id',
+      path: '/user/:id',
       builder: (context, state) {
         final id = state.pathParameters['id']!;
         return UserDetailPage(bipupuId: id);
@@ -257,6 +254,11 @@ final GoRouter _router = GoRouter(
       path: '/voice_test',
       builder: (context, state) => const VoiceTestPage(),
     ),
+    GoRoute(
+      path: '/new_voice_test',
+      builder: (context, state) => const NewVoiceTestPage(),
+    ),
+
     GoRoute(
       path: '/bluetooth/scan',
       builder: (context, state) => const BluetoothScanPage(),

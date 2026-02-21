@@ -1,174 +1,292 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_user/features/assistant/assistant_controller.dart';
-import 'package:flutter_user/features/assistant/assistant_config.dart';
-// VoiceGuideService removed — AssistantController used directly
+import 'package:bipupu/features/assistant/intent_driven_assistant_controller.dart';
+import 'package:bipupu/features/assistant/assistant_config.dart';
 import 'operator_gallery.dart';
 
 class VoiceAssistantPanel extends StatefulWidget {
-  const VoiceAssistantPanel({super.key});
+  final IntentDrivenAssistantController assistant;
+  final AssistantConfig config;
+  final Function(String)? onMessageSent;
+
+  const VoiceAssistantPanel({
+    super.key,
+    required this.assistant,
+    required this.config,
+    this.onMessageSent,
+  });
 
   @override
   State<VoiceAssistantPanel> createState() => _VoiceAssistantPanelState();
 }
 
 class _VoiceAssistantPanelState extends State<VoiceAssistantPanel> {
-  final AssistantController _assistant = AssistantController();
-  final AssistantConfig _config = AssistantConfig();
+  @override
+  void initState() {
+    super.initState();
+    widget.assistant.addListener(_onAssistantUpdate);
+  }
+
   @override
   void dispose() {
+    widget.assistant.removeListener(_onAssistantUpdate);
     super.dispose();
+  }
+
+  void _onAssistantUpdate() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-      valueListenable: _assistant.phase,
-      builder: (context, value, child) {
-        final AssistantPhase phase = value as AssistantPhase;
-        final op =
-            _config.getOperator(_assistant.currentOperatorId) ??
-            _config.getOperator('op_system')!;
-        final recipient = _assistant.currentRecipientId ?? '-';
-        final preview = _assistant.currentText ?? '-';
-
-        String phaseLabel;
-        int phaseIndex;
-        switch (phase) {
-          case AssistantPhase.greeting:
-            phaseLabel = '初始化引导';
-            phaseIndex = 0;
-            break;
-          case AssistantPhase.askRecipientId:
-            phaseLabel = '请提供收信方ID';
-            phaseIndex = 1;
-            break;
-          case AssistantPhase.confirmRecipientId:
-            phaseLabel = '请确认收信方ID';
-            phaseIndex = 2;
-            break;
-          case AssistantPhase.guideRecordMessage:
-          case AssistantPhase.recording:
-            phaseLabel = '正在录音';
-            phaseIndex = 3;
-            break;
-          case AssistantPhase.transcribing:
-            phaseLabel = '转写中';
-            phaseIndex = 4;
-            break;
-          case AssistantPhase.confirmMessage:
-            phaseLabel = '请确认消息';
-            phaseIndex = 5;
-            break;
-          case AssistantPhase.sending:
-            phaseLabel = '发送中';
-            phaseIndex = 6;
-            break;
-          case AssistantPhase.sent:
-            phaseLabel = '已发送';
-            phaseIndex = 7;
-            break;
-          case AssistantPhase.farewell:
-            phaseLabel = '结束';
-            phaseIndex = 8;
-            break;
-          case AssistantPhase.error:
-            phaseLabel = '出错';
-            phaseIndex = 8;
-            break;
-          case AssistantPhase.idle:
-          default:
-            phaseLabel = '空闲';
-            phaseIndex = 0;
-        }
-
-        final total = 8;
-        final progress = (phaseIndex / (total - 1)).clamp(0.0, 1.0);
-
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
-          elevation: 2,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: op.themeColor.withOpacity(0.08),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    op.name.isNotEmpty ? op.name[0] : 'O',
-                    style: TextStyle(
-                      color: op.themeColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '语音助手：$phaseLabel',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '目标：$recipient  •  预览：$preview',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      const SizedBox(height: 8),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          minHeight: 6,
-                          backgroundColor: op.themeColor.withOpacity(0.12),
-                          valueColor: AlwaysStoppedAnimation(op.themeColor),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  tooltip: '选择接线员',
-                  onPressed: () async {
-                    await Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => OperatorGallery()),
-                    );
-                    setState(() {});
-                  },
-                  icon: Icon(Icons.grid_view, color: op.themeColor),
-                ),
-                ElevatedButton(
-                  onPressed: (_assistant.state.value == AssistantState.idle)
-                      ? () => _assistant.startListening()
-                      : (_assistant.state.value == AssistantState.listening)
-                      ? () => _assistant.stopListening()
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        (_assistant.state.value == AssistantState.listening)
-                        ? Colors.redAccent
-                        : op.themeColor,
-                  ),
-                  child: Text(
-                    _assistant.state.value == AssistantState.listening
-                        ? '停止'
-                        : '启动',
-                  ),
-                ),
-              ],
-            ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
           ),
-        );
-      },
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 阶段指示器
+          _buildPhaseIndicator(),
+          const SizedBox(height: 16),
+
+          // 操作按钮
+          _buildActionButtons(),
+          const SizedBox(height: 8),
+
+          // 操作员选择
+          _buildOperatorSelector(),
+        ],
+      ),
     );
   }
+
+  Widget _buildPhaseIndicator() {
+    final phase = widget.assistant.currentPhase;
+    final phaseInfo = _getPhaseInfo(phase);
+
+    return Column(
+      children: [
+        LinearProgressIndicator(
+          value: phaseInfo.progress,
+          backgroundColor: Colors.grey[300],
+          valueColor: AlwaysStoppedAnimation<Color>(phaseInfo.color),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              phaseInfo.label,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+            Text(
+              '${(phaseInfo.progress * 100).toInt()}%',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons() {
+    final availableActions = widget.assistant.availableActions;
+
+    if (availableActions.isEmpty) {
+      return const Text('等待中...', style: TextStyle(color: Colors.grey));
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      alignment: WrapAlignment.center,
+      children: availableActions.map((intent) {
+        return ElevatedButton(
+          onPressed: () => _handleIntent(intent),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _getButtonColor(intent),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          ),
+          child: Text(_getButtonText(intent)),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildOperatorSelector() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.person_outline, size: 16),
+        const SizedBox(width: 4),
+        Text(
+          '操作员: ${widget.assistant.currentOperatorId}',
+          style: const TextStyle(fontSize: 12),
+        ),
+        const SizedBox(width: 8),
+        TextButton(
+          onPressed: () => _selectOperator(),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            minimumSize: Size.zero,
+          ),
+          child: const Text('更换', style: TextStyle(fontSize: 12)),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleIntent(UserIntent intent) async {
+    try {
+      await widget.assistant.handleIntent(intent);
+
+      // 如果消息发送成功，触发回调
+      if (intent == UserIntent.send && widget.onMessageSent != null) {
+        final text = widget.assistant.currentText;
+        if (text != null && text.isNotEmpty) {
+          widget.onMessageSent!(text);
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('操作失败: $e')));
+    }
+  }
+
+  Future<void> _selectOperator() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const OperatorGallery()));
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  // 辅助方法
+  _PhaseInfo _getPhaseInfo(AssistantPhase phase) {
+    String label;
+    double progress;
+    Color color;
+
+    switch (phase) {
+      case AssistantPhase.greeting:
+        label = '初始化引导';
+        progress = 0.0;
+        color = Colors.blue;
+        break;
+      case AssistantPhase.askRecipientId:
+        label = '请提供收信方ID';
+        progress = 0.125;
+        color = Colors.blue;
+        break;
+      case AssistantPhase.confirmRecipientId:
+        label = '请确认收信方ID';
+        progress = 0.25;
+        color = Colors.blue;
+        break;
+      case AssistantPhase.guideRecordMessage:
+      case AssistantPhase.recording:
+        label = '正在录音';
+        progress = 0.5;
+        color = Colors.orange;
+        break;
+      case AssistantPhase.transcribing:
+        label = '转写中';
+        progress = 0.625;
+        color = Colors.orange;
+        break;
+      case AssistantPhase.confirmMessage:
+        label = '请确认消息';
+        progress = 0.75;
+        color = Colors.green;
+        break;
+      case AssistantPhase.sending:
+        label = '发送中';
+        progress = 0.875;
+        color = Colors.green;
+        break;
+      case AssistantPhase.sent:
+        label = '已发送';
+        progress = 1.0;
+        color = Colors.green;
+        break;
+      case AssistantPhase.farewell:
+        label = '结束';
+        progress = 1.0;
+        color = Colors.grey;
+        break;
+      case AssistantPhase.error:
+        label = '出错';
+        progress = 0.0;
+        color = Colors.red;
+        break;
+      case AssistantPhase.idle:
+        label = '空闲';
+        progress = 0.0;
+        color = Colors.grey;
+        break;
+    }
+
+    return _PhaseInfo(label, progress, color);
+  }
+
+  String _getButtonText(UserIntent intent) {
+    switch (intent) {
+      case UserIntent.confirm:
+        return '确认';
+      case UserIntent.modify:
+        return '修改';
+      case UserIntent.cancel:
+        return '取消';
+      case UserIntent.rerecord:
+        return '重录';
+      case UserIntent.send:
+        return '发送';
+      case UserIntent.start:
+        return '开始';
+      case UserIntent.stop:
+        return '停止';
+    }
+  }
+
+  Color _getButtonColor(UserIntent intent) {
+    switch (intent) {
+      case UserIntent.confirm:
+      case UserIntent.start:
+        return Colors.blue;
+      case UserIntent.send:
+        return Colors.green;
+      case UserIntent.cancel:
+      case UserIntent.stop:
+        return Colors.redAccent;
+      case UserIntent.modify:
+      case UserIntent.rerecord:
+        return Colors.orange;
+    }
+  }
+}
+
+class _PhaseInfo {
+  final String label;
+  final double progress;
+  final Color color;
+
+  _PhaseInfo(this.label, this.progress, this.color);
 }

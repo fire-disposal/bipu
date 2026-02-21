@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_user/core/services/bluetooth_device_service.dart';
+import 'package:bipupu/core/services/bluetooth_device_service.dart';
 
 class DeviceDetailPage extends StatefulWidget {
   const DeviceDetailPage({super.key});
@@ -56,7 +56,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
+                          color: Colors.green.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(
@@ -325,7 +325,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 28),

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_user/api/service_account_api.dart';
-import 'package:flutter_user/api/api.dart';
-import 'package:flutter_user/models/service/service_account.dart';
-import 'package:flutter_user/models/service/subscription_settings.dart';
+import 'package:bipupu/api/service_account_api.dart';
+import 'package:bipupu/api/api.dart';
+import 'package:bipupu/models/service/service_account.dart';
+import 'package:bipupu/models/service/subscription_settings.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:bipupu/core/widgets/service_account_avatar.dart';
 
 class SubscriptionManagementPage extends StatefulWidget {
   const SubscriptionManagementPage({super.key});
@@ -199,24 +200,15 @@ class _SubscriptionManagementPageState
         children: [
           // 服务号基本信息
           ListTile(
-            leading: CircleAvatar(
+            leading: ServiceAccountAvatar(
+              avatarUrl: service.avatarUrl,
+              displayName: service.displayName,
+              radius: 24,
+              showSubscriptionIndicator: true,
+              isSubscribed: isSubscribed,
               backgroundColor: isSubscribed
-                  ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                  : Theme.of(context).colorScheme.surfaceContainerHighest,
-              child: isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Icon(
-                      isSubscribed
-                          ? Icons.notifications_active
-                          : Icons.notifications_none,
-                      color: isSubscribed
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.outline,
-                    ),
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                  : null,
             ),
             title: Text(
               service.displayName ?? service.name,
@@ -429,7 +421,7 @@ class _SubscriptionManagementPageState
           Icon(
             Icons.notifications_none,
             size: 64,
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.5),
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(

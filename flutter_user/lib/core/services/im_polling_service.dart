@@ -26,6 +26,8 @@ class ImPollingService {
   Timer? _messageTimer;
   Timer? _contactsTimer;
 
+  bool get isPollingActive => _messageTimer != null && _messageTimer!.isActive;
+
   // adaptive polling config
   static const Duration _foregroundMessageInterval = Duration(seconds: 15);
   static const Duration _backgroundMessageInterval = Duration(minutes: 5);
@@ -33,8 +35,6 @@ class ImPollingService {
   int _backoffMultiplier = 1;
 
   static const Duration _contactsPullInterval = Duration(minutes: 10);
-
-  int _previousMessageCount = 0;
 
   void startPolling() {
     _startMessagePolling();
@@ -114,7 +114,6 @@ class ImPollingService {
       onData(messages: list, unreadCount: unread);
 
       // simple backoff reset
-      _previousMessageCount = list.length;
       _backoffMultiplier = 1;
     } catch (e) {
       log('ImPollingService: fetch messages failed: $e');

@@ -285,10 +285,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                 Center(
                   child: UserAvatar(
                     avatarUrl: AuthService().currentUser?.avatarUrl,
-                    displayName: _nicknameCtrl.text.isNotEmpty
-                        ? _nicknameCtrl.text
-                        : _usernameCtrl.text,
-                    radius: 50,
+                    displayName:
+                        AuthService().currentUser?.nickname ??
+                        AuthService().currentUser?.username ??
+                        '用户',
+                    radius: 48,
                     onTap: _pickAndUploadImage,
                     showEditIcon: true,
                   ),

@@ -1,12 +1,7 @@
-/// 新的API层入口文件
-/// 导出所有API相关的类和函数
-
 // 核心API客户端
 export 'core/api_client.dart';
 export 'core/exceptions.dart';
-
-// API服务
-export 'api_service.dart';
+export 'core/token_storage.dart';
 
 // 具体的API类
 export 'auth_api.dart';

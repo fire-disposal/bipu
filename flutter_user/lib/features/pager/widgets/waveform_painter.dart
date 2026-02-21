@@ -11,7 +11,7 @@ class WaveformPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..shader = LinearGradient(
-        colors: [color.withOpacity(0.5), color],
+        colors: [color.withValues(alpha: 0.5), color],
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))

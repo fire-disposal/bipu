@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_user/api/api.dart';
-import 'package:flutter_user/api/auth_api.dart';
-import 'package:flutter_user/core/storage/token_storage.dart';
-import '../storage/mobile_token_storage.dart';
-import 'package:flutter_user/models/models.dart';
+import 'package:bipupu/api/api.dart';
+import 'package:bipupu/models/auth/auth_request.dart';
+import 'package:bipupu/models/user/user_response.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
 
@@ -12,7 +10,7 @@ class AuthService {
   static final AuthService _instance = AuthService._internal();
 
   final _authStateController = ValueNotifier<AuthStatus>(AuthStatus.unknown);
-  final TokenStorage _tokenStorage = MobileTokenStorage();
+  final TokenStorage _tokenStorage = tokenStorage;
   late final AuthApi _api = AuthApi();
 
   UserResponse? _currentUser;

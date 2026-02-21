@@ -26,168 +26,7 @@ class VirtualOperator {
   int get hashCode => id.hashCode;
 }
 
-/// 关键词配置（集中管理）
-/// 用于语音交互中的意图识别和流程控制
-/// 每个关键词组对应特定的业务操作意图
-const Map<String, List<String>> keywordGroups = {
-  // 取消/退出操作：终止当前流程
-  'cancel': ['取消', '退出', '停止', '放弃'],
-
-  // 重试操作：重新执行失败或取消的操作
-  'retry': ['重试', '再试', 'retry'],
-
-  // 收信方ID确认：确认输入的收信方ID正确性
-  'confirm': ['确定', '是', '对', 'ok', '好的'],
-
-  // 修改操作：重新输入或修改当前信息
-  'modify': ['修改', '更改', '重说', '重新'],
-
-  // 消息确认：确认消息内容并准备发送
-  'send': ['发送', '发出', '确定', '好发'],
-
-  // 消息重录：重新录制消息内容
-  'rerecord': ['重录', '重新', '再说', '重来'],
-
-  // 澄清请求：当系统无法理解用户输入时使用（预留扩展）
-  'clarify': [],
-};
-
-/// 操作员配置 - 语音助手角色定义（贴近VirtualOperator类型化）
-/// 每个操作员包含完整的语音交互配置，包括TTS语音、台词脚本和UI主题
-const Map<String, Map<String, dynamic>> operatorConfigs = {
-  'op_system': {
-    // 系统级操作员：简洁高效，适合专业环境
-    // 业务流程：连接建立 -> 收信方ID录入 -> 消息录制 -> 确认发送 -> 连接结束
-    'name': 'System',
-    'description': 'Minimalistic system interface.',
-    'themeColor': Colors.grey, // UI主题色：灰色表示系统级
-    'voicePackageId': 'voice_system', // 语音包标识（预留扩展用）
-    'ttsSid': 0, // TTS语音合成器ID：系统默认语音
-    'portrait': 'images/operators/op_system.png', // 操作员头像路径
-    'scripts': {
-      // 业务流程状态对应的台词配置
-      'greeting': '连接建立。Bipupu接线系统待命。', // 流程开始：连接建立
-      'askRecipientId': '收信方ID录入。', // 流程状态：请求收信方ID
-      'confirmRecipientId':
-          '请确认收信方ID。"{recipientId}"。选择"确定"或"修改"。', // 流程状态：确认收信方ID
-      'guideRecordMessage': '如提供信息，我将执行传输。请在嘟声后说出信息。', // 流程状态：引导录制消息
-      'transcribing': '转写完成', // 流程状态：语音转写中
-      'waiting_effect': 'none', // 等待效果：无（系统风格）
-      'confirmMessage':
-          '请确认内容是否准确。待传输信息为"{message}"。选择"发送"或"重录"。', // 流程状态：确认消息内容
-      'send': '传输已执行。', // 流程状态：消息发送完成
-      'farewell': '连接结束。', // 流程结束：连接关闭
-      'clarify': '抱歉，请再说一遍？', // 异常处理：未识别输入
-      'timeout': '抱歉，请再说一遍？', // 异常处理：超时未响应
-    },
-  },
-  'op_001': {
-    // 专业接线员青年男：亲切专业，适合客服场景
-    // 业务流程：友好问候 -> 引导输入ID -> 确认ID -> 录制消息 -> 确认发送 -> 礼貌结束
-    'name': '专业接线员青年男',
-    'description': '专业、亲切的接线员（青年男声）。',
-    'themeColor': Colors.teal, // UI主题色：青色表示专业亲切
-    'voicePackageId': 'voice_001', // 语音包标识
-    'ttsSid': 0, // TTS语音合成器ID：青年男声
-    'portrait': 'images/operators/op_001.png',
-    'scripts': {
-      'greeting': '您好，这里是 Bipupu 接线台，我是您的接线员。',
-      'askRecipientId': '请告诉我收信方的号码。',
-      'confirmRecipientId': '确认一下，收信方的号码是"{recipientId}"，请说"确定"或"修改"。',
-      'guideRecordMessage': '请在嘟声后说出您要发送的内容，完成后说"好了"或者等待我提示结束。',
-      'transcribing': '我在记录您的内容，请稍等。',
-      'waiting_effect': 'keyboard_sound', // 等待效果：键盘打字声（模拟录入）
-      'confirmMessage': '我记录的是"{message}"，是否发送？说"发送"或"重录"。',
-      'send': '好的，消息已为您发送。',
-      'farewell': '感谢使用，祝您愉快。',
-      'clarify': '抱歉，我没有听清，请再说一遍。',
-      'timeout': '抱歉，能再重复一次吗？',
-    },
-  },
-  'op_002': {
-    // 冷漠高效机器人：简洁直接，适合技术环境
-    // 业务流程：系统连接 -> 输入编号 -> 确认编号 -> 转写消息 -> 确认发送 -> 连接结束
-    'name': '冷漠高效机器人',
-    'description': '冷静、简练的机器人风格接线员。',
-    'themeColor': Colors.indigo, // UI主题色：靛蓝表示科技感
-    'voicePackageId': 'voice_002', // 语音包标识
-    'ttsSid': 1, // TTS语音合成器ID：机器人声
-    'portrait': 'images/operators/op_002.png',
-    'scripts': {
-      'greeting': '系统连接。Bipupu 接线台。',
-      'askRecipientId': '请输入收信方编号。',
-      'confirmRecipientId': '编号"{recipientId}"确认，请回复"确定"或"修改"。',
-      'guideRecordMessage': '请在提示音后开始说话，我将转写并发送。',
-      'transcribing': '转写中，请稍候。',
-      'waiting_effect': 'none', // 等待效果：无（机器人风格）
-      'confirmMessage': '确认内容："{message}"。是否发送？',
-      'send': '已执行发送操作。',
-      'farewell': '连接结束。',
-      'clarify': '未识别内容，请重试。',
-      'timeout': '未检测到语音，请再说一次。',
-    },
-  },
-  'op_003': {
-    // 活泼话痨少女：热情友好，适合休闲场景
-    // 业务流程：热情问候 -> 引导输入 -> 确认输入 -> 录制消息 -> 确认发送 -> 亲切结束
-    'name': '活泼话痨少女',
-    'description': '活泼、热情、喜欢唠叨的接线员（少女声）。',
-    'themeColor': Colors.orange, // UI主题色：橙色表示活泼热情
-    'voicePackageId': 'voice_003', // 语音包标识
-    'ttsSid': 2, // TTS语音合成器ID：少女声
-    'portrait': 'images/operators/op_003.png',
-    'scripts': {
-      'greeting': '嗨～欢迎来到 Bipupu 接线台，我好开心见到你～',
-      'askRecipientId': '快告诉我收信方的号码吧~',
-      'confirmRecipientId': '嗯……号码是"{recipientId}"？说"确定"或者"修改"啦～',
-      'guideRecordMessage': '好了好了，说你要传的话吧，我会认真记下来的，嘟～',
-      'transcribing': '嗯哼，我记下了，马上读给你听～',
-      'waiting_effect': 'keyboard_sound', // 等待效果：键盘打字声（模拟记录）
-      'confirmMessage': '我写的是"{message}"，没错吧？说"发送"就好了哦～',
-      'send': '收到啦～已经帮你发出去了～',
-      'farewell': '拜拜～下次再来玩～',
-      'clarify': '诶？我没听清楚，可以再说一次吗～',
-      'timeout': '抱歉，我没听到你说话，能再来一次吗～',
-    },
-  },
-  'op_004': {
-    // 黑帮顾问中年男：威严沉稳，适合严肃场合
-    // 业务流程：简短问候 -> 要求输入 -> 确认输入 -> 转写消息 -> 确认发送 -> 结束通话
-    'name': '黑帮顾问中年男',
-    'description': '低沉沙哑、稳重威严的中年男声接线员。',
-    'themeColor': Colors.brown, // UI主题色：棕色表示稳重威严
-    'voicePackageId': 'voice_004', // 语音包标识
-    'ttsSid': 3, // TTS语音合成器ID：中年男声
-    'portrait': 'images/operators/op_004.png',
-    'scripts': {
-      'greeting': '喂，接线台已连接。说吧，你想传什么。',
-      'askRecipientId': '告诉我收信方的号码。',
-      'confirmRecipientId': '号码"{recipientId}"是吧？确认请说"确定"，否则说"修改"。',
-      'guideRecordMessage': '开始说吧，我会为你转写并传出去。',
-      'transcribing': '正在转写，请稍候。',
-      'waiting_effect': 'none', // 等待效果：无（严肃风格）
-      'confirmMessage': '内容为"{message}"。是否发送？',
-      'send': '消息已发出，处理完毕。',
-      'farewell': '结束通话。',
-      'clarify': '我没有听清楚，请重复。',
-      'timeout': '你没有说话，请再说一遍。',
-    },
-  },
-};
-
-/// 助手配置管理类
-/// 负责管理语音助手的操作员配置、关键词匹配和脚本获取
-/// 业务流程状态说明：
-/// - greeting: 连接建立，开始交互
-/// - askRecipientId: 请求收信方ID输入
-/// - confirmRecipientId: 确认收信方ID是否正确
-/// - guideRecordMessage: 引导用户录制消息内容
-/// - transcribing: 语音转写处理中
-/// - confirmMessage: 确认消息内容是否准确
-/// - send: 执行消息发送
-/// - farewell: 结束连接
-/// - clarify: 处理未识别的输入
-/// - timeout: 处理用户无响应超时
+/// 助手配置类
 class AssistantConfig {
   static const AssistantConfig _instance = AssistantConfig._internal();
   const AssistantConfig._internal();
@@ -255,17 +94,109 @@ class AssistantConfig {
 
     return script;
   }
+
+  /// 默认操作员列表
+  List<VirtualOperator> get defaultOperators => [
+    VirtualOperator(
+      id: 'op_system',
+      name: '系统',
+      description: '系统默认操作员',
+      themeColor: Colors.grey,
+    ),
+    VirtualOperator(
+      id: 'op_001',
+      name: '专业接线员青年男',
+      description: '专业、亲切的接线员（青年男声）',
+      themeColor: Colors.teal,
+    ),
+    VirtualOperator(
+      id: 'op_002',
+      name: '温柔接线员女声',
+      description: '温柔、耐心的接线员（女声）',
+      themeColor: Colors.pink,
+    ),
+  ];
 }
 
-/// 默认操作员列表（从配置动态生成）
-final List<VirtualOperator> defaultOperators = operatorConfigs.entries.map((
-  entry,
-) {
-  final config = entry.value;
-  return VirtualOperator(
-    id: entry.key,
-    name: config['name'] as String,
-    description: config['description'] as String,
-    themeColor: config['themeColor'] as Color,
-  );
-}).toList();
+/// 关键词组定义
+const Map<String, List<String>> keywordGroups = {
+  'greeting': ['你好', '您好', 'hello', 'hi', '嗨', '早上好', '下午好', '晚上好'],
+  'farewell': ['再见', '拜拜', 'goodbye', 'bye', '下次见', '结束'],
+  'confirm': ['是的', '对的', '正确', '确认', 'ok', '好的', '可以', '行'],
+  'modify': ['修改', '更改', '调整', '改一下', '重新', '不对'],
+  'cancel': ['取消', '不要了', '算了', '停止', '退出'],
+  'send': ['发送', '发出', '发出去', '传送', '传递'],
+  'start': ['开始', '启动', '开启', '出发'],
+  'stop': ['停止', '暂停', '结束', '终止'],
+  'rerecord': ['重录', '重新录', '再录一次', '重新说'],
+  'recipient': ['收信人', '接收方', '对方', '给谁', '发给谁'],
+  'message': ['消息', '信息', '内容', '说什么', '写什么'],
+  'time': ['时间', '几点', '什么时候', '何时'],
+  'weather': ['天气', '气温', '温度', '下雨', '晴天'],
+  'news': ['新闻', '消息', '资讯', '头条'],
+  'help': ['帮助', '帮忙', '怎么用', '如何使用', '说明'],
+};
+
+/// 操作员配置
+const Map<String, Map<String, dynamic>> operatorConfigs = {
+  'op_system': {
+    'name': '系统',
+    'description': '系统默认操作员',
+    'themeColor': Colors.grey,
+    'scripts': {
+      'greeting': '您好，我是Bipupu语音助手。请问您需要什么帮助？',
+      'askRecipientId': '请问您要发送给哪位用户？请提供对方的Bipupu ID。',
+      'confirmRecipientId': '您要发送给用户{recipientId}，对吗？',
+      'guideRecordMessage': '好的，现在请说出您要发送的消息内容。',
+      'recording': '正在录音，请说话...',
+      'transcribing': '正在转写您的语音...',
+      'confirmMessage': '您说的是：{message}，对吗？',
+      'sending': '正在发送消息...',
+      'sent': '消息已成功发送！',
+      'farewell': '感谢使用Bipupu语音助手，再见！',
+      'error': '抱歉，出现了错误。请稍后再试。',
+      'timeout': '等待超时，请重新开始。',
+      'clarify': '抱歉，我没有听清楚。请您再说一遍。',
+    },
+  },
+  'op_001': {
+    'name': '专业接线员青年男',
+    'description': '专业、亲切的接线员（青年男声）',
+    'themeColor': Colors.teal,
+    'scripts': {
+      'greeting': '您好，我是Bipupu专业接线员。很高兴为您服务！',
+      'askRecipientId': '请问您要联系哪位用户？请告诉我对方的Bipupu ID。',
+      'confirmRecipientId': '确认一下，您要联系用户{recipientId}，对吗？',
+      'guideRecordMessage': '好的，现在请您说出要发送的消息内容。',
+      'recording': '正在录音，请开始说话...',
+      'transcribing': '正在处理您的语音，请稍候...',
+      'confirmMessage': '您说的是：{message}，请确认是否正确？',
+      'sending': '正在为您发送消息...',
+      'sent': '消息已成功送达！',
+      'farewell': '感谢您的使用，祝您有美好的一天！',
+      'error': '抱歉，系统出现了一点问题。请您稍后再试。',
+      'timeout': '操作超时，请您重新开始。',
+      'clarify': '抱歉，刚才没有听清楚。请您再重复一遍。',
+    },
+  },
+  'op_002': {
+    'name': '温柔接线员女声',
+    'description': '温柔、耐心的接线员（女声）',
+    'themeColor': Colors.pink,
+    'scripts': {
+      'greeting': '您好呀，我是Bipupu语音助手。有什么可以帮您的吗？',
+      'askRecipientId': '请问您想发送消息给哪位朋友呢？请告诉我对方的Bipupu ID。',
+      'confirmRecipientId': '您是要发送给{recipientId}这位用户，对吗？',
+      'guideRecordMessage': '好的，现在请告诉我您想说的话吧。',
+      'recording': '我在听，请慢慢说...',
+      'transcribing': '正在理解您说的话，请稍等一下哦...',
+      'confirmMessage': '您说的是：{message}，是这样吗？',
+      'sending': '正在为您发送消息，请稍候...',
+      'sent': '太好了，消息已经发送成功啦！',
+      'farewell': '感谢您的使用，期待下次为您服务！',
+      'error': '哎呀，好像出了点小问题。请您稍后再试试看。',
+      'timeout': '等待时间有点长了，我们重新开始好吗？',
+      'clarify': '不好意思，刚才没听清楚呢。请您再说一次好吗？',
+    },
+  },
+};
