@@ -1,0 +1,426 @@
+{% extends "base.html" %} {% block title %}海报管理 - Bipupu{% endblock %} {%
+block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>海报管理</h1>
+    <button
+        class="btn btn-primary"
+        data-bs-toggle="modal"
+        data-bs-target="#posterModal"
+    >
+        <i class="bi bi-plus"></i> 添加海报
+    </button>
+</div>
+
+{% if posters %}
+<div class="row">
+    {% for poster in posters %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <img
+                src="/api/posters/{{ poster.id }}/image/binary"
+                class="card-img-top"
+                alt="{{ poster.title }}"
+                style="height: 200px; object-fit: cover"
+                onerror="
+                    this.src =
+                        'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY2NiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg=='
+                "
+            />
+            <div class="card-body">
+                <h5 class="card-title">{{ poster.title }}</h5>
+                <div
+                    class="d-flex justify-content-between align-items-center mb-2"
+                >
+                    <span
+                        class="badge bg-{{ 'success' if poster.is_active else 'secondary' }}"
+                    >
+                        {{ '激活' if poster.is_active else '未激活' }}
+                    </span>
+                    <small class="text-muted"
+                        >顺序: {{ poster.display_order }}</small
+                    >
+                </div>
+                {% if poster.link_url %}
+                <p class="card-text">
+                    <small>
+                        <a
+                            href="{{ poster.link_url }}"
+                            target="_blank"
+                            class="text-decoration-none"
+                        >
+                            {{ poster.link_url|truncate(30) }}
+                        </a>
+                    </small>
+                </p>
+                {% endif %}
+                <div class="mt-3">
+                    <button
+                        class="btn btn-sm btn-outline-primary"
+                        onclick="editPoster({{ poster.id }})"
+                    >
+                        <i class="bi bi-pencil"></i> 编辑
+                    </button>
+                    <button
+                        class="btn btn-sm btn-outline-danger"
+                        onclick="deletePoster({{ poster.id }})"
+                    >
+                        <i class="bi bi-trash"></i> 删除
+                    </button>
+                </div>
+            </div>
+            <div class="card-footer text-muted">
+                <small
+                    >创建: {{ poster.created_at.strftime('%Y-%m-%d %H:%M')
+                    }}</small
+                >
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5">
+    <div class="mb-3">
+        <i class="bi bi-images" style="font-size: 3rem; color: #6c757d"></i>
+    </div>
+    <h4 class="text-muted">暂无海报</h4>
+    <p class="text-muted">点击右上角按钮添加第一张海报</p>
+</div>
+{% endif %}
+
+<!-- 创建/编辑模态框 -->
+<div class="modal fade" id="posterModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">添加海报</h5>
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                ></button>
+            </div>
+            <form id="posterForm" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">海报标题 *</label>
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="title"
+                            name="title"
+                            required
+                            maxlength="100"
+                        />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="link_url" class="form-label"
+                            >跳转链接</label
+                        >
+                        <input
+                            type="url"
+                            class="form-control"
+                            id="link_url"
+                            name="link_url"
+                            placeholder="https://example.com"
+                            maxlength="500"
+                        />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="display_order" class="form-label"
+                                >显示顺序</label
+                            >
+                            <input
+                                type="number"
+                                class="form-control"
+                                id="display_order"
+                                name="display_order"
+                                value="0"
+                                min="0"
+                            />
+                            <div class="form-text">数字越小显示越靠前</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check mt-4">
+                                <input
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    id="is_active"
+                                    name="is_active"
+                                    checked
+                                />
+                                <label class="form-check-label" for="is_active"
+                                    >激活状态</label
+                                >
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="image_file" class="form-label"
+                            >海报图片 *</label
+                        >
+                        <input
+                            type="file"
+                            class="form-control"
+                            id="image_file"
+                            name="image_file"
+                            accept="image/*"
+                            required
+                        />
+                        <div class="form-text">支持 JPG、PNG 等图片格式</div>
+                    </div>
+
+                    <div id="currentImage" class="mb-3" style="display: none">
+                        <label class="form-label">当前图片</label>
+                        <div>
+                            <img
+                                id="previewImage"
+                                class="img-fluid rounded"
+                                style="max-height: 200px"
+                            />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        data-bs-dismiss="modal"
+                    >
+                        取消
+                    </button>
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                        id="submitBtn"
+                    >
+                        保存
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除</h5>
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                ></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除这张海报吗？此操作不可撤销。</p>
+            </div>
+            <div class="modal-footer">
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal"
+                >
+                    取消
+                </button>
+                <button
+                    type="button"
+                    class="btn btn-danger"
+                    id="confirmDeleteBtn"
+                >
+                    删除
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+    let currentPosterId = null;
+    let isEditing = false;
+    let posterModal = null;
+    let deleteModal = null;
+
+    // 初始化模态框
+    document.addEventListener("DOMContentLoaded", function () {
+        posterModal = new bootstrap.Modal(
+            document.getElementById("posterModal"),
+        );
+        deleteModal = new bootstrap.Modal(
+            document.getElementById("deleteModal"),
+        );
+    });
+
+    // 编辑海报
+    function editPoster(posterId) {
+        currentPosterId = posterId;
+        isEditing = true;
+
+        // 获取海报详情
+        fetch(`/api/posters/${posterId}`)
+            .then((response) => response.json())
+            .then((poster) => {
+                document.getElementById("modalTitle").textContent = "编辑海报";
+                document.getElementById("title").value = poster.title;
+                document.getElementById("link_url").value =
+                    poster.link_url || "";
+                document.getElementById("display_order").value =
+                    poster.display_order;
+                document.getElementById("is_active").checked = poster.is_active;
+                document.getElementById("image_file").required = false;
+                document.getElementById("submitBtn").textContent = "更新";
+
+                // 显示当前图片
+                fetch(`/api/posters/${posterId}/image`)
+                    .then((response) => response.json())
+                    .then((imageData) => {
+                        document.getElementById("previewImage").src =
+                            `data:${imageData.mime_type};base64,${imageData.image_data}`;
+                        document.getElementById("currentImage").style.display =
+                            "block";
+                    })
+                    .catch(() => {
+                        document.getElementById("currentImage").style.display =
+                            "none";
+                    });
+
+                // 显示模态框
+                posterModal.show();
+            })
+            .catch((error) => {
+                alert("加载海报失败: " + error.message);
+            });
+    }
+
+    // 删除海报
+    function deletePoster(posterId) {
+        currentPosterId = posterId;
+        deleteModal.show();
+    }
+
+    // 确认删除
+    document
+        .getElementById("confirmDeleteBtn")
+        .addEventListener("click", function () {
+            if (!currentPosterId) return;
+
+            fetch(`/api/posters/${currentPosterId}`, {
+                method: "DELETE",
+                headers: {
+                    Accept: "application/json",
+                },
+            })
+                .then((response) => {
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        alert("删除失败");
+                    }
+                })
+                .catch((error) => {
+                    alert("删除失败: " + error.message);
+                });
+        });
+
+    // 表单提交
+    document
+        .getElementById("posterForm")
+        .addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            const submitBtn = document.getElementById("submitBtn");
+            submitBtn.disabled = true;
+            submitBtn.textContent = "处理中...";
+
+            const imageFile = document.getElementById("image_file").files[0];
+            const title = document.getElementById("title").value;
+            const link_url = document.getElementById("link_url").value;
+            const display_order =
+                document.getElementById("display_order").value;
+            const is_active = document.getElementById("is_active").checked;
+
+            let url = "/api/posters/";
+            let method = "POST";
+            let body;
+            let headers = {};
+
+            if (isEditing && currentPosterId) {
+                // 编辑模式
+                if (imageFile) {
+                    // 有图片更新：使用图片更新接口（FormData）
+                    url = `/api/posters/${currentPosterId}/image`;
+                    method = "PUT";
+                    const formData = new FormData();
+                    formData.append("image_file", imageFile);
+                    body = formData;
+                } else {
+                    // 无图片更新：使用海报信息更新接口（JSON）
+                    url = `/api/posters/${currentPosterId}`;
+                    method = "PUT";
+                    body = JSON.stringify({
+                        title: title,
+                        link_url: link_url || null,
+                        display_order: parseInt(display_order),
+                        is_active: is_active,
+                    });
+                    headers = {
+                        "Content-Type": "application/json",
+                    };
+                }
+            } else {
+                // 创建模式：使用FormData
+                const formData = new FormData();
+                formData.append("title", title);
+                formData.append("link_url", link_url);
+                formData.append("display_order", display_order);
+                formData.append("is_active", is_active);
+                if (imageFile) {
+                    formData.append("image_file", imageFile);
+                }
+                body = formData;
+            }
+
+            fetch(url, {
+                method: method,
+                headers: headers,
+                body: body,
+            })
+                .then((response) => {
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        return response.json().then((data) => {
+                            throw new Error(data.detail || "操作失败");
+                        });
+                    }
+                })
+                .catch((error) => {
+                    alert("操作失败: " + error.message);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = isEditing ? "更新" : "保存";
+                });
+        });
+
+    // 添加海报按钮
+    document
+        .querySelector('[data-bs-target="#posterModal"]')
+        .addEventListener("click", function () {
+            currentPosterId = null;
+            isEditing = false;
+            document.getElementById("modalTitle").textContent = "添加海报";
+            document.getElementById("posterForm").reset();
+            document.getElementById("currentImage").style.display = "none";
+            document.getElementById("image_file").required = true;
+            document.getElementById("submitBtn").textContent = "保存";
+
+            // 手动显示模态框
+            posterModal.show();
+        });
+</script>
+{% endblock %}

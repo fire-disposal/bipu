@@ -9,6 +9,7 @@ from app.api.routes.users import router as users_router
 from app.api.routes.contacts import router as contacts_router
 from app.api.routes.websocket import router as websocket_router
 from app.api.routes.service_accounts import router as service_accounts_router
+from app.api.routes.posters import router as posters_router
 
 api_router = APIRouter()
 
@@ -22,6 +23,7 @@ api_router.include_router(profile_router, prefix="/profile", tags=["用户资料
 api_router.include_router(users_router, tags=["用户"])
 api_router.include_router(contacts_router, prefix="/contacts", tags=["联系人"])
 api_router.include_router(service_accounts_router, prefix="/service_accounts", tags=["服务号"])
+api_router.include_router(posters_router, prefix="/posters", tags=["海报"])
 
 # WebSocket 路由
 api_router.include_router(websocket_router)

@@ -1,10 +1,12 @@
 """消息路由 - 重构版本"""
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
+import asyncio
 
 from app.db.database import get_db
 from app.models.user import User
+from app.models.message import Message
 from app.schemas.message import MessageCreate, MessageResponse, MessageListResponse
 from app.schemas.favorite import FavoriteCreate, FavoriteResponse, FavoriteListResponse
 from app.services.message_service import MessageService
@@ -61,6 +63,35 @@ async def get_messages(
         "page": page,
         "page_size": page_size
     }
+
+
+@router.get("/poll", response_model=List[MessageResponse], tags=["消息"])
+async def poll_messages(
+    last_msg_id: int = Query(0, ge=0, description="最后收到的消息ID"),
+    timeout: int = Query(30, ge=1, le=120, description="轮询超时时间（秒）"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    长轮询接口：
+    如果数据库有比 last_msg_id 更新的消息，立即返回。
+    如果没有，则异步等待直到有新消息或超时。
+    """
+    for _ in range(timeout):
+        # 1. 检查数据库是否有新消息
+        new_messages = db.query(Message).filter(
+            Message.receiver_bipupu_id == current_user.bipupu_id,
+            Message.id > last_msg_id
+        ).order_by(Message.created_at.asc()).all()
+
+        if new_messages:
+            return new_messages
+
+        # 2. 如果没有新消息，挂起 1 秒再检查
+        await asyncio.sleep(1)
+
+    # 3. 超时返回空列表，前端收到后会发起下一次 poll
+    return []
 
 
 @router.get("/favorites", response_model=FavoriteListResponse, tags=["消息"])

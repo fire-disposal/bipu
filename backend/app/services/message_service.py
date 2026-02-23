@@ -1,7 +1,7 @@
 """BIPU机消息服务 - 可靠健壮的消息传递"""
 from sqlalchemy.orm import Session
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.models.message import Message
 from app.models.user import User
 from app.models.service_account import ServiceAccount
@@ -36,7 +36,7 @@ class MessageService:
         # 基本频率限制（防止滥用）
         recent_count = db.query(Message).filter(
             Message.sender_bipupu_id == sender.bipupu_id,
-            Message.created_at >= datetime.now(datetime.timezone.utc) - timedelta(minutes=1)
+            Message.created_at >= datetime.now(timezone.utc) - timedelta(minutes=1)
         ).count()
 
         if recent_count > 30:  # 每分钟最多30条
@@ -68,7 +68,8 @@ class MessageService:
             receiver_bipupu_id=message_data.receiver_id,
             content=message_data.content,
             message_type=mt,
-            pattern=message_data.pattern
+            pattern=message_data.pattern,
+            waveform=message_data.waveform
         )
 
         # 如果是发往服务号，检查服务号是否存在
@@ -148,6 +149,7 @@ class MessageService:
                 "content": message.content,
                 "message_type": message.message_type if message.message_type else None,
                 "pattern": message.pattern,
+                "waveform": message.waveform,
                 "created_at": message.created_at.isoformat()
             }
         }

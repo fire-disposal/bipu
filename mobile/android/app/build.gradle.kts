@@ -11,6 +11,7 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -28,6 +29,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        multiDexEnabled = true
     }
 
 
@@ -54,7 +56,7 @@ android {
     // 这样每个APK在Google Play上都有唯一的版本代码
     applicationVariants.all {
         outputs.all {
-            val abi = (this as com.android.build.gradle.internal.api.ApkVariantOutputImpl).getFilter(com.android.build.VariantOutput.FilterType.ABI)
+            val abi = (this as com.android.build.gradle.internal.api.ApkVariantOutputImpl).getFilter(com.android.build.OutputFile.ABI)
             if (abi != null) {
                 val abiVersionCodes = mapOf(
                     "armeabi-v7a" to 1,
@@ -66,6 +68,10 @@ android {
             }
         }
     }
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 
 flutter {

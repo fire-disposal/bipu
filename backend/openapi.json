@@ -379,6 +379,77 @@
         }
       }
     },
+    "/api/messages/poll": {
+      "get": {
+        "tags": [
+          "消息",
+          "消息"
+        ],
+        "summary": "Poll Messages",
+        "description": "长轮询接口：\n如果数据库有比 last_msg_id 更新的消息，立即返回。\n如果没有，则异步等待直到有新消息或超时。",
+        "operationId": "poll_messages_api_messages_poll_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "last_msg_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "最后收到的消息ID",
+              "default": 0,
+              "title": "Last Msg Id"
+            },
+            "description": "最后收到的消息ID"
+          },
+          {
+            "name": "timeout",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 120,
+              "minimum": 1,
+              "description": "轮询超时时间（秒）",
+              "default": 30,
+              "title": "Timeout"
+            },
+            "description": "轮询超时时间（秒）"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MessageResponse"
+                  },
+                  "title": "Response Poll Messages Api Messages Poll Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/messages/favorites": {
       "get": {
         "tags": [
@@ -1716,6 +1787,429 @@
         }
       }
     },
+    "/api/posters/": {
+      "get": {
+        "tags": [
+          "海报",
+          "海报"
+        ],
+        "summary": "Get Posters",
+        "description": "获取海报列表（管理用）",
+        "operationId": "get_posters_api_posters__get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "页码",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "页码"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "每页数量",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "每页数量"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosterListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "海报",
+          "海报"
+        ],
+        "summary": "Create Poster",
+        "description": "创建海报",
+        "operationId": "create_poster_api_posters__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_poster_api_posters__post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosterResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/posters/active": {
+      "get": {
+        "tags": [
+          "海报",
+          "海报"
+        ],
+        "summary": "Get Active Posters",
+        "description": "获取激活的海报列表（前端轮播用）",
+        "operationId": "get_active_posters_api_posters_active_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 20,
+              "minimum": 1,
+              "description": "返回数量",
+              "default": 10,
+              "title": "Limit"
+            },
+            "description": "返回数量"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PosterResponse"
+                  },
+                  "title": "Response Get Active Posters Api Posters Active Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/posters/{poster_id}": {
+      "get": {
+        "tags": [
+          "海报",
+          "海报"
+        ],
+        "summary": "Get Poster",
+        "description": "获取单个海报详情",
+        "operationId": "get_poster_api_posters__poster_id__get",
+        "parameters": [
+          {
+            "name": "poster_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Poster Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosterResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "海报",
+          "海报"
+        ],
+        "summary": "Update Poster",
+        "description": "更新海报信息",
+        "operationId": "update_poster_api_posters__poster_id__put",
+        "parameters": [
+          {
+            "name": "poster_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Poster Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PosterUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosterResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "海报",
+          "海报"
+        ],
+        "summary": "Delete Poster",
+        "description": "删除海报",
+        "operationId": "delete_poster_api_posters__poster_id__delete",
+        "parameters": [
+          {
+            "name": "poster_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Poster Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/posters/{poster_id}/image": {
+      "get": {
+        "tags": [
+          "海报",
+          "海报"
+        ],
+        "summary": "Get Poster Image",
+        "description": "获取海报图片（JSON格式，包含base64编码）",
+        "operationId": "get_poster_image_api_posters__poster_id__image_get",
+        "parameters": [
+          {
+            "name": "poster_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Poster Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "海报",
+          "海报"
+        ],
+        "summary": "Update Poster Image",
+        "description": "更新海报图片",
+        "operationId": "update_poster_image_api_posters__poster_id__image_put",
+        "parameters": [
+          {
+            "name": "poster_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Poster Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_update_poster_image_api_posters__poster_id__image_put"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosterResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/posters/{poster_id}/image/binary": {
+      "get": {
+        "tags": [
+          "海报",
+          "海报"
+        ],
+        "summary": "Get Poster Image Binary",
+        "description": "获取海报图片（二进制格式，直接用于img标签）",
+        "operationId": "get_poster_image_binary_api_posters__poster_id__image_binary_get",
+        "parameters": [
+          {
+            "name": "poster_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Poster Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/login": {
       "get": {
         "tags": [
@@ -1953,6 +2447,26 @@
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/posters": {
+      "get": {
+        "tags": [
+          "管理后台"
+        ],
+        "summary": "Posters Page",
+        "description": "海报管理页面",
+        "operationId": "posters_page_admin_posters_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           }
@@ -2398,6 +2912,67 @@
           "message_type"
         ],
         "title": "Body_admin_send_message_admin_test_chat_send_post"
+      },
+      "Body_create_poster_api_posters__post": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "海报标题"
+          },
+          "link_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link Url",
+            "description": "点击跳转链接"
+          },
+          "display_order": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Display Order",
+            "description": "显示顺序",
+            "default": 0
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "description": "是否激活",
+            "default": true
+          },
+          "image_file": {
+            "type": "string",
+            "format": "binary",
+            "title": "Image File",
+            "description": "海报图片"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "image_file"
+        ],
+        "title": "Body_create_poster_api_posters__post"
+      },
+      "Body_update_poster_image_api_posters__poster_id__image_put": {
+        "properties": {
+          "image_file": {
+            "type": "string",
+            "format": "binary",
+            "title": "Image File",
+            "description": "新海报图片"
+          }
+        },
+        "type": "object",
+        "required": [
+          "image_file"
+        ],
+        "title": "Body_update_poster_image_api_posters__poster_id__image_put"
       },
       "Body_update_service_push_time_admin_service_accounts__service_id__push_time_post": {
         "properties": {
@@ -2846,6 +3421,21 @@
             ],
             "title": "Pattern",
             "description": "json扩展字段"
+          },
+          "waveform": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waveform",
+            "description": "音频振幅包络数组，0-255整数"
           }
         },
         "type": "object",
@@ -2922,6 +3512,21 @@
             ],
             "title": "Pattern"
           },
+          "waveform": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waveform",
+            "description": "音频振幅包络数组，0-255整数"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -2975,6 +3580,157 @@
           "pages"
         ],
         "title": "PaginatedResponse[BlockedUserResponse]"
+      },
+      "PosterListResponse": {
+        "properties": {
+          "posters": {
+            "items": {
+              "$ref": "#/components/schemas/PosterResponse"
+            },
+            "type": "array",
+            "title": "Posters"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "posters",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "PosterListResponse",
+        "description": "海报列表响应"
+      },
+      "PosterResponse": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Title",
+            "description": "海报标题"
+          },
+          "link_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link Url",
+            "description": "点击跳转链接"
+          },
+          "display_order": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Display Order",
+            "description": "显示顺序，数字越小越靠前",
+            "default": 0
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "description": "是否激活",
+            "default": true
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "PosterResponse",
+        "description": "海报响应Schema"
+      },
+      "PosterUpdate": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title",
+            "description": "海报标题"
+          },
+          "link_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link Url",
+            "description": "点击跳转链接"
+          },
+          "display_order": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Order",
+            "description": "显示顺序"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active",
+            "description": "是否激活"
+          }
+        },
+        "type": "object",
+        "title": "PosterUpdate",
+        "description": "更新海报Schema"
       },
       "ReadyResponse": {
         "properties": {
