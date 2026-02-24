@@ -114,6 +114,21 @@ class AuthStatusNotifier extends Notifier<AuthStatus> {
         throw Exception('登录响应缺少 access_token');
       }
 
+      // 检查字段类型，避免类型转换错误
+      if (data['access_token'] is! String) {
+        throw Exception(
+          'access_token 字段类型错误: ${data['access_token'].runtimeType}',
+        );
+      }
+
+      if (data['expires_in'] == null) {
+        throw Exception('登录响应缺少 expires_in');
+      }
+
+      if (data['expires_in'] is! num) {
+        throw Exception('expires_in 字段类型错误: ${data['expires_in'].runtimeType}');
+      }
+
       final token = Token.fromJson(data);
       debugPrint('[Auth] Token解析成功: ${token.accessToken.substring(0, 20)}...');
       await _saveToken(token);
@@ -138,7 +153,7 @@ class AuthStatusNotifier extends Notifier<AuthStatus> {
       debugPrint('[Auth] 错误类型: ${e.runtimeType}');
       debugPrint('[Auth] 错误堆栈: ${e.toString()}');
       Future.microtask(() {
-        if (state != AuthStatus.registering) {
+        if (state != AuthStatus.loggingIn) {
           debugPrint('[Auth] 状态已变更，跳过更新: $state');
           return;
         }
@@ -235,7 +250,30 @@ class AuthStatusNotifier extends Notifier<AuthStatus> {
         'refresh_token': refreshToken!,
       });
 
-      final token = Token.fromJson(response.data);
+      final data = response.data as Map<String, dynamic>;
+      debugPrint('[Auth] 刷新Token响应数据: $data');
+
+      // 检查必要字段
+      if (data['access_token'] == null) {
+        throw Exception('刷新Token响应缺少 access_token');
+      }
+
+      // 检查字段类型，避免类型转换错误
+      if (data['access_token'] is! String) {
+        throw Exception(
+          'access_token 字段类型错误: ${data['access_token'].runtimeType}',
+        );
+      }
+
+      if (data['expires_in'] == null) {
+        throw Exception('刷新Token响应缺少 expires_in');
+      }
+
+      if (data['expires_in'] is! num) {
+        throw Exception('expires_in 字段类型错误: ${data['expires_in'].runtimeType}');
+      }
+
+      final token = Token.fromJson(data);
       await _saveToken(token);
 
       Future.microtask(() {
