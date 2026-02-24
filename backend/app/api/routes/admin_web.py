@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 from app.db.database import get_db
 from app.models.user import User
 from app.models.message import Message
+from app.models.poster import Poster
 from app.core.security import get_current_superuser_web, authenticate_user, create_access_token
 from app.services.message_service import MessageService
 from app.schemas.message import MessageCreate
@@ -150,6 +151,19 @@ async def admin_messages(
 
 from app.models.service_account import ServiceAccount
 from fastapi import UploadFile, File
+
+@router.get("/posters", tags=["管理后台"])
+async def posters_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser_web)
+):
+    """海报管理页面"""
+    posters = db.query(Poster).order_by(Poster.display_order.asc(), Poster.created_at.desc()).all()
+    return templates.TemplateResponse("posters.html", {
+        "request": request,
+        "posters": posters
+    })
 
 @router.get("/service_accounts", tags=["管理后台"])
 async def admin_services(

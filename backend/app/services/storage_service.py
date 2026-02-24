@@ -1,4 +1,4 @@
-"""头像存储服务 - 简化版本，专注数据库存储"""
+"""图片存储服务 - 简化版本，专注数据库存储"""
 import os
 from PIL import Image
 from fastapi import UploadFile
@@ -10,7 +10,7 @@ logger = get_logger(__name__)
 
 
 class StorageService:
-    """头像存储服务类 - 简化版本，专注数据库存储"""
+    """图片存储服务类 - 简化版本，专注数据库存储"""
 
     @staticmethod
     async def save_avatar(file: UploadFile) -> bytes:
@@ -66,6 +66,73 @@ class StorageService:
             # 图片解码失败，抛出更详细的错误信息
             logger.error(f"头像图片处理失败: {str(e)}")
             raise ValueError(f"头像图片处理失败: {str(e)}")
+        finally:
+            # 确保缓冲区被正确清理
+            image_buffer.close()
+
+    @staticmethod
+    async def save_poster(file: UploadFile) -> bytes:
+        """保存海报图片到数据库并进行优化，返回二进制数据
+
+        流程：
+        1. 读取文件内容到内存
+        2. 验证图片格式和安全性
+        3. 优化图片尺寸，保持宽高比
+        4. 转换为JPEG格式，质量85%
+        5. 返回优化后的二进制数据
+        """
+        # 读取文件内容到内存
+        content = await file.read()
+
+        # 直接从内存数据解码图片，避免文件系统操作
+        image_buffer = BytesIO(content)
+
+        try:
+            # 直接从内存缓冲区打开图片
+            image = Image.open(image_buffer)
+
+            # 验证图片完整性
+            image.verify()
+
+            # 重新打开图片（verify()会关闭图片）
+            image_buffer.seek(0)
+            image = Image.open(image_buffer)
+
+            # 转换为RGB以保存为JPEG
+            if image.mode in ("RGBA", "P", "LA"):
+                image = image.convert("RGB")
+
+            # 海报图片优化设置
+            # 保持宽高比，限制最大宽度为1200像素
+            MAX_WIDTH = 1200
+            MAX_HEIGHT = 800
+
+            # 计算缩放比例
+            width, height = image.size
+            if width > MAX_WIDTH or height > MAX_HEIGHT:
+                # 计算缩放比例，保持宽高比
+                width_ratio = MAX_WIDTH / width
+                height_ratio = MAX_HEIGHT / height
+                ratio = min(width_ratio, height_ratio)
+
+                new_width = int(width * ratio)
+                new_height = int(height * ratio)
+
+                # 使用高质量缩放
+                image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+            # 保存到内存中的BytesIO，质量设置为85%保证海报清晰度
+            output = BytesIO()
+            image.save(output, "JPEG", quality=85, optimize=True, progressive=True)
+            compressed_data = output.getvalue()
+
+            logger.debug(f"海报图片优化完成: 原始大小={len(content)}bytes, 优化后={len(compressed_data)}bytes, 尺寸={image.size}")
+            return compressed_data
+
+        except Exception as e:
+            # 图片解码失败，抛出更详细的错误信息
+            logger.error(f"海报图片处理失败: {str(e)}")
+            raise ValueError(f"海报图片处理失败: {str(e)}")
         finally:
             # 确保缓冲区被正确清理
             image_buffer.close()

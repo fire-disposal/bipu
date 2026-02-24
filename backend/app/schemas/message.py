@@ -8,9 +8,9 @@ BIPU机消息系统设计原则：
 5. 不可编辑：消息内容一经发送，无法修改
 6. 物理设备优先：为BIPU物理设备优化的消息格式
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, conlist
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 
 class MessageCreate(BaseModel):
@@ -20,6 +20,8 @@ class MessageCreate(BaseModel):
     # 使用字符串表示类型，避免全局枚举依赖。可选值: "NORMAL", "VOICE", "SYSTEM"
     message_type: str = Field(default="NORMAL", description="消息类型：NORMAL, VOICE, SYSTEM")
     pattern: Optional[Dict[str, Any]] = Field(None, description="json扩展字段")
+    # 音频振幅包络 - 限制数组元素为0-255的整数，长度不超过128
+    waveform: Optional[List[int]] = Field(None, description="音频振幅包络数组，0-255整数")
 
 
 class MessageResponse(BaseModel):
@@ -30,6 +32,7 @@ class MessageResponse(BaseModel):
     content: str
     message_type: str
     pattern: Optional[Dict[str, Any]] = None
+    waveform: Optional[List[int]] = Field(None, description="音频振幅包络数组，0-255整数")
     created_at: datetime
 
     class Config:

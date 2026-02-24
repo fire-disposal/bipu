@@ -1,0 +1,157 @@
+Resolving dependencies...
+Downloading packages...
+  _fe_analyzer_shared 92.0.0 (96.0.0 available)
+  analyzer 9.0.0 (10.2.0 available)
+  analyzer_buffer 0.3.0 (0.3.1 available)
+  dart_style 3.1.3 (3.1.5 available)
+  lean_builder 0.1.5 (0.1.7 available)
+  meta 1.17.0 (1.18.1 available)
+  retrofit_generator 10.2.1 (10.2.3 available)
+  timezone 0.10.1 (0.11.0 available)
+Got dependencies!
+8 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Analyzing mobile...                                             
+
+warning - Unused import: 'package:retrofit/retrofit.dart' - lib\core\api\api_provider.dart:2:8 - unused_import
+warning - The '!' will have no effect because the receiver can't be null - lib\core\api\rest_client.g.dart:323:24 - unnecessary_non_null_assertion
+warning - The '!' will have no effect because the receiver can't be null - lib\core\api\rest_client.g.dart:769:24 - unnecessary_non_null_assertion
+  error - The getter 'alert' isn't defined for the type 'NotificationsEnabledOptions' - lib\core\services\notification_service.dart:186:23 - undefined_getter
+  error - Undefined name 'IosAuthorizationStatus' - lib\core\services\notification_service.dart:186:32 - undefined_identifier
+  error - The getter 'alert' isn't defined for the type 'NotificationsEnabledOptions' - lib\core\services\notification_service.dart:187:20 - undefined_getter
+  error - Undefined name 'IosAuthorizationStatus' - lib\core\services\notification_service.dart:187:29 - undefined_identifier
+warning - Unused import: '../../../core/api/rest_client.dart' - lib\features\auth\logic\auth_notifier.dart:5:8 - unused_import
+warning - The value of the local variable 'response' isn't used - lib\features\auth\logic\auth_notifier.dart:113:13 - unused_local_variable
+   info - Use the null-aware marker '?' rather than a null check via an 'if' - lib\features\auth\logic\auth_notifier.dart:116:9 - use_null_aware_elements
+warning - This 'onError' handler must return a value assignable to 'HttpResponse<dynamic>', but ends without returning a value - lib\features\auth\logic\auth_notifier.dart:138:48 - body_might_complete_normally_catch_error
+warning - The declaration 'handleLogin' isn't referenced - lib\features\auth\ui\login_page.dart:20:10 - unused_element
+   info - The 'child' argument should be last in widget constructor invocations - lib\features\auth\ui\login_page.dart:173:21 - sort_child_properties_last
+   info - 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre - lib\features\auth\ui\login_page.dart:250:39 - deprecated_member_use
+   info - Unnecessary use of multiple underscores - lib\features\home\ui\home_screen.dart:52:30 - unnecessary_underscores
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\home\ui\home_screen.dart:216:53 - deprecated_member_use
+   info - 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre - lib\features\home\ui\home_screen.dart:289:60 - deprecated_member_use
+   info - Dangling library doc comment - lib\features\message\message.dart:1:1 - dangling_library_doc_comments
+  error - The name 'WidgetBuilder' isn't a type, so it can't be used as a type argument - lib\features\message\message.dart:30:22 - non_type_as_type_argument
+  error - The name 'MessageMainScreen' isn't a class - lib\features\message\message.dart:32:32 - creation_with_non_type
+  error - Undefined name 'ModalRoute' - lib\features\message\message.dart:34:22 - undefined_identifier
+  error - The name 'MessageFilter' isn't defined, so it can't be used in an 'is' expression - lib\features\message\message.dart:35:32 - type_test_with_undefined_name
+warning - Dead code - lib\features\message\message.dart:35:55 - dead_code
+  error - Undefined name 'MessageFilter' - lib\features\message\message.dart:35:55 - undefined_identifier
+  error - The method 'MessageListScreen' isn't defined for the type 'MessageRoutes' - lib\features\message\message.dart:36:16 - undefined_method
+  error - Undefined name 'ModalRoute' - lib\features\message\message.dart:39:22 - undefined_identifier
+warning - Dead code - lib\features\message\message.dart:40:48 - dead_code
+  error - The method 'MessageDetailScreen' isn't defined for the type 'MessageRoutes' - lib\features\message\message.dart:41:16 - undefined_method
+  error - The name 'ServiceSubscriptionScreen' isn't a class - lib\features\message\message.dart:43:41 - creation_with_non_type
+   info - The imported package 'flutter_test' isn't a dependency of the importing package - lib\features\message\test\message_test.dart:1:8 - depend_on_referenced_packages
+  error - Target of URI doesn't exist: '../shared/models/message_model.dart' - lib\features\message\test\message_test.dart:6:8 - uri_does_not_exist
+  error - The function 'MessageResponse' isn't defined - lib\features\message\test\message_test.dart:45:9 - undefined_function
+  error - The function 'MessageResponse' isn't defined - lib\features\message\test\message_test.dart:75:29 - undefined_function
+  error - The function 'MessageResponse' isn't defined - lib\features\message\test\message_test.dart:84:29 - undefined_function
+  error - The function 'MessageResponse' isn't defined - lib\features\message\test\message_test.dart:98:28 - undefined_function
+  error - The function 'MessageResponse' isn't defined - lib\features\message\test\message_test.dart:108:29 - undefined_function
+  error - The function 'MessageResponse' isn't defined - lib\features\message\test\message_test.dart:117:35 - undefined_function
+  error - The function 'MessageResponse' isn't defined - lib\features\message\test\message_test.dart:133:23 - undefined_function
+  error - Const variables must be initialized with a constant value - lib\features\message\test\message_test.dart:166:24 - const_initialized_with_non_constant_value
+  error - The function 'ServiceAccount' isn't defined - lib\features\message\test\message_test.dart:166:24 - undefined_function
+  error - The function 'MessageResponse' isn't defined - lib\features\message\test\message_test.dart:196:23 - undefined_function
+  error - The function 'MessageResponse' isn't defined - lib\features\message\test\message_test.dart:215:9 - undefined_function
+  error - The function 'MessageResponse' isn't defined - lib\features\message\test\message_test.dart:223:9 - undefined_function
+  error - The function 'MessageListResponse' isn't defined - lib\features\message\test\message_test.dart:233:28 - undefined_function
+  error - Undefined name 'MessageType' - lib\features\message\test\message_test.dart:250:14 - undefined_identifier
+  error - Undefined name 'MessageType' - lib\features\message\test\message_test.dart:251:14 - undefined_identifier
+  error - Undefined name 'MessageType' - lib\features\message\test\message_test.dart:252:14 - undefined_identifier
+  error - Undefined name 'MessageType' - lib\features\message\test\message_test.dart:255:14 - undefined_identifier
+  error - Undefined name 'MessageType' - lib\features\message\test\message_test.dart:255:46 - undefined_identifier
+  error - Undefined name 'MessageType' - lib\features\message\test\message_test.dart:256:14 - undefined_identifier
+  error - Undefined name 'MessageType' - lib\features\message\test\message_test.dart:256:45 - undefined_identifier
+  error - Undefined name 'MessageType' - lib\features\message\test\message_test.dart:257:14 - undefined_identifier
+  error - Undefined name 'MessageType' - lib\features\message\test\message_test.dart:257:46 - undefined_identifier
+  error - Undefined name 'MessageType' - lib\features\message\test\message_test.dart:259:9 - undefined_identifier
+  error - Undefined name 'MessageType' - lib\features\message\test\message_test.dart:260:9 - undefined_identifier
+   info - The import of 'package:intl/intl.dart' is unnecessary because all of the used elements are also provided by the import of 'package:shadcn_ui/shadcn_ui.dart' - lib\features\message\ui\message_detail_screen.dart:5:8 - unnecessary_import
+   info - 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre - lib\features\message\ui\message_detail_screen.dart:40:48 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\message\ui\message_detail_screen.dart:40:63 - deprecated_member_use
+   info - 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre - lib\features\message\ui\message_detail_screen.dart:178:31 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\message\ui\message_detail_screen.dart:178:46 - deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps - lib\features\message\ui\message_detail_screen.dart:234:50 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\message\ui\message_detail_screen.dart:239:48 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\message\ui\message_detail_screen.dart:243:33 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\message\ui\message_detail_screen.dart:267:50 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\message\ui\message_detail_screen.dart:272:48 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\message\ui\message_detail_screen.dart:276:33 - use_build_context_synchronously
+   info - 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre - lib\features\message\ui\message_detail_screen.dart:349:31 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\message\ui\message_detail_screen.dart:349:46 - deprecated_member_use
+  error - The named parameter 'variant' isn't defined - lib\features\message\ui\message_detail_screen.dart:407:17 - undefined_named_parameter
+  error - The named parameter 'variant' isn't defined - lib\features\message\ui\message_detail_screen.dart:530:21 - undefined_named_parameter
+warning - Unused import: 'package:intl/intl.dart' - lib\features\message\ui\message_list_screen.dart:5:8 - unused_import
+warning - The value of the local variable 'searchQuery' isn't used - lib\features\message\ui\message_list_screen.dart:26:11 - unused_local_variable
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\message\ui\message_main_screen.dart:51:28 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\message\ui\message_main_screen.dart:73:34 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\message\ui\message_main_screen.dart:262:47 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\message\ui\message_main_screen.dart:305:49 - deprecated_member_use
+   info - 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre - lib\features\message\ui\message_main_screen.dart:345:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\message\ui\message_main_screen.dart:345:48 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\message\ui\message_main_screen.dart:413:26 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\message\ui\message_screen.dart:51:28 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\message\ui\message_screen.dart:73:34 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\message\ui\message_screen.dart:262:47 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\message\ui\message_screen.dart:305:49 - deprecated_member_use
+   info - 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre - lib\features\message\ui\message_screen.dart:345:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\message\ui\message_screen.dart:345:48 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\message\ui\message_screen.dart:413:26 - deprecated_member_use
+  error - Undefined name 'serviceAccountsProvider' - lib\features\message\ui\service_subscription_screen.dart:17:44 - undefined_identifier
+  error - The getter 'serviceAccount' isn't defined for the type 'UserSubscriptionResponse' - lib\features\message\ui\service_subscription_screen.dart:145:44 - undefined_getter
+  error - The getter 'serviceAccount' isn't defined for the type 'UserSubscriptionResponse' - lib\features\message\ui\service_subscription_screen.dart:154:48 - undefined_getter
+warning - The receiver can't be null, so the null-aware operator '?.' is unnecessary - lib\features\message\ui\service_subscription_screen.dart:167:64 - invalid_null_aware_operator
+warning - The receiver can't be null, so the null-aware operator '?.' is unnecessary - lib\features\message\ui\service_subscription_screen.dart:178:60 - invalid_null_aware_operator
+warning - The receiver can't be null, so the null-aware operator '?.' is unnecessary - lib\features\message\ui\service_subscription_screen.dart:188:57 - invalid_null_aware_operator
+warning - The receiver can't be null, so the null-aware operator '?.' is unnecessary - lib\features\message\ui\service_subscription_screen.dart:203:59 - invalid_null_aware_operator
+  error - The named parameter 'variant' isn't defined - lib\features\message\ui\service_subscription_screen.dart:269:39 - undefined_named_parameter
+warning - Unused import: 'package:hooks_riverpod/hooks_riverpod.dart' - lib\features\message\ui\widgets\msg_bubble.dart:3:8 - unused_import
+   info - 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre - lib\features\message\ui\widgets\msg_bubble.dart:88:47 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\pager\ui\pager_screen.dart:140:30 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\pager\ui\pager_screen.dart:142:49 - deprecated_member_use
+warning - Unused import: 'package:flutter_hooks/flutter_hooks.dart' - lib\features\profile\ui\profile_screen.dart:2:8 - unused_import
+   info - Unnecessary use of multiple underscores - lib\features\profile\ui\profile_screen.dart:95:38 - unnecessary_underscores
+   info - 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre - lib\features\profile\ui\profile_screen.dart:205:46 - deprecated_member_use
+   info - 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre - lib\features\profile\ui\profile_screen.dart:218:34 - deprecated_member_use
+  error - Missing concrete implementations of '_$MessageCreate.toJson', 'getter _$MessageCreate.content', 'getter _$MessageCreate.messageType', 'getter _$MessageCreate.pattern', and 2 more - lib\shared\models\message_model.dart:29:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$MessageResponse.toJson', 'getter _$MessageResponse.content', 'getter _$MessageResponse.createdAt', 'getter _$MessageResponse.id', and 5 more - lib\shared\models\message_model.dart:53:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$MessageListResponse.toJson', 'getter _$MessageListResponse.messages', 'getter _$MessageListResponse.page', 'getter _$MessageListResponse.pageSize', and 1 more - lib\shared\models\message_model.dart:86:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$FavoriteCreate.toJson' and 'getter _$FavoriteCreate.note' - lib\shared\models\message_model.dart:107:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$FavoriteResponse.toJson', 'getter _$FavoriteResponse.createdAt', 'getter _$FavoriteResponse.id', 'getter _$FavoriteResponse.messageId', and 2 more - lib\shared\models\message_model.dart:119:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$FavoriteListResponse.toJson', 'getter _$FavoriteListResponse.favorites', 'getter _$FavoriteListResponse.page', 'getter _$FavoriteListResponse.pageSize', and 1 more - lib\shared\models\message_model.dart:148:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$MessageModel.toJson', 'getter _$MessageModel.content', 'getter _$MessageModel.id', 'getter _$MessageModel.isOwn', and 5 more - lib\shared\models\message_model.dart:169:7 - non_abstract_class_inherits_abstract_member
+warning - The declaration '_parseDateTime' isn't referenced - lib\shared\models\message_model.dart:200:11 - unused_element
+  error - Missing concrete implementations of '_$ServiceAccountResponse.toJson', 'getter _$ServiceAccountResponse.avatarUrl', 'getter _$ServiceAccountResponse.createdAt', 'getter _$ServiceAccountResponse.description', and 4 more - lib\shared\models\service_account_model.dart:8:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$SubscriptionSettingsBase.toJson', 'getter _$SubscriptionSettingsBase.isEnabled', and 'getter _$SubscriptionSettingsBase.pushTime' - lib\shared\models\service_account_model.dart:38:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$SubscriptionSettingsUpdate.toJson', 'getter _$SubscriptionSettingsUpdate.isEnabled', and 'getter _$SubscriptionSettingsUpdate.pushTime' - lib\shared\models\service_account_model.dart:53:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$SubscriptionSettingsResponse.toJson', 'getter _$SubscriptionSettingsResponse.isEnabled', 'getter _$SubscriptionSettingsResponse.pushTime', 'getter _$SubscriptionSettingsResponse.pushTimeSource', and 4 more - lib\shared\models\service_account_model.dart:68:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$UserSubscriptionResponse.toJson', 'getter _$UserSubscriptionResponse.service', and 'getter _$UserSubscriptionResponse.settings' - lib\shared\models\service_account_model.dart:101:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$UserSubscriptionList.toJson', 'getter _$UserSubscriptionList.subscriptions', and 'getter _$UserSubscriptionList.total' - lib\shared\models\service_account_model.dart:116:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$ServiceAccountList.toJson', 'getter _$ServiceAccountList.items', and 'getter _$ServiceAccountList.total' - lib\shared\models\service_account_model.dart:131:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$ServiceAccountModel.toJson', 'getter _$ServiceAccountModel.avatarUrl', 'getter _$ServiceAccountModel.description', 'getter _$ServiceAccountModel.displayName', and 8 more - lib\shared\models\service_account_model.dart:182:7 - non_abstract_class_inherits_abstract_member
+  error - Undefined class 'TimeOfDay' - lib\shared\models\service_account_model.dart:231:10 - undefined_class
+  error - The method 'TimeOfDay' isn't defined for the type 'TimeUtils' - lib\shared\models\service_account_model.dart:245:14 - undefined_method
+  error - Undefined class 'TimeOfDay' - lib\shared\models\service_account_model.dart:252:28 - undefined_class
+  error - Missing concrete implementations of '_$CosmicProfile.toJson', 'getter _$CosmicProfile.age', 'getter _$CosmicProfile.bazi', 'getter _$CosmicProfile.birthTime', and 5 more - lib\shared\models\user_model.dart:8:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$UserModel.toJson', 'getter _$UserModel.avatarUrl', 'getter _$UserModel.bipupuId', 'getter _$UserModel.cosmicProfile', and 8 more - lib\shared\models\user_model.dart:60:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$UserCreate.toJson', 'getter _$UserCreate.nickname', 'getter _$UserCreate.password', and 'getter _$UserCreate.username' - lib\shared\models\user_model.dart:147:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$UserLogin.toJson', 'getter _$UserLogin.password', and 'getter _$UserLogin.username' - lib\shared\models\user_model.dart:165:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$Token.toJson', 'getter _$Token.accessToken', 'getter _$Token.expiresIn', 'getter _$Token.refreshToken', and 2 more - lib\shared\models\user_model.dart:180:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$TokenRefresh.toJson' and 'getter _$TokenRefresh.refreshToken' - lib\shared\models\user_model.dart:203:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$UserUpdate.toJson', 'getter _$UserUpdate.cosmicProfile', and 'getter _$UserUpdate.nickname' - lib\shared\models\user_model.dart:215:7 - non_abstract_class_inherits_abstract_member
+  error - Missing concrete implementations of '_$UserPasswordUpdate.toJson', 'getter _$UserPasswordUpdate.newPassword', and 'getter _$UserPasswordUpdate.oldPassword' - lib\shared\models\user_model.dart:230:7 - non_abstract_class_inherits_abstract_member
+warning - Unused import: 'package:shadcn_ui/shadcn_ui.dart' - lib\shared\widgets\service_account_avatar.dart:6:8 - unused_import
+warning - Unused import: 'dart:ui' - lib\shared\widgets\user_avatar.dart:2:8 - unused_import
+warning - Unused import: 'package:shadcn_ui/shadcn_ui.dart' - lib\shared\widgets\user_avatar.dart:7:8 - unused_import
+warning - Unused import: '../../core/theme/design_system.dart' - lib\shared\widgets\user_avatar.dart:9:8 - unused_import
+   info - 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre - lib\shared\widgets\user_avatar.dart:313:54 - deprecated_member_use
+  error - The argument type 'RepaintBoundary' can't be assigned to the parameter type 'RenderBox?'.  - lib\shared\widgets\waveform_image_exporter.dart:164:18 - argument_type_not_assignable
+  error - The named parameter 'size' isn't defined - lib\shared\widgets\waveform_image_exporter.dart:167:11 - undefined_named_parameter
+  error - The method 'RenderObjectToViewAdapter' isn't defined for the type 'WaveformImageExporter' - lib\shared\widgets\waveform_image_exporter.dart:178:27 - undefined_method
+  error - Mixins can't be instantiated - lib\shared\widgets\waveform_image_exporter.dart:179:21 - mixin_instantiate
+  error - The method 'toImage' isn't defined for the type 'RepaintBoundary' - lib\shared\widgets\waveform_image_exporter.dart:191:43 - undefined_method
+warning - Unused import: '../../core/theme/design_system.dart' - lib\shared\widgets\waveform_visualizer.dart:7:8 - unused_import
+
+140 issues found. (ran in 2.9s)

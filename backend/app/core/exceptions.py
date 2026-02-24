@@ -2,6 +2,7 @@
 
 from typing import Optional, Dict, Any, Union, Awaitable
 from fastapi import HTTPException, status, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 from starlette.responses import RedirectResponse
 from app.core.logging import get_logger
@@ -112,6 +113,37 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 
     return JSONResponse(
         status_code=exc.status_code,
+        content=error_response
+    )
+
+
+async def request_validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """处理请求验证异常"""
+    logger.warning(f"Request Validation Error: {exc.errors()}")
+
+    # 提取错误信息
+    error_details = []
+    for error in exc.errors():
+        error_details.append({
+            "loc": error.get("loc", []),
+            "msg": error.get("msg", ""),
+            "type": error.get("type", "")
+        })
+
+    error_response = {
+        "success": False,
+        "error": {
+            "type": "RequestValidationError",
+            "message": "请求数据验证失败",
+            "code": "422",
+            "details": {
+                "validation_errors": error_details
+            }
+        }
+    }
+
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content=error_response
     )
 
