@@ -5,7 +5,9 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/polling_service.dart';
 import 'core/services/message_forwarder.dart';
+import 'core/services/toast_service.dart';
 import 'core/bluetooth/ble_manager.dart';
+
 import 'features/home/ui/home_screen.dart';
 import 'features/pager/ui/pager_screen.dart';
 import 'features/message/ui/message_screen.dart';
@@ -21,37 +23,44 @@ class App extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = useState(0);
     final authStatus = ref.watch(authStatusNotifierProvider);
-    final pollingService = ref.watch(pollingServiceProvider);
-    final bleManager = ref.watch(bleManagerProvider);
-    final messageForwarder = ref.watch(messageForwarderProvider);
+
+    // 使用 read 而不是 watch 来获取服务实例，避免不必要的重建
+    final pollingService = ref.read(pollingServiceProvider);
+    final bleManager = ref.read(bleManagerProvider);
+    final messageForwarder = ref.read(messageForwarderProvider);
 
     // 监听认证状态变化，启动/停止服务
     useEffect(() {
+      // 保存服务引用，避免在异步操作中使用可能变化的引用
+      final currentPollingService = pollingService;
+      final currentBleManager = bleManager;
+      final currentMessageForwarder = messageForwarder;
+
       if (authStatus == AuthStatus.authenticated) {
         // 初始化蓝牙管理器
-        bleManager.initialize().catchError((e) {
+        currentBleManager.initialize().catchError((e) {
           debugPrint('蓝牙管理器初始化失败: $e');
         });
 
         // 启动轮询服务
-        pollingService.start();
+        currentPollingService.start();
 
         // 启动消息转发服务
-        messageForwarder.start().catchError((e) {
+        currentMessageForwarder.start().catchError((e) {
           debugPrint('消息转发服务启动失败: $e');
         });
-      } else {
-        // 停止所有服务
-        pollingService.stop();
-        messageForwarder.stop().catchError((e) {
+      } else if (authStatus == AuthStatus.unauthenticated) {
+        // 只在未认证状态时停止服务
+        currentPollingService.stop();
+        currentMessageForwarder.stop().catchError((e) {
           debugPrint('消息转发服务停止失败: $e');
         });
       }
 
       return () {
         // 清理时停止所有服务
-        pollingService.stop();
-        messageForwarder.stop().catchError((e) {
+        currentPollingService.stop();
+        currentMessageForwarder.stop().catchError((e) {
           debugPrint('消息转发服务停止失败: $e');
         });
       };
@@ -59,17 +68,23 @@ class App extends HookConsumerWidget {
 
     // 监听应用生命周期状态
     useEffect(() {
+      // 保存服务引用
+      final currentPollingService = pollingService;
+      final currentMessageForwarder = messageForwarder;
+
       final observer = AppLifecycleObserver(
-        pollingService: pollingService,
-        messageForwarder: messageForwarder,
+        pollingService: currentPollingService,
+        messageForwarder: currentMessageForwarder,
       );
 
       WidgetsBinding.instance.addObserver(observer);
 
       return () {
         WidgetsBinding.instance.removeObserver(observer);
+        // 清理服务资源
+        pollingService.dispose();
       };
-    }, [pollingService, messageForwarder]);
+    }, []);
 
     // 根据认证状态显示不同内容
     if (authStatus == AuthStatus.unknown) {
@@ -88,20 +103,25 @@ class App extends HookConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: ref.watch(appThemeProvider),
       home: Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.primary,
+        body: Stack(
+          children: [
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Bipupu - 宇宙传讯',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ],
               ),
-              const SizedBox(height: 24),
-              Text(
-                'Bipupu - 宇宙传讯',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            ],
-          ),
+            ),
+            const ToastContainer(),
+          ],
         ),
       ),
     );
@@ -111,7 +131,9 @@ class App extends HookConsumerWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ref.watch(appThemeProvider),
-      home: const LoginPage(),
+      home: Scaffold(
+        body: Stack(children: const [LoginPage(), ToastContainer()]),
+      ),
     );
   }
 
@@ -124,13 +146,18 @@ class App extends HookConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: ref.watch(appThemeProvider),
       home: Scaffold(
-        body: IndexedStack(
-          index: currentIndex.value,
-          children: const [
-            HomeScreen(),
-            PagerScreen(),
-            MessageScreen(),
-            ProfileScreen(),
+        body: Stack(
+          children: [
+            IndexedStack(
+              index: currentIndex.value,
+              children: const [
+                HomeScreen(),
+                PagerScreen(),
+                MessageScreen(),
+                ProfileScreen(),
+              ],
+            ),
+            const ToastContainer(),
           ],
         ),
         bottomNavigationBar: BottomNavigationBar(
@@ -189,11 +216,10 @@ class AppLifecycleObserver extends WidgetsBindingObserver {
         pollingService.resume();
         break;
       case AppLifecycleState.paused:
-        // 应用进入后台
-        pollingService.pause();
-        break;
       case AppLifecycleState.inactive:
-        // 应用不活跃
+      case AppLifecycleState.hidden:
+        // 应用进入后台或不活跃
+        pollingService.pause();
         break;
       case AppLifecycleState.detached:
         // 应用被销毁
@@ -201,10 +227,6 @@ class AppLifecycleObserver extends WidgetsBindingObserver {
         messageForwarder.stop().catchError((e) {
           debugPrint('消息转发服务停止失败: $e');
         });
-        break;
-      case AppLifecycleState.hidden:
-        // 应用被隐藏
-        pollingService.pause();
         break;
     }
   }

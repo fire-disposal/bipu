@@ -1,6 +1,6 @@
+import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../../core/api/api_provider.dart';
 import '../../../shared/models/user_model.dart';
@@ -28,40 +28,55 @@ enum AuthStatus {
 
 /// 认证状态提供者（使用 Notifier 模式）
 final authStatusNotifierProvider =
-    NotifierProvider<AuthStatusNotifier, AuthStatus>(
-      () => AuthStatusNotifier(),
-    );
+    NotifierProvider<AuthStatusNotifier, AuthStatus>(AuthStatusNotifier.new);
 
 class AuthStatusNotifier extends Notifier<AuthStatus> {
   @override
   AuthStatus build() {
     // 初始化时检查认证状态
-    _checkAuth();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAuth();
+    });
     return AuthStatus.unknown;
+  }
+
+  /// 手动检查认证状态（用于调试）
+  Future<void> debugCheckAuth() async {
+    debugPrint('[Auth] 手动检查认证状态...');
+    await _checkAuth();
+    debugPrint('[Auth] 当前状态: $state');
   }
 
   /// 检查认证状态
   Future<void> _checkAuth() async {
     try {
+      debugPrint('[Auth] 开始检查认证状态...');
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('access_token');
       final expiry = prefs.getInt('token_expiry');
 
+      debugPrint('[Auth] Token存在: ${token != null && token.isNotEmpty}');
+      debugPrint('[Auth] Token过期时间: $expiry');
+
       if (token != null && token.isNotEmpty) {
         // 检查 token 是否过期
         final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        debugPrint('[Auth] 当前时间戳: $now');
+
         if (expiry != null && expiry > now) {
           // Token 有效，已登录
           state = AuthStatus.authenticated;
           debugPrint('[Auth] 已登录（token 有效）');
         } else {
           // Token 过期，尝试刷新
+          debugPrint('[Auth] Token已过期或即将过期');
           final refreshToken = prefs.getString('refresh_token');
           if (refreshToken != null && refreshToken.isNotEmpty) {
+            debugPrint('[Auth] 尝试刷新Token...');
             await _refreshTokenInternal(refreshToken);
           } else {
             state = AuthStatus.unauthenticated;
-            debugPrint('[Auth] 未登录（token 过期）');
+            debugPrint('[Auth] 未登录（token 过期且无refresh token）');
           }
         }
       } else {
@@ -77,24 +92,58 @@ class AuthStatusNotifier extends Notifier<AuthStatus> {
   /// 用户登录
   Future<bool> login(String username, String password) async {
     state = AuthStatus.loggingIn;
+    debugPrint('[Auth] 开始登录，用户名: $username');
 
     try {
       final restClient = ref.read(restClientProvider);
+      debugPrint('[Auth] 调用登录API...');
       final response = await restClient.login({
         'username': username,
         'password': password,
       });
 
+      debugPrint('[Auth] 登录API响应状态码: ${response.response.statusCode}');
+      debugPrint('[Auth] 响应数据: ${response.data}');
+
       // 解析 Token
-      final token = Token.fromJson(response.data);
+      final data = response.data as Map<String, dynamic>;
+      debugPrint('[Auth] 原始响应数据: $data');
+
+      // 检查必要字段
+      if (data['access_token'] == null) {
+        throw Exception('登录响应缺少 access_token');
+      }
+
+      final token = Token.fromJson(data);
+      debugPrint('[Auth] Token解析成功: ${token.accessToken.substring(0, 20)}...');
       await _saveToken(token);
 
-      state = AuthStatus.authenticated;
-      debugPrint('[Auth] 登录成功：${token.user?.username}');
+      // 验证token是否保存成功
+      final prefs = await SharedPreferences.getInstance();
+      final savedToken = prefs.getString('access_token');
+      debugPrint('[Auth] Token保存验证: ${savedToken != null ? "成功" : "失败"}');
+
+      // 使用 Future.microtask 确保在下一个事件循环中更新状态
+      Future.microtask(() {
+        if (state != AuthStatus.loggingIn) {
+          debugPrint('[Auth] 状态已变更，跳过更新: $state');
+          return;
+        }
+        state = AuthStatus.authenticated;
+        debugPrint('[Auth] 登录成功，状态更新为authenticated：${token.user?.username}');
+      });
       return true;
     } catch (e) {
       debugPrint('[Auth] 登录失败：$e');
-      state = AuthStatus.unauthenticated;
+      debugPrint('[Auth] 错误类型: ${e.runtimeType}');
+      debugPrint('[Auth] 错误堆栈: ${e.toString()}');
+      Future.microtask(() {
+        if (state != AuthStatus.registering) {
+          debugPrint('[Auth] 状态已变更，跳过更新: $state');
+          return;
+        }
+        state = AuthStatus.unauthenticated;
+      });
       return false;
     }
   }
@@ -118,7 +167,13 @@ class AuthStatusNotifier extends Notifier<AuthStatus> {
       debugPrint('[Auth] 注册成功');
 
       // 注册后不自动登录，让用户手动登录
-      state = AuthStatus.unauthenticated;
+      Future.microtask(() {
+        if (state != AuthStatus.registering) {
+          debugPrint('[Auth] 状态已变更，跳过更新: $state');
+          return;
+        }
+        state = AuthStatus.unauthenticated;
+      });
       return true;
     } catch (e) {
       debugPrint('[Auth] 注册失败：$e');
@@ -145,8 +200,14 @@ class AuthStatusNotifier extends Notifier<AuthStatus> {
 
     // 清除本地存储
     await _clearToken();
-    state = AuthStatus.unauthenticated;
-    debugPrint('[Auth] 登出成功');
+    Future.microtask(() {
+      if (state != AuthStatus.loggingOut) {
+        debugPrint('[Auth] 状态已变更，跳过更新: $state');
+        return;
+      }
+      state = AuthStatus.unauthenticated;
+      debugPrint('[Auth] 登出成功');
+    });
   }
 
   /// 刷新 Token
@@ -171,19 +232,23 @@ class AuthStatusNotifier extends Notifier<AuthStatus> {
     try {
       final restClient = ref.read(restClientProvider);
       final response = await restClient.refreshToken({
-        'refresh_token': refreshToken,
+        'refresh_token': refreshToken!,
       });
 
       final token = Token.fromJson(response.data);
       await _saveToken(token);
 
-      state = AuthStatus.authenticated;
+      Future.microtask(() {
+        state = AuthStatus.authenticated;
+      });
       debugPrint('[Auth] Token 刷新成功');
       return true;
     } catch (e) {
       debugPrint('[Auth] Token 刷新失败：$e');
       await _clearToken();
-      state = AuthStatus.unauthenticated;
+      Future.microtask(() {
+        state = AuthStatus.unauthenticated;
+      });
       return false;
     }
   }
@@ -191,13 +256,35 @@ class AuthStatusNotifier extends Notifier<AuthStatus> {
   /// 保存 Token 到本地存储
   Future<void> _saveToken(Token token) async {
     final prefs = await SharedPreferences.getInstance();
+    debugPrint(
+      '[Auth] 保存access_token: ${token.accessToken.substring(0, 20)}...',
+    );
     await prefs.setString('access_token', token.accessToken);
+
     if (token.refreshToken != null) {
+      debugPrint(
+        '[Auth] 保存refresh_token: ${token.refreshToken!.substring(0, 20)}...',
+      );
       await prefs.setString('refresh_token', token.refreshToken!);
+    } else {
+      debugPrint('[Auth] 无refresh_token');
     }
+
     // 保存过期时间（秒转毫秒）
     final expiry = DateTime.now().add(Duration(seconds: token.expiresIn));
-    await prefs.setInt('token_expiry', expiry.millisecondsSinceEpoch ~/ 1000);
+    final expiryTimestamp = expiry.millisecondsSinceEpoch ~/ 1000;
+    debugPrint('[Auth] Token过期时间: $expiryTimestamp (${token.expiresIn}秒后)');
+    await prefs.setInt('token_expiry', expiryTimestamp);
+
+    // 验证保存
+    final savedToken = prefs.getString('access_token');
+    final savedExpiry = prefs.getInt('token_expiry');
+    debugPrint(
+      '[Auth] 保存验证 - access_token: ${savedToken != null ? "成功" : "失败"}',
+    );
+    debugPrint(
+      '[Auth] 保存验证 - token_expiry: ${savedExpiry != null ? "成功" : "失败"}',
+    );
   }
 
   /// 清除本地存储的 Token

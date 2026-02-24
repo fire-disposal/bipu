@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import '../config/app_config.dart';
 
 /// 头像 API 服务提供者
 final avatarApiProvider = Provider<AvatarApiService>((ref) {
@@ -21,7 +22,7 @@ class AvatarApiService {
   /// [bipupuId] 用户的 bipupu_id
   /// 返回头像的完整 URL 字符串
   String getUserAvatarUrl(String bipupuId) {
-    return 'http://localhost:8000/api/profile/avatar/$bipupuId';
+    return AppConfig.getUserAvatarUrl(bipupuId);
   }
 
   /// 获取服务号头像 URL
@@ -29,7 +30,7 @@ class AvatarApiService {
   /// [serviceName] 服务号名称
   /// 返回头像的完整 URL 字符串
   String getServiceAccountAvatarUrl(String serviceName) {
-    return 'http://localhost:8000/api/service-accounts/$serviceName/avatar';
+    return AppConfig.getServiceAccountAvatarUrl(serviceName);
   }
 
   /// 获取用户头像数据
@@ -134,10 +135,10 @@ class AvatarApiService {
     // 直接使用 Dio 实例，认证头由 _getAuthHeaders 提供
     final dio = Dio(
       BaseOptions(
-        baseUrl: 'http://localhost:8000',
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
-        sendTimeout: const Duration(seconds: 10),
+        baseUrl: AppConfig.baseUrl,
+        connectTimeout: const Duration(seconds: AppConfig.connectTimeout),
+        receiveTimeout: const Duration(seconds: AppConfig.requestTimeout),
+        sendTimeout: const Duration(seconds: AppConfig.sendTimeout),
         headers: await _getAuthHeaders(),
       ),
     );

@@ -6,6 +6,7 @@ import 'package:animate_do/animate_do.dart';
 
 import '../logic/auth_notifier.dart';
 import 'register_page.dart';
+import '../../../core/services/toast_service.dart';
 
 class LoginPage extends HookConsumerWidget {
   const LoginPage({super.key});
@@ -19,29 +20,66 @@ class LoginPage extends HookConsumerWidget {
 
     void handleLogin() async {
       if (usernameController.text.isEmpty || passwordController.text.isEmpty) {
-        errorMessage.value = '请输入用户名和密码';
+        ToastUtils.showError(ref, '请输入用户名和密码');
         return;
       }
 
+      // 保存当前 widget 的 ref
+      final currentRef = ref;
       isLoading.value = true;
-      errorMessage.value = null;
+      debugPrint('[LoginPage] 开始登录，用户名: ${usernameController.text}');
 
       try {
-        final authNotifier = ref.read(authStatusNotifierProvider.notifier);
+        final authNotifier = currentRef.read(
+          authStatusNotifierProvider.notifier,
+        );
         final success = await authNotifier.login(
           usernameController.text,
           passwordController.text,
         );
 
-        if (success && context.mounted) {
-          Navigator.pop(context);
+        // 检查 widget 是否仍然 mounted
+        if (!context.mounted) {
+          debugPrint('[LoginPage] Widget 已卸载，跳过后续处理');
+          return;
+        }
+
+        if (success) {
+          debugPrint('[LoginPage] 登录成功');
+          ToastUtils.showSuccess(currentRef, '登录成功！');
+          // 登录成功后不需要手动导航，因为App widget会根据auth状态自动切换
+          // 只需要等待状态更新即可
         } else {
-          errorMessage.value = '登录失败，请检查用户名和密码';
+          debugPrint('[LoginPage] 登录失败');
+          ToastUtils.showError(currentRef, '登录失败，请检查用户名和密码');
         }
       } catch (e) {
-        errorMessage.value = '登录失败：$e';
+        // 检查 widget 是否仍然 mounted
+        if (!context.mounted) {
+          debugPrint('[LoginPage] Widget 已卸载，跳过错误处理');
+          return;
+        }
+
+        debugPrint('[LoginPage] 登录异常: $e');
+        final errorMsg = e.toString();
+        if (errorMsg.contains('Connection refused') ||
+            errorMsg.contains('网络连接错误')) {
+          ToastUtils.showError(currentRef, '无法连接到服务器，请检查网络连接');
+        } else if (errorMsg.contains('timeout')) {
+          ToastUtils.showError(currentRef, '连接超时，请稍后重试');
+        } else {
+          ToastUtils.showError(
+            currentRef,
+            '登录失败：${e.toString().split(':').last.trim()}',
+          );
+        }
       } finally {
-        isLoading.value = false;
+        // 检查 widget 是否仍然 mounted 且 isLoading 仍然有效
+        if (context.mounted && isLoading.value) {
+          isLoading.value = false;
+        } else {
+          debugPrint('[LoginPage] Widget 已卸载或 isLoading 已 dispose，跳过状态更新');
+        }
       }
     }
 
@@ -78,7 +116,7 @@ class LoginPage extends HookConsumerWidget {
                 ),
                 const SizedBox(height: 48),
 
-                // 错误提示
+                // 错误提示（保留原有错误提示，但主要使用Toast）
                 if (errorMessage.value != null)
                   FadeIn(
                     child: Container(
@@ -148,22 +186,6 @@ class LoginPage extends HookConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      // TODO: 忘记密码功能
-                    },
-                    child: Text(
-                      '忘记密码？',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                ),
                 const SizedBox(height: 32),
 
                 // 登录按钮
@@ -208,50 +230,6 @@ class LoginPage extends HookConsumerWidget {
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.primary,
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 48),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: Divider(
-                        color: Theme.of(context).colorScheme.outlineVariant,
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        '其他方式',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Divider(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerHighest,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      onPressed: () {},
-                      icon: const Icon(Icons.phone_android),
-                      style: IconButton.styleFrom(
-                        backgroundColor: Theme.of(
-                          context,
-                        ).colorScheme.surfaceVariant,
-                        padding: const EdgeInsets.all(16),
                       ),
                     ),
                   ],

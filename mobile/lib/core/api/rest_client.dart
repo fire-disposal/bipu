@@ -5,7 +5,7 @@ part 'rest_client.g.dart';
 
 /// API 客户端定义
 /// 基于后端真实 API 路由定义
-@RestApi(baseUrl: 'http://localhost:8000')
+@RestApi(baseUrl: '')
 abstract class RestClient {
   factory RestClient(Dio dio, {String baseUrl}) = _RestClient;
 

@@ -2,15 +2,17 @@ import 'package:dio/dio.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/app_config.dart';
+
 /// 普通 API 请求的 Dio 客户端
 /// receiveTimeout: 10 秒（适用于普通请求）
 final dioClientProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
-      baseUrl: 'http://localhost:8000', // TODO: 根据环境配置
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-      sendTimeout: const Duration(seconds: 10),
+      baseUrl: AppConfig.baseUrl,
+      connectTimeout: const Duration(seconds: AppConfig.connectTimeout),
+      receiveTimeout: const Duration(seconds: AppConfig.requestTimeout),
+      sendTimeout: const Duration(seconds: AppConfig.sendTimeout),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -45,10 +47,10 @@ final dioClientProvider = Provider<Dio>((ref) {
 final pollingDioClientProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
-      baseUrl: 'http://localhost:8000', // TODO: 根据环境配置
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 45), // 长轮询专用超时
-      sendTimeout: const Duration(seconds: 10),
+      baseUrl: AppConfig.baseUrl,
+      connectTimeout: const Duration(seconds: AppConfig.connectTimeout),
+      receiveTimeout: const Duration(seconds: AppConfig.pollingTimeout),
+      sendTimeout: const Duration(seconds: AppConfig.sendTimeout),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
