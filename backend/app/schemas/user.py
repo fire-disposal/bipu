@@ -117,7 +117,7 @@ class UserStatusUpdate(BaseModel):
 
 class BlockUserRequest(BaseModel):
     """黑名单用户请求"""
-    user_id: int
+    bipupu_id: str
 
 
 class BlockedUserResponse(BaseModel):

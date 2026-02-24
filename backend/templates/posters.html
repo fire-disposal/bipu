@@ -170,8 +170,43 @@ block content %}
                             name="image_file"
                             accept="image/*"
                             required
+                            onchange="previewSelectedImage(this)"
                         />
-                        <div class="form-text">支持 JPG、PNG 等图片格式</div>
+                        <div class="form-text">
+                            支持 JPG、PNG 等图片格式，最大10MB
+                        </div>
+                        <div id="fileInfo" class="mt-2" style="display: none">
+                            <small class="text-muted">
+                                <span id="fileName"></span> (<span
+                                    id="fileSize"
+                                ></span
+                                >)
+                            </small>
+                        </div>
+                    </div>
+
+                    <div
+                        class="mb-3"
+                        id="uploadProgressContainer"
+                        style="display: none"
+                    >
+                        <div class="progress" style="height: 20px">
+                            <div
+                                id="uploadProgress"
+                                class="progress-bar progress-bar-striped progress-bar-animated"
+                                role="progressbar"
+                                style="width: 0%"
+                                aria-valuenow="0"
+                                aria-valuemin="0"
+                                aria-valuemax="100"
+                            >
+                                0%
+                            </div>
+                        </div>
+                        <small
+                            id="uploadStatus"
+                            class="text-muted mt-1"
+                        ></small>
                     </div>
 
                     <div id="currentImage" class="mb-3" style="display: none">
@@ -179,6 +214,21 @@ block content %}
                         <div>
                             <img
                                 id="previewImage"
+                                class="img-fluid rounded"
+                                style="max-height: 200px"
+                            />
+                        </div>
+                    </div>
+
+                    <div
+                        id="selectedImagePreview"
+                        class="mb-3"
+                        style="display: none"
+                    >
+                        <label class="form-label">新图片预览</label>
+                        <div>
+                            <img
+                                id="newPreviewImage"
                                 class="img-fluid rounded"
                                 style="max-height: 200px"
                             />
@@ -263,8 +313,19 @@ block content %}
         isEditing = true;
 
         // 获取海报详情
-        fetch(`/api/posters/${posterId}`)
-            .then((response) => response.json())
+        fetch(`/api/posters/${posterId}`, {
+            signal: AbortSignal.timeout(10000), // 10秒超时
+            headers: {
+                Accept: "application/json",
+                Authorization: `Bearer ${getAuthToken()}`,
+            },
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
             .then((poster) => {
                 document.getElementById("modalTitle").textContent = "编辑海报";
                 document.getElementById("title").value = poster.title;
@@ -279,15 +340,17 @@ block content %}
                 // 显示当前图片
                 document.getElementById("previewImage").src =
                     `/api/posters/${posterId}/image`;
-                document.getElementById("currentImage").style.display =
-                    "block";
-                    });
+                document.getElementById("currentImage").style.display = "block";
 
                 // 显示模态框
                 posterModal.show();
             })
             .catch((error) => {
-                alert("加载海报失败: " + error.message);
+                if (error.name === "AbortError") {
+                    alert("加载海报超时，请稍后重试");
+                } else {
+                    alert("加载海报失败: " + error.message);
+                }
             });
     }
 
@@ -307,7 +370,9 @@ block content %}
                 method: "DELETE",
                 headers: {
                     Accept: "application/json",
+                    Authorization: `Bearer ${getAuthToken()}`,
                 },
+                signal: AbortSignal.timeout(10000), // 10秒超时
             })
                 .then((response) => {
                     if (response.ok) {
@@ -317,7 +382,11 @@ block content %}
                     }
                 })
                 .catch((error) => {
-                    alert("删除失败: " + error.message);
+                    if (error.name === "AbortError") {
+                        alert("删除操作超时，请稍后重试");
+                    } else {
+                        alert("删除失败: " + error.message);
+                    }
                 });
         });
 
@@ -330,6 +399,17 @@ block content %}
             const submitBtn = document.getElementById("submitBtn");
             submitBtn.disabled = true;
             submitBtn.textContent = "处理中...";
+
+            // 显示上传进度
+            const progressContainer = document.getElementById(
+                "uploadProgressContainer",
+            );
+            const progressBar = document.getElementById("uploadProgress");
+            const uploadStatus = document.getElementById("uploadStatus");
+            progressContainer.style.display = "block";
+            progressBar.style.width = "0%";
+            progressBar.textContent = "0%";
+            uploadStatus.textContent = "准备上传...";
 
             const imageFile = document.getElementById("image_file").files[0];
             const title = document.getElementById("title").value;
@@ -379,25 +459,83 @@ block content %}
                 body = formData;
             }
 
-            fetch(url, {
-                method: method,
-                headers: headers,
-                body: body,
-            })
-                .then((response) => {
-                    if (response.ok) {
+            // 创建XMLHttpRequest以支持进度跟踪
+            const xhr = new XMLHttpRequest();
+
+            // 设置超时
+            xhr.timeout = 30000; // 30秒
+
+            // 跟踪上传进度
+            xhr.upload.addEventListener("progress", function (event) {
+                if (event.lengthComputable) {
+                    const percentComplete = Math.round(
+                        (event.loaded / event.total) * 100,
+                    );
+                    progressBar.style.width = percentComplete + "%";
+                    progressBar.textContent = percentComplete + "%";
+                    uploadStatus.textContent = `上传中... ${percentComplete}%`;
+
+                    // 更新按钮文本
+                    submitBtn.textContent = `上传中 ${percentComplete}%`;
+                }
+            });
+
+            xhr.addEventListener("load", function () {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    uploadStatus.textContent = "上传完成，正在处理图片...";
+                    progressBar.style.width = "100%";
+                    progressBar.textContent = "100%";
+                    submitBtn.textContent = "处理中...";
+
+                    // 短暂延迟后刷新页面
+                    setTimeout(() => {
                         location.reload();
-                    } else {
-                        return response.json().then((data) => {
-                            throw new Error(data.detail || "操作失败");
-                        });
+                    }, 500);
+                } else {
+                    let errorMsg = "操作失败";
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        errorMsg = data.detail || errorMsg;
+                    } catch (e) {
+                        errorMsg = `HTTP ${xhr.status}: ${xhr.statusText}`;
                     }
-                })
-                .catch((error) => {
-                    alert("操作失败: " + error.message);
+
+                    alert("操作失败: " + errorMsg);
                     submitBtn.disabled = false;
                     submitBtn.textContent = isEditing ? "更新" : "保存";
-                });
+                    progressContainer.style.display = "none";
+                }
+            });
+
+            xhr.addEventListener("error", function () {
+                alert("网络错误，请检查网络连接后重试");
+                submitBtn.disabled = false;
+                submitBtn.textContent = isEditing ? "更新" : "保存";
+                progressContainer.style.display = "none";
+            });
+
+            xhr.addEventListener("timeout", function () {
+                alert("操作超时，请稍后重试");
+                submitBtn.disabled = false;
+                submitBtn.textContent = isEditing ? "更新" : "保存";
+                progressContainer.style.display = "none";
+            });
+
+            // 发送请求
+            xhr.open(method, url, true);
+
+            // 设置请求头
+            for (const [key, value] of Object.entries(headers)) {
+                xhr.setRequestHeader(key, value);
+            }
+
+            // 设置认证头
+            const token = getAuthToken();
+            if (token) {
+                xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+            }
+
+            xhr.send(body);
         });
 
     // 添加海报按钮
@@ -409,11 +547,84 @@ block content %}
             document.getElementById("modalTitle").textContent = "添加海报";
             document.getElementById("posterForm").reset();
             document.getElementById("currentImage").style.display = "none";
+            document.getElementById("selectedImagePreview").style.display =
+                "none";
+            document.getElementById("fileInfo").style.display = "none";
+            document.getElementById("uploadProgressContainer").style.display =
+                "none";
             document.getElementById("image_file").required = true;
             document.getElementById("submitBtn").textContent = "保存";
 
             // 手动显示模态框
             posterModal.show();
         });
+
+    // 预览选中的图片
+    function previewSelectedImage(input) {
+        const fileInfo = document.getElementById("fileInfo");
+        const fileName = document.getElementById("fileName");
+        const fileSize = document.getElementById("fileSize");
+        const previewContainer = document.getElementById(
+            "selectedImagePreview",
+        );
+        const previewImage = document.getElementById("newPreviewImage");
+
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+
+            // 显示文件信息
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileInfo.style.display = "block";
+
+            // 验证文件大小（10MB限制）
+            const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+            if (file.size > MAX_SIZE) {
+                alert(
+                    `文件大小不能超过10MB，当前文件为${formatFileSize(file.size)}`,
+                );
+                input.value = ""; // 清空文件选择
+                fileInfo.style.display = "none";
+                previewContainer.style.display = "none";
+                return;
+            }
+
+            // 预览图片
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                previewImage.src = e.target.result;
+                previewContainer.style.display = "block";
+            };
+            reader.readAsDataURL(file);
+        } else {
+            fileInfo.style.display = "none";
+            previewContainer.style.display = "none";
+        }
+    }
+
+    // 获取认证token
+    function getAuthToken() {
+        // 首先尝试从cookie获取
+        const cookies = document.cookie.split(";");
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split("=");
+            if (name === "access_token") {
+                // 移除可能的"Bearer "前缀
+                return value.startsWith("Bearer ") ? value.substring(7) : value;
+            }
+        }
+
+        // 如果没有cookie，尝试从localStorage获取
+        return localStorage.getItem("access_token") || "";
+    }
+
+    // 格式化文件大小
+    function formatFileSize(bytes) {
+        if (bytes === 0) return "0 Bytes";
+        const k = 1024;
+        const sizes = ["Bytes", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    }
 </script>
 {% endblock %}

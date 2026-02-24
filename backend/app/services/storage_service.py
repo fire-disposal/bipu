@@ -1,10 +1,14 @@
 """图片存储服务 - 简化版本，专注数据库存储"""
 import os
-from PIL import Image
+from PIL import Image, ImageFile
 from fastapi import UploadFile
 from io import BytesIO
 from typing import Optional
 from app.core.logging import get_logger
+
+# 配置PIL以处理大图片
+ImageFile.LOAD_TRUNCATED_IMAGES = True  # type: ignore
+Image.MAX_IMAGE_PIXELS = 100000000  # 限制最大像素数，防止内存溢出
 
 logger = get_logger(__name__)
 
@@ -84,12 +88,22 @@ class StorageService:
         # 读取文件内容到内存
         content = await file.read()
 
+        # 检查文件大小，防止内存溢出
+        MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50MB
+        if len(content) > MAX_MEMORY_SIZE:
+            raise ValueError(f"图片文件过大，请压缩到{MAX_MEMORY_SIZE // (1024*1024)}MB以内")
+
         # 直接从内存数据解码图片，避免文件系统操作
         image_buffer = BytesIO(content)
 
         try:
             # 直接从内存缓冲区打开图片
             image = Image.open(image_buffer)
+
+            # 检查图片尺寸，防止超大图片
+            MAX_DIMENSION = 10000  # 最大边长
+            if image.width > MAX_DIMENSION or image.height > MAX_DIMENSION:
+                raise ValueError(f"图片尺寸过大，请将边长限制在{MAX_DIMENSION}像素以内")
 
             # 验证图片完整性
             image.verify()
@@ -123,12 +137,29 @@ class StorageService:
 
             # 保存到内存中的BytesIO，质量设置为85%保证海报清晰度
             output = BytesIO()
-            image.save(output, "JPEG", quality=85, optimize=True, progressive=True)
-            compressed_data = output.getvalue()
+            try:
+                image.save(output, "JPEG", quality=85, optimize=True, progressive=True)
+                compressed_data = output.getvalue()
 
-            logger.debug(f"海报图片优化完成: 原始大小={len(content)}bytes, 优化后={len(compressed_data)}bytes, 尺寸={image.size}")
-            return compressed_data
+                # 检查压缩后的大小
+                if len(compressed_data) > 5 * 1024 * 1024:  # 5MB
+                    logger.warning(f"海报图片压缩后仍然较大: {len(compressed_data) // 1024}KB")
+                    # 尝试进一步压缩
+                    output = BytesIO()
+                    image.save(output, "JPEG", quality=75, optimize=True, progressive=True)
+                    compressed_data = output.getvalue()
 
+                logger.debug(f"海报图片优化完成: 原始大小={len(content)//1024}KB, 优化后={len(compressed_data)//1024}KB, 尺寸={image.size}")
+                return compressed_data
+            finally:
+                output.close()
+
+        except MemoryError:
+            logger.error("处理图片时内存不足")
+            raise ValueError("图片处理失败：内存不足，请尝试使用较小的图片")
+        except OSError as e:
+            logger.error(f"图片文件损坏或格式不支持: {str(e)}")
+            raise ValueError("图片文件损坏或格式不支持")
         except Exception as e:
             # 图片解码失败，抛出更详细的错误信息
             logger.error(f"海报图片处理失败: {str(e)}")
@@ -136,8 +167,6 @@ class StorageService:
         finally:
             # 确保缓冲区被正确清理
             image_buffer.close()
-            if 'output' in locals():
-                output.close()
 
     @staticmethod
     def validate_image_content(content: bytes) -> bool:

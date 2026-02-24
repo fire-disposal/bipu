@@ -9,6 +9,7 @@ from app.models.user import User
 from app.schemas.poster import PosterCreate, PosterUpdate, PosterResponse, PosterListResponse
 from app.services.poster_service import PosterService
 from app.core.security import get_current_user, get_current_superuser_web
+from app.core.config import settings
 from app.core.logging import get_logger
 
 router = APIRouter()
@@ -125,6 +126,13 @@ async def create_poster(
 ):
     """创建海报"""
     try:
+        # 验证文件大小
+        if image_file.size and image_file.size > settings.MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"文件大小不能超过 {settings.MAX_FILE_SIZE // (1024*1024)}MB"
+            )
+
         # 构建海报数据
         poster_data = PosterCreate(
             title=title,
@@ -137,6 +145,8 @@ async def create_poster(
         poster = await PosterService.create_poster(db, poster_data, image_file)
         return poster
 
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -167,13 +177,20 @@ async def update_poster_image(
 ):
     """更新海报图片"""
     try:
+        # 验证文件大小
+        if image_file.size and image_file.size > settings.MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"文件大小不能超过 {settings.MAX_FILE_SIZE // (1024*1024)}MB"
+            )
+
         poster = await PosterService.update_poster_image(db, poster_id, image_file)
         if not poster:
             raise HTTPException(status_code=404, detail="海报不存在")
         return poster
 
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"更新海报图片失败: {e}")
         raise HTTPException(status_code=500, detail="更新海报图片失败")

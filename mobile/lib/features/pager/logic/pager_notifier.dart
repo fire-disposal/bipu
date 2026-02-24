@@ -1,5 +1,7 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import '../../../core/api/api_provider.dart';
+import '../../../shared/models/message_model.dart';
 
 /// 传唤台状态
 enum PagerState {
@@ -17,6 +19,9 @@ enum PagerState {
 
   /// 通话中
   connected,
+
+  /// 错误状态
+  error,
 }
 
 /// 传唤台模式
@@ -81,14 +86,48 @@ class PagerNotifier extends Notifier<PagerState> {
   /// 发送消息（手动模式）
   Future<void> sendMessage(String content) async {
     debugPrint('[Pager] 发送消息：$content');
-    // TODO: 调用消息发送 API
-    state = PagerState.connected;
+
+    try {
+      final restClient = ref.read(restClientProvider);
+
+      // 构建消息数据
+      final messageData = {
+        'receiver_id': 'system', // 默认发送给系统，后续可以根据实际需求修改
+        'content': content,
+        'message_type': 'NORMAL',
+      };
+
+      debugPrint('[Pager] 调用消息发送API...');
+      final response = await restClient.sendMessage(messageData);
+
+      if (response.response.statusCode == 200) {
+        debugPrint('[Pager] 消息发送成功');
+        state = PagerState.connected;
+
+        // 发送成功后，可以触发消息列表刷新
+        // ref.invalidate(receivedMessagesProvider);
+      } else {
+        debugPrint('[Pager] 消息发送失败: ${response.response.statusCode}');
+        state = PagerState.error;
+      }
+    } catch (e) {
+      debugPrint('[Pager] 消息发送异常：$e');
+      state = PagerState.error;
+    }
   }
 
   /// 挂断/结束
   void hangup() {
     debugPrint('[Pager] 挂断');
     state = PagerState.idle;
+  }
+
+  /// 清除错误状态
+  void clearError() {
+    if (state == PagerState.error) {
+      debugPrint('[Pager] 清除错误状态');
+      state = PagerState.idle;
+    }
   }
 }
 

@@ -668,7 +668,7 @@
           "黑名单"
         ],
         "summary": "Block User",
-        "description": "拉黑用户\n\n参数：\n- user_id: 要拉黑的用户ID\n\n返回：\n- 成功：返回操作成功消息\n- 失败：404（用户不存在）或400（已拉黑）或500（数据库操作失败）\n\n注意：\n- 需要用户认证\n- 不能拉黑自己\n- 拉黑后，双方将无法互相发送消息\n- 拉黑关系是单向的",
+        "description": "拉黑用户\n\n参数：\n- bipupu_id: 要拉黑的用户 Bipupu ID（业务 ID）\n\n返回：\n- 成功：返回操作成功消息\n- 失败：404（用户不存在）或 400（已拉黑或不能拉黑自己）或 500（数据库操作失败）\n\n注意：\n- 需要用户认证\n- 不能拉黑自己\n- 拉黑后，双方将无法互相发送消息\n- 拉黑关系是单向的",
         "operationId": "block_user_api_blocks_post",
         "security": [
           {
@@ -714,7 +714,7 @@
           "黑名单"
         ],
         "summary": "Get Blocked Users",
-        "description": "获取当前用户的黑名单列表\n\n参数：\n- page: 页码，默认为1\n- size: 每页数量，默认为20，最大100\n\n返回：\n- items: 黑名单用户列表\n- total: 黑名单用户总数\n- page: 当前页码\n- size: 每页数量\n- pages: 总页数\n\n包含信息：\n- 用户基本信息（ID、bipupu_id、用户名、昵称、头像）\n- 拉黑时间\n\n注意：\n- 需要用户认证\n- 返回分页结果，支持分页查询",
+        "description": "获取当前用户的黑名单列表\n\n参数：\n- page: 页码，默认为 1\n- size: 每页数量，默认为 20，最大 100\n\n返回：\n- items: 黑名单用户列表\n- total: 黑名单用户总数\n- page: 当前页码\n- size: 每页数量\n- pages: 总页数\n\n包含信息：\n- 用户基本信息（ID、bipupu_id、用户名、昵称、头像）\n- 拉黑时间\n\n注意：\n- 需要用户认证\n- 返回分页结果，支持分页查询",
         "operationId": "get_blocked_users_api_blocks_get",
         "security": [
           {
@@ -774,15 +774,15 @@
         }
       }
     },
-    "/api/blocks/{user_id}": {
+    "/api/blocks/{bipupu_id}": {
       "delete": {
         "tags": [
           "黑名单",
           "黑名单"
         ],
         "summary": "Unblock User",
-        "description": "解除拉黑用户\n\n参数：\n- user_id: 要解除拉黑的用户ID\n\n返回：\n- 成功：返回操作成功消息\n- 失败：404（用户不存在或未拉黑）或500（数据库操作失败）\n\n注意：\n- 需要用户认证\n- 解除拉黑后，双方可以重新互相发送消息\n- 解除拉黑不会自动添加为联系人",
-        "operationId": "unblock_user_api_blocks__user_id__delete",
+        "description": "解除拉黑用户\n\n参数：\n- bipupu_id: 要解除拉黑的用户 Bipupu ID（业务 ID）\n\n返回：\n- 成功：返回操作成功消息\n- 失败：404（用户不存在或未拉黑）或 500（数据库操作失败）\n\n注意：\n- 需要用户认证\n- 解除拉黑后，双方可以重新互相发送消息\n- 解除拉黑不会自动添加为联系人",
+        "operationId": "unblock_user_api_blocks__bipupu_id__delete",
         "security": [
           {
             "HTTPBearer": []
@@ -790,12 +790,12 @@
         ],
         "parameters": [
           {
-            "name": "user_id",
+            "name": "bipupu_id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "title": "User Id"
+              "type": "string",
+              "title": "Bipupu Id"
             }
           }
         ],
@@ -821,6 +821,156 @@
             }
           }
         }
+      }
+    },
+    "/api/blocks/check/{bipupu_id}": {
+      "get": {
+        "tags": [
+          "黑名单",
+          "黑名单"
+        ],
+        "summary": "Check Block Status",
+        "description": "检查与指定用户的拉黑关系状态\n\n参数：\n- bipupu_id: 要检查的用户 Bipupu ID\n\n返回：\n- is_blocked_by_me: 我是否拉黑了对方\n- is_blocked_by_them: 对方是否拉黑了我\n- mutual_block: 是否互相拉黑\n- user_info: 用户基本信息（如果用户存在）\n\n注意：\n- 需要用户认证\n- 如果用户不存在，返回 404",
+        "operationId": "check_block_status_api_blocks_check__bipupu_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bipupu_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Bipupu Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Check Block Status Api Blocks Check  Bipupu Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/blocks/search": {
+      "get": {
+        "tags": [
+          "黑名单",
+          "黑名单"
+        ],
+        "summary": "Search Blocked Users",
+        "description": "在黑名单中搜索用户\n\n参数：\n- keyword: 搜索关键词，支持用户名、昵称或 bipupu_id 的部分匹配\n- limit: 返回结果数量限制，默认为 10，最大 50\n\n返回：\n- 匹配的黑名单用户列表\n\n注意：\n- 需要用户认证\n- 搜索不区分大小写\n- 返回结果按拉黑时间倒序排列",
+        "operationId": "search_blocked_users_api_blocks_search_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "搜索关键词（用户名、昵称或 bipupu_id）",
+              "title": "Keyword"
+            },
+            "description": "搜索关键词（用户名、昵称或 bipupu_id）"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "description": "返回结果数量限制",
+              "default": 10,
+              "title": "Limit"
+            },
+            "description": "返回结果数量限制"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BlockedUserResponse"
+                  },
+                  "title": "Response Search Blocked Users Api Blocks Search Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/blocks/count": {
+      "get": {
+        "tags": [
+          "黑名单",
+          "黑名单"
+        ],
+        "summary": "Get Block Count",
+        "description": "获取黑名单统计信息\n\n参数：\n- 无\n\n返回：\n- total_blocks: 我拉黑的用户总数\n- total_blocked_by: 拉黑我的用户总数\n- mutual_blocks: 互相拉黑的用户数\n\n注意：\n- 需要用户认证",
+        "operationId": "get_block_count_api_blocks_count_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Block Count Api Blocks Count Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/profile/avatar": {
@@ -2716,6 +2866,305 @@
         }
       }
     },
+    "/admin/test_contacts": {
+      "get": {
+        "tags": [
+          "管理后台"
+        ],
+        "summary": "Admin Test Contacts",
+        "description": "API测试页面 (联系人与黑名单)",
+        "operationId": "admin_test_contacts_admin_test_contacts_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/test_contacts/add": {
+      "post": {
+        "tags": [
+          "管理后台"
+        ],
+        "summary": "Admin Add Contact",
+        "description": "处理添加联系人测试",
+        "operationId": "admin_add_contact_admin_test_contacts_add_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_admin_add_contact_admin_test_contacts_add_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/test_contacts/remove": {
+      "post": {
+        "tags": [
+          "管理后台"
+        ],
+        "summary": "Admin Remove Contact",
+        "description": "处理删除联系人测试",
+        "operationId": "admin_remove_contact_admin_test_contacts_remove_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_admin_remove_contact_admin_test_contacts_remove_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/test_contacts/block": {
+      "post": {
+        "tags": [
+          "管理后台"
+        ],
+        "summary": "Admin Block User",
+        "description": "处理添加黑名单测试",
+        "operationId": "admin_block_user_admin_test_contacts_block_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_admin_block_user_admin_test_contacts_block_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/test_contacts/unblock": {
+      "post": {
+        "tags": [
+          "管理后台"
+        ],
+        "summary": "Admin Unblock User",
+        "description": "处理移除黑名单测试",
+        "operationId": "admin_unblock_user_admin_test_contacts_unblock_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_admin_unblock_user_admin_test_contacts_unblock_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/test_profile": {
+      "get": {
+        "tags": [
+          "管理后台"
+        ],
+        "summary": "Admin Test Profile",
+        "description": "API测试页面 (用户资料设置)",
+        "operationId": "admin_test_profile_admin_test_profile_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/test_profile/avatar": {
+      "post": {
+        "tags": [
+          "管理后台"
+        ],
+        "summary": "Admin Update Avatar",
+        "description": "处理更新头像测试",
+        "operationId": "admin_update_avatar_admin_test_profile_avatar_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_admin_update_avatar_admin_test_profile_avatar_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/test_profile/avatar/delete": {
+      "post": {
+        "tags": [
+          "管理后台"
+        ],
+        "summary": "Admin Delete Avatar",
+        "description": "处理删除头像测试",
+        "operationId": "admin_delete_avatar_admin_test_profile_avatar_delete_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/test_profile/update": {
+      "post": {
+        "tags": [
+          "管理后台"
+        ],
+        "summary": "Admin Update Profile",
+        "description": "处理更新用户资料测试",
+        "operationId": "admin_update_profile_admin_test_profile_update_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_admin_update_profile_admin_test_profile_update_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/test_chat": {
       "get": {
         "tags": [
@@ -2815,14 +3264,14 @@
       },
       "BlockUserRequest": {
         "properties": {
-          "user_id": {
-            "type": "integer",
-            "title": "User Id"
+          "bipupu_id": {
+            "type": "string",
+            "title": "Bipupu Id"
           }
         },
         "type": "object",
         "required": [
-          "user_id"
+          "bipupu_id"
         ],
         "title": "BlockUserRequest",
         "description": "黑名单用户请求"
@@ -2879,6 +3328,43 @@
         "title": "BlockedUserResponse",
         "description": "被拉黑用户响应模型"
       },
+      "Body_admin_add_contact_admin_test_contacts_add_post": {
+        "properties": {
+          "contact_bipupu_id": {
+            "type": "string",
+            "title": "Contact Bipupu Id"
+          },
+          "alias": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alias"
+          }
+        },
+        "type": "object",
+        "required": [
+          "contact_bipupu_id"
+        ],
+        "title": "Body_admin_add_contact_admin_test_contacts_add_post"
+      },
+      "Body_admin_block_user_admin_test_contacts_block_post": {
+        "properties": {
+          "blocked_bipupu_id": {
+            "type": "string",
+            "title": "Blocked Bipupu Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "blocked_bipupu_id"
+        ],
+        "title": "Body_admin_block_user_admin_test_contacts_block_post"
+      },
       "Body_admin_login_admin_login_post": {
         "properties": {
           "username": {
@@ -2896,6 +3382,19 @@
           "password"
         ],
         "title": "Body_admin_login_admin_login_post"
+      },
+      "Body_admin_remove_contact_admin_test_contacts_remove_post": {
+        "properties": {
+          "contact_id": {
+            "type": "integer",
+            "title": "Contact Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "contact_id"
+        ],
+        "title": "Body_admin_remove_contact_admin_test_contacts_remove_post"
       },
       "Body_admin_send_message_admin_test_chat_send_post": {
         "properties": {
@@ -2919,6 +3418,94 @@
           "message_type"
         ],
         "title": "Body_admin_send_message_admin_test_chat_send_post"
+      },
+      "Body_admin_unblock_user_admin_test_contacts_unblock_post": {
+        "properties": {
+          "blocked_id": {
+            "type": "integer",
+            "title": "Blocked Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "blocked_id"
+        ],
+        "title": "Body_admin_unblock_user_admin_test_contacts_unblock_post"
+      },
+      "Body_admin_update_avatar_admin_test_profile_avatar_post": {
+        "properties": {
+          "avatar_file": {
+            "type": "string",
+            "format": "binary",
+            "title": "Avatar File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "avatar_file"
+        ],
+        "title": "Body_admin_update_avatar_admin_test_profile_avatar_post"
+      },
+      "Body_admin_update_profile_admin_test_profile_update_post": {
+        "properties": {
+          "nickname": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nickname"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
+          },
+          "birth_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Date"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          }
+        },
+        "type": "object",
+        "title": "Body_admin_update_profile_admin_test_profile_update_post"
       },
       "Body_create_poster_api_posters__post": {
         "properties": {

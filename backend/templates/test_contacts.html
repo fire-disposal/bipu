@@ -1,0 +1,778 @@
+{% extends "base.html" %} {% block title %}API 测试 (联系人与黑名单) - Bipupu{%
+endblock %} {% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>API 测试 (联系人与黑名单)</h2>
+    <span class="badge bg-info"
+        >{{ user.username }} ({{ user.bipupu_id }})</span
+    >
+</div>
+
+<!-- 联系人管理 -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-person-plus"></i> 添加联系人
+            </div>
+            <div class="card-body">
+                <form id="addContactForm" onsubmit="addContact(event)">
+                    <div class="mb-3">
+                        <label for="contactBipupuId" class="form-label"
+                            >对方 Bipupu ID</label
+                        >
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="contactBipupuId"
+                            required
+                            placeholder="请输入对方的 Bipupu ID"
+                        />
+                    </div>
+                    <div class="mb-3">
+                        <label for="contactAlias" class="form-label"
+                            >备注名 (可选)</label
+                        >
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="contactAlias"
+                            placeholder="给好友的备注名"
+                        />
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        添加联系人
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-people"></i> 联系人列表
+            </div>
+            <div class="card-body">
+                <button
+                    class="btn btn-sm btn-outline-success mb-3"
+                    onclick="getContacts()"
+                >
+                    刷新列表
+                </button>
+                <div id="contactsList" class="list-group">
+                    <div class="text-muted">点击"刷新列表"加载联系人</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 黑名单管理 -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-slash-circle"></i> 拉黑用户
+            </div>
+            <div class="card-body">
+                <form id="blockUserForm" onsubmit="blockUser(event)">
+                    <div class="mb-3">
+                        <label for="blockedBipupuId" class="form-label"
+                            >对方 Bipupu ID</label
+                        >
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="blockedBipupuId"
+                            required
+                            placeholder="请输入要拉黑的用户 Bipupu ID"
+                        />
+                    </div>
+                    <button type="submit" class="btn btn-danger">
+                        拉黑用户
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-search"></i> 检查拉黑状态
+            </div>
+            <div class="card-body">
+                <form id="checkBlockForm" onsubmit="checkBlockStatus(event)">
+                    <div class="mb-3">
+                        <label for="checkBipupuId" class="form-label"
+                            >对方 Bipupu ID</label
+                        >
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="checkBipupuId"
+                            required
+                            placeholder="请输入要检查的用户 Bipupu ID"
+                        />
+                    </div>
+                    <button type="submit" class="btn btn-info">检查状态</button>
+                </form>
+                <div id="blockStatusResult" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <i class="bi bi-graph-up"></i> 黑名单统计
+            </div>
+            <div class="card-body">
+                <button
+                    class="btn btn-sm btn-outline-secondary mb-3"
+                    onclick="getBlockStatistics()"
+                >
+                    获取统计
+                </button>
+                <div id="blockStatistics" class="mt-3">
+                    <div class="text-muted">点击"获取统计"查看数据</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <i class="bi bi-slash-circle-fill"></i> 黑名单列表
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <form
+                        id="searchBlockForm"
+                        onsubmit="searchBlockedUsers(event)"
+                        class="d-flex"
+                    >
+                        <input
+                            type="text"
+                            class="form-control me-2"
+                            id="searchKeyword"
+                            placeholder="搜索用户名、昵称或ID"
+                            required
+                        />
+                        <button type="submit" class="btn btn-outline-warning">
+                            搜索
+                        </button>
+                    </form>
+                </div>
+                <button
+                    class="btn btn-sm btn-outline-warning mb-3"
+                    onclick="getBlacklist()"
+                >
+                    刷新列表
+                </button>
+                <div id="blacklistList" class="list-group">
+                    <div class="text-muted">点击"刷新列表"加载黑名单</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-slash-circle"></i> 取消拉黑
+            </div>
+            <div class="card-body">
+                <form id="unblockUserForm" onsubmit="unblockUserByForm(event)">
+                    <div class="mb-3">
+                        <label for="unblockBipupuId" class="form-label"
+                            >对方 Bipupu ID</label
+                        >
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="unblockBipupuId"
+                            required
+                            placeholder="请输入要取消拉黑的用户 Bipupu ID"
+                        />
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        取消拉黑
+                    </button>
+                </form>
+                <div id="unblockResult" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 测试结果 -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <span>测试结果</span>
+                <small id="apiStatus" class="text-muted">就绪</small>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>请求</h6>
+                        <pre
+                            class="bg-light p-2 border rounded"
+                            id="requestInfo"
+                        >
+等待操作...</pre
+                        >
+                    </div>
+                    <div class="col-md-6">
+                        <h6>响应</h6>
+                        <pre
+                            class="bg-light p-2 border rounded"
+                            id="responseInfo"
+                        >
+等待操作...</pre
+                        >
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+    function getAuthToken() {
+        const cookies = document.cookie.split(";");
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split("=");
+            if (name === "access_token") {
+                return value.startsWith("Bearer ") ? value.substring(7) : value;
+            }
+        }
+        return localStorage.getItem("access_token") || "";
+    }
+
+    function updateRequestInfo(method, url, body = null) {
+        let info = `${method} ${url}`;
+        if (body) {
+            info += `\n\nBody:\n${JSON.stringify(body, null, 2)}`;
+        }
+        document.getElementById("requestInfo").textContent = info;
+    }
+
+    function updateResponseInfo(status, statusText, data) {
+        const info = `状态：${status} ${statusText}\n时间：${new Date().toLocaleTimeString()}\n\n${JSON.stringify(data, null, 2)}`;
+        document.getElementById("responseInfo").textContent = info;
+    }
+
+    function updateStatus(success, message) {
+        const statusEl = document.getElementById("apiStatus");
+        statusEl.textContent = message;
+        statusEl.className = success ? "text-success" : "text-danger";
+    }
+
+    // 获取联系人列表
+    async function getContacts() {
+        const listEl = document.getElementById("contactsList");
+        listEl.innerHTML = '<div class="text-muted">加载中...</div>';
+
+        try {
+            const token = getAuthToken();
+            if (!token) {
+                throw new Error("未找到认证令牌，请重新登录");
+            }
+
+            const response = await fetch("/api/contacts/", {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            const data = await response.json();
+            updateRequestInfo("GET", "/api/contacts/");
+            updateResponseInfo(response.status, response.statusText, data);
+            updateStatus(response.ok, response.ok ? "成功" : "失败");
+
+            if (response.ok && data.contacts && data.contacts.length > 0) {
+                listEl.innerHTML = data.contacts
+                    .map(
+                        (contact) => `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${contact.alias || contact.contact_nickname || contact.contact_username || "未备注"}</strong>
+                        <small class="text-muted">(ID: ${contact.contact_bipupu_id})</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger" onclick="removeContact('${contact.contact_bipupu_id}')">
+                        删除
+                    </button>
+                </div>
+            `,
+                    )
+                    .join("");
+            } else if (response.ok) {
+                listEl.innerHTML = '<div class="text-muted">暂无联系人</div>';
+            } else {
+                listEl.innerHTML = `<div class="text-danger">加载失败：${data.detail || "未知错误"}</div>`;
+            }
+        } catch (error) {
+            listEl.innerHTML = `<div class="text-danger">请求失败：${error.message}</div>`;
+            updateStatus(false, "错误");
+        }
+    }
+
+    // 添加联系人
+    async function addContact(event) {
+        event.preventDefault();
+
+        const contactBipupuId =
+            document.getElementById("contactBipupuId").value;
+        const contactAlias = document.getElementById("contactAlias").value;
+
+        const body = { contact_bipupu_id: contactBipupuId };
+        if (contactAlias) {
+            body.alias = contactAlias;
+        }
+
+        updateRequestInfo("POST", "/api/contacts/", body);
+        document.getElementById("responseInfo").textContent = "请求中...";
+        document.getElementById("apiStatus").textContent = "请求中";
+        document.getElementById("apiStatus").className = "text-warning";
+
+        try {
+            const token = getAuthToken();
+            if (!token) {
+                throw new Error("未找到认证令牌，请重新登录");
+            }
+
+            const response = await fetch("/api/contacts/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(body),
+            });
+
+            const data = await response.json();
+            updateResponseInfo(response.status, response.statusText, data);
+            updateStatus(response.ok, response.ok ? "成功" : "失败");
+
+            if (response.ok) {
+                document.getElementById("addContactForm").reset();
+                getContacts(); // 刷新列表
+            }
+        } catch (error) {
+            document.getElementById("responseInfo").textContent =
+                `请求失败：${error.message}`;
+            updateStatus(false, "错误");
+        }
+    }
+
+    // 删除联系人
+    async function removeContact(contactBipupuId) {
+        if (!confirm(`确定要删除联系人 "${contactBipupuId}" 吗？`)) return;
+
+        updateRequestInfo("DELETE", `/api/contacts/${contactBipupuId}`);
+        document.getElementById("responseInfo").textContent = "请求中...";
+        document.getElementById("apiStatus").textContent = "请求中";
+        document.getElementById("apiStatus").className = "text-warning";
+
+        try {
+            const token = getAuthToken();
+            if (!token) {
+                throw new Error("未找到认证令牌，请重新登录");
+            }
+
+            const response = await fetch(`/api/contacts/${contactBipupuId}`, {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            // 204 No Content 没有响应体
+            let data = {};
+            if (response.status !== 204) {
+                const text = await response.text();
+                if (text) {
+                    data = JSON.parse(text);
+                }
+            }
+            updateResponseInfo(
+                response.status,
+                response.statusText,
+                data || { message: "删除成功" },
+            );
+            updateStatus(
+                response.ok || response.status === 204,
+                response.ok || response.status === 204 ? "成功" : "失败",
+            );
+
+            if (response.ok || response.status === 204) {
+                getContacts(); // 刷新列表
+            }
+        } catch (error) {
+            document.getElementById("responseInfo").textContent =
+                `请求失败：${error.message}`;
+            updateStatus(false, "错误");
+        }
+    }
+
+    // 获取黑名单列表
+    async function getBlacklist() {
+        const listEl = document.getElementById("blacklistList");
+        listEl.innerHTML = '<div class="text-muted">加载中...</div>';
+
+        try {
+            const token = getAuthToken();
+            if (!token) {
+                throw new Error("未找到认证令牌，请重新登录");
+            }
+
+            const response = await fetch("/api/blocks", {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            const data = await response.json();
+            updateRequestInfo("GET", "/api/blocks");
+            updateResponseInfo(response.status, response.statusText, data);
+            updateStatus(response.ok, response.ok ? "成功" : "失败");
+
+            if (response.ok && data.items && data.items.length > 0) {
+                listEl.innerHTML = data.items
+                    .map(
+                        (blocked) => `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${blocked.nickname || blocked.username}</strong>
+                        <small class="text-muted">(ID: ${blocked.bipupu_id})</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-success" onclick="unblockUser('${blocked.bipupu_id}')">
+                        取消拉黑
+                    </button>
+                </div>
+            `,
+                    )
+                    .join("");
+            } else if (response.ok) {
+                listEl.innerHTML = '<div class="text-muted">暂无黑名单</div>';
+            } else {
+                listEl.innerHTML = `<div class="text-danger">加载失败：${data.detail || "未知错误"}</div>`;
+            }
+        } catch (error) {
+            listEl.innerHTML = `<div class="text-danger">请求失败：${error.message}</div>`;
+            updateStatus(false, "错误");
+        }
+    }
+
+    // 拉黑用户
+    async function blockUser(event) {
+        event.preventDefault();
+
+        const blockedBipupuId =
+            document.getElementById("blockedBipupuId").value;
+        const body = { bipupu_id: blockedBipupuId };
+
+        updateRequestInfo("POST", "/api/blocks", body);
+        document.getElementById("responseInfo").textContent = "请求中...";
+        document.getElementById("apiStatus").textContent = "请求中";
+        document.getElementById("apiStatus").className = "text-warning";
+
+        try {
+            const token = getAuthToken();
+            if (!token) {
+                throw new Error("未找到认证令牌，请重新登录");
+            }
+
+            const response = await fetch("/api/blocks", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(body),
+            });
+
+            const data = await response.json();
+            updateResponseInfo(response.status, response.statusText, data);
+            updateStatus(response.ok, response.ok ? "成功" : "失败");
+
+            if (response.ok) {
+                document.getElementById("blockUserForm").reset();
+                getBlacklist(); // 刷新列表
+            }
+        } catch (error) {
+            document.getElementById("responseInfo").textContent =
+                `请求失败：${error.message}`;
+            updateStatus(false, "错误");
+        }
+    }
+
+    // 取消拉黑
+    async function unblockUser(bipupuId) {
+        if (!confirm(`确定要取消拉黑用户 "${bipupuId}" 吗？`)) return;
+
+        updateRequestInfo("DELETE", `/api/blocks/${bipupuId}`);
+        document.getElementById("responseInfo").textContent = "请求中...";
+        document.getElementById("apiStatus").textContent = "请求中";
+        document.getElementById("apiStatus").className = "text-warning";
+
+        try {
+            const token = getAuthToken();
+            if (!token) {
+                throw new Error("未找到认证令牌，请重新登录");
+            }
+
+            const response = await fetch(`/api/blocks/${bipupuId}`, {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            const data = await response.json();
+            updateResponseInfo(response.status, response.statusText, data);
+            updateStatus(response.ok, response.ok ? "成功" : "失败");
+
+            if (response.ok) {
+                getBlacklist(); // 刷新列表
+            }
+        } catch (error) {
+            document.getElementById("responseInfo").textContent =
+                `请求失败：${error.message}`;
+            updateStatus(false, "错误");
+        }
+    }
+
+    // 检查拉黑状态
+    async function checkBlockStatus(event) {
+        event.preventDefault();
+
+        const checkBipupuId = document.getElementById("checkBipupuId").value;
+        const resultEl = document.getElementById("blockStatusResult");
+        resultEl.innerHTML = '<div class="text-muted">检查中...</div>';
+
+        updateRequestInfo("GET", `/api/blocks/check/${checkBipupuId}`);
+        document.getElementById("responseInfo").textContent = "请求中...";
+        document.getElementById("apiStatus").textContent = "请求中";
+        document.getElementById("apiStatus").className = "text-warning";
+
+        try {
+            const token = getAuthToken();
+            if (!token) {
+                throw new Error("未找到认证令牌，请重新登录");
+            }
+
+            const response = await fetch(`/api/blocks/check/${checkBipupuId}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            const data = await response.json();
+            updateResponseInfo(response.status, response.statusText, data);
+            updateStatus(response.ok, response.ok ? "成功" : "失败");
+
+            if (response.ok) {
+                const user = data.user_info;
+                resultEl.innerHTML = `
+                    <div class="alert alert-info">
+                        <h6>用户信息</h6>
+                        <p><strong>用户名：</strong>${user.username}</p>
+                        <p><strong>昵称：</strong>${user.nickname || "未设置"}</p>
+                        <p><strong>Bipupu ID：</strong>${user.bipupu_id}</p>
+                    </div>
+                    <div class="alert ${data.is_blocked_by_me ? "alert-danger" : "alert-success"}">
+                        <strong>我是否拉黑了对方：</strong>${data.is_blocked_by_me ? "是" : "否"}
+                    </div>
+                    <div class="alert ${data.is_blocked_by_them ? "alert-danger" : "alert-success"}">
+                        <strong>对方是否拉黑了我：</strong>${data.is_blocked_by_them ? "是" : "否"}
+                    </div>
+                    <div class="alert ${data.mutual_block ? "alert-warning" : "alert-light"}">
+                        <strong>是否互相拉黑：</strong>${data.mutual_block ? "是" : "否"}
+                    </div>
+                `;
+            } else {
+                resultEl.innerHTML = `<div class="alert alert-danger">检查失败：${data.detail || "未知错误"}</div>`;
+            }
+        } catch (error) {
+            resultEl.innerHTML = `<div class="alert alert-danger">请求失败：${error.message}</div>`;
+            updateStatus(false, "错误");
+        }
+    }
+
+    // 搜索黑名单用户
+    async function searchBlockedUsers(event) {
+        event.preventDefault();
+
+        const keyword = document.getElementById("searchKeyword").value;
+        const listEl = document.getElementById("blacklistList");
+        listEl.innerHTML = '<div class="text-muted">搜索中...</div>';
+
+        updateRequestInfo(
+            "GET",
+            `/api/blocks/search?keyword=${encodeURIComponent(keyword)}`,
+        );
+        document.getElementById("responseInfo").textContent = "请求中...";
+        document.getElementById("apiStatus").textContent = "请求中";
+        document.getElementById("apiStatus").className = "text-warning";
+
+        try {
+            const token = getAuthToken();
+            if (!token) {
+                throw new Error("未找到认证令牌，请重新登录");
+            }
+
+            const response = await fetch(
+                `/api/blocks/search?keyword=${encodeURIComponent(keyword)}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+
+            const data = await response.json();
+            updateResponseInfo(response.status, response.statusText, data);
+            updateStatus(response.ok, response.ok ? "成功" : "失败");
+
+            if (response.ok && data.length > 0) {
+                listEl.innerHTML = data
+                    .map(
+                        (blocked) => `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${blocked.nickname || blocked.username}</strong>
+                        <small class="text-muted">(ID: ${blocked.bipupu_id})</small>
+                        <br>
+                        <small class="text-muted">拉黑时间：${new Date(blocked.blocked_at).toLocaleString()}</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-success" onclick="unblockUser('${blocked.bipupu_id}')">
+                        取消拉黑
+                    </button>
+                </div>
+            `,
+                    )
+                    .join("");
+            } else if (response.ok) {
+                listEl.innerHTML =
+                    '<div class="text-muted">未找到匹配的用户</div>';
+            } else {
+                listEl.innerHTML = `<div class="text-danger">搜索失败：${data.detail || "未知错误"}</div>`;
+            }
+        } catch (error) {
+            listEl.innerHTML = `<div class="text-danger">请求失败：${error.message}</div>`;
+            updateStatus(false, "错误");
+        }
+    }
+
+    // 获取黑名单统计信息
+    async function getBlockStatistics() {
+        const statsEl = document.getElementById("blockStatistics");
+        statsEl.innerHTML = '<div class="text-muted">加载中...</div>';
+
+        updateRequestInfo("GET", "/api/blocks/count");
+        document.getElementById("responseInfo").textContent = "请求中...";
+        document.getElementById("apiStatus").textContent = "请求中";
+        document.getElementById("apiStatus").className = "text-warning";
+
+        try {
+            const token = getAuthToken();
+            if (!token) {
+                throw new Error("未找到认证令牌，请重新登录");
+            }
+
+            const response = await fetch("/api/blocks/count", {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            const data = await response.json();
+            updateResponseInfo(response.status, response.statusText, data);
+            updateStatus(response.ok, response.ok ? "成功" : "失败");
+
+            if (response.ok) {
+                statsEl.innerHTML = `
+                    <div class="card border-primary mb-2">
+                        <div class="card-body">
+                            <h6 class="card-title">我拉黑的用户</h6>
+                            <h2 class="text-primary">${data.total_blocks}</h2>
+                        </div>
+                    </div>
+                    <div class="card border-danger mb-2">
+                        <div class="card-body">
+                            <h6 class="card-title">拉黑我的用户</h6>
+                            <h2 class="text-danger">${data.total_blocked_by}</h2>
+                        </div>
+                    </div>
+                    <div class="card border-warning">
+                        <div class="card-body">
+                            <h6 class="card-title">互相拉黑的用户</h6>
+                            <h2 class="text-warning">${data.mutual_blocks}</h2>
+                        </div>
+                    </div>
+                `;
+            } else {
+                statsEl.innerHTML = `<div class="alert alert-danger">获取统计失败：${data.detail || "未知错误"}</div>`;
+            }
+        } catch (error) {
+            statsEl.innerHTML = `<div class="alert alert-danger">请求失败：${error.message}</div>`;
+            updateStatus(false, "错误");
+        }
+    }
+
+    // 通过表单取消拉黑
+    async function unblockUserByForm(event) {
+        event.preventDefault();
+
+        const bipupuId = document.getElementById("unblockBipupuId").value;
+        const resultEl = document.getElementById("unblockResult");
+        resultEl.innerHTML = '<div class="text-muted">处理中...</div>';
+
+        if (!confirm(`确定要取消拉黑用户 "${bipupuId}" 吗？`)) {
+            resultEl.innerHTML = '<div class="text-muted">已取消操作</div>';
+            return;
+        }
+
+        updateRequestInfo("DELETE", `/api/blocks/${bipupuId}`);
+        document.getElementById("responseInfo").textContent = "请求中...";
+        document.getElementById("apiStatus").textContent = "请求中";
+        document.getElementById("apiStatus").className = "text-warning";
+
+        try {
+            const token = getAuthToken();
+            if (!token) {
+                throw new Error("未找到认证令牌，请重新登录");
+            }
+
+            const response = await fetch(`/api/blocks/${bipupuId}`, {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            const data = await response.json();
+            updateResponseInfo(response.status, response.statusText, data);
+            updateStatus(response.ok, response.ok ? "成功" : "失败");
+
+            if (response.ok) {
+                resultEl.innerHTML = `<div class="alert alert-success">已成功取消拉黑用户 ${bipupuId}</div>`;
+                document.getElementById("unblockUserForm").reset();
+                getBlacklist(); // 刷新列表
+            } else {
+                resultEl.innerHTML = `<div class="alert alert-danger">取消拉黑失败：${data.detail || "未知错误"}</div>`;
+            }
+        } catch (error) {
+            resultEl.innerHTML = `<div class="alert alert-danger">请求失败：${error.message}</div>`;
+            updateStatus(false, "错误");
+        }
+    }
+</script>
+{% endblock %}

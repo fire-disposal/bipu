@@ -1,12 +1,18 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:dio/dio.dart';
+import '../../../core/services/network_service.dart' as network_service;
 
 import '../logic/auth_notifier.dart';
 import 'register_page.dart';
 import '../../../core/services/toast_service.dart';
+
+import '../../../core/config/app_config.dart';
+import 'login_debug_page.dart';
 
 class LoginPage extends HookConsumerWidget {
   const LoginPage({super.key});
@@ -17,25 +23,60 @@ class LoginPage extends HookConsumerWidget {
     final passwordController = useTextEditingController();
     final isLoading = useState(false);
     final errorMessage = useState<String?>(null);
+    final showPassword = useState(false);
+    final networkStatus = ref.watch(network_service.networkStatusProvider);
 
-    void handleLogin() async {
-      if (usernameController.text.isEmpty || passwordController.text.isEmpty) {
-        ToastUtils.showError(ref, '请输入用户名和密码');
+    /// 检查网络连接状态
+    Future<bool> checkNetworkConnection() async {
+      return await network_service.NetworkUtils.checkAndShowToast(
+        ref,
+        noConnectionMessage: '网络连接不可用，请检查网络设置',
+      );
+    }
+
+    /// 处理登录逻辑
+    Future<void> handleLogin() async {
+      // 验证输入
+      if (usernameController.text.isEmpty) {
+        ToastUtils.showError(ref, '请输入用户名');
+        return;
+      }
+
+      if (passwordController.text.isEmpty) {
+        ToastUtils.showError(ref, '请输入密码');
+        return;
+      }
+
+      // 检查网络连接
+      final hasNetwork = await checkNetworkConnection();
+      if (!hasNetwork) {
+        // NetworkUtils.checkAndShowToast 已经处理了提示
         return;
       }
 
       // 保存当前 widget 的 ref
       final currentRef = ref;
       isLoading.value = true;
+      errorMessage.value = null;
+
       debugPrint('[LoginPage] 开始登录，用户名: ${usernameController.text}');
 
       try {
         final authNotifier = currentRef.read(
           authStatusNotifierProvider.notifier,
         );
-        final success = await authNotifier.login(
+
+        // 添加超时处理
+        final loginFuture = authNotifier.login(
           usernameController.text,
           passwordController.text,
+        );
+
+        final success = await loginFuture.timeout(
+          const Duration(seconds: 30),
+          onTimeout: () {
+            throw TimeoutException('登录请求超时');
+          },
         );
 
         // 检查 widget 是否仍然 mounted
@@ -47,30 +88,70 @@ class LoginPage extends HookConsumerWidget {
         if (success) {
           debugPrint('[LoginPage] 登录成功');
           ToastUtils.showSuccess(currentRef, '登录成功！');
+
+          // 延迟导航，让用户看到成功提示
+          await Future.delayed(const Duration(milliseconds: 500));
+
           // 登录成功后不需要手动导航，因为App widget会根据auth状态自动切换
           // 只需要等待状态更新即可
         } else {
           debugPrint('[LoginPage] 登录失败');
+          errorMessage.value = '登录失败，请检查用户名和密码';
           ToastUtils.showError(currentRef, '登录失败，请检查用户名和密码');
         }
-      } catch (e) {
-        // 检查 widget 是否仍然 mounted
-        if (!context.mounted) {
-          debugPrint('[LoginPage] Widget 已卸载，跳过错误处理');
-          return;
+      } on TimeoutException catch (e) {
+        if (!context.mounted) return;
+
+        debugPrint('[LoginPage] 登录超时: $e');
+        errorMessage.value = '登录请求超时，请检查网络连接或稍后重试';
+        ToastUtils.showError(currentRef, '登录请求超时，请检查网络连接');
+      } on DioException catch (e) {
+        if (!context.mounted) return;
+
+        debugPrint('[LoginPage] 网络错误: ${e.type} - ${e.message}');
+
+        // 根据错误类型显示不同的提示
+        if (e.response?.statusCode == 401) {
+          errorMessage.value = '用户名或密码错误';
+          ToastUtils.showError(currentRef, '用户名或密码错误');
+        } else if (e.response?.statusCode == 429) {
+          errorMessage.value = '登录尝试过于频繁，请稍后再试';
+          ToastUtils.showError(currentRef, '登录尝试过于频繁，请稍后再试');
+        } else if (e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.sendTimeout ||
+            e.type == DioExceptionType.receiveTimeout) {
+          errorMessage.value = '连接超时，请检查网络连接';
+          ToastUtils.showError(currentRef, '连接超时，请检查网络连接');
+        } else if (e.type == DioExceptionType.connectionError) {
+          errorMessage.value = '网络连接错误，请检查网络设置';
+          ToastUtils.showError(currentRef, '网络连接错误，请检查网络设置');
+        } else {
+          final errorMsg = e.message ?? '网络错误';
+          errorMessage.value = errorMsg;
+          ToastUtils.showError(currentRef, '登录失败：$errorMsg');
         }
+      } catch (e) {
+        if (!context.mounted) return;
 
         debugPrint('[LoginPage] 登录异常: $e');
         final errorMsg = e.toString();
-        if (errorMsg.contains('Connection refused') ||
-            errorMsg.contains('网络连接错误')) {
+
+        // 解析错误信息
+        if (errorMsg.contains('Invalid credentials') ||
+            errorMsg.contains('用户名或密码错误')) {
+          errorMessage.value = '用户名或密码错误';
+          ToastUtils.showError(currentRef, '用户名或密码错误');
+        } else if (errorMsg.contains('User not found')) {
+          errorMessage.value = '用户不存在';
+          ToastUtils.showError(currentRef, '用户不存在');
+        } else if (errorMsg.contains('Connection refused')) {
+          errorMessage.value = '无法连接到服务器';
           ToastUtils.showError(currentRef, '无法连接到服务器，请检查网络连接');
-        } else if (errorMsg.contains('timeout')) {
-          ToastUtils.showError(currentRef, '连接超时，请稍后重试');
         } else {
+          errorMessage.value = '登录失败，请稍后重试';
           ToastUtils.showError(
             currentRef,
-            '登录失败：${e.toString().split(':').last.trim()}',
+            '登录失败：${errorMsg.split(':').last.trim()}',
           );
         }
       } finally {
@@ -181,8 +262,9 @@ class LoginPage extends HookConsumerWidget {
                     ShadInput(
                       controller: passwordController,
                       placeholder: const Text('请输入密码'),
-                      obscureText: true,
+                      obscureText: !showPassword.value,
                       onChanged: (_) => errorMessage.value = null,
+                      onSubmitted: (_) => handleLogin(),
                     ),
                   ],
                 ),
@@ -192,8 +274,7 @@ class LoginPage extends HookConsumerWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ShadButton(
-                    onPressed: handleLogin,
-                    enabled: !isLoading.value,
+                    onPressed: isLoading.value ? null : handleLogin,
                     child: isLoading.value
                         ? const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -203,6 +284,7 @@ class LoginPage extends HookConsumerWidget {
                                 height: 16,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
+                                  color: Colors.white,
                                 ),
                               ),
                               SizedBox(width: 8),
@@ -214,6 +296,28 @@ class LoginPage extends HookConsumerWidget {
                 ),
                 const SizedBox(height: 24),
 
+                // 显示/隐藏密码切换
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Checkbox(
+                      value: showPassword.value,
+                      onChanged: (value) {
+                        showPassword.value = value ?? false;
+                      },
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    Text(
+                      '显示密码',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -223,7 +327,7 @@ class LoginPage extends HookConsumerWidget {
                     ),
                     const SizedBox(width: 4),
                     TextButton(
-                      onPressed: handleRegister,
+                      onPressed: isLoading.value ? null : handleRegister,
                       child: Text(
                         '立即注册',
                         style: TextStyle(
@@ -234,6 +338,77 @@ class LoginPage extends HookConsumerWidget {
                     ),
                   ],
                 ),
+
+                // 网络状态显示（仅在调试模式显示）
+                if (AppConfig.debugMode) ...[
+                  const SizedBox(height: 24),
+                  Divider(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outline.withOpacity(0.3),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '网络状态',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  networkStatus.when(
+                    data: (status) {
+                      final networkService = ref.read(
+                        network_service.networkServiceProvider,
+                      );
+                      return Row(
+                        children: [
+                          Text(networkService.getConnectionIcon(status)),
+                          const SizedBox(width: 8),
+                          Text(
+                            networkService.getConnectionDescription(status),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ],
+                      );
+                    },
+                    loading: () => Text(
+                      '检查网络中...',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    error: (error, stack) => Text(
+                      '网络状态未知',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '调试信息',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ShadButton.outline(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LoginDebugPage(),
+                        ),
+                      );
+                    },
+                    child: const Text('进入调试登录页'),
+                  ),
+                ],
               ],
             ),
           ),

@@ -29,6 +29,7 @@ dependencies:
   shared_preferences: ^2.5.3
   sherpa_onnx: ^1.12.25
   timezone: ^0.10.0
+  connectivity_plus: ^6.0.3
 
 dev_dependencies:
   flutter_test:

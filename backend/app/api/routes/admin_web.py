@@ -11,6 +11,8 @@ from app.db.database import get_db
 from app.models.user import User
 from app.models.message import Message
 from app.models.poster import Poster
+from app.models.trusted_contact import TrustedContact
+from app.models.user_block import UserBlock
 from app.core.security import get_current_superuser_web, authenticate_user, create_access_token
 from app.services.message_service import MessageService
 from app.schemas.message import MessageCreate
@@ -179,7 +181,7 @@ async def posters_page(
     current_user: User = Depends(get_current_superuser_web)
 ):
     """海报管理页面"""
-    posters = db.query(Poster).order_by(Poster.display_order.asc(), Poster.created_at.desc()).all()
+    posters = db.query(Poster).order_by(Poster.display_order.asc(), Poster.id.asc()).all()
     return templates.TemplateResponse("posters.html", {
         "request": request,
         "posters": posters
@@ -341,6 +343,523 @@ async def trigger_service_push(
 
 # 需要导入 send_push 函数
 from app.services.service_accounts import send_push
+from app.services.storage_service import StorageService
+from typing import Optional
+
+@router.get("/test_contacts", tags=["管理后台"])
+async def admin_test_contacts(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser_web)
+):
+    """API测试页面 (联系人与黑名单)"""
+    # 获取当前用户的联系人列表
+    contacts_query = db.query(TrustedContact).filter(
+        TrustedContact.owner_id == current_user.id
+    ).all()
+
+    contacts = []
+    for contact in contacts_query:
+        contact_user = db.query(User).filter(User.id == contact.contact_id).first()
+        if contact_user:
+            contacts.append({
+                "id": contact.id,
+                "contact_bipupu_id": contact_user.bipupu_id,
+                "contact_username": contact_user.username,
+                "contact_nickname": contact_user.nickname,
+                "alias": contact.alias,
+                "created_at": contact.created_at
+            })
+
+    # 获取当前用户的黑名单列表
+    blacklist_query = db.query(UserBlock).filter(
+        UserBlock.blocker_id == current_user.id
+    ).all()
+
+    blacklist = []
+    for block in blacklist_query:
+        blocked_user = db.query(User).filter(User.id == block.blocked_id).first()
+        if blocked_user:
+            blacklist.append({
+                "id": block.id,
+                "blocked_bipupu_id": blocked_user.bipupu_id,
+                "blocked_username": blocked_user.username,
+                "blocked_nickname": blocked_user.nickname,
+                "created_at": block.created_at
+            })
+
+    return templates.TemplateResponse("test_contacts.html", {
+        "request": request,
+        "user": current_user,
+        "contacts": contacts,
+        "blacklist": blacklist
+    })
+
+@router.post("/test_contacts/add", tags=["管理后台"])
+async def admin_add_contact(
+    request: Request,
+    contact_bipupu_id: str = Form(...),
+    alias: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser_web)
+):
+    """处理添加联系人测试"""
+    try:
+        # 查找联系人用户
+        contact_user = db.query(User).filter(User.bipupu_id == contact_bipupu_id).first()
+        if not contact_user:
+            raise HTTPException(status_code=404, detail="用户不存在")
+
+        # 不能添加自己为联系人
+        if contact_user.id == current_user.id:
+            raise HTTPException(status_code=400, detail="不能添加自己为联系人")
+
+        # 检查是否已经是联系人
+        existing = db.query(TrustedContact).filter(
+            TrustedContact.owner_id == current_user.id,
+            TrustedContact.contact_id == contact_user.id
+        ).first()
+
+        if existing:
+            raise HTTPException(status_code=400, detail="该用户已经是联系人")
+
+        # 创建联系人关系
+        new_contact = TrustedContact(
+            owner_id=current_user.id,
+            contact_id=contact_user.id,
+            alias=alias
+        )
+
+        db.add(new_contact)
+        db.commit()
+
+        # 重新加载页面
+        return await admin_test_contacts(request, db, current_user)
+
+    except HTTPException as e:
+        # 重新加载页面并显示错误
+        contacts_query = db.query(TrustedContact).filter(
+            TrustedContact.owner_id == current_user.id
+        ).all()
+
+        contacts = []
+        for contact in contacts_query:
+            contact_user = db.query(User).filter(User.id == contact.contact_id).first()
+            if contact_user:
+                contacts.append({
+                    "id": contact.id,
+                    "contact_bipupu_id": contact_user.bipupu_id,
+                    "contact_username": contact_user.username,
+                    "contact_nickname": contact_user.nickname,
+                    "alias": contact.alias,
+                    "created_at": contact.created_at
+                })
+
+        blacklist_query = db.query(UserBlock).filter(
+            UserBlock.blocker_id == current_user.id
+        ).all()
+
+        blacklist = []
+        for block in blacklist_query:
+            blocked_user = db.query(User).filter(User.id == block.blocked_id).first()
+            if blocked_user:
+                blacklist.append({
+                    "id": block.id,
+                    "blocked_bipupu_id": blocked_user.bipupu_id,
+                    "blocked_username": blocked_user.username,
+                    "blocked_nickname": blocked_user.nickname,
+                    "created_at": block.created_at
+                })
+
+        return templates.TemplateResponse("test_contacts.html", {
+            "request": request,
+            "user": current_user,
+            "contacts": contacts,
+            "blacklist": blacklist,
+            "error": f"添加联系人失败: {e.detail}"
+        })
+    except Exception as e:
+        # 重新加载页面并显示错误
+        contacts_query = db.query(TrustedContact).filter(
+            TrustedContact.owner_id == current_user.id
+        ).all()
+
+        contacts = []
+        for contact in contacts_query:
+            contact_user = db.query(User).filter(User.id == contact.contact_id).first()
+            if contact_user:
+                contacts.append({
+                    "id": contact.id,
+                    "contact_bipupu_id": contact_user.bipupu_id,
+                    "contact_username": contact_user.username,
+                    "contact_nickname": contact_user.nickname,
+                    "alias": contact.alias,
+                    "created_at": contact.created_at
+                })
+
+        blacklist_query = db.query(UserBlock).filter(
+            UserBlock.blocker_id == current_user.id
+        ).all()
+
+        blacklist = []
+        for block in blacklist_query:
+            blocked_user = db.query(User).filter(User.id == block.blocked_id).first()
+            if blocked_user:
+                blacklist.append({
+                    "id": block.id,
+                    "blocked_bipupu_id": blocked_user.bipupu_id,
+                    "blocked_username": blocked_user.username,
+                    "blocked_nickname": blocked_user.nickname,
+                    "created_at": block.created_at
+                })
+
+        return templates.TemplateResponse("test_contacts.html", {
+            "request": request,
+            "user": current_user,
+            "contacts": contacts,
+            "blacklist": blacklist,
+            "error": f"添加联系人失败: {str(e)}"
+        })
+
+@router.post("/test_contacts/remove", tags=["管理后台"])
+async def admin_remove_contact(
+    request: Request,
+    contact_id: int = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser_web)
+):
+    """处理删除联系人测试"""
+    try:
+        # 查找联系人
+        contact = db.query(TrustedContact).filter(
+            TrustedContact.id == contact_id,
+            TrustedContact.owner_id == current_user.id
+        ).first()
+
+        if not contact:
+            raise HTTPException(status_code=404, detail="联系人不存在")
+
+        db.delete(contact)
+        db.commit()
+
+        # 重新加载页面
+        return await admin_test_contacts(request, db, current_user)
+
+    except HTTPException as e:
+        # 重新加载页面并显示错误
+        return await admin_test_contacts(request, db, current_user)
+    except Exception as e:
+        # 重新加载页面并显示错误
+        contacts_query = db.query(TrustedContact).filter(
+            TrustedContact.owner_id == current_user.id
+        ).all()
+
+        contacts = []
+        for contact in contacts_query:
+            contact_user = db.query(User).filter(User.id == contact.contact_id).first()
+            if contact_user:
+                contacts.append({
+                    "id": contact.id,
+                    "contact_bipupu_id": contact_user.bipupu_id,
+                    "contact_username": contact_user.username,
+                    "contact_nickname": contact_user.nickname,
+                    "alias": contact.alias,
+                    "created_at": contact.created_at
+                })
+
+        blacklist_query = db.query(UserBlock).filter(
+            UserBlock.blocker_id == current_user.id
+        ).all()
+
+        blacklist = []
+        for block in blacklist_query:
+            blocked_user = db.query(User).filter(User.id == block.blocked_id).first()
+            if blocked_user:
+                blacklist.append({
+                    "id": block.id,
+                    "blocked_bipupu_id": blocked_user.bipupu_id,
+                    "blocked_username": blocked_user.username,
+                    "blocked_nickname": blocked_user.nickname,
+                    "created_at": block.created_at
+                })
+
+        return templates.TemplateResponse("test_contacts.html", {
+            "request": request,
+            "user": current_user,
+            "contacts": contacts,
+            "blacklist": blacklist,
+            "error": f"删除联系人失败: {str(e)}"
+        })
+
+@router.post("/test_contacts/block", tags=["管理后台"])
+async def admin_block_user(
+    request: Request,
+    blocked_bipupu_id: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser_web)
+):
+    """处理添加黑名单测试"""
+    try:
+        # 查找要拉黑的用户
+        blocked_user = db.query(User).filter(User.bipupu_id == blocked_bipupu_id).first()
+        if not blocked_user:
+            raise HTTPException(status_code=404, detail="用户不存在")
+
+        # 不能拉黑自己
+        if blocked_user.id == current_user.id:
+            raise HTTPException(status_code=400, detail="不能拉黑自己")
+
+        # 检查是否已经在黑名单中
+        existing = db.query(UserBlock).filter(
+            UserBlock.blocker_id == current_user.id,
+            UserBlock.blocked_id == blocked_user.id
+        ).first()
+
+        if existing:
+            raise HTTPException(status_code=400, detail="该用户已在黑名单中")
+
+        # 创建黑名单记录
+        new_block = UserBlock(
+            blocker_id=current_user.id,
+            blocked_id=blocked_user.id
+        )
+
+        db.add(new_block)
+        db.commit()
+
+        # 重新加载页面
+        return await admin_test_contacts(request, db, current_user)
+
+    except HTTPException as e:
+        # 重新加载页面并显示错误
+        return await admin_test_contacts(request, db, current_user)
+    except Exception as e:
+        # 重新加载页面并显示错误
+        contacts_query = db.query(TrustedContact).filter(
+            TrustedContact.owner_id == current_user.id
+        ).all()
+
+        contacts = []
+        for contact in contacts_query:
+            contact_user = db.query(User).filter(User.id == contact.contact_id).first()
+            if contact_user:
+                contacts.append({
+                    "id": contact.id,
+                    "contact_bipupu_id": contact_user.bipupu_id,
+                    "contact_username": contact_user.username,
+                    "contact_nickname": contact_user.nickname,
+                    "alias": contact.alias,
+                    "created_at": contact.created_at
+                })
+
+        blacklist_query = db.query(UserBlock).filter(
+            UserBlock.blocker_id == current_user.id
+        ).all()
+
+        blacklist = []
+        for block in blacklist_query:
+            blocked_user = db.query(User).filter(User.id == block.blocked_id).first()
+            if blocked_user:
+                blacklist.append({
+                    "id": block.id,
+                    "blocked_bipupu_id": blocked_user.bipupu_id,
+                    "blocked_username": blocked_user.username,
+                    "blocked_nickname": blocked_user.nickname,
+                    "created_at": block.created_at
+                })
+
+        return templates.TemplateResponse("test_contacts.html", {
+            "request": request,
+            "user": current_user,
+            "contacts": contacts,
+            "blacklist": blacklist,
+            "error": f"添加黑名单失败: {str(e)}"
+        })
+
+@router.post("/test_contacts/unblock", tags=["管理后台"])
+async def admin_unblock_user(
+    request: Request,
+    blocked_id: int = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser_web)
+):
+    """处理移除黑名单测试"""
+    try:
+        # 查找黑名单记录
+        block = db.query(UserBlock).filter(
+            UserBlock.id == blocked_id,
+            UserBlock.blocker_id == current_user.id
+        ).first()
+
+        if not block:
+            raise HTTPException(status_code=404, detail="黑名单记录不存在")
+
+        db.delete(block)
+        db.commit()
+
+        # 重新加载页面
+        return await admin_test_contacts(request, db, current_user)
+
+    except HTTPException as e:
+        # 重新加载页面并显示错误
+        return await admin_test_contacts(request, db, current_user)
+    except Exception as e:
+        # 重新加载页面并显示错误
+        contacts_query = db.query(TrustedContact).filter(
+            TrustedContact.owner_id == current_user.id
+        ).all()
+
+        contacts = []
+        for contact in contacts_query:
+            contact_user = db.query(User).filter(User.id == contact.contact_id).first()
+            if contact_user:
+                contacts.append({
+                    "id": contact.id,
+                    "contact_bipupu_id": contact_user.bipupu_id,
+                    "contact_username": contact_user.username,
+                    "contact_nickname": contact_user.nickname,
+                    "alias": contact.alias,
+                    "created_at": contact.created_at
+                })
+
+        blacklist_query = db.query(UserBlock).filter(
+            UserBlock.blocker_id == current_user.id
+        ).all()
+
+        blacklist = []
+        for block in blacklist_query:
+            blocked_user = db.query(User).filter(User.id == block.blocked_id).first()
+            if blocked_user:
+                blacklist.append({
+                    "id": block.id,
+                    "blocked_bipupu_id": blocked_user.bipupu_id,
+                    "blocked_username": blocked_user.username,
+                    "blocked_nickname": blocked_user.nickname,
+                    "created_at": block.created_at
+                })
+
+        return templates.TemplateResponse("test_contacts.html", {
+            "request": request,
+            "user": current_user,
+            "contacts": contacts,
+            "blacklist": blacklist,
+            "error": f"移除黑名单失败: {str(e)}"
+        })
+
+@router.get("/test_profile", tags=["管理后台"])
+async def admin_test_profile(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser_web)
+):
+    """API测试页面 (用户资料设置)"""
+    return templates.TemplateResponse("test_profile.html", {
+        "request": request,
+        "user": current_user
+    })
+
+@router.post("/test_profile/avatar", tags=["管理后台"])
+async def admin_update_avatar(
+    request: Request,
+    avatar_file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser_web)
+):
+    """处理更新头像测试"""
+    try:
+        # 使用StorageService处理头像
+        avatar_data = await StorageService.save_avatar(avatar_file)
+
+        # 更新用户头像
+        current_user.avatar_data = avatar_data
+        current_user.avatar_version = (current_user.avatar_version or 0) + 1
+        db.commit()
+        db.refresh(current_user)
+
+        return templates.TemplateResponse("test_profile.html", {
+            "request": request,
+            "user": current_user,
+            "success": "头像更新成功"
+        })
+
+    except Exception as e:
+        return templates.TemplateResponse("test_profile.html", {
+            "request": request,
+            "user": current_user,
+            "error": f"头像更新失败: {str(e)}"
+        })
+
+@router.post("/test_profile/avatar/delete", tags=["管理后台"])
+async def admin_delete_avatar(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser_web)
+):
+    """处理删除头像测试"""
+    try:
+        # 删除用户头像
+        current_user.avatar_data = None
+        current_user.avatar_version = (current_user.avatar_version or 0) + 1
+        db.commit()
+        db.refresh(current_user)
+
+        return templates.TemplateResponse("test_profile.html", {
+            "request": request,
+            "user": current_user,
+            "success": "头像删除成功"
+        })
+
+    except Exception as e:
+        return templates.TemplateResponse("test_profile.html", {
+            "request": request,
+            "user": current_user,
+            "error": f"头像删除失败: {str(e)}"
+        })
+
+@router.post("/test_profile/update", tags=["管理后台"])
+async def admin_update_profile(
+    request: Request,
+    nickname: Optional[str] = Form(None),
+    bio: Optional[str] = Form(None),
+    gender: Optional[str] = Form(None),
+    birth_date: Optional[str] = Form(None),
+    location: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser_web)
+):
+    """处理更新用户资料测试"""
+    try:
+        # 更新用户资料
+        update_data = {}
+        if nickname is not None:
+            update_data['nickname'] = nickname
+        if bio is not None:
+            update_data['bio'] = bio
+        if gender is not None:
+            update_data['gender'] = gender
+        if birth_date is not None:
+            update_data['birth_date'] = birth_date
+        if location is not None:
+            update_data['location'] = location
+
+        for key, value in update_data.items():
+            setattr(current_user, key, value)
+
+        db.commit()
+        db.refresh(current_user)
+
+        return templates.TemplateResponse("test_profile.html", {
+            "request": request,
+            "user": current_user,
+            "success": "用户资料更新成功"
+        })
+
+    except Exception as e:
+        return templates.TemplateResponse("test_profile.html", {
+            "request": request,
+            "user": current_user,
+            "error": f"用户资料更新失败: {str(e)}"
+        })
 
 @router.get("/test_chat", tags=["管理后台"])
 async def admin_test_chat(

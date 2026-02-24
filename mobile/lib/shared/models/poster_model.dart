@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import '../../core/config/app_config.dart';
 
 part 'poster_model.g.dart';
 
@@ -31,8 +32,11 @@ class PosterResponse {
   @JsonKey(name: 'updated_at')
   final DateTime updatedAt;
 
-  /// 海报图片URL - 通过API获取
-  String get imageUrl => '/api/posters/$id/image/binary';
+  /// 海报图片URL - 通过API获取（相对路径）
+  String get imageUrl => '/api/posters/$id/image';
+
+  /// 获取完整的海报图片URL
+  String get fullImageUrl => '${AppConfig.baseUrl}$imageUrl';
 
   PosterResponse({
     required this.id,

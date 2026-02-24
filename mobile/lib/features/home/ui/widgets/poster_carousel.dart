@@ -147,7 +147,7 @@ class PosterCarousel extends HookConsumerWidget {
   /// 构建海报图片
   Widget _buildPosterImage(BuildContext context, PosterResponse poster) {
     return Image.network(
-      poster.imageUrl,
+      poster.fullImageUrl,
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,

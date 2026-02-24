@@ -4,10 +4,12 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:animate_do/animate_do.dart';
 
 import '../../../core/theme/design_system.dart';
+import '../../../shared/models/user_model.dart';
 import '../logic/profile_notifier.dart';
 import '../../auth/logic/auth_notifier.dart';
 import '../../auth/ui/login_page.dart';
 import 'settings_page.dart';
+import 'profile_edit_screen.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../../shared/widgets/avatar_uploader.dart';
 
@@ -62,6 +64,13 @@ class ProfileScreen extends HookConsumerWidget {
       );
     }
 
+    void openProfileEdit() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ProfileEditScreen()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('我的'),
@@ -88,11 +97,21 @@ class ProfileScreen extends HookConsumerWidget {
                   ),
                   child: isLoggedIn
                       ? asyncUser.when(
-                          data: (user) =>
-                              _buildUserInfoCard(context, user, handleLogout),
+                          data: (user) => _buildUserInfoCard(
+                            context,
+                            user,
+                            handleLogout,
+                            ref,
+                            openProfileEdit,
+                          ),
                           loading: () => _buildLoadingCard(context),
-                          error: (_, __) =>
-                              _buildUserInfoCard(context, null, handleLogout),
+                          error: (_, __) => _buildUserInfoCard(
+                            context,
+                            null,
+                            handleLogout,
+                            ref,
+                            openProfileEdit,
+                          ),
                         )
                       : _buildGuestCard(context, handleLogin),
                 ),
@@ -144,8 +163,11 @@ class ProfileScreen extends HookConsumerWidget {
     BuildContext context,
     dynamic user,
     VoidCallback handleLogout,
+    WidgetRef ref,
+    VoidCallback openProfileEdit,
   ) {
     final theme = Theme.of(context);
+    final userModel = user as UserModel?;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -157,12 +179,12 @@ class ProfileScreen extends HookConsumerWidget {
         children: [
           // 头像 - 使用 AvatarUploader 组件
           AvatarUploader(
-            bipupuId: user?.bipupuId ?? '',
+            bipupuId: userModel?.bipupuId ?? '',
             radius: 32,
             showEditButton: true,
             onUploadComplete: () {
               // 刷新用户数据
-              // TODO: 实现刷新逻辑
+              ref.invalidate(profileNotifierProvider);
             },
           ),
           const SizedBox(width: AppSpacing.md),
@@ -173,7 +195,7 @@ class ProfileScreen extends HookConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  user?.nickname ?? user?.username ?? '用户',
+                  userModel?.nickname ?? userModel?.username ?? '用户',
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: theme.colorScheme.onPrimaryContainer,
@@ -181,7 +203,7 @@ class ProfileScreen extends HookConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'ID: ${user?.bipupuId ?? "未登录"}',
+                  'ID: ${userModel?.bipupuId ?? "未登录"}',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onPrimaryContainer,
                   ),
@@ -190,8 +212,26 @@ class ProfileScreen extends HookConsumerWidget {
             ),
           ),
 
-          // 登出按钮
-          ShadButton.outline(onPressed: handleLogout, child: const Text('登出')),
+          // 编辑和登出按钮
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.edit_outlined,
+                  color: theme.colorScheme.onPrimaryContainer,
+                  size: 20,
+                ),
+                onPressed: openProfileEdit,
+                tooltip: '编辑资料',
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              ShadButton.outline(
+                onPressed: handleLogout,
+                child: const Text('登出'),
+              ),
+            ],
+          ),
         ],
       ),
     );

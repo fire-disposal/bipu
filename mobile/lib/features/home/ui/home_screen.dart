@@ -10,6 +10,10 @@ import 'widgets/poster_carousel.dart';
 import 'widgets/bluetooth_status_card.dart';
 import '../../bluetooth/ui/bluetooth_scan_screen.dart';
 import '../../bluetooth/ui/device_control_screen.dart';
+import '../../contacts/ui/contacts_screen.dart';
+import '../../pager/ui/pager_screen.dart';
+import '../../message/ui/message_list_screen.dart';
+import '../../profile/ui/profile_screen.dart';
 
 /// 首页广场
 class HomeScreen extends HookConsumerWidget {
@@ -163,10 +167,50 @@ class HomeScreen extends HookConsumerWidget {
 
   Widget _buildQuickActions(BuildContext context) {
     final actions = [
-      {'icon': Icons.call, 'label': '传唤', 'color': Colors.blue},
-      {'icon': Icons.message, 'label': '消息', 'color': Colors.green},
-      {'icon': Icons.person, 'label': '联系人', 'color': Colors.orange},
-      {'icon': Icons.settings, 'label': '设置', 'color': Colors.purple},
+      {
+        'icon': Icons.call,
+        'label': '传唤',
+        'color': Colors.blue,
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const PagerScreen()),
+          );
+        },
+      },
+      {
+        'icon': Icons.message,
+        'label': '消息',
+        'color': Colors.green,
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const MessageListScreen()),
+          );
+        },
+      },
+      {
+        'icon': Icons.person,
+        'label': '联系人',
+        'color': Colors.orange,
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ContactsScreen()),
+          );
+        },
+      },
+      {
+        'icon': Icons.settings,
+        'label': '设置',
+        'color': Colors.purple,
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ProfileScreen()),
+          );
+        },
+      },
     ];
 
     return Padding(
@@ -174,27 +218,30 @@ class HomeScreen extends HookConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: actions.map((action) {
-          return Column(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: (action['color'] as Color).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
+          return GestureDetector(
+            onTap: action['onTap'] as VoidCallback,
+            child: Column(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: (action['color'] as Color).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                  ),
+                  child: Icon(
+                    action['icon'] as IconData,
+                    color: action['color'] as Color,
+                    size: 28,
+                  ),
                 ),
-                child: Icon(
-                  action['icon'] as IconData,
-                  color: action['color'] as Color,
-                  size: 28,
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  action['label'] as String,
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                action['label'] as String,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
+              ],
+            ),
           );
         }).toList(),
       ),

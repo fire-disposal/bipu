@@ -11,12 +11,12 @@ import '../../core/theme/design_system.dart';
 import '../../core/services/avatar_service.dart';
 import 'user_avatar.dart';
 
-/// 头像上传组件
+/// 简化的头像上传组件
 ///
 /// 提供用户头像上传功能，支持：
 /// - 从相册选择图片
 /// - 从相机拍摄
-/// - 图片裁剪
+/// - 强制正方形裁剪
 /// - 上传到服务器
 /// - 显示上传进度
 ///
@@ -99,20 +99,39 @@ class AvatarUploader extends HookConsumerWidget {
 
         if (pickedFile == null) return;
 
-        // 裁剪图片
+        // 使用强制正方形裁剪
         final croppedFile = await ImageCropper().cropImage(
           sourcePath: pickedFile.path,
           uiSettings: [
             AndroidUiSettings(
-              toolbarTitle: '裁剪头像',
+              toolbarTitle: '调整头像',
               toolbarColor: theme.colorScheme.primary,
               toolbarWidgetColor: theme.colorScheme.onPrimary,
               lockAspectRatio: true,
               aspectRatioPresets: [CropAspectRatioPreset.square],
+              hideBottomControls: false,
+              showCropGrid: true,
+              cropFrameColor: theme.colorScheme.primary,
+              cropGridColor: theme.colorScheme.primary.withOpacity(0.5),
+              cropGridRowCount: 3,
+              cropGridColumnCount: 3,
+              activeControlsWidgetColor: theme.colorScheme.primary,
+              statusBarColor: theme.colorScheme.primary,
+              backgroundColor: theme.colorScheme.background,
+              initAspectRatio: CropAspectRatioPreset.square,
             ),
             IOSUiSettings(
-              title: '裁剪头像',
+              title: '调整头像',
               aspectRatioPresets: [CropAspectRatioPreset.square],
+              aspectRatioLockEnabled: true,
+              resetAspectRatioEnabled: false,
+              rotateButtonsHidden: false,
+              rotateClockwiseButtonHidden: false,
+              showActivitySheetOnDone: true,
+              showCancelConfirmationDialog: true,
+              doneButtonTitle: '确认',
+              cancelButtonTitle: '取消',
+              minimumAspectRatio: 1.0,
             ),
           ],
         );
@@ -127,7 +146,7 @@ class AvatarUploader extends HookConsumerWidget {
         uploadProgress.value = 0;
         errorMessage.value = null;
 
-        // 模拟上传进度（实际上传是同步的）
+        // 模拟上传进度
         Future.delayed(const Duration(milliseconds: 100), () {
           uploadProgress.value = 0.3;
         });
@@ -148,6 +167,16 @@ class AvatarUploader extends HookConsumerWidget {
           ref.read(avatarCacheProvider.notifier).clearUserAvatarCache(bipupuId);
 
           onUploadComplete?.call();
+
+          // 显示成功提示
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('头像上传成功'),
+                backgroundColor: theme.colorScheme.primary,
+              ),
+            );
+          }
         } else {
           errorMessage.value = '上传失败，请稍后重试';
           onError?.call('上传失败');
@@ -298,18 +327,39 @@ class AvatarUploadButton extends HookConsumerWidget {
 
         if (pickedFile == null) return;
 
+        // 使用强制正方形裁剪
         final croppedFile = await ImageCropper().cropImage(
           sourcePath: pickedFile.path,
           uiSettings: [
             AndroidUiSettings(
-              toolbarTitle: '裁剪头像',
+              toolbarTitle: '调整头像',
               toolbarColor: theme.colorScheme.primary,
               toolbarWidgetColor: theme.colorScheme.onPrimary,
               lockAspectRatio: true,
+              aspectRatioPresets: [CropAspectRatioPreset.square],
+              hideBottomControls: false,
+              showCropGrid: true,
+              cropFrameColor: theme.colorScheme.primary,
+              cropGridColor: theme.colorScheme.primary.withOpacity(0.5),
+              cropGridRowCount: 3,
+              cropGridColumnCount: 3,
+              activeControlsWidgetColor: theme.colorScheme.primary,
+              statusBarColor: theme.colorScheme.primary,
+              backgroundColor: theme.colorScheme.background,
+              initAspectRatio: CropAspectRatioPreset.square,
             ),
             IOSUiSettings(
-              title: '裁剪头像',
+              title: '调整头像',
               aspectRatioPresets: [CropAspectRatioPreset.square],
+              aspectRatioLockEnabled: true,
+              resetAspectRatioEnabled: false,
+              rotateButtonsHidden: false,
+              rotateClockwiseButtonHidden: false,
+              showActivitySheetOnDone: true,
+              showCancelConfirmationDialog: true,
+              doneButtonTitle: '确认',
+              cancelButtonTitle: '取消',
+              minimumAspectRatio: 1.0,
             ),
           ],
         );
@@ -327,8 +377,8 @@ class AvatarUploadButton extends HookConsumerWidget {
 
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('头像上传成功'),
+              SnackBar(
+                content: const Text('头像上传成功'),
                 backgroundColor: Colors.green,
               ),
             );

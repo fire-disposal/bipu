@@ -3,6 +3,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_config.dart';
+import '../../features/auth/logic/auth_notifier.dart';
+import 'package:flutter/foundation.dart';
 
 /// 普通 API 请求的 Dio 客户端
 /// receiveTimeout: 10 秒（适用于普通请求）
@@ -33,7 +35,74 @@ final dioClientProvider = Provider<Dio>((ref) {
         return handler.next(options);
       },
       onError: (error, handler) async {
-        // TODO: 处理 401 错误，刷新 token 等
+        // 处理 401 错误，自动刷新 token
+        if (error.response?.statusCode == 401) {
+          debugPrint('[DioInterceptor] 检测到 401 错误，尝试刷新 token');
+
+          try {
+            // 使用 AuthManager 刷新 token
+            final success = await AuthManager.refreshToken();
+
+            if (success) {
+              debugPrint('[DioInterceptor] Token 刷新成功，重试请求');
+
+              // 获取新的 token
+              final prefs = await SharedPreferences.getInstance();
+              final newAccessToken = prefs.getString('access_token');
+
+              if (newAccessToken != null && newAccessToken.isNotEmpty) {
+                // 更新原请求的 Authorization 头
+                error.requestOptions.headers['Authorization'] =
+                    'Bearer $newAccessToken';
+
+                // 创建新的请求选项，避免修改原选项的副作用
+                final options = Options(
+                  method: error.requestOptions.method,
+                  headers: error.requestOptions.headers,
+                  contentType: error.requestOptions.contentType,
+                  responseType: error.requestOptions.responseType,
+                  receiveTimeout: error.requestOptions.receiveTimeout,
+                  sendTimeout: error.requestOptions.sendTimeout,
+                  extra: error.requestOptions.extra,
+                  followRedirects: error.requestOptions.followRedirects,
+                  validateStatus: error.requestOptions.validateStatus,
+                  receiveDataWhenStatusError:
+                      error.requestOptions.receiveDataWhenStatusError,
+                );
+
+                // 重新发送原请求
+                try {
+                  final retryResponse = await dio.request(
+                    error.requestOptions.path,
+                    data: error.requestOptions.data,
+                    queryParameters: error.requestOptions.queryParameters,
+                    options: options,
+                    onReceiveProgress: error.requestOptions.onReceiveProgress,
+                    onSendProgress: error.requestOptions.onSendProgress,
+                    cancelToken: error.requestOptions.cancelToken,
+                  );
+                  return handler.resolve(retryResponse);
+                } catch (retryError) {
+                  debugPrint('[DioInterceptor] 重试请求失败: $retryError');
+                  return handler.next(error);
+                }
+              }
+            } else {
+              debugPrint('[DioInterceptor] Token 刷新失败，清除认证状态');
+              await AuthManager.clearToken();
+            }
+          } catch (e) {
+            debugPrint('[DioInterceptor] 刷新 token 过程中发生异常: $e');
+            await AuthManager.clearToken();
+          }
+        }
+
+        // 处理其他网络错误
+        if (error.type == DioExceptionType.connectionError ||
+            error.type == DioExceptionType.connectionTimeout) {
+          debugPrint('[DioInterceptor] 网络连接错误: ${error.type}');
+        }
+
         return handler.next(error);
       },
     ),
@@ -71,7 +140,74 @@ final pollingDioClientProvider = Provider<Dio>((ref) {
         return handler.next(options);
       },
       onError: (error, handler) async {
-        // TODO: 处理 401 错误，刷新 token 等
+        // 处理 401 错误，自动刷新 token
+        if (error.response?.statusCode == 401) {
+          debugPrint('[DioInterceptor] 检测到 401 错误，尝试刷新 token');
+
+          try {
+            // 使用 AuthManager 刷新 token
+            final success = await AuthManager.refreshToken();
+
+            if (success) {
+              debugPrint('[DioInterceptor] Token 刷新成功，重试请求');
+
+              // 获取新的 token
+              final prefs = await SharedPreferences.getInstance();
+              final newAccessToken = prefs.getString('access_token');
+
+              if (newAccessToken != null && newAccessToken.isNotEmpty) {
+                // 更新原请求的 Authorization 头
+                error.requestOptions.headers['Authorization'] =
+                    'Bearer $newAccessToken';
+
+                // 创建新的请求选项，避免修改原选项的副作用
+                final options = Options(
+                  method: error.requestOptions.method,
+                  headers: error.requestOptions.headers,
+                  contentType: error.requestOptions.contentType,
+                  responseType: error.requestOptions.responseType,
+                  receiveTimeout: error.requestOptions.receiveTimeout,
+                  sendTimeout: error.requestOptions.sendTimeout,
+                  extra: error.requestOptions.extra,
+                  followRedirects: error.requestOptions.followRedirects,
+                  validateStatus: error.requestOptions.validateStatus,
+                  receiveDataWhenStatusError:
+                      error.requestOptions.receiveDataWhenStatusError,
+                );
+
+                // 重新发送原请求
+                try {
+                  final retryResponse = await dio.request(
+                    error.requestOptions.path,
+                    data: error.requestOptions.data,
+                    queryParameters: error.requestOptions.queryParameters,
+                    options: options,
+                    onReceiveProgress: error.requestOptions.onReceiveProgress,
+                    onSendProgress: error.requestOptions.onSendProgress,
+                    cancelToken: error.requestOptions.cancelToken,
+                  );
+                  return handler.resolve(retryResponse);
+                } catch (retryError) {
+                  debugPrint('[DioInterceptor] 重试请求失败: $retryError');
+                  return handler.next(error);
+                }
+              }
+            } else {
+              debugPrint('[DioInterceptor] Token 刷新失败，清除认证状态');
+              await AuthManager.clearToken();
+            }
+          } catch (e) {
+            debugPrint('[DioInterceptor] 刷新 token 过程中发生异常: $e');
+            await AuthManager.clearToken();
+          }
+        }
+
+        // 处理其他网络错误
+        if (error.type == DioExceptionType.connectionError ||
+            error.type == DioExceptionType.connectionTimeout) {
+          debugPrint('[DioInterceptor] 网络连接错误: ${error.type}');
+        }
+
         return handler.next(error);
       },
     ),

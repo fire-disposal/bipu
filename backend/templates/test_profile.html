@@ -1,0 +1,422 @@
+{% extends "base.html" %}
+
+{% block title %}API 测试 (用户资料设置) - Bipupu{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>API 测试 (用户资料设置)</h2>
+    <span class="badge bg-info">{{ user.username }} ({{ user.bipupu_id }})</span>
+</div>
+
+<div class="row">
+    <!-- 用户信息展示 -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                当前用户信息
+            </div>
+            <div class="card-body text-center">
+                <img src="/api/profile/avatar/{{ user.bipupu_id }}"
+                     class="img-thumbnail rounded-circle mb-3"
+                     style="width: 120px; height: 120px; object-fit: cover"
+                     alt="头像"
+                     id="currentAvatar"
+                     onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY2NiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkF2YXRhcjwvdGV4dD48L3N2Zz4='">
+
+                <dl class="row mb-0 text-start">
+                    <dt class="col-sm-4">用户名</dt>
+                    <dd class="col-sm-8">{{ user.username }}</dd>
+
+                    <dt class="col-sm-4">Bipupu ID</dt>
+                    <dd class="col-sm-8">{{ user.bipupu_id }}</dd>
+
+                    <dt class="col-sm-4">昵称</dt>
+                    <dd class="col-sm-8" id="displayNickname">{{ user.nickname or '未设置' }}</dd>
+
+                    <dt class="col-sm-4">邮箱</dt>
+                    <dd class="col-sm-8">{{ user.email or '未设置' }}</dd>
+
+                    <dt class="col-sm-4">性别</dt>
+                    <dd class="col-sm-8" id="displayGender">
+                        {% if user.gender == 'MALE' %}男
+                        {% elif user.gender == 'FEMALE' %}女
+                        {% elif user.gender == 'OTHER' %}其他
+                        {% elif user.gender == 'PREFER_NOT_TO_SAY' %}不愿透露
+                        {% else %}未设置{% endif %}
+                    </dd>
+
+                    <dt class="col-sm-4">所在地</dt>
+                    <dd class="col-sm-8" id="displayLocation">{{ user.location or '未设置' }}</dd>
+
+                    <dt class="col-sm-4">简介</dt>
+                    <dd class="col-sm-8" id="displayBio">{{ user.bio or '未设置' }}</dd>
+                </dl>
+
+                <button class="btn btn-sm btn-outline-primary mt-3" onclick="loadProfile()">刷新信息</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 资料编辑表单 -->
+    <div class="col-md-8">
+        <!-- 更新资料 -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                更新个人资料
+            </div>
+            <div class="card-body">
+                <form id="updateProfileForm" onsubmit="updateProfile(event)">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="nickname" class="form-label">昵称</label>
+                            <input type="text" class="form-control" id="nickname" value="{{ user.nickname or '' }}" placeholder="请输入昵称">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="gender" class="form-label">性别</label>
+                            <select class="form-select" id="gender">
+                                <option value="">未设置</option>
+                                <option value="MALE" {{ 'selected' if user.gender == 'MALE' }}>男</option>
+                                <option value="FEMALE" {{ 'selected' if user.gender == 'FEMALE' }}>女</option>
+                                <option value="OTHER" {{ 'selected' if user.gender == 'OTHER' }}>其他</option>
+                                <option value="PREFER_NOT_TO_SAY" {{ 'selected' if user.gender == 'PREFER_NOT_TO_SAY' }}>不愿透露</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="location" class="form-label">所在地</label>
+                        <input type="text" class="form-control" id="location" value="{{ user.location or '' }}" placeholder="例如：北京、上海">
+                    </div>
+                    <div class="mb-3">
+                        <label for="bio" class="form-label">个人简介</label>
+                        <textarea class="form-control" id="bio" rows="3" placeholder="介绍一下自己...">{{ user.bio or '' }}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">保存修改</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 头像管理 -->
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                头像管理
+            </div>
+            <div class="card-body">
+                <form id="updateAvatarForm" onsubmit="updateAvatar(event)">
+                    <div class="mb-3">
+                        <label for="avatarFile" class="form-label">选择新头像</label>
+                        <input type="file" class="form-control" id="avatarFile" accept="image/*" required>
+                        <div class="form-text">支持 JPG、PNG 等常见图片格式</div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">上传头像</button>
+                        <button type="button" class="btn btn-outline-danger" onclick="deleteAvatar()">删除头像</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 修改密码 -->
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                修改密码
+            </div>
+            <div class="card-body">
+                <form id="changePasswordForm" onsubmit="changePassword(event)">
+                    <div class="mb-3">
+                        <label for="currentPassword" class="form-label">当前密码</label>
+                        <input type="password" class="form-control" id="currentPassword" required placeholder="请输入当前密码">
+                    </div>
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">新密码</label>
+                        <input type="password" class="form-control" id="newPassword" required placeholder="请输入新密码">
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirmPassword" class="form-label">确认新密码</label>
+                        <input type="password" class="form-control" id="confirmPassword" required placeholder="请再次输入新密码">
+                    </div>
+                    <button type="submit" class="btn btn-warning">修改密码</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 测试结果 -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <span>测试结果</span>
+                <small id="apiStatus" class="text-muted">就绪</small>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>请求</h6>
+                        <pre class="bg-light p-2 border rounded" id="requestInfo">等待操作...</pre>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>响应</h6>
+                        <pre class="bg-light p-2 border rounded" id="responseInfo">等待操作...</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function getAuthToken() {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'access_token') return value.startsWith('Bearer ') ? value.substring(7) : value;
+    }
+    return localStorage.getItem('access_token') || '';
+}
+
+function updateRequestInfo(method, url, body = null) {
+    let info = `${method} ${url}`;
+    if (body) {
+        info += `\n\nBody:\n${JSON.stringify(body, null, 2)}`;
+    }
+    document.getElementById('requestInfo').textContent = info;
+}
+
+function updateResponseInfo(status, statusText, data) {
+    const info = `状态：${status} ${statusText}\n时间：${new Date().toLocaleTimeString()}\n\n${JSON.stringify(data, null, 2)}`;
+    document.getElementById('responseInfo').textContent = info;
+}
+
+function updateStatus(success, message) {
+    const statusEl = document.getElementById('apiStatus');
+    statusEl.textContent = message;
+    statusEl.className = success ? 'text-success' : 'text-danger';
+}
+
+// 加载用户资料
+async function loadProfile() {
+    document.getElementById('responseInfo').textContent = '加载中...';
+    document.getElementById('apiStatus').textContent = '请求中';
+    document.getElementById('apiStatus').className = 'text-warning';
+
+    try {
+        const token = getAuthToken();
+        if (!token) {
+            throw new Error('未找到认证令牌，请重新登录');
+        }
+
+        const response = await fetch('/api/profile/me', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+        updateRequestInfo('GET', '/api/profile/me');
+        updateResponseInfo(response.status, response.statusText, data);
+        updateStatus(response.ok, response.ok ? '成功' : '失败');
+
+        if (response.ok) {
+            // 更新表单值
+            document.getElementById('nickname').value = data.nickname || '';
+            document.getElementById('gender').value = data.gender || '';
+            document.getElementById('location').value = data.location || '';
+            document.getElementById('bio').value = data.bio || '';
+
+            // 更新显示信息
+            document.getElementById('displayNickname').textContent = data.nickname || '未设置';
+            document.getElementById('displayGender').textContent = getGenderText(data.gender);
+            document.getElementById('displayLocation').textContent = data.location || '未设置';
+            document.getElementById('displayBio').textContent = data.bio || '未设置';
+
+            // 刷新头像
+            document.getElementById('currentAvatar').src = `/api/profile/avatar/{{ user.bipupu_id }}?t=${Date.now()}`;
+        }
+    } catch (error) {
+        document.getElementById('responseInfo').textContent = `请求失败：${error.message}`;
+        updateStatus(false, '错误');
+    }
+}
+
+function getGenderText(gender) {
+    const map = {
+        'MALE': '男',
+        'FEMALE': '女',
+        'OTHER': '其他',
+        'PREFER_NOT_TO_SAY': '不愿透露'
+    };
+    return map[gender] || '未设置';
+}
+
+// 更新用户资料
+async function updateProfile(event) {
+    event.preventDefault();
+
+    const body = {
+        nickname: document.getElementById('nickname').value,
+        gender: document.getElementById('gender').value,
+        location: document.getElementById('location').value,
+        bio: document.getElementById('bio').value
+    };
+
+    // 移除空值
+    Object.keys(body).forEach(key => {
+        if (body[key] === '' || body[key] === null) {
+            delete body[key];
+        }
+    });
+
+    updateRequestInfo('PUT', '/api/profile/', body);
+    document.getElementById('responseInfo').textContent = '请求中...';
+    document.getElementById('apiStatus').textContent = '请求中';
+    document.getElementById('apiStatus').className = 'text-warning';
+
+    try {
+        const token = getAuthToken();
+        if (!token) {
+            throw new Error('未找到认证令牌，请重新登录');
+        }
+
+        const response = await fetch('/api/profile/', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(body)
+        });
+
+        const data = await response.json();
+        updateResponseInfo(response.status, response.statusText, data);
+        updateStatus(response.ok, response.ok ? '成功' : '失败');
+
+        if (response.ok) {
+            // 更新页面显示
+            document.getElementById('displayNickname').textContent = body.nickname || '未设置';
+            document.getElementById('displayGender').textContent = getGenderText(body.gender);
+            document.getElementById('displayLocation').textContent = body.location || '未设置';
+            document.getElementById('displayBio').textContent = body.bio || '未设置';
+        }
+    } catch (error) {
+        document.getElementById('responseInfo').textContent = `请求失败：${error.message}`;
+        updateStatus(false, '错误');
+    }
+}
+
+// 更新头像
+async function updateAvatar(event) {
+    event.preventDefault();
+
+    const fileInput = document.getElementById('avatarFile');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        alert('请选择文件');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    updateRequestInfo('POST', '/api/profile/avatar', { file: file.name, size: `${(file.size / 1024).toFixed(1)}KB` });
+    document.getElementById('responseInfo').textContent = '上传中...';
+    document.getElementById('apiStatus').textContent = '上传中';
+    document.getElementById('apiStatus').className = 'text-warning';
+
+    try {
+        const token = getAuthToken();
+        if (!token) {
+            throw new Error('未找到认证令牌，请重新登录');
+        }
+
+        const response = await fetch('/api/profile/avatar', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+
+        const data = await response.json();
+        updateResponseInfo(response.status, response.statusText, data);
+        updateStatus(response.ok, response.ok ? '成功' : '失败');
+
+        if (response.ok) {
+            // 刷新头像显示
+            document.getElementById('currentAvatar').src = `/api/profile/avatar/{{ user.bipupu_id }}?t=${Date.now()}`;
+            fileInput.value = ''; // 清空文件选择
+        }
+    } catch (error) {
+        document.getElementById('responseInfo').textContent = `请求失败：${error.message}`;
+        updateStatus(false, '错误');
+    }
+}
+
+// 删除头像
+async function deleteAvatar() {
+    if (!confirm('确定要删除头像吗？')) return;
+
+    // 注意：当前 API 没有删除头像的接口，这里仅提示
+    alert('当前 API 不支持删除头像，请上传新头像覆盖');
+}
+
+// 修改密码
+async function changePassword(event) {
+    event.preventDefault();
+
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    if (newPassword !== confirmPassword) {
+        alert('两次输入的新密码不一致');
+        return;
+    }
+
+    if (newPassword.length < 6) {
+        alert('新密码长度至少为 6 位');
+        return;
+    }
+
+    const body = {
+        current_password: document.getElementById('currentPassword').value,
+        new_password: newPassword
+    };
+
+    updateRequestInfo('PUT', '/api/profile/password', body);
+    document.getElementById('responseInfo').textContent = '请求中...';
+    document.getElementById('apiStatus').textContent = '请求中';
+    document.getElementById('apiStatus').className = 'text-warning';
+
+    try {
+        const token = getAuthToken();
+        if (!token) {
+            throw new Error('未找到认证令牌，请重新登录');
+        }
+
+        const response = await fetch('/api/profile/password', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(body)
+        });
+
+        const data = await response.json();
+        updateResponseInfo(response.status, response.statusText, data);
+        updateStatus(response.ok, response.ok ? '成功' : '失败');
+
+        if (response.ok) {
+            document.getElementById('changePasswordForm').reset();
+            alert('密码修改成功');
+        }
+    } catch (error) {
+        document.getElementById('responseInfo').textContent = `请求失败：${error.message}`;
+        updateStatus(false, '错误');
+    }
+}
+</script>
+{% endblock %}

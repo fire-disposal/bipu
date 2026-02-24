@@ -30,6 +30,38 @@ enum AuthStatus {
 final authStatusNotifierProvider =
     NotifierProvider<AuthStatusNotifier, AuthStatus>(AuthStatusNotifier.new);
 
+/// 全局认证管理器实例（用于在非Widget上下文中访问）
+class AuthManager {
+  static AuthStatusNotifier? _instance;
+
+  static void setInstance(AuthStatusNotifier instance) {
+    _instance = instance;
+  }
+
+  static AuthStatusNotifier? get instance => _instance;
+
+  /// 刷新token（可在拦截器等非Widget上下文中调用）
+  static Future<bool> refreshToken() async {
+    if (_instance == null) {
+      debugPrint('[AuthManager] 实例未初始化');
+      return false;
+    }
+    return await _instance!.refreshToken();
+  }
+
+  /// 清除token（可在拦截器等非Widget上下文中调用）
+  static Future<void> clearToken() async {
+    if (_instance == null) {
+      debugPrint('[AuthManager] 实例未初始化');
+      return;
+    }
+    await _instance!._clearToken();
+    Future.microtask(() {
+      _instance!.state = AuthStatus.unauthenticated;
+    });
+  }
+}
+
 class AuthStatusNotifier extends Notifier<AuthStatus> {
   @override
   AuthStatus build() {
@@ -37,6 +69,10 @@ class AuthStatusNotifier extends Notifier<AuthStatus> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAuth();
     });
+
+    // 注册全局实例
+    AuthManager.setInstance(this);
+
     return AuthStatus.unknown;
   }
 
@@ -232,12 +268,45 @@ class AuthStatusNotifier extends Notifier<AuthStatus> {
       final refreshToken = prefs.getString('refresh_token');
 
       if (refreshToken == null || refreshToken.isEmpty) {
+        debugPrint('[Auth] 无有效的refresh token');
         return false;
       }
 
       return await _refreshTokenInternal(refreshToken);
     } catch (e) {
       debugPrint('[Auth] 刷新 Token 失败：$e');
+      return false;
+    }
+  }
+
+  /// 静默刷新token（不更新UI状态）
+  Future<bool> silentRefreshToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final refreshToken = prefs.getString('refresh_token');
+
+      if (refreshToken == null || refreshToken.isEmpty) {
+        return false;
+      }
+
+      final restClient = ref.read(restClientProvider);
+      final response = await restClient.refreshToken({
+        'refresh_token': refreshToken,
+      });
+
+      final data = response.data as Map<String, dynamic>;
+
+      // 检查必要字段
+      if (data['access_token'] == null || data['expires_in'] == null) {
+        return false;
+      }
+
+      final token = Token.fromJson(data);
+      await _saveToken(token);
+      debugPrint('[Auth] Token 静默刷新成功');
+      return true;
+    } catch (e) {
+      debugPrint('[Auth] Token 静默刷新失败：$e');
       return false;
     }
   }
@@ -331,6 +400,35 @@ class AuthStatusNotifier extends Notifier<AuthStatus> {
     await prefs.remove('access_token');
     await prefs.remove('refresh_token');
     await prefs.remove('token_expiry');
+    debugPrint('[Auth] Token 已清除');
+  }
+
+  /// 验证token是否有效（检查本地存储和服务器端）
+  Future<bool> validateToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token');
+      final expiry = prefs.getInt('token_expiry');
+
+      if (token == null || token.isEmpty || expiry == null) {
+        return false;
+      }
+
+      // 检查本地过期时间
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      if (expiry <= now) {
+        debugPrint('[Auth] Token 已过期（本地检查）');
+        return false;
+      }
+
+      // 可选：调用服务器端验证（如果需要更严格的安全检查）
+      // 这里暂时只做本地检查，因为服务器端验证会增加请求开销
+
+      return true;
+    } catch (e) {
+      debugPrint('[Auth] 验证 Token 失败：$e');
+      return false;
+    }
   }
 
   /// 获取当前用户信息
@@ -356,6 +454,12 @@ class AuthStatusNotifier extends Notifier<AuthStatus> {
 final isLoggedInProvider = Provider<bool>((ref) {
   final status = ref.watch(authStatusNotifierProvider);
   return status == AuthStatus.authenticated;
+});
+
+/// Token验证提供者（定期检查token有效性）
+final tokenValidationProvider = FutureProvider<bool>((ref) async {
+  final authNotifier = ref.read(authStatusNotifierProvider.notifier);
+  return await authNotifier.validateToken();
 });
 
 /// 当前用户信息提供者

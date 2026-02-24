@@ -6,6 +6,7 @@ import 'core/theme/app_theme.dart';
 import 'core/services/polling_service.dart';
 import 'core/services/message_forwarder.dart';
 import 'core/services/toast_service.dart';
+import 'core/services/token_refresh_service.dart';
 import 'core/bluetooth/ble_manager.dart';
 
 import 'features/home/ui/home_screen.dart';
@@ -29,6 +30,14 @@ class App extends HookConsumerWidget {
     final bleManager = ref.read(bleManagerProvider);
     final messageForwarder = ref.read(messageForwarderProvider);
 
+    // 初始化Token刷新管理器
+    useEffect(() {
+      TokenRefreshManager.initialize(ref);
+      return () {
+        TokenRefreshManager.stop();
+      };
+    }, []);
+
     // 监听认证状态变化，启动/停止服务
     useEffect(() {
       // 保存服务引用，避免在异步操作中使用可能变化的引用
@@ -49,12 +58,20 @@ class App extends HookConsumerWidget {
         currentMessageForwarder.start().catchError((e) {
           debugPrint('消息转发服务启动失败: $e');
         });
+
+        // 启动Token自动刷新服务
+        final tokenRefreshService = ref.read(tokenRefreshServiceProvider);
+        tokenRefreshService.start();
       } else if (authStatus == AuthStatus.unauthenticated) {
         // 只在未认证状态时停止服务
         currentPollingService.stop();
         currentMessageForwarder.stop().catchError((e) {
           debugPrint('消息转发服务停止失败: $e');
         });
+
+        // 停止Token自动刷新服务
+        final tokenRefreshService = ref.read(tokenRefreshServiceProvider);
+        tokenRefreshService.stop();
       }
 
       return () {

@@ -36,6 +36,25 @@ class PagerScreen extends HookConsumerWidget {
       notifier.toggleMode();
     }
 
+    // 错误提示
+    if (pagerState == PagerState.error) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('消息发送失败，请重试'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            action: SnackBarAction(
+              label: '重试',
+              textColor: Theme.of(context).colorScheme.onError,
+              onPressed: () {
+                ref.read(pagerNotifierProvider.notifier).clearError();
+              },
+            ),
+          ),
+        );
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('传唤台'),
@@ -128,6 +147,11 @@ class PagerScreen extends HookConsumerWidget {
         statusIcon = Icons.phone_enabled;
         statusColor = theme.colorScheme.tertiary;
         break;
+      case PagerState.error:
+        statusText = '错误';
+        statusIcon = Icons.error_outline;
+        statusColor = theme.colorScheme.error;
+        break;
     }
 
     return FadeIn(
@@ -181,6 +205,9 @@ class PagerScreen extends HookConsumerWidget {
       case PagerState.manual:
       case PagerState.connected:
         return _buildManualContent(context, messageController, notifier);
+
+      case PagerState.error:
+        return _buildErrorContent(context, notifier);
     }
   }
 
@@ -291,6 +318,77 @@ class PagerScreen extends HookConsumerWidget {
     );
   }
 
+  Widget _buildErrorContent(BuildContext context, PagerNotifier notifier) {
+    return FadeInUp(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error_outline,
+            size: 64,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            '消息发送失败',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: Theme.of(context).colorScheme.error,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            '请检查网络连接后重试',
+            style: Theme.of(context).textTheme.bodyMedium,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ShadButton.outline(
+                onPressed: notifier.clearError,
+                child: const Text('返回'),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              ShadButton(
+                onPressed: () {
+                  notifier.clearError();
+                  notifier.switchToManual();
+                },
+                child: const Text('重试'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorSnackbar(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(pagerNotifierProvider);
+
+    if (state == PagerState.error) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('消息发送失败，请重试'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            action: SnackBarAction(
+              label: '重试',
+              textColor: Theme.of(context).colorScheme.onError,
+              onPressed: () {
+                ref.read(pagerNotifierProvider.notifier).clearError();
+              },
+            ),
+          ),
+        );
+      });
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  @override
   Widget _buildActionButtons(
     BuildContext context,
     PagerState state,
@@ -347,6 +445,22 @@ class PagerScreen extends HookConsumerWidget {
                 Icon(Icons.call_end, size: 18),
                 SizedBox(width: 8),
                 Text('挂断'),
+              ],
+            ),
+          ),
+        );
+
+      case PagerState.error:
+        return SizedBox(
+          width: double.infinity,
+          child: ShadButton(
+            onPressed: handleCall,
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.refresh, size: 18),
+                SizedBox(width: 8),
+                Text('重试'),
               ],
             ),
           ),

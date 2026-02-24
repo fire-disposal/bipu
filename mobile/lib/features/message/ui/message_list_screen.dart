@@ -8,7 +8,8 @@ import '../../../shared/models/message_model.dart';
 import '../logic/message_provider.dart';
 import '../logic/message_controller.dart';
 import 'message_detail_screen.dart';
-import 'service_subscription_screen.dart';
+import 'service_subscription_simple_screen.dart';
+import '../../blocks/ui/blocks_screen.dart';
 
 /// 消息列表页面
 class MessageListScreen extends HookConsumerWidget {
@@ -459,7 +460,21 @@ class MessageListScreen extends HookConsumerWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const ServiceSubscriptionScreen(),
+                      builder: (context) =>
+                          const ServiceSubscriptionSimpleScreen(),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.block),
+                title: const Text('黑名单管理'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const BlocksScreen(),
                     ),
                   );
                 },
@@ -479,12 +494,6 @@ class MessageListScreen extends HookConsumerWidget {
                   Navigator.pop(context);
                   // TODO: 显示消息帮助
                 },
-              ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.cancel),
-                title: const Text('取消'),
-                onTap: () => Navigator.pop(context),
               ),
             ],
           ),

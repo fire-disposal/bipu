@@ -187,7 +187,19 @@ class UserService:
 
     @staticmethod
     def block_user(db: Session, blocker: User, blocked_user_id: int) -> UserBlock:
-        """将用户加入黑名单"""
+        """将用户加入黑名单
+
+        参数：
+        - db: 数据库会话
+        - blocker: 执行拉黑的用户
+        - blocked_user_id: 被拉黑用户的数据库ID
+
+        返回：
+        - UserBlock: 创建的黑名单记录
+
+        异常：
+        - ValidationException: 如果尝试拉黑自己、用户不存在或已拉黑
+        """
         if blocker.id == blocked_user_id:
             raise ValidationException("Cannot block yourself")
 
@@ -210,13 +222,26 @@ class UserService:
             db.commit()
             db.refresh(ub)
             return ub
-        except Exception:
+        except Exception as e:
             db.rollback()
-            raise
+            logger.error(f"Failed to block user {blocked_user_id}: {str(e)}")
+            raise ValidationException(f"Failed to block user: {str(e)}")
 
     @staticmethod
     def unblock_user(db: Session, blocker: User, blocked_user_id: int) -> bool:
-        """从黑名单移除用户"""
+        """从黑名单移除用户
+
+        参数：
+        - db: 数据库会话
+        - blocker: 执行解除拉黑的用户
+        - blocked_user_id: 被解除拉黑用户的数据库ID
+
+        返回：
+        - bool: 操作是否成功
+
+        异常：
+        - ValidationException: 如果黑名单记录不存在
+        """
         ub = db.query(UserBlock).filter(
             UserBlock.blocker_id == blocker.id,
             UserBlock.blocked_id == blocked_user_id
@@ -228,17 +253,33 @@ class UserService:
         try:
             db.commit()
             return True
-        except Exception:
+        except Exception as e:
             db.rollback()
-            raise
+            logger.error(f"Failed to unblock user {blocked_user_id}: {str(e)}")
+            raise ValidationException(f"Failed to unblock user: {str(e)}")
 
     @staticmethod
     def get_blocked_users(db: Session, blocker: User, params: PaginationParams) -> tuple[list[tuple[User, datetime]], int]:
-        """获取黑名单列表，返回 ([(user, blocked_at)], total)"""
+        """获取黑名单列表，返回 ([(user, blocked_at)], total)
+
+        参数：
+        - db: 数据库会话
+        - blocker: 查询黑名单的用户
+        - params: 分页参数
+
+        返回：
+        - tuple[list[tuple[User, datetime]], int]: (用户列表及拉黑时间, 总数)
+        """
         # 查询 UserBlock 并联结 User，以便返回被拉黑用户及时间
-        query = db.query(User, UserBlock.created_at).join(UserBlock, User.id == UserBlock.blocked_id).filter(UserBlock.blocker_id == blocker.id)
+        query = db.query(User, UserBlock.created_at).join(
+            UserBlock, User.id == UserBlock.blocked_id
+        ).filter(
+            UserBlock.blocker_id == blocker.id
+        ).order_by(UserBlock.created_at.desc())
+
         total = query.count()
         rows = query.offset(params.skip).limit(params.size).all()
+
         # rows 是 Row 对象，需要转换为 (User, datetime) 元组
         result = []
         for row in rows:
@@ -247,6 +288,121 @@ class UserService:
             blocked_at = row[1]
             result.append((user, blocked_at))
         return result, total
+
+    @staticmethod
+    def is_user_blocked(db: Session, blocker_id: int, blocked_id: int) -> bool:
+        """检查用户是否被拉黑
+
+        参数：
+        - db: 数据库会话
+        - blocker_id: 检查是否执行拉黑的用户ID
+        - blocked_id: 检查是否被拉黑的用户ID
+
+        返回：
+        - bool: 如果 blocker_id 拉黑了 blocked_id 则返回 True
+        """
+        return db.query(UserBlock).filter(
+            UserBlock.blocker_id == blocker_id,
+            UserBlock.blocked_id == blocked_id
+        ).first() is not None
+
+    @staticmethod
+    def get_block_status(db: Session, user1_id: int, user2_id: int) -> dict:
+        """获取两个用户之间的拉黑关系状态
+
+        参数：
+        - db: 数据库会话
+        - user1_id: 第一个用户ID
+        - user2_id: 第二个用户ID
+
+        返回：
+        - dict: 包含拉黑状态信息的字典
+        """
+        user1_blocks_user2 = UserService.is_user_blocked(db, user1_id, user2_id)
+        user2_blocks_user1 = UserService.is_user_blocked(db, user2_id, user1_id)
+
+        return {
+            "user1_blocks_user2": user1_blocks_user2,
+            "user2_blocks_user1": user2_blocks_user1,
+            "mutual_block": user1_blocks_user2 and user2_blocks_user1,
+            "any_block": user1_blocks_user2 or user2_blocks_user1
+        }
+
+    @staticmethod
+    def search_blocked_users(db: Session, blocker: User, keyword: str, limit: int = 10) -> list[tuple[User, datetime]]:
+        """在黑名单中搜索用户
+
+        参数：
+        - db: 数据库会话
+        - blocker: 执行搜索的用户
+        - keyword: 搜索关键词
+        - limit: 结果数量限制
+
+        返回：
+        - list[tuple[User, datetime]]: 匹配的用户列表及拉黑时间
+        """
+        from sqlalchemy import or_
+
+        search_pattern = f"%{keyword}%"
+
+        query = db.query(User, UserBlock.created_at).join(
+            UserBlock, User.id == UserBlock.blocked_id
+        ).filter(
+            UserBlock.blocker_id == blocker.id,
+            or_(
+                User.username.ilike(search_pattern),
+                User.nickname.ilike(search_pattern),
+                User.bipupu_id.ilike(search_pattern)
+            )
+        ).order_by(UserBlock.created_at.desc()).limit(limit)
+
+        rows = query.all()
+
+        result = []
+        for row in rows:
+            user = row[0]
+            blocked_at = row[1]
+            result.append((user, blocked_at))
+
+        return result
+
+    @staticmethod
+    def get_block_statistics(db: Session, user_id: int) -> dict:
+        """获取用户的拉黑统计信息
+
+        参数：
+        - db: 数据库会话
+        - user_id: 用户ID
+
+        返回：
+        - dict: 包含统计信息的字典
+        """
+        # 我拉黑的用户总数
+        total_blocks = db.query(UserBlock).filter(
+            UserBlock.blocker_id == user_id
+        ).count()
+
+        # 拉黑我的用户总数
+        total_blocked_by = db.query(UserBlock).filter(
+            UserBlock.blocked_id == user_id
+        ).count()
+
+        # 互相拉黑的用户数
+        mutual_blocks_query = db.query(UserBlock).filter(
+            UserBlock.blocker_id == user_id,
+            UserBlock.blocked_id.in_(
+                db.query(UserBlock.blocker_id).filter(
+                    UserBlock.blocked_id == user_id
+                )
+            )
+        )
+        mutual_blocks = mutual_blocks_query.count()
+
+        return {
+            "total_blocks": total_blocks,
+            "total_blocked_by": total_blocked_by,
+            "mutual_blocks": mutual_blocks
+        }
 
     @staticmethod
     def toggle_user_status(db: Session, user_id: int) -> User:

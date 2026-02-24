@@ -2,6 +2,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/api/api_provider.dart';
 import '../../../shared/models/user_model.dart';
 import '../../auth/logic/auth_notifier.dart';
 
@@ -64,10 +65,33 @@ class ProfileNotifier extends Notifier<AsyncValue<UserModel?>> {
     Map<String, dynamic>? cosmicProfile,
   }) async {
     try {
-      // TODO: 调用 API 更新用户资料
       debugPrint('[Profile] 更新用户资料：nickname=$nickname');
-      await refresh();
-      return true;
+
+      final restClient = ref.read(restClientProvider);
+      final updateData = <String, dynamic>{};
+
+      if (nickname != null) {
+        updateData['nickname'] = nickname;
+      }
+      if (cosmicProfile != null) {
+        updateData['cosmic_profile'] = cosmicProfile;
+      }
+
+      if (updateData.isEmpty) {
+        debugPrint('[Profile] 没有需要更新的数据');
+        return true;
+      }
+
+      final response = await restClient.updateUserProfile(updateData);
+
+      if (response.response.statusCode == 200) {
+        debugPrint('[Profile] 用户资料更新成功');
+        await refresh();
+        return true;
+      } else {
+        debugPrint('[Profile] 用户资料更新失败: ${response.response.statusCode}');
+        return false;
+      }
     } catch (e) {
       debugPrint('[Profile] 更新用户资料失败：$e');
       return false;
@@ -90,9 +114,21 @@ class ProfileNotifier extends Notifier<AsyncValue<UserModel?>> {
   /// 更新密码
   Future<bool> updatePassword(String oldPassword, String newPassword) async {
     try {
-      // TODO: 调用 API 更新密码
       debugPrint('[Profile] 更新密码');
-      return true;
+
+      final restClient = ref.read(restClientProvider);
+      final response = await restClient.updatePassword({
+        'old_password': oldPassword,
+        'new_password': newPassword,
+      });
+
+      if (response.response.statusCode == 200) {
+        debugPrint('[Profile] 密码更新成功');
+        return true;
+      } else {
+        debugPrint('[Profile] 密码更新失败: ${response.response.statusCode}');
+        return false;
+      }
     } catch (e) {
       debugPrint('[Profile] 更新密码失败：$e');
       return false;
@@ -102,9 +138,18 @@ class ProfileNotifier extends Notifier<AsyncValue<UserModel?>> {
   /// 更新时区
   Future<bool> updateTimezone(String timezone) async {
     try {
-      // TODO: 调用 API 更新时区
       debugPrint('[Profile] 更新时区：$timezone');
-      return true;
+
+      final restClient = ref.read(restClientProvider);
+      final response = await restClient.updateTimezone({'timezone': timezone});
+
+      if (response.response.statusCode == 200) {
+        debugPrint('[Profile] 时区更新成功');
+        return true;
+      } else {
+        debugPrint('[Profile] 时区更新失败: ${response.response.statusCode}');
+        return false;
+      }
     } catch (e) {
       debugPrint('[Profile] 更新时区失败：$e');
       return false;
