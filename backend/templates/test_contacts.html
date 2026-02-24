@@ -242,17 +242,114 @@ endblock %} {% block content %}
         </div>
     </div>
 </div>
-{% endblock %} {% block scripts %}
+{% endblock %}
+
+<!-- 调试信息显示令牌状态 -->
+<div class="row mt-2">
+    <div class="col-md-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-bug"></i> 调试信息
+            </div>
+            <div class="card-body">
+                <h6>令牌状态:</h6>
+                <div id="tokenDebugInfo" class="text-muted">加载中...</div>
+                <hr />
+                <h6>服务器端令牌:</h6>
+                <div class="mb-2">
+                    {% if access_token %}
+                    <span class="badge bg-success">已注入</span>
+                    <small class="text-muted"
+                        >长度: {{ access_token|length }} 字符</small
+                    >
+                    <input
+                        type="hidden"
+                        id="serverAccessToken"
+                        value="{{ access_token }}"
+                    />
+                    {% else %}
+                    <span class="badge bg-danger">未注入</span>
+                    {% endif %}
+                </div>
+                <button
+                    class="btn btn-sm btn-outline-info"
+                    onclick="debugTokenInfo()"
+                >
+                    刷新调试信息
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<!-- 隐藏字段存储服务器端注入的令牌 -->
+{% if access_token %}
+<input type="hidden" id="serverAccessToken" value="{{ access_token }}" />
+{% endif %}
+
 <script>
+    function debugTokenInfo() {
+        const debugEl = document.getElementById("tokenDebugInfo");
+        const serverToken = document.getElementById("serverAccessToken");
+
+        let debugText = "";
+        debugText += `服务器令牌元素: ${serverToken ? "找到" : "未找到"}<br>`;
+        debugText += `服务器令牌值: ${serverToken && serverToken.value ? "有值" : "空值"}<br>`;
+        if (serverToken && serverToken.value) {
+            debugText += `令牌长度: ${serverToken.value.length}<br>`;
+            debugText += `令牌前20字符: ${serverToken.value.substring(0, 20)}...<br>`;
+        }
+
+        debugText += `<hr>当前cookie: ${document.cookie || "空"}<br>`;
+
+        const cookies = document.cookie.split(";");
+        debugText += `Cookie数量: ${cookies.length}<br>`;
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split("=");
+            debugText += `- ${name}: ${value ? "有值" : "空值"}<br>`;
+        }
+
+        const localStorageToken = localStorage.getItem("access_token");
+        debugText += `<hr>localStorage令牌: ${localStorageToken ? "有值" : "空值"}<br>`;
+
+        debugEl.innerHTML = debugText;
+    }
+
     function getAuthToken() {
+        console.log("开始获取认证令牌...");
+
+        // 首先尝试使用服务器端注入的令牌
+        const serverToken = document.getElementById("serverAccessToken");
+        console.log("服务器令牌元素:", serverToken);
+        if (serverToken && serverToken.value) {
+            console.log("找到服务器令牌，长度:", serverToken.value.length);
+            console.log(
+                "令牌前20字符:",
+                serverToken.value.substring(0, 20) + "...",
+            );
+            return serverToken.value;
+        } else {
+            console.log("未找到服务器令牌");
+        }
+
+        // 如果没有服务器端令牌，尝试从cookie获取
+        console.log("当前cookie:", document.cookie);
         const cookies = document.cookie.split(";");
         for (let cookie of cookies) {
             const [name, value] = cookie.trim().split("=");
+            console.log("检查cookie:", name, "=", value ? "有值" : "空值");
             if (name === "access_token") {
+                console.log("找到access_token cookie");
                 return value.startsWith("Bearer ") ? value.substring(7) : value;
             }
         }
-        return localStorage.getItem("access_token") || "";
+        console.log("未找到access_token cookie");
+
+        // 最后尝试从localStorage获取
+        const localStorageToken = localStorage.getItem("access_token");
+        console.log("localStorage令牌:", localStorageToken ? "有值" : "空值");
+        return localStorageToken || "";
     }
 
     function updateRequestInfo(method, url, body = null) {
@@ -281,9 +378,21 @@ endblock %} {% block content %}
 
         try {
             const token = getAuthToken();
+            console.log(
+                "获取联系人 - 获取到的令牌:",
+                token ? `长度: ${token.length}` : "空令牌",
+            );
             if (!token) {
-                throw new Error("未找到认证令牌，请重新登录");
+                console.error("获取联系人 - 令牌为空");
+                // 显示原始错误而不是通用错误
+                document.getElementById("responseInfo").textContent =
+                    "错误: 令牌为空。请检查调试信息中的令牌状态。";
+                updateStatus(false, "令牌错误");
+                return;
             }
+
+            console.log("获取联系人 - 发起API请求: GET /api/contacts/");
+            console.log("使用的令牌:", token.substring(0, 20) + "...");
 
             const response = await fetch("/api/contacts/", {
                 headers: {
@@ -291,7 +400,14 @@ endblock %} {% block content %}
                 },
             });
 
+            console.log(
+                "获取联系人 - API响应状态:",
+                response.status,
+                response.statusText,
+            );
             const data = await response.json();
+            console.log("获取联系人 - API响应数据:", data);
+
             updateRequestInfo("GET", "/api/contacts/");
             updateResponseInfo(response.status, response.statusText, data);
             updateStatus(response.ok, response.ok ? "成功" : "失败");
@@ -318,9 +434,15 @@ endblock %} {% block content %}
                 listEl.innerHTML = `<div class="text-danger">加载失败：${data.detail || "未知错误"}</div>`;
             }
         } catch (error) {
+            console.error("获取联系人 - 请求失败:", error);
             listEl.innerHTML = `<div class="text-danger">请求失败：${error.message}</div>`;
             updateStatus(false, "错误");
         }
+
+        // 显示调试信息
+        setTimeout(() => {
+            debugTokenInfo();
+        }, 100);
     }
 
     // 添加联系人
@@ -343,9 +465,21 @@ endblock %} {% block content %}
 
         try {
             const token = getAuthToken();
+            console.log(
+                "添加联系人 - 获取到的令牌:",
+                token ? `长度: ${token.length}` : "空令牌",
+            );
             if (!token) {
-                throw new Error("未找到认证令牌，请重新登录");
+                console.error("添加联系人 - 令牌为空");
+                // 显示原始错误而不是通用错误
+                document.getElementById("responseInfo").textContent =
+                    "错误: 令牌为空。请检查调试信息中的令牌状态。";
+                updateStatus(false, "令牌错误");
+                return;
             }
+
+            console.log("添加联系人 - 发起API请求: POST /api/contacts/", body);
+            console.log("使用的令牌:", token.substring(0, 20) + "...");
 
             const response = await fetch("/api/contacts/", {
                 method: "POST",
@@ -356,7 +490,14 @@ endblock %} {% block content %}
                 body: JSON.stringify(body),
             });
 
+            console.log(
+                "添加联系人 - API响应状态:",
+                response.status,
+                response.statusText,
+            );
             const data = await response.json();
+            console.log("添加联系人 - API响应数据:", data);
+
             updateResponseInfo(response.status, response.statusText, data);
             updateStatus(response.ok, response.ok ? "成功" : "失败");
 
@@ -382,9 +523,23 @@ endblock %} {% block content %}
 
         try {
             const token = getAuthToken();
+            console.log(
+                "删除联系人 - 获取到的令牌:",
+                token ? `长度: ${token.length}` : "空令牌",
+            );
             if (!token) {
-                throw new Error("未找到认证令牌，请重新登录");
+                console.error("删除联系人 - 令牌为空");
+                // 显示原始错误而不是通用错误
+                document.getElementById("responseInfo").textContent =
+                    "错误: 令牌为空。请检查调试信息中的令牌状态。";
+                updateStatus(false, "令牌错误");
+                return;
             }
+
+            console.log(
+                "删除联系人 - 发起API请求: DELETE /api/contacts/${contactBipupuId}",
+            );
+            console.log("使用的令牌:", token.substring(0, 20) + "...");
 
             const response = await fetch(`/api/contacts/${contactBipupuId}`, {
                 method: "DELETE",
@@ -428,9 +583,21 @@ endblock %} {% block content %}
 
         try {
             const token = getAuthToken();
+            console.log(
+                "获取黑名单 - 获取到的令牌:",
+                token ? `长度: ${token.length}` : "空令牌",
+            );
             if (!token) {
-                throw new Error("未找到认证令牌，请重新登录");
+                console.error("获取黑名单 - 令牌为空");
+                // 显示原始错误而不是通用错误
+                document.getElementById("responseInfo").textContent =
+                    "错误: 令牌为空。请检查调试信息中的令牌状态。";
+                updateStatus(false, "令牌错误");
+                return;
             }
+
+            console.log("获取黑名单 - 发起API请求: GET /api/blocks");
+            console.log("使用的令牌:", token.substring(0, 20) + "...");
 
             const response = await fetch("/api/blocks", {
                 headers: {
@@ -438,7 +605,14 @@ endblock %} {% block content %}
                 },
             });
 
+            console.log(
+                "获取黑名单 - API响应状态:",
+                response.status,
+                response.statusText,
+            );
             const data = await response.json();
+            console.log("获取黑名单 - API响应数据:", data);
+
             updateRequestInfo("GET", "/api/blocks");
             updateResponseInfo(response.status, response.statusText, data);
             updateStatus(response.ok, response.ok ? "成功" : "失败");
@@ -485,9 +659,21 @@ endblock %} {% block content %}
 
         try {
             const token = getAuthToken();
+            console.log(
+                "拉黑用户 - 获取到的令牌:",
+                token ? `长度: ${token.length}` : "空令牌",
+            );
             if (!token) {
-                throw new Error("未找到认证令牌，请重新登录");
+                console.error("拉黑用户 - 令牌为空");
+                // 显示原始错误而不是通用错误
+                document.getElementById("responseInfo").textContent =
+                    "错误: 令牌为空。请检查调试信息中的令牌状态。";
+                updateStatus(false, "令牌错误");
+                return;
             }
+
+            console.log("拉黑用户 - 发起API请求: POST /api/blocks", body);
+            console.log("使用的令牌:", token.substring(0, 20) + "...");
 
             const response = await fetch("/api/blocks", {
                 method: "POST",
@@ -498,7 +684,14 @@ endblock %} {% block content %}
                 body: JSON.stringify(body),
             });
 
+            console.log(
+                "拉黑用户 - API响应状态:",
+                response.status,
+                response.statusText,
+            );
             const data = await response.json();
+            console.log("拉黑用户 - API响应数据:", data);
+
             updateResponseInfo(response.status, response.statusText, data);
             updateStatus(response.ok, response.ok ? "成功" : "失败");
 

@@ -1,6 +1,6 @@
 """客户端黑名单 API 路由 - 用户业务功能，无需管理员权限"""
 
-from typing import List, Optional
+from typing import List, Optional, cast
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -26,7 +26,7 @@ def _get_user_by_bipupu_id(db: Session, bipupu_id: str) -> User:
     user = db.query(User).filter(User.bipupu_id == bipupu_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
-    return user
+    return cast(User, user)
 
 
 def _validate_not_self(current_user: User, target_user: User) -> None:
@@ -63,7 +63,8 @@ async def block_user(
     _validate_not_self(current_user, blocked_user)
 
     try:
-        UserService.block_user(db, current_user, blocked_user.id)
+        # 使用 cast 确保类型正确，blocked_user.id 是 Integer 类型
+        UserService.block_user(db, current_user, cast(int, blocked_user.id))
         logger.info(f"用户拉黑成功：{current_user.username} 拉黑 {block_request.bipupu_id}")
         return {"message": "用户已拉黑"}
     except ValidationException as e:
@@ -102,7 +103,8 @@ async def unblock_user(
     blocked_user = _get_user_by_bipupu_id(db, bipupu_id)
 
     try:
-        UserService.unblock_user(db, current_user, blocked_user.id)
+        # 使用 cast 确保类型正确，blocked_user.id 是 Integer 类型
+        UserService.unblock_user(db, current_user, cast(int, blocked_user.id))
         logger.info(f"用户解除拉黑成功：{current_user.username} 解除拉黑 {bipupu_id}")
         return {"message": "用户已解除拉黑"}
     except ValidationException as e:
@@ -150,11 +152,11 @@ async def get_blocked_users(
     blocked_users = []
     for user, blocked_at in rows:
         blocked_users.append(BlockedUserResponse(
-            id=user.id,
-            bipupu_id=user.bipupu_id,
-            username=user.username,
-            nickname=user.nickname,
-            avatar_url=user.avatar_url,
+            id=user.id,  # type: ignore
+            bipupu_id=user.bipupu_id,  # type: ignore
+            username=user.username,  # type: ignore
+            nickname=user.nickname,  # type: ignore
+            avatar_url=user.avatar_url,  # type: ignore
             blocked_at=blocked_at
         ))
 
@@ -202,11 +204,11 @@ async def check_block_status(
         "is_blocked_by_them": blocked_by_them,
         "mutual_block": blocked_by_me and blocked_by_them,
         "user_info": {
-            "id": target_user.id,
-            "bipupu_id": target_user.bipupu_id,
-            "username": target_user.username,
-            "nickname": target_user.nickname,
-            "avatar_url": target_user.avatar_url
+            "id": target_user.id,  # type: ignore
+            "bipupu_id": target_user.bipupu_id,  # type: ignore
+            "username": target_user.username,  # type: ignore
+            "nickname": target_user.nickname,  # type: ignore
+            "avatar_url": target_user.avatar_url  # type: ignore
         }
     }
 
@@ -253,11 +255,11 @@ async def search_blocked_users(
     blocked_users = []
     for user, blocked_at in rows:
         blocked_users.append(BlockedUserResponse(
-            id=user.id,
-            bipupu_id=user.bipupu_id,
-            username=user.username,
-            nickname=user.nickname,
-            avatar_url=user.avatar_url,
+            id=user.id,  # type: ignore
+            bipupu_id=user.bipupu_id,  # type: ignore
+            username=user.username,  # type: ignore
+            nickname=user.nickname,  # type: ignore
+            avatar_url=user.avatar_url,  # type: ignore
             blocked_at=blocked_at
         ))
 

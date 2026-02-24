@@ -17,7 +17,7 @@ from datetime import datetime
 
 
 class UserService:
-    """用户服务类"""
+    """用户服务模块"""
 
     @staticmethod
     def create_user(db: Session, user_create: UserCreate) -> User:
@@ -224,7 +224,6 @@ class UserService:
             return ub
         except Exception as e:
             db.rollback()
-            logger.error(f"Failed to block user {blocked_user_id}: {str(e)}")
             raise ValidationException(f"Failed to block user: {str(e)}")
 
     @staticmethod
@@ -255,7 +254,6 @@ class UserService:
             return True
         except Exception as e:
             db.rollback()
-            logger.error(f"Failed to unblock user {blocked_user_id}: {str(e)}")
             raise ValidationException(f"Failed to unblock user: {str(e)}")
 
     @staticmethod

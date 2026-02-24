@@ -353,6 +353,10 @@ async def admin_test_contacts(
     current_user: User = Depends(get_current_superuser_web)
 ):
     """API测试页面 (联系人与黑名单)"""
+    # 为当前用户生成JWT令牌
+    from app.core.security import create_access_token
+    access_token = create_access_token(data={"sub": str(current_user.id)})
+
     # 获取当前用户的联系人列表
     contacts_query = db.query(TrustedContact).filter(
         TrustedContact.owner_id == current_user.id
@@ -391,6 +395,7 @@ async def admin_test_contacts(
     return templates.TemplateResponse("test_contacts.html", {
         "request": request,
         "user": current_user,
+        "access_token": access_token,
         "contacts": contacts,
         "blacklist": blacklist
     })
@@ -753,9 +758,14 @@ async def admin_test_profile(
     current_user: User = Depends(get_current_superuser_web)
 ):
     """API测试页面 (用户资料设置)"""
+    # 为当前用户生成JWT令牌
+    from app.core.security import create_access_token
+    access_token = create_access_token(data={"sub": str(current_user.id)})
+
     return templates.TemplateResponse("test_profile.html", {
         "request": request,
-        "user": current_user
+        "user": current_user,
+        "access_token": access_token
     })
 
 @router.post("/test_profile/avatar", tags=["管理后台"])
