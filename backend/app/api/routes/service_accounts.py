@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from typing import List
+from typing import List, Optional
 import logging
+from datetime import datetime, time
 
 from app.db.database import get_db
 from app.models.service_account import ServiceAccount, subscription_table
@@ -17,7 +18,6 @@ from app.schemas.service_account import (
 from app.core.security import get_current_user
 from app.models.user import User
 from sqlalchemy import select, update, func
-from datetime import time
 
 logger = logging.getLogger(__name__)
 
@@ -194,13 +194,13 @@ async def get_user_subscriptions(
             subscription_response = UserSubscriptionResponse(
                 service=service,
                 settings=SubscriptionSettingsResponse(
-                    service_name=service.name,
-                    service_description=service.description,
+                    service_name=str(service.name),
+                    service_description=str(service.description) if service.description else None,
                     push_time=push_time_str,
                     is_enabled=setting.is_enabled,
                     subscribed_at=setting.created_at,
                     updated_at=setting.updated_at,
-                    push_time_source=push_time_source
+                    push_time_source="subscription" if push_time_str else "service_default"
                 )
             )
             subscriptions.append(subscription_response)
@@ -263,8 +263,8 @@ async def get_subscription_settings(
         push_time_source = "service_default"
 
     return SubscriptionSettingsResponse(
-        service_name=service.name,
-        service_description=service.description,
+        service_name=str(service.name),
+        service_description=str(service.description) if service.description else None,
         push_time=push_time_str,
         is_enabled=result.is_enabled,
         subscribed_at=result.created_at,
@@ -343,7 +343,7 @@ async def update_subscription_settings(
         result = db.execute(stmt)
         db.commit()
 
-        if result.rowcount == 0:
+        if result is None or (hasattr(result, 'rowcount') and result.rowcount == 0):
             raise HTTPException(status_code=404, detail="Subscription not found")
 
         # 获取更新后的设置
@@ -363,7 +363,7 @@ async def update_subscription_settings(
         push_time_str = None
         push_time_source = "none"
 
-        if updated_result.push_time:
+        if updated_result and updated_result.push_time:
             push_time_str = updated_result.push_time.strftime("%H:%M")
             push_time_source = "subscription"
         elif service.default_push_time:
@@ -373,12 +373,12 @@ async def update_subscription_settings(
         logger.info(f"用户 {current_user.bipupu_id} 更新了服务号 {name} 的订阅设置")
 
         return SubscriptionSettingsResponse(
-            service_name=service.name,
-            service_description=service.description,
+            service_name=str(service.name),
+            service_description=str(service.description) if service.description else None,
             push_time=push_time_str,
-            is_enabled=updated_result.is_enabled,
-            subscribed_at=updated_result.created_at,
-            updated_at=updated_result.updated_at,
+            is_enabled=updated_result.is_enabled if updated_result else True,
+            subscribed_at=updated_result.created_at if updated_result else datetime.now(),
+            updated_at=updated_result.updated_at if updated_result else None,
             push_time_source=push_time_source
         )
 
@@ -391,7 +391,7 @@ async def update_subscription_settings(
 @router.post("/{name}/subscribe", tags=["订阅"])
 async def subscribe_service_account(
     name: str,
-    settings_update: SubscriptionSettingsUpdate = None,
+    settings_update: Optional[SubscriptionSettingsUpdate] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -448,7 +448,7 @@ async def subscribe_service_account(
         if settings_update and settings_update.push_time:
             # 使用用户提供的推送时间
             push_time_to_use = settings_update.push_time
-        elif service.default_push_time:
+        else:
             # 使用服务号的默认推送时间
             push_time_to_use = service.default_push_time.strftime("%H:%M")
 

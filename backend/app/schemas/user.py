@@ -64,6 +64,7 @@ class UserResponse(UserBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    avatar_version: int = Field(default=0, description="头像版本号，用于缓存失效")
 
     class Config:
         from_attributes = True
@@ -84,12 +85,12 @@ class UserLogin(BaseModel):
 
 
 class Token(BaseModel):
-    """令牌响应模式"""
+    """OAuth 2.0标准令牌响应模式"""
     access_token: str
     refresh_token: Optional[str] = None
     token_type: str = "bearer"
     expires_in: int
-    user: Optional[UserResponse] = None
+    # scope: Optional[str] = None  # 可选：权限范围
 
 
 class TokenRefresh(BaseModel):

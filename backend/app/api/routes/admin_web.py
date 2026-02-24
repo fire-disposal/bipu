@@ -127,6 +127,26 @@ async def admin_user_detail(
         "user": user
     })
 
+
+@router.post("/users/{user_id}/toggle", tags=["管理后台"])
+async def toggle_user_status(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser_web)
+):
+    """切换用户激活状态（启用/禁用）"""
+    from app.services.user_service import UserService
+    from app.core.exceptions import NotFoundException
+
+    try:
+        user = UserService.toggle_user_status(db, user_id)
+        return {"message": f"用户状态已{'启用' if user.is_active else '禁用'}", "is_active": user.is_active}
+    except NotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"切换用户状态失败: {e}")
+        raise HTTPException(status_code=500, detail="操作失败")
+
 @router.get("/messages", tags=["管理后台"])
 async def admin_messages(
     request: Request,
@@ -304,14 +324,13 @@ async def trigger_service_push(
 
     # 触发推送任务（内容由send_push自动生成）
     try:
-        result = await broadcast_push(db, service_name, None, None)
+        success_count = await broadcast_push(db, service_name, None, None)
 
         # 构建详细反馈信息
-        if result.get("failed", 0) == 0:
-            msg = f"✅ 推送成功发送给 {result['success']} 位订阅者"
+        if success_count > 0:
+            msg = f"✅ 推送成功发送给 {success_count} 位订阅者"
         else:
-            success_rate = result.get("success_rate", 0) * 100
-            msg = f"⚠️ 推送完成：{result['success']} 成功，{result['failed']} 失败 (成功率: {success_rate:.1f}%)"
+            msg = "⚠️ 推送失败：没有订阅者或发送失败"
 
     except Exception as e:
         logger.error(f"触发推送任务失败: {e}")

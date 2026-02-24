@@ -144,7 +144,7 @@
           "认证"
         ],
         "summary": "Login",
-        "description": "用户登录\n\n参数：\n- username: 用户名\n- password: 密码\n\n返回：\n- 成功：返回访问令牌和刷新令牌\n- 失败：401（用户名或密码错误）或400（用户未激活）或429（登录频率限制）\n\n包含信息：\n- access_token: 访问令牌，用于API认证\n- refresh_token: 刷新令牌，用于获取新的访问令牌\n- token_type: 令牌类型，固定为\"bearer\"\n- expires_in: 访问令牌过期时间（秒）\n- user: 当前用户基本信息\n\n特性：\n- 速率限制：每个用户名每分钟最多5次登录尝试\n- 支持JWT令牌认证\n- 自动验证用户激活状态\n\n注意：\n- 访问令牌有过期时间，需定期刷新\n- 刷新令牌用于获取新的访问令牌\n- 非活跃用户无法登录",
+        "description": "用户登录\n\n参数：\n- username: 用户名\n- password: 密码\n\n返回：\n- 成功：返回访问令牌和刷新令牌\n- 失败：401（用户名或密码错误）或400（用户未激活）或429（登录频率限制）\n\n包含信息：\n- access_token: 访问令牌，用于API认证\n- refresh_token: 刷新令牌，用于获取新的访问令牌\n- token_type: 令牌类型，固定为\"bearer\"\n- expires_in: 访问令牌过期时间（秒）\n\n特性：\n- 速率限制：每个用户名每分钟最多5次登录尝试\n- 支持JWT令牌认证\n- 自动验证用户激活状态\n- 符合OAuth 2.0标准格式\n\n注意：\n- 访问令牌有过期时间，需定期刷新\n- 刷新令牌用于获取新的访问令牌\n- 非活跃用户无法登录\n- 用户信息需要通过单独的端点获取",
         "operationId": "login_api_public_login_post",
         "requestBody": {
           "content": {
@@ -187,7 +187,7 @@
           "认证"
         ],
         "summary": "Refresh Token",
-        "description": "刷新访问令牌\n\n参数：\n- refresh_token: 刷新令牌\n\n返回：\n- 成功：返回新的访问令牌和刷新令牌\n- 失败：401（无效的刷新令牌）或429（刷新频率限制）\n\n包含信息：\n- access_token: 新的访问令牌\n- refresh_token: 新的刷新令牌（支持令牌轮换）\n- token_type: 令牌类型，固定为\"bearer\"\n- expires_in: 访问令牌过期时间（秒）\n\n特性：\n- 速率限制：每个刷新令牌每小时最多10次刷新尝试\n- 支持令牌轮换，每次刷新生成新的刷新令牌\n- 验证刷新令牌类型和用户状态\n- 自动验证用户是否活跃\n\n注意：\n- 刷新令牌只能用于刷新访问令牌，不能用于API访问\n- 旧的刷新令牌在刷新后失效\n- 非活跃用户的刷新令牌无效",
+        "description": "刷新访问令牌\n\n参数：\n- refresh_token: 刷新令牌\n\n返回：\n- 成功：返回新的访问令牌和刷新令牌\n- 失败：401（无效的刷新令牌）或429（刷新频率限制）\n\n包含信息：\n- access_token: 新的访问令牌\n- refresh_token: 新的刷新令牌（支持令牌轮换）\n- token_type: 令牌类型，固定为\"bearer\"\n- expires_in: 访问令牌过期时间（秒）\n\n特性：\n- 速率限制：每个刷新令牌每小时最多10次刷新尝试\n- 支持令牌轮换，每次刷新生成新的刷新令牌\n- 验证刷新令牌类型和用户状态\n- 自动验证用户是否活跃\n- 符合OAuth 2.0标准格式\n\n注意：\n- 刷新令牌只能用于刷新访问令牌，不能用于API访问\n- 旧的刷新令牌在刷新后失效\n- 非活跃用户的刷新令牌无效\n- 用户信息需要通过单独的端点获取",
         "operationId": "refresh_token_api_public_refresh_post",
         "requestBody": {
           "content": {
@@ -1715,7 +1715,15 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SubscriptionSettingsUpdate"
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/SubscriptionSettingsUpdate"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Settings Update"
               }
             }
           }
@@ -2081,7 +2089,7 @@
           "海报"
         ],
         "summary": "Get Poster Image",
-        "description": "获取海报图片（JSON格式，包含base64编码）",
+        "description": "获取海报图片（二进制格式，直接用于img标签）\n\n参数：\n- poster_id: 海报ID\n\n返回：\n- 成功：返回JPEG格式的二进制图片数据\n- 失败：404（海报或图片不存在）\n\n特性：\n- 支持ETag缓存，减少带宽消耗\n- 支持HTTP 304 Not Modified响应\n- 图片数据缓存24小时\n- 自动处理图片版本更新\n\n注意：\n- 无需认证，公开接口\n- 支持缓存控制头（Cache-Control, ETag）\n- 统一返回JPEG格式二进制数据\n- 前端可直接用于img标签的src属性",
         "operationId": "get_poster_image_api_posters__poster_id__image_get",
         "parameters": [
           {
@@ -2152,48 +2160,6 @@
                 "schema": {
                   "$ref": "#/components/schemas/PosterResponse"
                 }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/posters/{poster_id}/image/binary": {
-      "get": {
-        "tags": [
-          "海报",
-          "海报"
-        ],
-        "summary": "Get Poster Image Binary",
-        "description": "获取海报图片（二进制格式，直接用于img标签）",
-        "operationId": "get_poster_image_binary_api_posters__poster_id__image_binary_get",
-        "parameters": [
-          {
-            "name": "poster_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Poster Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
               }
             }
           },
@@ -2368,6 +2334,47 @@
         "summary": "Admin User Detail",
         "description": "用户详情页面",
         "operationId": "admin_user_detail_admin_users__user_id__get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users/{user_id}/toggle": {
+      "post": {
+        "tags": [
+          "管理后台"
+        ],
+        "summary": "Toggle User Status",
+        "description": "切换用户激活状态（启用/禁用）",
+        "operationId": "toggle_user_status_admin_users__user_id__toggle_post",
         "parameters": [
           {
             "name": "user_id",
@@ -4006,16 +4013,6 @@
           "expires_in": {
             "type": "integer",
             "title": "Expires In"
-          },
-          "user": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/UserResponse"
-              },
-              {
-                "type": "null"
-              }
-            ]
           }
         },
         "type": "object",
@@ -4024,7 +4021,7 @@
           "expires_in"
         ],
         "title": "Token",
-        "description": "令牌响应模式"
+        "description": "OAuth 2.0标准令牌响应模式"
       },
       "TokenRefresh": {
         "properties": {
@@ -4197,6 +4194,12 @@
               }
             ],
             "title": "Updated At"
+          },
+          "avatar_version": {
+            "type": "integer",
+            "title": "Avatar Version",
+            "description": "头像版本号，用于缓存失效",
+            "default": 0
           }
         },
         "type": "object",

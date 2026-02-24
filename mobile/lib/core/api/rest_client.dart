@@ -119,6 +119,16 @@ abstract class RestClient {
     @Body() Map<String, dynamic> data,
   );
 
+  /// 更新用户时区
+  @PUT('/api/profile/timezone')
+  Future<HttpResponse<dynamic>> updateTimezone(
+    @Body() Map<String, dynamic> data,
+  );
+
+  /// 获取用户推送设置
+  @GET('/api/profile/push-settings')
+  Future<HttpResponse<dynamic>> getPushSettings();
+
   /// 上传头像
   @POST('/api/profile/avatar')
   @MultiPart()
@@ -155,13 +165,13 @@ abstract class RestClient {
   Future<HttpResponse<dynamic>> addContact(@Body() Map<String, dynamic> data);
 
   /// 删除联系人
-  @DELETE('/api/contacts/{contact_id}')
-  Future<void> deleteContact(@Path('contact_id') int contactId);
+  @DELETE('/api/contacts/{contact_bipupu_id}')
+  Future<void> deleteContact(@Path('contact_bipupu_id') String contactBipupuId);
 
   /// 更新联系人备注
-  @PUT('/api/contacts/{contact_id}')
+  @PUT('/api/contacts/{contact_bipupu_id}')
   Future<HttpResponse<dynamic>> updateContact(
-    @Path('contact_id') int contactId,
+    @Path('contact_bipupu_id') String contactBipupuId,
     @Body() Map<String, dynamic> data,
   );
 
@@ -173,6 +183,18 @@ abstract class RestClient {
     @Query('skip') int? skip,
     @Query('limit') int? limit,
   });
+
+  /// 获取特定服务号信息
+  @GET('/api/service_accounts/{name}')
+  Future<HttpResponse<dynamic>> getServiceAccount(
+    @Path('name') String serviceName,
+  );
+
+  /// 获取服务号头像
+  @GET('/api/service_accounts/{name}/avatar')
+  Future<HttpResponse<dynamic>> getServiceAccountAvatar(
+    @Path('name') String serviceName,
+  );
 
   /// 获取用户订阅的服务号列表
   @GET('/api/service_accounts/subscriptions')
@@ -227,13 +249,7 @@ abstract class RestClient {
   @GET('/api/posters/{poster_id}')
   Future<HttpResponse<dynamic>> getPoster(@Path('poster_id') int posterId);
 
-  /// 获取海报图片（JSON格式，包含base64编码）
+  /// 获取海报图片（二进制格式，直接用于img标签）
   @GET('/api/posters/{poster_id}/image')
   Future<HttpResponse<dynamic>> getPosterImage(@Path('poster_id') int posterId);
-
-  /// 获取海报图片（二进制格式，直接用于img标签）
-  @GET('/api/posters/{poster_id}/image/binary')
-  Future<HttpResponse<dynamic>> getPosterImageBinary(
-    @Path('poster_id') int posterId,
-  );
 }

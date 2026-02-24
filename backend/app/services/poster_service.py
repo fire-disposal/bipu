@@ -168,12 +168,3 @@ class PosterService:
         posters = query.offset(skip).limit(limit).all()
 
         return posters, total
-
-    @staticmethod
-    def get_poster_image_base64(poster: Poster) -> str:
-        """获取海报图片的base64编码"""
-        if not poster.image_data:
-            return ""
-
-        # 将二进制数据转换为base64字符串
-        return base64.b64encode(poster.image_data).decode('utf-8')

@@ -1,5 +1,7 @@
 """客户端黑名单API路由 - 用户业务功能，无需管理员权限"""
 
+from typing import cast, Any
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -98,12 +100,13 @@ async def get_blocked_users(
     # 转换为响应模型
     blocked_users = []
     for user, blocked_at in rows:
+        # 从 SQLAlchemy 模型实例中提取属性值，使用 cast 解决类型推断问题
         blocked_users.append(BlockedUserResponse(
-            id=user.id,
-            bipupu_id=user.bipupu_id,
-            username=user.username,
-            nickname=user.nickname,
-            avatar_url=user.avatar_url,
+            id=cast(int, user.id),
+            bipupu_id=cast(str, user.bipupu_id),
+            username=cast(str, user.username),
+            nickname=cast(str, user.nickname) if user.nickname else None,
+            avatar_url=cast(str, user.avatar_url) if user.avatar_url else None,
             blocked_at=blocked_at
         ))
 

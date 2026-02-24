@@ -59,32 +59,31 @@ async def get_poster(
 
 @router.get("/{poster_id}/image", tags=["海报"])
 async def get_poster_image(
-    poster_id: int,
-    db: Session = Depends(get_db)
-):
-    """获取海报图片（JSON格式，包含base64编码）"""
-    poster = PosterService.get_poster(db, poster_id)
-    if not poster or not poster.image_data:
-        raise HTTPException(status_code=404, detail="海报或图片不存在")
-
-    # 获取base64编码的图片数据
-    image_base64 = PosterService.get_poster_image_base64(poster)
-
-    return {
-        "poster_id": poster_id,
-        "title": poster.title,
-        "image_data": image_base64,
-        "mime_type": "image/jpeg"  # StorageService统一保存为JPEG格式
-    }
-
-
-@router.get("/{poster_id}/image/binary", tags=["海报"])
-async def get_poster_image_binary(
     request: Request,
     poster_id: int,
     db: Session = Depends(get_db)
 ):
-    """获取海报图片（二进制格式，直接用于img标签）"""
+    """获取海报图片（二进制格式，直接用于img标签）
+
+    参数：
+    - poster_id: 海报ID
+
+    返回：
+    - 成功：返回JPEG格式的二进制图片数据
+    - 失败：404（海报或图片不存在）
+
+    特性：
+    - 支持ETag缓存，减少带宽消耗
+    - 支持HTTP 304 Not Modified响应
+    - 图片数据缓存24小时
+    - 自动处理图片版本更新
+
+    注意：
+    - 无需认证，公开接口
+    - 支持缓存控制头（Cache-Control, ETag）
+    - 统一返回JPEG格式二进制数据
+    - 前端可直接用于img标签的src属性
+    """
     from app.services.storage_service import StorageService
     from fastapi.responses import Response
 

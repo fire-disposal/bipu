@@ -72,7 +72,7 @@ class UserService:
     @staticmethod
     def update_user(db: Session, user: User, user_update: UserUpdate) -> User:
         """更新用户信息（仅限昵称和cosmic_profile）"""
-        update_data = user_update.dict(exclude_unset=True)
+        update_data = user_update.model_dump(exclude_unset=True)
 
         # 处理 cosmic_profile 的合并与派生字段填充
         if "cosmic_profile" in update_data:
@@ -80,7 +80,9 @@ class UserService:
             # 保证原有 profile 为 dict
             existing = user.cosmic_profile or {}
             # 合并字段（incoming 优先）
-            merged = {**existing, **incoming}
+            # 确保 existing 是字典类型
+            existing_dict = existing if isinstance(existing, dict) else {}
+            merged = {**existing_dict, **incoming}
 
             # 如果提供 birthday，则尝试解析并填充 zodiac 与 age
             birthday = merged.get("birthday")
@@ -143,7 +145,7 @@ class UserService:
             raise
         try:
             loop = asyncio.get_running_loop()
-            loop.create_task(RedisService.invalidate_user_cache(user.id))
+            loop.create_task(RedisService.invalidate_user_cache(int(str(user.id))))
         except RuntimeError:
             pass
         return user
@@ -151,7 +153,7 @@ class UserService:
     @staticmethod
     def update_password(db: Session, user: User, password_update: UserPasswordUpdate) -> User:
         """更新用户密码"""
-        if not verify_password(password_update.old_password, user.hashed_password):
+        if not verify_password(password_update.old_password, str(user.hashed_password)):
             raise ValidationException("Incorrect old password")
 
         if password_update.old_password == password_update.new_password:
@@ -166,7 +168,7 @@ class UserService:
             raise
         try:
             loop = asyncio.get_running_loop()
-            loop.create_task(RedisService.invalidate_user_cache(user.id))
+            loop.create_task(RedisService.invalidate_user_cache(int(str(user.id))))
         except RuntimeError:
             pass
         return user
@@ -178,7 +180,7 @@ class UserService:
         db.commit()
         try:
             loop = asyncio.get_running_loop()
-            loop.create_task(RedisService.invalidate_user_cache(user.id))
+            loop.create_task(RedisService.invalidate_user_cache(int(str(user.id))))
         except RuntimeError:
             pass
         return True
@@ -237,5 +239,37 @@ class UserService:
         query = db.query(User, UserBlock.created_at).join(UserBlock, User.id == UserBlock.blocked_id).filter(UserBlock.blocker_id == blocker.id)
         total = query.count()
         rows = query.offset(params.skip).limit(params.size).all()
-        # rows 是 (User, created_at) 的列表
-        return rows, total
+        # rows 是 Row 对象，需要转换为 (User, datetime) 元组
+        result = []
+        for row in rows:
+            # row 是 Row 对象，包含 User 和 created_at
+            user = row[0]
+            blocked_at = row[1]
+            result.append((user, blocked_at))
+        return result, total
+
+    @staticmethod
+    def toggle_user_status(db: Session, user_id: int) -> User:
+        """切换用户激活状态（启用/禁用）"""
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise NotFoundException("User not found")
+
+        # 切换状态
+        user.is_active = not user.is_active
+
+        try:
+            db.commit()
+            db.refresh(user)
+        except Exception:
+            db.rollback()
+            raise
+
+        # 清除用户缓存
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(RedisService.invalidate_user_cache(int(str(user.id))))
+        except RuntimeError:
+            pass
+
+        return user

@@ -17,7 +17,7 @@ block content %}
     <div class="col-md-4 mb-4">
         <div class="card h-100">
             <img
-                src="/api/posters/{{ poster.id }}/image/binary"
+                src="/api/posters/{{ poster.id }}/image"
                 class="card-img-top"
                 alt="{{ poster.title }}"
                 style="height: 200px; object-fit: cover"
@@ -277,17 +277,10 @@ block content %}
                 document.getElementById("submitBtn").textContent = "更新";
 
                 // 显示当前图片
-                fetch(`/api/posters/${posterId}/image`)
-                    .then((response) => response.json())
-                    .then((imageData) => {
-                        document.getElementById("previewImage").src =
-                            `data:${imageData.mime_type};base64,${imageData.image_data}`;
-                        document.getElementById("currentImage").style.display =
-                            "block";
-                    })
-                    .catch(() => {
-                        document.getElementById("currentImage").style.display =
-                            "none";
+                document.getElementById("previewImage").src =
+                    `/api/posters/${posterId}/image`;
+                document.getElementById("currentImage").style.display =
+                    "block";
                     });
 
                 // 显示模态框

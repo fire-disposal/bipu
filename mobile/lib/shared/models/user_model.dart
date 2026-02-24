@@ -263,14 +263,12 @@ class Token {
   final String tokenType;
   @JsonKey(name: 'expires_in')
   final int expiresIn;
-  final UserModel? user;
 
   Token({
     required this.accessToken,
     this.refreshToken,
     this.tokenType = 'bearer',
     required this.expiresIn,
-    this.user,
   });
 
   factory Token.fromJson(Map<String, dynamic> json) => _$TokenFromJson(json);
@@ -284,20 +282,18 @@ class Token {
           accessToken == other.accessToken &&
           refreshToken == other.refreshToken &&
           tokenType == other.tokenType &&
-          expiresIn == other.expiresIn &&
-          user == other.user;
+          expiresIn == other.expiresIn;
 
   @override
   int get hashCode =>
       accessToken.hashCode ^
       refreshToken.hashCode ^
       tokenType.hashCode ^
-      expiresIn.hashCode ^
-      user.hashCode;
+      expiresIn.hashCode;
 
   @override
   String toString() {
-    return 'Token(accessToken: ***, refreshToken: ${refreshToken != null ? "***" : null}, tokenType: $tokenType, expiresIn: $expiresIn, user: $user)';
+    return 'Token(accessToken: ***, refreshToken: ${refreshToken != null ? "***" : null}, tokenType: $tokenType, expiresIn: $expiresIn)';
   }
 }
 

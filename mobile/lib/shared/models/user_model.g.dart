@@ -92,9 +92,6 @@ Token _$TokenFromJson(Map<String, dynamic> json) => Token(
   refreshToken: json['refresh_token'] as String?,
   tokenType: json['token_type'] as String? ?? 'bearer',
   expiresIn: (json['expires_in'] as num).toInt(),
-  user: json['user'] == null
-      ? null
-      : UserModel.fromJson(json['user'] as Map<String, dynamic>),
 );
 
 Map<String, dynamic> _$TokenToJson(Token instance) => <String, dynamic>{
@@ -102,7 +99,6 @@ Map<String, dynamic> _$TokenToJson(Token instance) => <String, dynamic>{
   'refresh_token': instance.refreshToken,
   'token_type': instance.tokenType,
   'expires_in': instance.expiresIn,
-  'user': instance.user,
 };
 
 TokenRefresh _$TokenRefreshFromJson(Map<String, dynamic> json) =>

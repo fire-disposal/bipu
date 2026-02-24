@@ -90,17 +90,18 @@ async def login(
     - refresh_token: 刷新令牌，用于获取新的访问令牌
     - token_type: 令牌类型，固定为"bearer"
     - expires_in: 访问令牌过期时间（秒）
-    - user: 当前用户基本信息
 
     特性：
     - 速率限制：每个用户名每分钟最多5次登录尝试
     - 支持JWT令牌认证
     - 自动验证用户激活状态
+    - 符合OAuth 2.0标准格式
 
     注意：
     - 访问令牌有过期时间，需定期刷新
     - 刷新令牌用于获取新的访问令牌
     - 非活跃用户无法登录
+    - 用户信息需要通过单独的端点获取
     """
     # 速率限制：每个用户名每分钟最多5次登录尝试
     rate_limit_key = f"login:{user_credentials.username}"
@@ -114,7 +115,7 @@ async def login(
     # 查找用户
     user = UserService.get_user_by_email_or_username(db, user_credentials.username)
 
-    if not user or not verify_password(user_credentials.password, user.hashed_password):
+    if not user or not verify_password(user_credentials.password, str(user.hashed_password)):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -142,8 +143,7 @@ async def login(
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
-        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        "user": user
+        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     }
 
 
@@ -172,11 +172,13 @@ async def refresh_token(
     - 支持令牌轮换，每次刷新生成新的刷新令牌
     - 验证刷新令牌类型和用户状态
     - 自动验证用户是否活跃
+    - 符合OAuth 2.0标准格式
 
     注意：
     - 刷新令牌只能用于刷新访问令牌，不能用于API访问
     - 旧的刷新令牌在刷新后失效
     - 非活跃用户的刷新令牌无效
+    - 用户信息需要通过单独的端点获取
     """
     # 速率限制：每个刷新令牌每小时最多10次刷新
     rate_limit_key = f"refresh:{token_refresh.refresh_token[:20]}"  # 使用令牌前20字符作为键
@@ -196,7 +198,14 @@ async def refresh_token(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        user_id: int = int(payload.get("sub"))
+        user_id_str = payload.get("sub")
+        if not user_id_str:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        user_id: int = int(str(user_id_str))
         user = UserService.get_user_by_id(db, user_id)
 
         if not user or not user.is_active:

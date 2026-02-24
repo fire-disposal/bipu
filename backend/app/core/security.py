@@ -40,7 +40,7 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[Use
     user = db.query(User).filter(User.username == username).first()
     if not user:
         return None
-    if not verify_password(password, user.hashed_password):
+    if not verify_password(password, str(user.hashed_password)):
         return None
     return user
 
@@ -52,7 +52,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         expire = datetime.now(timezone.utc) + expires_delta
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    
+
     # 确保 sub 是字符串
     if "sub" in to_encode:
         to_encode["sub"] = str(to_encode["sub"])
@@ -66,7 +66,7 @@ def create_refresh_token(data: dict) -> str:
     """创建刷新令牌"""
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    
+
     # 确保 sub 是字符串
     if "sub" in to_encode:
         to_encode["sub"] = str(to_encode["sub"])
@@ -96,20 +96,20 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     try:
         token = credentials.credentials
-        
+
         # 检查令牌是否在黑名单中
         if await RedisService.is_token_blacklisted(token):
             logger.warning("Token is blacklisted")
             raise credentials_exception
-            
+
         payload = decode_token(token)
         if payload is None:
             # decode_token logs the error
             raise credentials_exception
-        
+
         # 使用 Pydantic 模型验证 payload
         try:
             token_data = JWTPayload(**payload)
@@ -121,25 +121,25 @@ async def get_current_user(
         if token_data.type != "access":
             logger.warning("Token type is not access")
             raise credentials_exception
-            
+
         try:
             user_id = int(token_data.sub)
         except (ValueError, TypeError):
             logger.warning(f"Token sub is not an integer: {token_data.sub}")
             raise credentials_exception
-            
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Token validation error: {e}")
         raise credentials_exception
-    
+
     # 查询用户
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         logger.warning(f"User not found for id: {user_id}")
         raise credentials_exception
-        
+
     return user
 
 
@@ -169,26 +169,26 @@ async def get_current_superuser_web(
     token = request.cookies.get("access_token")
     if token and token.startswith("Bearer "):
         token = token[7:]  # 移除 "Bearer " 前缀
-    
+
     # 如果没有cookie token，尝试Authorization header
     if not token:
         auth_header = request.headers.get("authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header[7:]
-    
+
     if not token:
         from app.core.exceptions import AdminAuthException
         raise AdminAuthException()
-    
+
     try:
         # 检查令牌是否在黑名单中
         if await RedisService.is_token_blacklisted(token):
             raise Exception("Token blacklisted")
-            
+
         payload = decode_token(token)
         if payload is None:
             raise Exception("Invalid token")
-            
+
         # 检查令牌类型
         if payload.get("type") != "access":
             raise Exception("Invalid token type")
@@ -196,26 +196,26 @@ async def get_current_superuser_web(
         user_id_str = payload.get("sub")
         if user_id_str is None:
              raise Exception("Token missing sub")
-             
+
         try:
             user_id = int(str(user_id_str))
         except (ValueError, TypeError):
              raise Exception("Invalid token sub")
-            
+
     except Exception as e:
         logger.error(f"Token validation error: {e}")
         # 重定向到登录页面
         from app.core.exceptions import AdminAuthException
         raise AdminAuthException()
-    
+
     # 查询用户
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         from app.core.exceptions import AdminAuthException
         raise AdminAuthException()
-        
+
     if not user.is_superuser:
         from app.core.exceptions import AdminAuthException
         raise AdminAuthException()
-        
+
     return user

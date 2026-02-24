@@ -97,12 +97,12 @@ final posterImageProvider = FutureProvider.family<String?, int>((
 ) async {
   try {
     final restClient = ref.read(restClientProvider);
-    final response = await restClient.getPosterImageBinary(posterId);
+    final response = await restClient.getPosterImage(posterId);
 
     if (response.response.statusCode == 200) {
       // 对于二进制图片，我们返回完整的URL
       // 前端可以直接使用这个URL加载图片
-      return '/api/posters/$posterId/image/binary';
+      return '/api/posters/$posterId/image';
     } else {
       debugPrint('[Poster] 获取海报图片失败: ${response.response.statusCode}');
       return null;

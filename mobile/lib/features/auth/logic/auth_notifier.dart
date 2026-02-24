@@ -145,7 +145,7 @@ class AuthStatusNotifier extends Notifier<AuthStatus> {
           return;
         }
         state = AuthStatus.authenticated;
-        debugPrint('[Auth] 登录成功，状态更新为authenticated：${token.user?.username}');
+        debugPrint('[Auth] 登录成功，状态更新为authenticated');
       });
       return true;
     } catch (e) {
@@ -247,7 +247,7 @@ class AuthStatusNotifier extends Notifier<AuthStatus> {
     try {
       final restClient = ref.read(restClientProvider);
       final response = await restClient.refreshToken({
-        'refresh_token': refreshToken!,
+        'refresh_token': refreshToken,
       });
 
       final data = response.data as Map<String, dynamic>;
