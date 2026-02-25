@@ -1,21 +1,21 @@
 import 'package:get/get.dart';
-import '../repos/message_repo.dart';
-import '../shared/models/message_model.dart';
+import '../services/message_service.dart';
+import '../models/message_model.dart';
 import '../controllers/auth_controller.dart';
 
-/// 极简消息控制器 - GetX风格
+/// 极简消息控制器 - 使用新的MessageService
 class MessageController extends GetxController {
   static MessageController get to => Get.find();
 
-  // 状态
-  final messages = <MessageResponse>[].obs;
-  final favorites = <MessageResponse>[].obs;
-  final isLoading = false.obs;
-  final error = ''.obs;
-  final lastMessageId = 0.obs;
+  // 依赖服务
+  final MessageService _message = MessageService.instance;
 
-  // 仓库
-  final MessageRepo _repo = MessageRepo();
+  // 计算属性 - 直接暴露服务的状态
+  List<MessageResponse> get messages => _message.messages;
+  List<MessageResponse> get favorites => _message.favorites;
+  bool get isLoading => _message.isLoading.value;
+  String get error => _message.error.value;
+  int get lastMessageId => _message.lastMessageId.value;
 
   /// 发送消息
   Future<void> sendMessage({
@@ -25,204 +25,149 @@ class MessageController extends GetxController {
     Map<String, dynamic>? pattern,
     List<int>? waveform,
   }) async {
-    isLoading.value = true;
-    error.value = '';
+    final response = await _message.sendMessage(
+      receiverId: receiverId,
+      content: content,
+      messageType: messageType,
+      pattern: pattern,
+      waveform: waveform,
+    );
 
-    try {
-      final result = await _repo.sendMessage(
-        receiverId: receiverId,
-        content: content,
-        messageType: messageType,
-        pattern: pattern,
-        waveform: waveform,
-      );
-
-      if (result['success'] == true) {
-        Get.snackbar('成功', '消息发送成功');
-
-        // 刷新消息列表
-        await loadMessages();
-      } else {
-        error.value = result['error'] as String;
-        Get.snackbar('错误', result['error'] as String);
-      }
-    } catch (e) {
-      error.value = e.toString();
-      Get.snackbar('错误', '发送失败: $e');
-    } finally {
-      isLoading.value = false;
+    if (response.success) {
+      // 消息发送成功，状态已由MessageService更新
+      // 可以在这里添加额外的UI逻辑
+    } else if (response.error != null) {
+      // 错误处理已由MessageService完成
+      // 可以在这里添加额外的错误处理逻辑
     }
   }
 
-  /// 加载消息列表
+  /// 获取消息列表
   Future<void> loadMessages({
     String? direction,
     int? page,
     int? pageSize,
   }) async {
-    isLoading.value = true;
-    error.value = '';
+    final response = await _message.getMessages(
+      direction: direction,
+      page: page,
+      pageSize: pageSize,
+    );
 
-    try {
-      final result = await _repo.getMessages(
-        direction: direction,
-        page: page,
-        pageSize: pageSize,
-      );
-
-      if (result['success'] == true) {
-        final newMessages = result['data'] as List<MessageResponse>;
-        messages.value = newMessages;
-
-        // 更新最后一条消息ID
-        if (newMessages.isNotEmpty) {
-          lastMessageId.value = newMessages.last.id;
-        }
-      } else {
-        error.value = result['error'] as String;
-      }
-    } catch (e) {
-      error.value = e.toString();
-    } finally {
-      isLoading.value = false;
+    if (response.success) {
+      // 消息加载成功，状态已由MessageService更新
+    } else if (response.error != null) {
+      // 错误处理已由MessageService完成
     }
   }
 
-  /// 轮询新消息
-  Future<void> pollNewMessages() async {
-    try {
-      final result = await _repo.pollMessages(
-        lastMsgId: lastMessageId.value,
-        timeout: 30,
-      );
+  /// 长轮询获取新消息
+  Future<void> pollNewMessages({int? timeout}) async {
+    final response = await _message.pollMessages(
+      lastMsgId: lastMessageId,
+      timeout: timeout,
+    );
 
-      if (result['success'] == true) {
-        final newMessages = result['data'] as List<MessageResponse>;
-        if (newMessages.isNotEmpty) {
-          messages.addAll(newMessages);
-          lastMessageId.value = newMessages.last.id;
-
-          // 显示通知
-          if (newMessages.length == 1) {
-            Get.snackbar('新消息', '收到1条新消息');
-          } else {
-            Get.snackbar('新消息', '收到${newMessages.length}条新消息');
-          }
-        }
-      }
-    } catch (e) {
-      // 轮询失败是正常的，不显示错误
+    if (response.success &&
+        response.data != null &&
+        response.data!.isNotEmpty) {
+      // 有新消息到达，状态已由MessageService更新
+      // 可以在这里添加新消息通知逻辑
+      Get.snackbar('新消息', '收到${response.data!.length}条新消息');
     }
   }
 
-  /// 加载收藏消息
+  /// 获取收藏消息列表
   Future<void> loadFavorites({int? page, int? pageSize}) async {
-    isLoading.value = true;
-    error.value = '';
+    final response = await _message.getFavorites(
+      page: page,
+      pageSize: pageSize,
+    );
 
-    try {
-      final result = await _repo.getFavorites(page: page, pageSize: pageSize);
-
-      if (result['success'] == true) {
-        favorites.value = result['data'] as List<MessageResponse>;
-      } else {
-        error.value = result['error'] as String;
-      }
-    } catch (e) {
-      error.value = e.toString();
-    } finally {
-      isLoading.value = false;
+    if (response.success) {
+      // 收藏消息加载成功，状态已由MessageService更新
+    } else if (response.error != null) {
+      // 错误处理已由MessageService完成
     }
   }
 
   /// 收藏消息
-  Future<void> addFavorite(int messageId) async {
-    try {
-      final result = await _repo.addFavorite(messageId);
+  Future<void> addToFavorites(int messageId) async {
+    final response = await _message.addFavorite(messageId);
 
-      if (result['success'] == true) {
-        Get.snackbar('成功', '已收藏');
-
-        // 刷新收藏列表
-        await loadFavorites();
-      } else {
-        Get.snackbar('错误', result['error'] as String);
-      }
-    } catch (e) {
-      Get.snackbar('错误', '收藏失败: $e');
+    if (response.success) {
+      // 收藏成功，状态已由MessageService更新
+    } else if (response.error != null) {
+      // 错误处理已由MessageService完成
     }
   }
 
   /// 取消收藏
-  Future<void> removeFavorite(int messageId) async {
-    try {
-      final result = await _repo.removeFavorite(messageId);
+  Future<void> removeFromFavorites(int messageId) async {
+    final response = await _message.removeFavorite(messageId);
 
-      if (result['success'] == true) {
-        Get.snackbar('成功', '已取消收藏');
-
-        // 刷新收藏列表
-        await loadFavorites();
-      } else {
-        Get.snackbar('错误', result['error'] as String);
-      }
-    } catch (e) {
-      Get.snackbar('错误', '取消收藏失败: $e');
+    if (response.success) {
+      // 取消收藏成功，状态已由MessageService更新
+    } else if (response.error != null) {
+      // 错误处理已由MessageService完成
     }
   }
 
   /// 删除消息
   Future<void> deleteMessage(int messageId) async {
-    try {
-      final result = await _repo.deleteMessage(messageId);
+    final response = await _message.deleteMessage(messageId);
 
-      if (result['success'] == true) {
-        Get.snackbar('成功', '消息已删除');
-
-        // 从列表中移除
-        messages.removeWhere((msg) => msg.id == messageId);
-        favorites.removeWhere((msg) => msg.id == messageId);
-      } else {
-        Get.snackbar('错误', result['error'] as String);
-      }
-    } catch (e) {
-      Get.snackbar('错误', '删除失败: $e');
+    if (response.success) {
+      // 删除成功，状态已由MessageService更新
+    } else if (response.error != null) {
+      // 错误处理已由MessageService完成
     }
   }
 
   /// 获取消息统计
   Map<String, int> getMessageStats() {
-    final currentUserBipupuId = AuthController.to.user.value?.bipupuId;
-    if (currentUserBipupuId == null) {
-      return {
-        'total': messages.length,
-        'sent': 0,
-        'received': 0,
-        'favorites': favorites.length,
-      };
-    }
+    final currentUserBipupuId = AuthController.to.currentUser?.bipupuId;
+    return _message.getMessageStats(currentUserBipupuId);
+  }
 
-    final sent = messages
-        .where((msg) => msg.senderBipupuId == currentUserBipupuId)
-        .length;
-    final received = messages
-        .where((msg) => msg.receiverBipupuId == currentUserBipupuId)
-        .length;
+  /// 根据ID查找消息
+  MessageResponse? findMessageById(int messageId) {
+    return _message.findMessageById(messageId);
+  }
 
-    return {
-      'total': messages.length,
-      'sent': sent,
-      'received': received,
-      'favorites': favorites.length,
-    };
+  /// 清空错误信息
+  void clearError() {
+    _message.clearError();
+  }
+
+  /// 清空所有消息
+  void clearAll() {
+    _message.clearAll();
+  }
+
+  /// 开始轮询消息
+  void startPolling({int intervalSeconds = 30}) {
+    // 在实际项目中，这里应该实现定时轮询逻辑
+    // 例如使用Timer.periodic或Worker
+    // 这里只提供接口定义
+  }
+
+  /// 停止轮询消息
+  void stopPolling() {
+    // 停止定时轮询
   }
 
   /// 初始化
   @override
   void onInit() {
     super.onInit();
-    // 初始加载消息
-    loadMessages();
-    loadFavorites();
+    // 可以在这里初始化消息轮询
+  }
+
+  /// 清理资源
+  @override
+  void onClose() {
+    stopPolling();
+    super.onClose();
   }
 }

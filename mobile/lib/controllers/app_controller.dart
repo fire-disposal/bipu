@@ -1,128 +1,79 @@
 import 'package:get/get.dart';
+import '../services/system_service.dart';
+import '../services/auth_service.dart';
 
-/// 极简全局状态控制器
+/// 应用控制器 - 管理应用级别的状态
 class AppController extends GetxController {
   static AppController get to => Get.find();
 
+  // 依赖服务
+  final SystemService _system = SystemService.instance;
+  final AuthService _auth = AuthService.instance;
+
   // 应用状态
-  final isDarkMode = false.obs;
-  final isLoading = false.obs;
-  final appVersion = '1.0.0'.obs;
-  final currentRoute = '/'.obs;
+  final RxBool appInitialized = false.obs;
+  final RxString appError = ''.obs;
+  final RxBool isDarkMode = false.obs;
 
-  // 网络状态
-  final isOnline = true.obs;
-  final serverStatus = 'unknown'.obs;
+  /// 初始化应用
+  Future<void> initializeApp() async {
+    try {
+      // 1. 检查系统状态
+      await _system.checkAllSystems();
 
-  // 通知状态
-  final unreadCount = 0.obs;
-  final hasNewMessage = false.obs;
+      // 2. 检查认证状态（AuthService已经在main.dart中初始化）
 
-  // 蓝牙状态（保持现有）
-  final isBluetoothEnabled = false.obs;
-  final isBluetoothConnected = false.obs;
-  final bluetoothDeviceName = ''.obs;
+      // 3. 标记应用已初始化
+      appInitialized.value = true;
 
-  // 切换主题
+      Get.snackbar('应用已就绪', '系统状态正常', duration: const Duration(seconds: 2));
+    } catch (e) {
+      appError.value = '应用初始化失败: $e';
+      Get.snackbar('错误', appError.value);
+    }
+  }
+
+  /// 切换主题模式
   void toggleTheme() {
     isDarkMode.value = !isDarkMode.value;
-    Get.snackbar('提示', isDarkMode.value ? '深色模式已开启' : '浅色模式已开启');
   }
 
-  // 显示加载
-  void showLoading([String? message]) {
-    isLoading.value = true;
-    if (message != null) {
-      Get.snackbar('加载中', message);
-    }
+  /// 检查应用是否完全就绪
+  bool get isAppReady {
+    return appInitialized.value &&
+        _system.isSystemFullyOperational &&
+        appError.value.isEmpty;
   }
 
-  // 隐藏加载
-  void hideLoading() {
-    isLoading.value = false;
+  /// 获取应用状态摘要
+  Map<String, dynamic> get appStatus {
+    return {
+      'initialized': appInitialized.value,
+      'systemReady': _system.isSystemFullyOperational,
+      'userLoggedIn': _auth.isLoggedIn.value,
+      'darkMode': isDarkMode.value,
+      'error': appError.value,
+      'fullyReady': isAppReady,
+    };
   }
 
-  // 更新网络状态
-  void updateNetworkStatus(bool online, {String? serverStatus}) {
-    isOnline.value = online;
-    if (serverStatus != null) {
-      this.serverStatus.value = serverStatus;
-    }
-
-    if (!online) {
-      Get.snackbar('网络提示', '网络连接已断开');
-    }
+  /// 重置应用状态
+  void reset() {
+    appInitialized.value = false;
+    appError.value = '';
   }
 
-  // 更新通知计数
-  void updateUnreadCount(int count) {
-    unreadCount.value = count;
-    hasNewMessage.value = count > 0;
-  }
-
-  // 更新蓝牙状态（保持现有接口）
-  void updateBluetoothStatus({
-    required bool enabled,
-    required bool connected,
-    String deviceName = '',
-  }) {
-    isBluetoothEnabled.value = enabled;
-    isBluetoothConnected.value = connected;
-    bluetoothDeviceName.value = deviceName;
-  }
-
-  // 导航
-  void navigateTo(String route) {
-    currentRoute.value = route;
-    Get.toNamed(route);
-  }
-
-  // 返回
-  void goBack() {
-    Get.back();
-  }
-
-  // 显示错误
-  void showError(String message, {String title = '错误'}) {
-    Get.snackbar(
-      title,
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Get.theme.colorScheme.error,
-      colorText: Get.theme.colorScheme.onError,
-    );
-  }
-
-  // 显示成功
-  void showSuccess(String message, {String title = '成功'}) {
-    Get.snackbar(
-      title,
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Get.theme.colorScheme.primary,
-      colorText: Get.theme.colorScheme.onPrimary,
-    );
-  }
-
-  // 重置所有状态（登出时使用）
-  void resetAll() {
-    unreadCount.value = 0;
-    hasNewMessage.value = false;
-    isBluetoothEnabled.value = false;
-    isBluetoothConnected.value = false;
-    bluetoothDeviceName.value = '';
-    currentRoute.value = '/';
-  }
-
+  /// 初始化
   @override
   void onInit() {
     super.onInit();
-    // 初始化逻辑
-    _initialize();
+    // 可以在这里启动应用初始化
   }
 
-  void _initialize() async {
-    // 这里可以添加初始化逻辑
-    // 比如检查网络、加载设置等
+  /// 清理资源
+  @override
+  void onClose() {
+    reset();
+    super.onClose();
   }
 }

@@ -8,6 +8,7 @@ environment:
   flutter: ">=3.38.0"
 dependencies:
   animate_do: ^4.2.0
+  cached_network_image: ^3.3.0
   dio: ^5.9.1
   flex_color_scheme: ^8.4.0
   flutter:

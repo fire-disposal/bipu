@@ -1,38 +1,59 @@
-"""BIPU机消息系统 Schema - 可靠健壮的物理设备消息传递
+"""消息相关数据模型 - 优化版本
 
-BIPU机消息系统设计原则：
-1. 可靠传递：消息一旦发送，确保最终到达接收设备
-2. 无需已读回执：系统不提供显式"已读"状态，传递即确认
-3. 不可撤回：消息一旦发出，永久存储在系统中
-4. 不可转发：消息仅在发送方和接收方之间传递
-5. 不可编辑：消息内容一经发送，无法修改
-6. 物理设备优先：为BIPU物理设备优化的消息格式
+设计原则：
+1. 精简：移除不必要的字段
+2. 验证：添加类型和格式验证
+3. 一致：统一字段命名规范
+4. 实用：只包含实际使用的字段
 """
-from pydantic import BaseModel, Field, conlist
+
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Optional, List
+from enum import Enum
+from app.schemas.user import MessageType
 
 
 class MessageCreate(BaseModel):
-    """创建消息 - BIPU机消息发送格式"""
-    receiver_id: str = Field(..., description="接收者的 bipupu_id")
-    content: str = Field(..., min_length=1, description="消息内容")
-    # 使用字符串表示类型，避免全局枚举依赖。可选值: "NORMAL", "VOICE", "SYSTEM"
-    message_type: str = Field(default="NORMAL", description="消息类型：NORMAL, VOICE, SYSTEM")
-    pattern: Optional[Dict[str, Any]] = Field(None, description="json扩展字段")
-    # 音频振幅包络 - 限制数组元素为0-255的整数，长度不超过128
-    waveform: Optional[List[int]] = Field(None, description="音频振幅包络数组，0-255整数")
+    """创建消息请求"""
+    receiver_id: str = Field(..., min_length=1, max_length=100, description="接收者ID")
+    content: str = Field(..., min_length=1, max_length=5000, description="消息内容")
+    message_type: MessageType = Field(default=MessageType.NORMAL, description="消息类型")
+
+    # 可选扩展字段
+    pattern: Optional[dict] = Field(None, description="扩展模式数据")
+    waveform: Optional[List[int]] = Field(
+        None,
+        description="音频波形数据",
+        max_length=128  # 限制波形数据长度
+    )
+
+    @field_validator('waveform')
+    @classmethod
+    def validate_waveform(cls, v: Optional[List[int]]) -> Optional[List[int]]:
+        """验证波形数据"""
+        if v is None:
+            return v
+
+        if len(v) > 128:
+            raise ValueError('波形数据长度不能超过128个点')
+
+        for value in v:
+            if not 0 <= value <= 255:
+                raise ValueError('波形数据值必须在0-255之间')
+
+        return v
 
 
 class MessageResponse(BaseModel):
-    """消息响应 - BIPU机消息完整信息"""
+    """消息响应"""
     id: int
-    sender_bipupu_id: str
-    receiver_bipupu_id: str
+    sender_id: str = Field(..., description="发送者ID")
+    receiver_id: str = Field(..., description="接收者ID")
     content: str
-    message_type: str
-    pattern: Optional[Dict[str, Any]] = None
-    waveform: Optional[List[int]] = Field(None, description="音频振幅包络数组，0-255整数")
+    message_type: MessageType
+    pattern: Optional[dict] = None
+    waveform: Optional[List[int]] = None
     created_at: datetime
 
     class Config:
@@ -40,8 +61,20 @@ class MessageResponse(BaseModel):
 
 
 class MessageListResponse(BaseModel):
-    """消息列表响应 - BIPU机消息分页查询"""
-    messages: list[MessageResponse]
+    """消息列表响应"""
+    messages: List[MessageResponse]
     total: int
     page: int
     page_size: int
+
+
+class MessagePollRequest(BaseModel):
+    """轮询消息请求"""
+    last_msg_id: int = Field(default=0, ge=0, description="最后收到的消息ID")
+    timeout: int = Field(default=30, ge=1, le=120, description="轮询超时时间（秒）")
+
+
+class MessagePollResponse(BaseModel):
+    """轮询消息响应"""
+    messages: List[MessageResponse]
+    has_more: bool = Field(default=False, description="是否有更多消息")

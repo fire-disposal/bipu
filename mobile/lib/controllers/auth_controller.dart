@@ -1,185 +1,170 @@
 import 'package:get/get.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../repos/auth_repo.dart';
-import '../shared/models/user_model.dart';
+import '../services/auth_service.dart';
+import '../services/token_service.dart';
+import '../models/user_model.dart';
 
-/// 极简认证控制器 - GetX风格
+/// 极简认证控制器 - 使用新的AuthService
 class AuthController extends GetxController {
   static AuthController get to => Get.find();
 
-  // 状态
-  final isLoggedIn = false.obs;
-  final isLoading = false.obs;
-  final user = Rxn<UserModel>();
-  final error = ''.obs;
+  // 依赖服务
+  final AuthService _auth = AuthService.instance;
+  final TokenService _token = TokenService.instance;
 
-  // 仓库
-  final AuthRepo _repo = AuthRepo();
+  // UI状态
+  final username = ''.obs;
+  final password = ''.obs;
+  final showPassword = false.obs;
+  final RxString error = ''.obs;
 
-  /// 登录
-  Future<void> login(String username, String password) async {
-    isLoading.value = true;
+  // 计算属性
+  bool get canLogin => username.value.isNotEmpty && password.value.isNotEmpty;
+  bool get isLoggedIn => _auth.isLoggedIn.value;
+  bool get isLoading => _auth.isLoading.value;
+  UserModel? get currentUser => _auth.currentUser.value;
+  bool get hasValidToken => _token.hasValidToken.value;
+
+  /// 登录（直接调用AuthService）
+  Future<void> login() async {
+    if (username.value.isEmpty) {
+      error.value = '请输入用户名';
+      Get.snackbar('提示', error.value);
+      return;
+    }
+
+    if (password.value.isEmpty) {
+      error.value = '请输入密码';
+      Get.snackbar('提示', error.value);
+      return;
+    }
+
     error.value = '';
+    final response = await _auth.login(username.value, password.value);
 
-    try {
-      final result = await _repo.login(username, password);
+    if (response.success) {
+      // 登录成功，清空表单
+      clearForm();
+      Get.offAllNamed('/');
+    } else if (response.error != null) {
+      error.value = response.error!.message;
+    }
+  }
 
-      if (result['success'] == true) {
-        // 保存token
-        final prefs = await SharedPreferences.getInstance();
-        final data = result['data'] as Map<String, dynamic>;
+  /// 直接登录（供页面调用）
+  Future<void> directLogin(String username, String password) async {
+    error.value = '';
+    final response = await _auth.login(username, password);
 
-        await prefs.setString('access_token', data['access_token'] as String);
-        if (data['refresh_token'] != null) {
-          await prefs.setString(
-            'refresh_token',
-            data['refresh_token'] as String,
-          );
-        }
-        if (data['expires_in'] != null) {
-          final expiry =
-              DateTime.now().millisecondsSinceEpoch ~/ 1000 +
-              (data['expires_in'] as num).toInt();
-          await prefs.setInt('token_expiry', expiry);
-        }
-
-        // 获取用户信息
-        await loadUser();
-
-        Get.snackbar('成功', '登录成功！');
-      } else {
-        error.value = result['error'] as String;
-        Get.snackbar('错误', result['error'] as String);
-      }
-    } catch (e) {
-      error.value = e.toString();
-      Get.snackbar('错误', '登录失败: $e');
-    } finally {
-      isLoading.value = false;
+    if (response.success) {
+      // 登录成功
+      clearForm();
+    } else if (response.error != null) {
+      error.value = response.error!.message;
     }
   }
 
   /// 注册
-  Future<void> register(
-    String username,
-    String password, {
-    String? nickname,
-  }) async {
-    isLoading.value = true;
+  Future<void> register({String? nickname}) async {
+    if (username.value.isEmpty) {
+      error.value = '请输入用户名';
+      Get.snackbar('提示', error.value);
+      return;
+    }
+
+    if (password.value.isEmpty) {
+      error.value = '请输入密码';
+      Get.snackbar('提示', error.value);
+      return;
+    }
+
     error.value = '';
+    final response = await _auth.register(
+      username.value,
+      password.value,
+      nickname: nickname,
+    );
 
-    try {
-      final result = await _repo.register(
-        username,
-        password,
-        nickname: nickname,
-      );
-
-      if (result['success'] == true) {
-        Get.snackbar('成功', '注册成功！请登录');
-        Get.back(); // 返回登录页
-      } else {
-        error.value = result['error'] as String;
-        Get.snackbar('错误', result['error'] as String);
-      }
-    } catch (e) {
-      error.value = e.toString();
-      Get.snackbar('错误', '注册失败: $e');
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  /// 加载用户信息
-  Future<void> loadUser() async {
-    try {
-      final result = await _repo.getCurrentUser();
-
-      if (result['success'] == true) {
-        user.value = UserModel.fromJson(result['data'] as Map<String, dynamic>);
-        isLoggedIn.value = true;
-      } else {
-        // token可能失效，尝试刷新
-        await tryRefreshToken();
-      }
-    } catch (e) {
-      error.value = e.toString();
-    }
-  }
-
-  /// 尝试刷新token
-  Future<void> tryRefreshToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    final refreshToken = prefs.getString('refresh_token');
-
-    if (refreshToken != null && refreshToken.isNotEmpty) {
-      final result = await _repo.refreshToken(refreshToken);
-
-      if (result['success'] == true) {
-        final data = result['data'] as Map<String, dynamic>;
-
-        await prefs.setString('access_token', data['access_token'] as String);
-        if (data['refresh_token'] != null) {
-          await prefs.setString(
-            'refresh_token',
-            data['refresh_token'] as String,
-          );
-        }
-        if (data['expires_in'] != null) {
-          final expiry =
-              DateTime.now().millisecondsSinceEpoch ~/ 1000 +
-              (data['expires_in'] as num).toInt();
-          await prefs.setInt('token_expiry', expiry);
-        }
-
-        await loadUser();
-      } else {
-        await logout();
-      }
-    } else {
-      await logout();
+    if (response.success) {
+      // 注册成功，清空表单
+      clearForm();
+      Get.back(); // 返回登录页
+    } else if (response.error != null) {
+      error.value = response.error!.message;
     }
   }
 
   /// 登出
   Future<void> logout() async {
-    try {
-      await _repo.logout();
-    } catch (_) {
-      // 忽略登出API错误
-    }
-
-    // 清除本地存储
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('access_token');
-    await prefs.remove('refresh_token');
-    await prefs.remove('token_expiry');
-
-    // 重置状态
-    isLoggedIn.value = false;
-    user.value = null;
-    error.value = '';
-
-    Get.snackbar('成功', '已登出');
+    await _auth.logout();
+    Get.offAllNamed('/login');
   }
 
-  /// 检查登录状态
+  /// 强制刷新Token
+  Future<bool> forceRefreshToken() async {
+    return await _token.forceRefreshToken();
+  }
+
+  /// 检查Token是否即将过期
+  Future<bool> isTokenAboutToExpire() async {
+    return await _token.isTokenAboutToExpire();
+  }
+
+  /// 获取Token剩余时间
+  Future<int> getTokenRemainingTime() async {
+    return await _token.getTokenRemainingTime();
+  }
+
+  /// 检查认证状态
   Future<void> checkAuthStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('access_token');
-    final expiry = prefs.getInt('token_expiry');
+    await _auth.checkAuthStatus();
+  }
 
-    if (token != null && token.isNotEmpty) {
-      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-
-      if (expiry != null && expiry > now) {
-        // token有效，加载用户
-        await loadUser();
-      } else {
-        // token过期，尝试刷新
-        await tryRefreshToken();
-      }
+  /// 验证表单
+  bool validateForm() {
+    if (username.value.isEmpty) {
+      error.value = '请输入用户名';
+      return false;
     }
+
+    if (password.value.isEmpty) {
+      error.value = '请输入密码';
+      return false;
+    }
+
+    if (username.value.length < 3) {
+      error.value = '用户名至少3个字符';
+      return false;
+    }
+
+    if (password.value.length < 6) {
+      error.value = '密码至少6个字符';
+      return false;
+    }
+
+    error.value = '';
+    return true;
+  }
+
+  /// 清空表单
+  void clearForm() {
+    username.value = '';
+    password.value = '';
+    error.value = '';
+  }
+
+  /// 切换密码可见性
+  void togglePasswordVisibility() {
+    showPassword.value = !showPassword.value;
+  }
+
+  /// 设置用户名
+  void setUsername(String value) {
+    username.value = value;
+  }
+
+  /// 设置密码
+  void setPassword(String value) {
+    password.value = value;
   }
 
   /// 初始化
@@ -187,5 +172,13 @@ class AuthController extends GetxController {
   void onInit() {
     super.onInit();
     checkAuthStatus();
+  }
+
+  /// 重置所有状态
+  void resetAll() {
+    username.value = '';
+    password.value = '';
+    showPassword.value = false;
+    error.value = '';
   }
 }

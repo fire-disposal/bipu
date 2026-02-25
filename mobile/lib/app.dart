@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import 'controllers/auth_controller.dart';
-
-import 'pages/home_page.dart';
+import 'pages/login_page.dart';
+import 'pages/main_frame.dart';
 
 /// 极简应用根Widget - GetX风格
 class App extends StatelessWidget {
@@ -15,15 +15,15 @@ class App extends StatelessWidget {
       final authController = AuthController.to;
 
       // 检查登录状态
-      if (authController.isLoading.value) {
+      if (authController.isLoading) {
         return _buildLoadingScreen();
       }
 
-      if (!authController.isLoggedIn.value) {
-        return HomePage();
+      if (!authController.isLoggedIn) {
+        return LoginPage();
       }
 
-      return HomePage();
+      return const MainFrame();
     });
   }
 
