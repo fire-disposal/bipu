@@ -771,7 +771,7 @@ class IntentDrivenAssistantController extends ChangeNotifier {
 ### 当前模型分析
 
 **TTS现状**：
-- **当前模型**：VITS (vits-aishell3.onnx)
+- **当前模型**：VITS (vits-zh-hf-fanchen-C.onnx)
 - **模型大小**：约50-100MB（需确认）
 - **推理速度**：中等，依赖CPU性能
 - **语音质量**：中等，中文优化

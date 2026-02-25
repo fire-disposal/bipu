@@ -248,10 +248,17 @@ async def upload_service_avatar(
 
         # 验证文件类型
         if not file.content_type or not file.content_type.startswith('image/'):
-            raise HTTPException(status_code=400, detail="请上传图片文件")
+            raise HTTPException(status_code=400, detail="请上传图片文件（支持JPG、PNG等格式）")
 
         # 使用StorageService处理头像压缩
-        avatar_data = await StorageService.save_avatar(file)
+        try:
+            avatar_data = await StorageService.save_avatar(file)
+        except ValueError as e:
+            # 处理StorageService抛出的具体错误
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            logger.error(f"服务号头像处理失败: {e}")
+            raise HTTPException(status_code=500, detail="头像处理失败，请确保图片格式正确且尺寸合理")
 
         # 更新数据库
         try:
@@ -264,8 +271,11 @@ async def upload_service_avatar(
             db.rollback()
             logger.error(f"上传服务号头像失败: {e}")
             raise HTTPException(status_code=500, detail="操作失败")
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"服务号头像上传失败: {e}")
+        raise HTTPException(status_code=500, detail=f"头像上传失败: {str(e)}")
 
 @router.post("/service_accounts/{service_id}/push-time", tags=["管理后台"])
 async def update_service_push_time(

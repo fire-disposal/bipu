@@ -2,6 +2,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../../core/api/api_provider.dart';
+import '../../../../core/config/app_config.dart';
 import '../../../../shared/models/poster_model.dart';
 
 /// 海报状态
@@ -100,9 +101,9 @@ final posterImageProvider = FutureProvider.family<String?, int>((
     final response = await restClient.getPosterImage(posterId);
 
     if (response.response.statusCode == 200) {
-      // 对于二进制图片，我们返回完整的URL
-      // 前端可以直接使用这个URL加载图片
-      return '/api/posters/$posterId/image';
+      // 对于二进制图片，返回完整的 URL（包含 baseUrl）
+      // 前端可以直接使用这个 URL 加载图片
+      return '${AppConfig.baseUrl}/api/posters/$posterId/image';
     } else {
       debugPrint('[Poster] 获取海报图片失败: ${response.response.statusCode}');
       return null;

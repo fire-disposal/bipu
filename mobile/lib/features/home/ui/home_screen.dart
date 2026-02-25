@@ -14,6 +14,7 @@ import '../../contacts/ui/contacts_screen.dart';
 import '../../pager/ui/pager_screen.dart';
 import '../../message/ui/message_list_screen.dart';
 import '../../profile/ui/profile_screen.dart';
+import '../../tts_test/tts_test_page.dart';
 
 /// 首页广场
 class HomeScreen extends HookConsumerWidget {
@@ -80,6 +81,52 @@ class HomeScreen extends HookConsumerWidget {
                     );
                   }
                 },
+              ),
+            ),
+
+            // 开发工具卡片
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '开发工具',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            ActionChip(
+                              avatar: const Icon(
+                                Icons.record_voice_over,
+                                size: 18,
+                              ),
+                              label: const Text('TTS测试'),
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => const TtsTestPage(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
 

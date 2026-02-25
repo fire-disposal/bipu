@@ -86,21 +86,26 @@ class UserModel {
   final String username;
 
   /// Bipupu ID（唯一标识）
+  @JsonKey(name: 'bipupu_id')
   final String bipupuId;
 
   /// 昵称
   final String? nickname;
 
   /// 头像 URL
+  @JsonKey(name: 'avatar_url')
   final String? avatarUrl;
 
   /// 宇宙档案
+  @JsonKey(name: 'cosmic_profile')
   final CosmicProfile? cosmicProfile;
 
   /// 是否活跃
+  @JsonKey(name: 'is_active')
   final bool isActive;
 
   /// 是否超级用户
+  @JsonKey(name: 'is_superuser')
   final bool isSuperuser;
 
   /// 最后活跃时间

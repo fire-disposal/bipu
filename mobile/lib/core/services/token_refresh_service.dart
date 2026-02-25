@@ -4,13 +4,12 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../features/auth/logic/auth_notifier.dart';
-import '../config/app_config.dart';
 
 /// Token刷新服务 - 用于在token过期前自动刷新
 class TokenRefreshService {
   Timer? _refreshTimer;
   Timer? _expiryCheckTimer;
-  final AuthStatusNotifier _authNotifier;
+  final AuthStateNotifier _authNotifier;
 
   TokenRefreshService(this._authNotifier);
 
@@ -106,19 +105,13 @@ class TokenRefreshService {
     try {
       debugPrint('[TokenRefreshService] 开始刷新token');
 
-      // 使用静默刷新，避免影响UI状态
-      final success = await _authNotifier.silentRefreshToken();
+      // 使用常规刷新方法
+      final success = await _authNotifier.refreshToken();
 
       if (success) {
         debugPrint('[TokenRefreshService] Token刷新成功');
       } else {
-        debugPrint('[TokenRefreshService] Token刷新失败');
-
-        // 如果静默刷新失败，尝试使用常规刷新
-        final regularSuccess = await _authNotifier.refreshToken();
-        if (!regularSuccess) {
-          debugPrint('[TokenRefreshService] 常规刷新也失败，可能需要重新登录');
-        }
+        debugPrint('[TokenRefreshService] Token刷新失败，可能需要重新登录');
       }
     } catch (e) {
       debugPrint('[TokenRefreshService] 刷新token时发生异常: $e');
@@ -173,7 +166,7 @@ class TokenRefreshService {
 
 /// Token刷新服务提供者
 final tokenRefreshServiceProvider = Provider<TokenRefreshService>((ref) {
-  final authNotifier = ref.watch(authStatusNotifierProvider.notifier);
+  final authNotifier = ref.read(authStateNotifierProvider.notifier);
   return TokenRefreshService(authNotifier);
 });
 

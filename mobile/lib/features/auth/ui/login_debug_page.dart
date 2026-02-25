@@ -16,7 +16,8 @@ class LoginDebugPage extends HookConsumerWidget {
     final passwordController = useTextEditingController();
     final isLoading = useState(false);
     final debugLogs = useState<List<String>>([]);
-    final authStatus = ref.watch(authStatusNotifierProvider);
+    final authState = ref.watch(authStateNotifierProvider);
+    final authStatus = authState.status;
 
     void addLog(String message) {
       debugLogs.value = [
@@ -52,7 +53,7 @@ class LoginDebugPage extends HookConsumerWidget {
 
       try {
         final authNotifier = currentRef.read(
-          authStatusNotifierProvider.notifier,
+          authStateNotifierProvider.notifier,
         );
         final success = await authNotifier.login(
           usernameController.text,
@@ -106,7 +107,7 @@ class LoginDebugPage extends HookConsumerWidget {
       if (!context.mounted) return;
       addLog('检查认证状态...');
       showToast('正在检查认证状态...');
-      final authNotifier = ref.read(authStatusNotifierProvider.notifier);
+      final authNotifier = ref.read(authStateNotifierProvider.notifier);
       await authNotifier.debugCheckAuth();
 
       if (!context.mounted) return;

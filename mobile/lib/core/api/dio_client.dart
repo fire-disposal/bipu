@@ -6,6 +6,35 @@ import '../config/app_config.dart';
 import '../../features/auth/logic/auth_notifier.dart';
 import 'package:flutter/foundation.dart';
 
+/// 全局认证管理器（用于在非Widget上下文中访问）
+class AuthManager {
+  static AuthStateNotifier? _instance;
+
+  static void setInstance(AuthStateNotifier instance) {
+    _instance = instance;
+  }
+
+  static AuthStateNotifier? get instance => _instance;
+
+  /// 刷新token（可在拦截器等非Widget上下文中调用）
+  static Future<bool> refreshToken() async {
+    if (_instance == null) {
+      debugPrint('[AuthManager] 实例未初始化');
+      return false;
+    }
+    return await _instance!.refreshToken();
+  }
+
+  /// 清除token（可在拦截器等非Widget上下文中调用）
+  static Future<void> clearToken() async {
+    if (_instance == null) {
+      debugPrint('[AuthManager] 实例未初始化');
+      return;
+    }
+    await _instance!.clearTokenInternal();
+  }
+}
+
 /// 普通 API 请求的 Dio 客户端
 /// receiveTimeout: 10 秒（适用于普通请求）
 final dioClientProvider = Provider<Dio>((ref) {

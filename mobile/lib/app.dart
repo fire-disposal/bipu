@@ -23,95 +23,71 @@ class App extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = useState(0);
-    final authStatus = ref.watch(authStatusNotifierProvider);
+    final authState = ref.watch(authStateNotifierProvider);
+    final authStatus = authState.status;
 
-    // 使用 read 而不是 watch 来获取服务实例，避免不必要的重建
-    final pollingService = ref.read(pollingServiceProvider);
-    final bleManager = ref.read(bleManagerProvider);
-    final messageForwarder = ref.read(messageForwarderProvider);
-
-    // 初始化Token刷新管理器
+    // 简化服务管理：只在需要时启动服务
     useEffect(() {
-      TokenRefreshManager.initialize(ref);
-      return () {
-        TokenRefreshManager.stop();
-      };
-    }, []);
-
-    // 监听认证状态变化，启动/停止服务
-    useEffect(() {
-      // 保存服务引用，避免在异步操作中使用可能变化的引用
-      final currentPollingService = pollingService;
-      final currentBleManager = bleManager;
-      final currentMessageForwarder = messageForwarder;
+      debugPrint('[App] 认证状态: $authStatus');
 
       if (authStatus == AuthStatus.authenticated) {
-        // 初始化蓝牙管理器
-        currentBleManager.initialize().catchError((e) {
-          debugPrint('蓝牙管理器初始化失败: $e');
-        });
+        debugPrint('[App] 用户已认证，启动必要服务...');
 
         // 启动轮询服务
-        currentPollingService.start();
-
-        // 启动消息转发服务
-        currentMessageForwarder.start().catchError((e) {
-          debugPrint('消息转发服务启动失败: $e');
-        });
+        final pollingService = ref.read(pollingServiceProvider);
+        pollingService.start();
 
         // 启动Token自动刷新服务
         final tokenRefreshService = ref.read(tokenRefreshServiceProvider);
         tokenRefreshService.start();
+
+        debugPrint('[App] 核心服务已启动');
       } else if (authStatus == AuthStatus.unauthenticated) {
-        // 只在未认证状态时停止服务
-        currentPollingService.stop();
-        currentMessageForwarder.stop().catchError((e) {
-          debugPrint('消息转发服务停止失败: $e');
-        });
+        debugPrint('[App] 用户未认证，停止服务...');
+
+        // 停止轮询服务
+        final pollingService = ref.read(pollingServiceProvider);
+        pollingService.stop();
 
         // 停止Token自动刷新服务
         final tokenRefreshService = ref.read(tokenRefreshServiceProvider);
         tokenRefreshService.stop();
+
+        debugPrint('[App] 服务已停止');
       }
 
       return () {
-        // 清理时停止所有服务
-        currentPollingService.stop();
-        currentMessageForwarder.stop().catchError((e) {
-          debugPrint('消息转发服务停止失败: $e');
-        });
+        // 清理时停止轮询服务
+        final pollingService = ref.read(pollingServiceProvider);
+        pollingService.stop();
       };
     }, [authStatus]);
 
     // 监听应用生命周期状态
     useEffect(() {
-      // 保存服务引用
-      final currentPollingService = pollingService;
-      final currentMessageForwarder = messageForwarder;
-
-      final observer = AppLifecycleObserver(
-        pollingService: currentPollingService,
-        messageForwarder: currentMessageForwarder,
-      );
+      final observer = AppLifecycleObserver(ref);
 
       WidgetsBinding.instance.addObserver(observer);
 
       return () {
         WidgetsBinding.instance.removeObserver(observer);
-        // 清理服务资源
-        pollingService.dispose();
       };
     }, []);
 
     // 根据认证状态显示不同内容
+    debugPrint('[App] 构建Widget，认证状态: $authStatus');
+
     if (authStatus == AuthStatus.unknown) {
+      debugPrint('[App] 显示加载屏幕');
       return _buildLoadingScreen(context, ref);
     }
 
     if (authStatus == AuthStatus.unauthenticated) {
+      debugPrint('[App] 显示登录屏幕');
       return _buildLoginScreen(ref);
     }
 
+    debugPrint('[App] 显示主界面');
     return _buildMainLayout(context, ref, currentIndex);
   }
 
@@ -215,17 +191,20 @@ class App extends HookConsumerWidget {
 
 /// 应用生命周期观察器
 class AppLifecycleObserver extends WidgetsBindingObserver {
-  final PollingService pollingService;
-  final MessageForwarder messageForwarder;
+  final WidgetRef ref;
 
-  AppLifecycleObserver({
-    required this.pollingService,
-    required this.messageForwarder,
-  });
+  AppLifecycleObserver(this.ref);
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     debugPrint('应用生命周期状态变化: $state');
+
+    final authState = ref.read(authStateNotifierProvider);
+    if (!authState.isAuthenticated) {
+      return; // 用户未认证，不处理生命周期状态
+    }
+
+    final pollingService = ref.read(pollingServiceProvider);
 
     switch (state) {
       case AppLifecycleState.resumed:
@@ -241,9 +220,6 @@ class AppLifecycleObserver extends WidgetsBindingObserver {
       case AppLifecycleState.detached:
         // 应用被销毁
         pollingService.stop();
-        messageForwarder.stop().catchError((e) {
-          debugPrint('消息转发服务停止失败: $e');
-        });
         break;
     }
   }

@@ -33,14 +33,14 @@ Map<String, dynamic> _$CosmicProfileToJson(CosmicProfile instance) =>
 UserModel _$UserModelFromJson(Map<String, dynamic> json) => UserModel(
   id: (json['id'] as num).toInt(),
   username: json['username'] as String,
-  bipupuId: json['bipupuId'] as String,
+  bipupuId: json['bipupu_id'] as String,
   nickname: json['nickname'] as String?,
-  avatarUrl: json['avatarUrl'] as String?,
-  cosmicProfile: json['cosmicProfile'] == null
+  avatarUrl: json['avatar_url'] as String?,
+  cosmicProfile: json['cosmic_profile'] == null
       ? null
-      : CosmicProfile.fromJson(json['cosmicProfile'] as Map<String, dynamic>),
-  isActive: json['isActive'] as bool? ?? true,
-  isSuperuser: json['isSuperuser'] as bool? ?? false,
+      : CosmicProfile.fromJson(json['cosmic_profile'] as Map<String, dynamic>),
+  isActive: json['is_active'] as bool? ?? true,
+  isSuperuser: json['is_superuser'] as bool? ?? false,
   lastActive: _parseDateTime(json['last_active']),
   createdAt: _parseDateTimeRequired(json['created_at']),
   updatedAt: _parseDateTime(json['updated_at']),
@@ -51,12 +51,12 @@ UserModel _$UserModelFromJson(Map<String, dynamic> json) => UserModel(
 Map<String, dynamic> _$UserModelToJson(UserModel instance) => <String, dynamic>{
   'id': instance.id,
   'username': instance.username,
-  'bipupuId': instance.bipupuId,
+  'bipupu_id': instance.bipupuId,
   'nickname': instance.nickname,
-  'avatarUrl': instance.avatarUrl,
-  'cosmicProfile': instance.cosmicProfile,
-  'isActive': instance.isActive,
-  'isSuperuser': instance.isSuperuser,
+  'avatar_url': instance.avatarUrl,
+  'cosmic_profile': instance.cosmicProfile,
+  'is_active': instance.isActive,
+  'is_superuser': instance.isSuperuser,
   'last_active': _formatDateTime(instance.lastActive),
   'created_at': _formatDateTime(instance.createdAt),
   'updated_at': _formatDateTime(instance.updatedAt),

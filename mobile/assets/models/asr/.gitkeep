@@ -1,0 +1,18 @@
+# ASR 模型文件占位符
+
+此目录用于存放 ASR（自动语音识别）模型文件。
+
+请将以下文件放置在此目录中：
+
+1. encoder-epoch-99-avg-1.int8.onnx - 编码器模型（INT8量化）
+2. decoder-epoch-99-avg-1.int8.onnx - 解码器模型（INT8量化）
+3. joiner-epoch-99-avg-1.int8.onnx - 连接器模型（INT8量化）
+4. tokens.txt - 令牌文件
+5. words.txt - 词汇文件（可选，用于词级识别）
+
+详细说明请参阅 README.md 文件。
+
+注意：这些模型文件较大，通常需要从官方仓库下载。
+推荐从以下来源获取：
+- https://github.com/k2-fsa/sherpa-onnx
+- https://huggingface.co/spaces/k2-fsa/sherpa-onnx-asr

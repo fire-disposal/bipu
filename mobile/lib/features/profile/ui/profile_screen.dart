@@ -5,13 +5,11 @@ import 'package:animate_do/animate_do.dart';
 
 import '../../../core/theme/design_system.dart';
 import '../../../shared/models/user_model.dart';
-import '../logic/profile_notifier.dart';
 import '../../auth/logic/auth_notifier.dart';
 import '../../auth/ui/login_page.dart';
-import 'settings_page.dart';
 import 'profile_edit_screen.dart';
+import 'password_edit_screen.dart';
 import '../../../shared/widgets/user_avatar.dart';
-import '../../../shared/widgets/avatar_uploader.dart';
 
 /// 个人中心主页
 class ProfileScreen extends HookConsumerWidget {
@@ -19,9 +17,25 @@ class ProfileScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final asyncUser = ref.watch(profileNotifierProvider);
-    final isLoggedIn = ref.watch(isLoggedInProvider);
-    final settings = ref.watch(settingsListProvider);
+    final authState = ref.watch(authStateNotifierProvider);
+    final isAuthenticated = authState.isAuthenticated;
+    final user = authState.user;
+    final settings = [
+      _SettingItem(id: 'profile', title: '个人资料', icon: Icons.person_outline),
+      _SettingItem(id: 'security', title: '账号安全', icon: Icons.security),
+      _SettingItem(
+        id: 'notifications',
+        title: '通知设置',
+        icon: Icons.notifications_outlined,
+      ),
+      _SettingItem(id: 'privacy', title: '隐私设置', icon: Icons.lock_outline),
+      _SettingItem(
+        id: 'appearance',
+        title: '外观设置',
+        icon: Icons.palette_outlined,
+      ),
+      _SettingItem(id: 'about', title: '关于', icon: Icons.info_outline),
+    ];
 
     void handleLogin() {
       Navigator.push(
@@ -53,36 +67,12 @@ class ProfileScreen extends HookConsumerWidget {
       );
 
       if (confirmed == true) {
-        await ref.read(authStatusNotifierProvider.notifier).logout();
+        await ref.read(authStateNotifierProvider.notifier).logout();
       }
     }
 
-    void openSettings() {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const SettingsPage()),
-      );
-    }
-
-    void openProfileEdit() {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const ProfileEditScreen()),
-      );
-    }
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('我的'),
-        centerTitle: true,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: openSettings,
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('我的'), centerTitle: true, elevation: 0),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -95,25 +85,9 @@ class ProfileScreen extends HookConsumerWidget {
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.lg,
                   ),
-                  child: isLoggedIn
-                      ? asyncUser.when(
-                          data: (user) => _buildUserInfoCard(
-                            context,
-                            user,
-                            handleLogout,
-                            ref,
-                            openProfileEdit,
-                          ),
-                          loading: () => _buildLoadingCard(context),
-                          error: (_, __) => _buildUserInfoCard(
-                            context,
-                            null,
-                            handleLogout,
-                            ref,
-                            openProfileEdit,
-                          ),
-                        )
-                      : _buildGuestCard(context, handleLogin),
+                  child: isAuthenticated
+                      ? _buildUserInfoCard(context, user, handleLogout)
+                      : _buildLoginPrompt(context, handleLogin),
                 ),
               ),
 
@@ -161,13 +135,10 @@ class ProfileScreen extends HookConsumerWidget {
 
   Widget _buildUserInfoCard(
     BuildContext context,
-    dynamic user,
+    UserModel? user,
     VoidCallback handleLogout,
-    WidgetRef ref,
-    VoidCallback openProfileEdit,
   ) {
     final theme = Theme.of(context);
-    final userModel = user as UserModel?;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -177,15 +148,11 @@ class ProfileScreen extends HookConsumerWidget {
       ),
       child: Row(
         children: [
-          // 头像 - 使用 AvatarUploader 组件
-          AvatarUploader(
-            bipupuId: userModel?.bipupuId ?? '',
+          // 头像 - 只显示，不提供编辑功能
+          UserAvatar(
+            bipupuId: user?.bipupuId ?? '',
             radius: 32,
-            showEditButton: true,
-            onUploadComplete: () {
-              // 刷新用户数据
-              ref.invalidate(profileNotifierProvider);
-            },
+            avatarUrl: user?.avatarUrl,
           ),
           const SizedBox(width: AppSpacing.md),
 
@@ -195,7 +162,7 @@ class ProfileScreen extends HookConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  userModel?.nickname ?? userModel?.username ?? '用户',
+                  user?.nickname ?? user?.username ?? '用户',
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: theme.colorScheme.onPrimaryContainer,
@@ -203,7 +170,7 @@ class ProfileScreen extends HookConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'ID: ${userModel?.bipupuId ?? "未登录"}',
+                  'ID: ${user?.bipupuId ?? "未登录"}',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onPrimaryContainer,
                   ),
@@ -212,43 +179,14 @@ class ProfileScreen extends HookConsumerWidget {
             ),
           ),
 
-          // 编辑和登出按钮
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: Icon(
-                  Icons.edit_outlined,
-                  color: theme.colorScheme.onPrimaryContainer,
-                  size: 20,
-                ),
-                onPressed: openProfileEdit,
-                tooltip: '编辑资料',
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              ShadButton.outline(
-                onPressed: handleLogout,
-                child: const Text('登出'),
-              ),
-            ],
-          ),
+          // 只保留登出按钮
+          ShadButton.outline(onPressed: handleLogout, child: const Text('登出')),
         ],
       ),
     );
   }
 
-  Widget _buildLoadingCard(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      child: const Center(child: CircularProgressIndicator()),
-    );
-  }
-
-  Widget _buildGuestCard(BuildContext context, VoidCallback handleLogin) {
+  Widget _buildLoginPrompt(BuildContext context, VoidCallback handleLogin) {
     final theme = Theme.of(context);
 
     return Container(
@@ -257,33 +195,43 @@ class ProfileScreen extends HookConsumerWidget {
         color: theme.colorScheme.surfaceVariant,
         borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
-      child: Row(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // 未登录用户头像
-          UserAvatar(bipupuId: 'guest', radius: 32),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '未登录',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text('登录以享受完整功能', style: theme.textTheme.bodySmall),
-              ],
+          Icon(
+            Icons.person_outline,
+            size: 48,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            '请先登录',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w600,
             ),
           ),
-          ShadButton(onPressed: handleLogin, child: const Text('登录')),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            '登录后即可使用完整功能',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          SizedBox(
+            width: double.infinity,
+            child: ShadButton(
+              onPressed: handleLogin,
+              child: const Text('立即登录'),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSettingsList(BuildContext context, List<SettingItem> settings) {
+  Widget _buildSettingsList(BuildContext context, List<_SettingItem> settings) {
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
@@ -316,7 +264,24 @@ class ProfileScreen extends HookConsumerWidget {
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 onTap: () {
-                  // TODO: 跳转到对应设置页面
+                  if (setting.id == 'profile') {
+                    // 跳转到个人资料编辑页面
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ProfileEditScreen(),
+                      ),
+                    );
+                  } else if (setting.id == 'security') {
+                    // 跳转到密码管理页面
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PasswordEditScreen(),
+                      ),
+                    );
+                  }
+                  // 其他设置项暂时保持TODO
                 },
               ),
             ],
@@ -325,4 +290,13 @@ class ProfileScreen extends HookConsumerWidget {
       ),
     );
   }
+}
+
+/// 个人设置项（本地定义）
+class _SettingItem {
+  final String id;
+  final String title;
+  final IconData icon;
+
+  _SettingItem({required this.id, required this.title, required this.icon});
 }

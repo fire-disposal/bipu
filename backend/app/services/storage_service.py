@@ -12,6 +12,13 @@ Image.MAX_IMAGE_PIXELS = 100000000  # 限制最大像素数，防止内存溢出
 
 logger = get_logger(__name__)
 
+# 头像配置常量
+AVATAR_MAX_SIZE = 100  # 头像最大尺寸（像素）
+AVATAR_MIN_SIZE = 50   # 头像最小尺寸（像素）
+AVATAR_MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB，头像最大文件大小
+AVATAR_QUALITY = 70    # JPEG压缩质量
+AVATAR_ASPECT_RATIO_TOLERANCE = 0.1  # 宽高比容差（10%）
+
 
 class StorageService:
     """图片存储服务类 - 简化版本，专注数据库存储"""
@@ -21,14 +28,18 @@ class StorageService:
         """保存用户头像到数据库并进行压缩，返回二进制数据
 
         流程：
-        1. 读取文件内容到内存
-        2. 验证图片格式和安全性
-        3. 压缩图片到100x100像素
+        1. 读取文件内容到内存，验证文件大小
+        2. 验证图片格式、安全性和宽高比（强制1:1）
+        3. 裁剪并压缩图片到正方形（最大100x100像素）
         4. 转换为JPEG格式，质量70%
         5. 返回压缩后的二进制数据
         """
         # 读取文件内容到内存
         content = await file.read()
+
+        # 验证文件大小
+        if len(content) > AVATAR_MAX_FILE_SIZE:
+            raise ValueError(f"头像文件过大，最大支持 {AVATAR_MAX_FILE_SIZE // (1024*1024)}MB")
 
         # 直接从内存数据解码图片，避免文件系统操作
         image_buffer = BytesIO(content)
@@ -44,26 +55,31 @@ class StorageService:
             image_buffer.seek(0)
             image = Image.open(image_buffer)
 
+            # 检查图片尺寸，防止超大图片
+            MAX_DIMENSION = 5000  # 最大边长
+            if image.width > MAX_DIMENSION or image.height > MAX_DIMENSION:
+                raise ValueError(f"图片尺寸过大，请将边长限制在{MAX_DIMENSION}像素以内")
+
+            # 检查宽高比，强制1:1比例
+            aspect_ratio = image.width / image.height
+            if abs(aspect_ratio - 1.0) > AVATAR_ASPECT_RATIO_TOLERANCE:
+                logger.warning(f"头像宽高比不符合1:1要求: {image.width}x{image.height} (比例: {aspect_ratio:.2f})")
+                # 自动裁剪为正方形
+                image = StorageService._crop_to_square(image)
+
             # 转换为RGB以保存为JPEG
             if image.mode in ("RGBA", "P", "LA"):
                 image = image.convert("RGB")
 
-            # 设置最大尺寸 - 根据MVP需求调整为100x100
-            max_size = (100, 100)
-            image.thumbnail(max_size, Image.Resampling.LANCZOS)
-
-            # 限制最大像素数量，防止超大图片
-            MAX_PIXELS = 100 * 100  # 10,000像素
-            if image.width * image.height > MAX_PIXELS:
-                # 如果图片仍然太大，进一步缩小
-                image.thumbnail((50, 50), Image.Resampling.LANCZOS)
+            # 压缩到目标尺寸
+            image = StorageService._resize_avatar(image)
 
             # 保存到内存中的BytesIO，质量设置为70%符合MVP需求
             output = BytesIO()
-            image.save(output, "JPEG", quality=70, optimize=True)
+            image.save(output, "JPEG", quality=AVATAR_QUALITY, optimize=True)
             compressed_data = output.getvalue()
 
-            logger.debug(f"头像压缩完成: 原始大小={len(content)}bytes, 压缩后={len(compressed_data)}bytes")
+            logger.info(f"头像处理完成: 原始={len(content)//1024}KB, 压缩后={len(compressed_data)//1024}KB, 尺寸={image.width}x{image.height}")
             return compressed_data
 
         except Exception as e:
@@ -169,6 +185,55 @@ class StorageService:
             image_buffer.close()
 
     @staticmethod
+    def _crop_to_square(image: Image.Image) -> Image.Image:
+        """将图片裁剪为正方形
+
+        从图片中心裁剪出最大的正方形区域
+        """
+        width, height = image.size
+
+        # 计算裁剪区域
+        if width > height:
+            # 宽度大于高度，裁剪宽度
+            left = (width - height) // 2
+            top = 0
+            right = left + height
+            bottom = height
+        else:
+            # 高度大于宽度，裁剪高度
+            left = 0
+            top = (height - width) // 2
+            right = width
+            bottom = top + width
+
+        # 执行裁剪
+        cropped_image = image.crop((left, top, right, bottom))
+        logger.debug(f"图片裁剪为正方形: 原始尺寸={width}x{height}, 裁剪后={cropped_image.width}x{cropped_image.height}")
+        return cropped_image
+
+    @staticmethod
+    def _resize_avatar(image: Image.Image) -> Image.Image:
+        """调整头像尺寸到目标大小
+
+        确保头像尺寸在最小和最大尺寸之间，并保持正方形
+        """
+        width, height = image.size
+
+        # 确保是正方形
+        if width != height:
+            # 如果不是正方形，使用较小的一边作为基准
+            size = min(width, height)
+            image = image.resize((size, size), Image.Resampling.LANCZOS)
+
+        # 调整到目标尺寸
+        if image.width > AVATAR_MAX_SIZE:
+            image = image.resize((AVATAR_MAX_SIZE, AVATAR_MAX_SIZE), Image.Resampling.LANCZOS)
+        elif image.width < AVATAR_MIN_SIZE:
+            image = image.resize((AVATAR_MIN_SIZE, AVATAR_MIN_SIZE), Image.Resampling.LANCZOS)
+
+        return image
+
+    @staticmethod
     def validate_image_content(content: bytes) -> bool:
         """验证图片内容安全性
 
@@ -184,6 +249,18 @@ class StorageService:
             return False
         finally:
             image_buffer.close()
+
+    @staticmethod
+    def validate_avatar_dimensions(width: int, height: int) -> bool:
+        """验证头像尺寸是否符合要求
+
+        检查宽高比是否为1:1（允许一定容差）
+        """
+        if width <= 0 or height <= 0:
+            return False
+
+        aspect_ratio = width / height
+        return abs(aspect_ratio - 1.0) <= AVATAR_ASPECT_RATIO_TOLERANCE
 
     @staticmethod
     def get_avatar_cache_key(bipupu_id: str) -> str:

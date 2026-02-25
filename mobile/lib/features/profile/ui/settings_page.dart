@@ -2,9 +2,55 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/design_system.dart';
-import '../logic/profile_notifier.dart';
+import '../../auth/logic/auth_notifier.dart';
+
+/// 应用设置提供者（本地存储）
+final appSettingsNotifierProvider =
+    NotifierProvider<AppSettingsNotifier, Map<String, dynamic>>(
+      () => AppSettingsNotifier(),
+    );
+
+class AppSettingsNotifier extends Notifier<Map<String, dynamic>> {
+  @override
+  Map<String, dynamic> build() {
+    _loadSettings();
+    return {'darkMode': false, 'notifications': true, 'language': 'zh-CN'};
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      state = {
+        'darkMode': prefs.getBool('dark_mode') ?? false,
+        'notifications': prefs.getBool('notifications') ?? true,
+        'language': prefs.getString('language') ?? 'zh-CN',
+      };
+    } catch (e) {
+      debugPrint('[AppSettings] 加载设置失败：$e');
+    }
+  }
+
+  Future<void> setDarkMode(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('dark_mode', enabled);
+    state = {...state, 'darkMode': enabled};
+  }
+
+  Future<void> setNotifications(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notifications', enabled);
+    state = {...state, 'notifications': enabled};
+  }
+
+  Future<void> setLanguage(String language) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('language', language);
+    state = {...state, 'language': language};
+  }
+}
 
 /// 设置页面
 class SettingsPage extends HookConsumerWidget {
@@ -14,9 +60,38 @@ class SettingsPage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final appSettings = ref.watch(appSettingsNotifierProvider);
     final notifier = ref.read(appSettingsNotifierProvider.notifier);
+    final authState = ref.watch(authStateNotifierProvider);
 
     final darkMode = useState(appSettings['darkMode'] ?? false);
     final notifications = useState(appSettings['notifications'] ?? true);
+
+    void handleLogout() async {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('确认登出'),
+          content: const Text('确定要登出当前账号吗？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(
+                '登出',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true) {
+        await ref.read(authStateNotifierProvider.notifier).logout();
+        Navigator.pop(context);
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('设置'), centerTitle: true, elevation: 0),
@@ -147,6 +222,9 @@ class SettingsPage extends HookConsumerWidget {
           ShadButton.outline(
             onPressed: () {
               // TODO: 清除缓存
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('缓存清除功能开发中')));
             },
             child: const Text('清除缓存'),
           ),
@@ -154,12 +232,11 @@ class SettingsPage extends HookConsumerWidget {
           const SizedBox(height: AppSpacing.md),
 
           // 退出登录（如果已登录）
-          ShadButton.destructive(
-            onPressed: () {
-              // TODO: 退出登录
-            },
-            child: const Text('退出登录'),
-          ),
+          if (authState.isAuthenticated)
+            ShadButton.destructive(
+              onPressed: handleLogout,
+              child: const Text('退出登录'),
+            ),
         ],
       ),
     );

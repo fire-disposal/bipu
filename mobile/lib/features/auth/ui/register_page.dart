@@ -46,7 +46,7 @@ class RegisterPage extends HookConsumerWidget {
       successMessage.value = null;
 
       try {
-        final authNotifier = ref.read(authStatusNotifierProvider.notifier);
+        final authNotifier = ref.read(authStateNotifierProvider.notifier);
         final success = await authNotifier.register(
           usernameController.text,
           passwordController.text,

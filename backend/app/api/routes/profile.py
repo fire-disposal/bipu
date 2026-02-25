@@ -44,7 +44,7 @@ async def upload_avatar(
 
         # 验证文件类型
         if not file.content_type or not file.content_type.startswith('image/'):
-            raise ValidationException("请上传图片文件")
+            raise ValidationException("请上传图片文件（支持JPG、PNG等格式）")
 
         # 重新创建文件对象用于后续处理
         from io import BytesIO
@@ -55,7 +55,14 @@ async def upload_avatar(
         if not user_id:
             raise ValidationException("用户ID获取失败")
 
-        avatar_data = await StorageService.save_avatar(file)
+        try:
+            avatar_data = await StorageService.save_avatar(file)
+        except ValueError as e:
+            # 处理StorageService抛出的具体错误
+            raise ValidationException(str(e))
+        except Exception as e:
+            logger.error(f"头像处理失败: {e}")
+            raise ValidationException("头像处理失败，请确保图片格式正确且尺寸合理")
 
         # 更新数据库
         current_user.avatar_data = avatar_data
@@ -86,7 +93,7 @@ async def upload_avatar(
     except Exception as e:
         logger.error(f"头像上传失败: {e}")
         db.rollback()
-        raise ValidationException("头像上传失败，请检查图片格式")
+        raise ValidationException(f"头像上传失败: {str(e)}")
 
 @router.get("/me", response_model=UserResponse, tags=["用户资料"])
 async def get_current_user_info(

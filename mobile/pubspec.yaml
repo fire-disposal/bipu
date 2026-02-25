@@ -30,6 +30,9 @@ dependencies:
   sherpa_onnx: ^1.12.25
   timezone: ^0.10.0
   connectivity_plus: ^6.0.3
+  audioplayers: ^6.1.0
+  permission_handler: ^11.0.1
+  sound_stream: ^0.4.2
 
 dev_dependencies:
   flutter_test:
@@ -43,3 +46,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # To add assets to your application, add an assets section, like this:
+  assets:
+    - assets/models/
+    - assets/models/tts/
+    - assets/models/asr/

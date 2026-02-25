@@ -1,8 +1,38 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 麦克风权限 - 用于语音识别 -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- 蓝牙权限 - 用于蓝牙功能 -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+
+    <!-- 网络权限 - 用于网络连接状态检查 -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
+    <!-- 位置权限 - Android 12+需要位置权限来扫描蓝牙设备 -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- 如果应用需要访问互联网 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- 通知权限 - Android 13+需要明确请求通知权限 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- 存储权限 - 用于读写模型文件和音频文件 -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+    <!-- 相机权限 - 用于拍照和选择图片 -->
+    <uses-permission android:name="android.permission.CAMERA" />
     <application
         android:label="Bipupu"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:requestLegacyExternalStorage="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -1,136 +1,71 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import '../../core/theme/design_system.dart';
 import '../../core/services/avatar_service.dart';
+import '../../core/config/app_config.dart';
 
-/// 服务号头像组件
+/// 简化的服务号头像组件
 ///
 /// 显示服务号头像，支持：
-/// - 从后端 API 加载头像图片
-/// - 本地缓存
+/// - 从后端API加载头像
+/// - 缓存头像URL
 /// - 无头像时显示服务号首字母占位符
-/// - 自定义尺寸和样式
-///
-/// 使用示例：
-/// ```dart
-/// ServiceAccountAvatar(
-///   serviceName: 'cosmic.fortune',
-///   radius: 24,
-///   onTap: () => print('头像被点击'),
-/// )
-/// ```
-class ServiceAccountAvatar extends HookConsumerWidget {
-  /// 服务号名称（必需）
+/// - 默认头像
+class ServiceAccountAvatar extends ConsumerWidget {
+  /// 服务号名称
   final String serviceName;
 
   /// 头像半径
   final double radius;
 
-  /// 是否显示加载指示器
-  final bool showLoadingIndicator;
-
   /// 点击回调
   final VoidCallback? onTap;
 
-  /// 头像边框颜色
+  /// 边框颜色
   final Color? borderColor;
 
-  /// 头像边框宽度
+  /// 边框宽度
   final double borderWidth;
 
-  /// 占位符背景颜色（可选，默认使用主题色）
-  final Color? placeholderColor;
+  /// 自定义头像URL（可选）
+  final String? avatarUrl;
 
-  /// 文字颜色（可选，默认使用主题色）
-  final Color? textColor;
+  /// 是否显示加载指示器
+  final bool showLoadingIndicator;
 
   const ServiceAccountAvatar({
     super.key,
     required this.serviceName,
     this.radius = 20,
-    this.showLoadingIndicator = false,
     this.onTap,
     this.borderColor,
-    this.borderWidth = 2,
-    this.placeholderColor,
-    this.textColor,
+    this.borderWidth = 0,
+    this.avatarUrl,
+    this.showLoadingIndicator = false,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final avatarData = useState<Uint8List?>(null);
-    final isLoading = useState(false);
-    final hasError = useState(false);
 
-    // 计算占位符颜色
-    final effectivePlaceholderColor =
-        placeholderColor ?? theme.colorScheme.secondaryContainer;
-    final effectiveTextColor =
-        textColor ?? theme.colorScheme.onSecondaryContainer;
+    // 使用新的serviceAvatarUrlProvider安全地获取头像URL
+    final finalAvatarUrl = ref.watch(
+      serviceAvatarUrlProvider(
+        ServiceAvatarUrlParams(
+          serviceName: serviceName,
+          cacheKey: 'service:$serviceName',
+          customUrl: avatarUrl,
+        ),
+      ),
+    );
 
     // 获取服务号名称的首字母（去除点号）
     final cleanName = serviceName.replaceAll('.', '');
     final initial = cleanName.isNotEmpty ? cleanName[0].toUpperCase() : '?';
 
-    // 加载头像
-    useEffect(() {
-      bool mounted = true;
-
-      Future<void> loadAvatar() async {
-        isLoading.value = true;
-        hasError.value = false;
-
-        try {
-          // 先尝试从缓存获取
-          final cache = ref.read(avatarCacheProvider);
-          final cachedData = cache['service:$serviceName'];
-          if (cachedData != null && mounted) {
-            avatarData.value = cachedData;
-            isLoading.value = false;
-            return;
-          }
-
-          // 从 API 获取
-          final avatarService = ref.read(avatarApiProvider);
-          final data = await avatarService.getServiceAccountAvatarData(
-            serviceName,
-          );
-
-          if (mounted) {
-            if (data != null) {
-              avatarData.value = data;
-              // 缓存头像
-              ref
-                  .read(avatarCacheProvider.notifier)
-                  .cacheServiceAccountAvatar(serviceName, data);
-            } else {
-              hasError.value = true;
-            }
-            isLoading.value = false;
-          }
-        } catch (e) {
-          if (mounted) {
-            hasError.value = true;
-            isLoading.value = false;
-          }
-        }
-      }
-
-      loadAvatar();
-
-      return () {
-        mounted = false;
-      };
-    }, [serviceName]);
-
     // 构建头像内容
     Widget avatarContent;
 
-    if (isLoading.value && showLoadingIndicator) {
+    if (showLoadingIndicator) {
       // 加载中
       avatarContent = SizedBox(
         width: radius * 2,
@@ -141,36 +76,52 @@ class ServiceAccountAvatar extends HookConsumerWidget {
             height: radius * 0.6,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              color: effectiveTextColor,
+              color: theme.colorScheme.secondary,
             ),
           ),
         ),
       );
-    } else if (avatarData.value != null) {
-      // 有头像图片
+    } else {
+      // 使用头像图片
       avatarContent = ClipOval(
-        child: Image.memory(
-          avatarData.value!,
+        child: Image.network(
+          finalAvatarUrl,
           width: radius * 2,
           height: radius * 2,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stack) {
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+
+            // 显示加载指示器
+            return Container(
+              width: radius * 2,
+              height: radius * 2,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceVariant,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                            loadingProgress.expectedTotalBytes!
+                      : null,
+                  strokeWidth: 2,
+                  color: theme.colorScheme.secondary,
+                ),
+              ),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) {
+            // 图片加载失败，显示占位符
             return _buildPlaceholder(
               context,
               initial,
-              effectivePlaceholderColor,
-              effectiveTextColor,
+              theme.colorScheme.secondaryContainer,
+              theme.colorScheme.onSecondaryContainer,
             );
           },
         ),
-      );
-    } else {
-      // 无头像，显示占位符
-      avatarContent = _buildPlaceholder(
-        context,
-        initial,
-        effectivePlaceholderColor,
-        effectiveTextColor,
       );
     }
 
@@ -221,7 +172,7 @@ class ServiceAccountAvatar extends HookConsumerWidget {
   }
 }
 
-/// 服务号头像列表（用于显示多个服务号）
+/// 服务号头像网格组件
 class ServiceAccountAvatarGrid extends StatelessWidget {
   /// 服务号名称列表
   final List<String> serviceNames;
@@ -240,7 +191,7 @@ class ServiceAccountAvatarGrid extends StatelessWidget {
     required this.serviceNames,
     this.radius = 24,
     this.crossAxisCount = 4,
-    this.spacing = AppSpacing.md,
+    this.spacing = 8,
   });
 
   @override
@@ -293,13 +244,13 @@ class ServiceAccountAvatarTile extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.md),
+      borderRadius: BorderRadius.circular(8),
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.all(8),
         child: Row(
           children: [
             ServiceAccountAvatar(serviceName: serviceName, radius: radius),
-            const SizedBox(width: AppSpacing.md),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,7 +262,7 @@ class ServiceAccountAvatarTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   if (description != null) ...[
-                    const SizedBox(height: AppSpacing.xs),
+                    const SizedBox(height: 4),
                     Text(
                       description!,
                       style: theme.textTheme.bodySmall?.copyWith(

@@ -63,7 +63,7 @@ class LoginPage extends HookConsumerWidget {
 
       try {
         final authNotifier = currentRef.read(
-          authStatusNotifierProvider.notifier,
+          authStateNotifierProvider.notifier,
         );
 
         // 添加超时处理
@@ -96,8 +96,9 @@ class LoginPage extends HookConsumerWidget {
           // 只需要等待状态更新即可
         } else {
           debugPrint('[LoginPage] 登录失败');
-          errorMessage.value = '登录失败，请检查用户名和密码';
-          ToastUtils.showError(currentRef, '登录失败，请检查用户名和密码');
+          final authState = currentRef.read(authStateNotifierProvider);
+          errorMessage.value = authState.error ?? '登录失败，请检查用户名和密码';
+          ToastUtils.showError(currentRef, authState.error ?? '登录失败，请检查用户名和密码');
         }
       } on TimeoutException catch (e) {
         if (!context.mounted) return;
