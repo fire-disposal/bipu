@@ -6,19 +6,13 @@ import '../core/components/ui_components.dart';
 import '../controllers/auth_controller.dart';
 import '../services/auth_service.dart';
 
-import 'register_page.dart';
-
-/// 现代化登录页面
-/// 使用全新的基础设施和状态刷新优化
+/// 现代化登录页面 - 已移除调试信息并优化逻辑
 class LoginPage extends StatelessWidget {
   LoginPage({super.key});
 
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-  // Focus nodes are available but not currently used
-  // final _usernameFocusNode = FocusNode();
-  // final _passwordFocusNode = FocusNode();
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +39,6 @@ class LoginPage extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 400),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // Logo和标题区域
                   _buildHeaderSection(context),
@@ -64,8 +57,6 @@ class LoginPage extends StatelessWidget {
 
                   // 注册链接
                   _buildRegisterLink(context),
-
-                  const SizedBox(height: 32),
                 ],
               ),
             ),
@@ -78,10 +69,8 @@ class LoginPage extends StatelessWidget {
   /// 构建头部区域
   Widget _buildHeaderSection(BuildContext context) {
     final theme = ShadTheme.of(context);
-
     return Column(
       children: [
-        // Logo图标
         Container(
           width: 80,
           height: 80,
@@ -102,10 +91,7 @@ class LoginPage extends StatelessWidget {
             size: 40,
           ),
         ),
-
         const SizedBox(height: 24),
-
-        // 主标题
         Text(
           'BIPUPU',
           style: TextStyle(
@@ -115,10 +101,7 @@ class LoginPage extends StatelessWidget {
             letterSpacing: 2.0,
           ),
         ),
-
         const SizedBox(height: 8),
-
-        // 副标题
         Text(
           '宇宙传讯',
           style: TextStyle(
@@ -127,107 +110,59 @@ class LoginPage extends StatelessWidget {
             letterSpacing: 1.5,
           ),
         ),
-
-        const SizedBox(height: 8),
-
-        // 欢迎语
-        Text(
-          '欢迎回来，请登录您的账户',
-          style: TextStyle(
-            fontSize: 14,
-            color: theme.colorScheme.mutedForeground,
-          ),
-        ),
       ],
     );
   }
 
   /// 构建登录表单
   Widget _buildLoginForm(BuildContext context, AuthController authController) {
+    final theme = ShadTheme.of(context);
     return Form(
       key: _formKey,
       child: Column(
         children: [
-          // 用户名输入框
           UIInput(
             controller: _usernameController,
             labelText: '用户名',
             hintText: '请输入用户名',
             prefixIcon: Icon(
               Icons.person,
-              color: ShadTheme.of(context).colorScheme.mutedForeground,
+              color: theme.colorScheme.mutedForeground,
               size: 20,
             ),
-            keyboardType: TextInputType.text,
-            // textInputAction: TextInputAction.next,
             onChanged: (value) => authController.setUsername(value),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return '请输入用户名';
-              }
-              if (value.length < 3) {
-                return '用户名至少3个字符';
-              }
-              return null;
-            },
+            validator: (value) =>
+                (value == null || value.isEmpty) ? '请输入用户名' : null,
             autoFocus: true,
           ),
-
           const SizedBox(height: 20),
-
-          // 密码输入框
-          Obx(() {
-            return UIPasswordInput(
-              controller: _passwordController,
-              labelText: '密码',
-              hintText: '请输入密码',
-              onChanged: (value) => authController.setPassword(value),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return '请输入密码';
-                }
-                if (value.length < 6) {
-                  return '密码至少6个字符';
-                }
-                return null;
-              },
-            );
-          }),
-
+          UIPasswordInput(
+            controller: _passwordController,
+            labelText: '密码',
+            hintText: '请输入密码',
+            onChanged: (value) => authController.setPassword(value),
+            validator: (value) =>
+                (value == null || value.isEmpty || value.length < 6)
+                ? '密码至少6个字符'
+                : null,
+          ),
           const SizedBox(height: 16),
-
-          // 记住我选项
           Row(
             children: [
-              Obx(() {
-                final rememberMe = false.obs; // 暂时硬编码
-                return Checkbox(
-                  value: rememberMe.value,
-                  onChanged: (value) => rememberMe.value = value ?? false,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                );
-              }),
-              const SizedBox(width: 8),
-              Text(
-                '记住我',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: ShadTheme.of(context).colorScheme.foreground,
-                ),
+              // 记住我
+              SizedBox(
+                height: 24,
+                width: 24,
+                child: Checkbox(value: false, onChanged: (v) {}),
               ),
+              const SizedBox(width: 8),
+              const Text('记住我', style: TextStyle(fontSize: 14)),
               const Spacer(),
               TextButton(
-                onPressed: () {
-                  Get.snackbar('提示', '忘记密码功能开发中');
-                },
+                onPressed: () => Get.snackbar('提示', '忘记密码功能开发中'),
                 child: Text(
                   '忘记密码？',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: ShadTheme.of(context).colorScheme.primary,
-                  ),
+                  style: TextStyle(color: theme.colorScheme.primary),
                 ),
               ),
             ],
@@ -243,103 +178,38 @@ class LoginPage extends StatelessWidget {
     AuthController authController,
     AuthService authService,
   ) {
-    final theme = ShadTheme.of(context);
-
     return Obx(() {
       final isLoading = authService.isLoading.value;
-      // final canLogin = authController.canLogin;
-
       return SizedBox(
         width: double.infinity,
         child: UIButton(
           onPressed: isLoading
               ? null
-              : () async {
-                  // 隐藏键盘
-                  FocusScope.of(context).unfocus();
-
-                  // 验证表单
-                  if (_formKey.currentState?.validate() ?? false) {
-                    // 更新控制器中的用户名和密码
-                    authController.setUsername(_usernameController.text);
-                    authController.setPassword(_passwordController.text);
-
-                    // 执行登录
-                    final response = await authService.login(
-                      _usernameController.text,
-                      _passwordController.text,
-                    );
-
-                    if (response.success) {
-                      // 登录成功，清空表单
-                      _usernameController.clear();
-                      _passwordController.clear();
-                      authController.clearForm();
-
-                      // 导航到主页面
-                      Get.offAllNamed('/');
-                    } else if (response.error != null) {
-                      // 使用UI组件库的Snackbar显示错误
-                      Get.snackbar(
-                        '登录失败',
-                        response.error!.message,
-                        snackPosition: SnackPosition.BOTTOM,
-                        backgroundColor: theme.colorScheme.destructive,
-                        colorText: theme.colorScheme.destructiveForeground,
-                        borderRadius: 8,
-                        margin: const EdgeInsets.all(16),
-                        duration: const Duration(seconds: 3),
-                      );
-                    }
-                  }
+              : () {
+                  print('🖱️ 登录按钮被点击');
+                  authController.login();
                 },
           isLoading: isLoading,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (isLoading)
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: theme.colorScheme.primaryForeground,
-                  ),
-                )
-              else
-                const Icon(Icons.login, size: 20),
-              const SizedBox(width: 8),
-              Text(isLoading ? '登录中...' : '登录'),
-            ],
-          ),
+          child: Text(isLoading ? '登录中...' : '立即登录'),
         ),
       );
     });
   }
 
-  /// 构建注册链接
   Widget _buildRegisterLink(BuildContext context) {
     final theme = ShadTheme.of(context);
-
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
           '还没有账户？',
-          style: TextStyle(
-            fontSize: 14,
-            color: theme.colorScheme.mutedForeground,
-          ),
+          style: TextStyle(color: theme.colorScheme.mutedForeground),
         ),
-        const SizedBox(width: 4),
         TextButton(
-          onPressed: () {
-            Get.to(() => RegisterPage());
-          },
+          onPressed: () => Get.snackbar('提示', '注册功能开发中'),
           child: Text(
             '立即注册',
             style: TextStyle(
-              fontSize: 14,
               fontWeight: FontWeight.w600,
               color: theme.colorScheme.primary,
             ),

@@ -135,6 +135,11 @@ abstract class BaseService {
     T Function(Map<String, dynamic>)? fromJson,
     bool retryOnTokenExpired = true,
   }) async {
+    print('🌐 开始API请求: $method $path');
+    if (data != null) {
+      print('📦 请求数据: $data');
+    }
+
     try {
       final response = await dio.request<T>(
         path,
@@ -143,6 +148,11 @@ abstract class BaseService {
         options: Options(method: method),
       );
 
+      print('✅ API响应: ${response.statusCode} $path');
+      if (response.data != null) {
+        print('📄 响应数据: ${response.data}');
+      }
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (fromJson != null && response.data is Map<String, dynamic>) {
           final parsedData = fromJson(response.data as Map<String, dynamic>);
@@ -150,6 +160,7 @@ abstract class BaseService {
         }
         return ServiceResponse.success(response.data as T);
       } else {
+        print('❌ API错误状态码: ${response.statusCode}');
         return ServiceResponse.failure(
           ServiceError(
             '请求失败: ${response.statusCode}',
@@ -159,8 +170,14 @@ abstract class BaseService {
         );
       }
     } on DioException catch (e) {
+      print('❌ Dio异常: ${e.type} - ${e.message}');
+      if (e.response != null) {
+        print('📄 错误响应数据: ${e.response?.data}');
+        print('🔧 错误响应头: ${e.response?.headers}');
+      }
       return ServiceResponse.failure(_handleDioError(e));
     } catch (e) {
+      print('❌ 未知异常: $e');
       return ServiceResponse.failure(
         ServiceError(e.toString(), ServiceErrorType.unknown),
       );
@@ -169,28 +186,47 @@ abstract class BaseService {
 
   // 错误处理
   ServiceError _handleDioError(DioException e) {
+    print(
+      '🔧 处理Dio错误: type=${e.type}, status=${e.response?.statusCode}, message=${e.message}',
+    );
+
     if (e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.receiveTimeout ||
         e.type == DioExceptionType.sendTimeout) {
+      print('⏰ 网络超时错误');
       return ServiceError('网络连接超时', ServiceErrorType.network);
     } else if (e.type == DioExceptionType.connectionError) {
+      print('🔌 网络连接错误');
       return ServiceError('网络连接错误', ServiceErrorType.network);
     } else if (e.response?.statusCode == 401) {
+      print('🔑 401未授权错误');
       // 检查是否是token过期
       final responseData = e.response?.data;
+      print('📄 401响应数据: $responseData');
       if (responseData is Map<String, dynamic>) {
         final errorMsg = responseData['detail']?.toString().toLowerCase() ?? '';
         if (errorMsg.contains('token') && errorMsg.contains('expired')) {
+          print('🔑 Token过期错误');
           return ServiceError('令牌已过期', ServiceErrorType.tokenExpired);
         }
       }
       return ServiceError('未授权访问', ServiceErrorType.unauthorized);
     } else if (e.response?.statusCode == 400) {
+      print('📝 400请求参数错误');
+      final responseData = e.response?.data;
+      print('📄 400响应数据: $responseData');
       return ServiceError('请求参数错误', ServiceErrorType.validation);
     } else if (e.response?.statusCode == 500) {
+      print('💥 500服务器内部错误');
+      final responseData = e.response?.data;
+      print('📄 500响应数据: $responseData');
       return ServiceError('服务器内部错误', ServiceErrorType.server);
+    } else if (e.response?.statusCode == 404) {
+      print('🔍 404未找到资源');
+      return ServiceError('请求的资源不存在', ServiceErrorType.server);
     }
 
+    print('❓ 未知Dio错误类型: ${e.type}');
     return ServiceError(e.message ?? '未知错误', ServiceErrorType.unknown);
   }
 

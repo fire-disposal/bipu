@@ -14,15 +14,22 @@ class App extends StatelessWidget {
     return Obx(() {
       final authController = AuthController.to;
 
+      print(
+        '🔄 App页面重建 - isLoading: ${authController.isLoading}, isLoggedIn: ${authController.isLoggedIn}',
+      );
+
       // 检查登录状态
       if (authController.isLoading) {
+        print('⏳ 显示加载屏幕');
         return _buildLoadingScreen();
       }
 
       if (!authController.isLoggedIn) {
+        print('🔐 用户未登录，显示登录页面');
         return LoginPage();
       }
 
+      print('🏠 用户已登录，显示主框架');
       return const MainFrame();
     });
   }

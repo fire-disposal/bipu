@@ -19,47 +19,59 @@ class AuthController extends GetxController {
 
   // 计算属性
   bool get canLogin => username.value.isNotEmpty && password.value.isNotEmpty;
-  bool get isLoggedIn => _auth.isLoggedIn.value;
+  bool get isLoggedIn {
+    final loggedIn = _auth.isLoggedIn.value;
+    print('🔍 AuthController.isLoggedIn getter: $loggedIn');
+    return loggedIn;
+  }
+
   bool get isLoading => _auth.isLoading.value;
   UserModel? get currentUser => _auth.currentUser.value;
   bool get hasValidToken => _token.hasValidToken.value;
 
   /// 登录（直接调用AuthService）
   Future<void> login() async {
-    if (username.value.isEmpty) {
-      error.value = '请输入用户名';
-      Get.snackbar('提示', error.value);
-      return;
-    }
+    print('🔐 AuthController.login() 被调用');
 
-    if (password.value.isEmpty) {
-      error.value = '请输入密码';
-      Get.snackbar('提示', error.value);
+    // 先验证表单
+    if (!validateForm()) {
+      print('❌ AuthController: 表单验证失败');
       return;
     }
 
     error.value = '';
+    print('🔐 调用AuthService.login()');
     final response = await _auth.login(username.value, password.value);
 
+    print('🔐 AuthService.login() 返回: success=${response.success}');
     if (response.success) {
+      print('✅ AuthController: 登录成功，清空表单');
       // 登录成功，清空表单
       clearForm();
+      print('✅ AuthController: 准备跳转到首页');
+      // 使用延迟确保状态完全更新
+      await Future.delayed(const Duration(milliseconds: 50));
       Get.offAllNamed('/');
+      print('✅ AuthController: 跳转指令已发送');
     } else if (response.error != null) {
       error.value = response.error!.message;
+      print('❌ AuthController: 登录失败: ${error.value}');
     }
   }
 
   /// 直接登录（供页面调用）
   Future<void> directLogin(String username, String password) async {
+    print('🔐 AuthController.directLogin() 被调用');
     error.value = '';
     final response = await _auth.login(username, password);
 
     if (response.success) {
+      print('✅ AuthController.directLogin: 登录成功');
       // 登录成功
       clearForm();
     } else if (response.error != null) {
       error.value = response.error!.message;
+      print('❌ AuthController.directLogin: 登录失败: ${error.value}');
     }
   }
 
@@ -67,13 +79,25 @@ class AuthController extends GetxController {
   Future<void> register({String? nickname}) async {
     if (username.value.isEmpty) {
       error.value = '请输入用户名';
-      Get.snackbar('提示', error.value);
+      // 使用安全的方式显示错误消息
+      Future.microtask(() {
+        if (Get.isSnackbarOpen) {
+          Get.back();
+        }
+        Get.snackbar('提示', error.value);
+      });
       return;
     }
 
     if (password.value.isEmpty) {
       error.value = '请输入密码';
-      Get.snackbar('提示', error.value);
+      // 使用安全的方式显示错误消息
+      Future.microtask(() {
+        if (Get.isSnackbarOpen) {
+          Get.back();
+        }
+        Get.snackbar('提示', error.value);
+      });
       return;
     }
 
@@ -116,7 +140,9 @@ class AuthController extends GetxController {
 
   /// 检查认证状态
   Future<void> checkAuthStatus() async {
+    print('🔍 AuthController.checkAuthStatus() 被调用');
     await _auth.checkAuthStatus();
+    print('🔍 AuthController.checkAuthStatus() 完成: isLoggedIn=$isLoggedIn');
   }
 
   /// 验证表单
@@ -171,6 +197,7 @@ class AuthController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    print('🚀 AuthController.onInit() 被调用');
     checkAuthStatus();
   }
 
