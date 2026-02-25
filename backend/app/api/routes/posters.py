@@ -9,6 +9,7 @@ from app.models.user import User
 from app.schemas.poster import PosterCreate, PosterUpdate, PosterResponse, PosterListResponse
 from app.services.poster_service import PosterService
 from app.core.security import get_current_user, get_current_superuser_web
+from app.core.config import settings
 from app.core.logging import get_logger
 
 router = APIRouter()
@@ -59,32 +60,31 @@ async def get_poster(
 
 @router.get("/{poster_id}/image", tags=["海报"])
 async def get_poster_image(
-    poster_id: int,
-    db: Session = Depends(get_db)
-):
-    """获取海报图片（JSON格式，包含base64编码）"""
-    poster = PosterService.get_poster(db, poster_id)
-    if not poster or not poster.image_data:
-        raise HTTPException(status_code=404, detail="海报或图片不存在")
-
-    # 获取base64编码的图片数据
-    image_base64 = PosterService.get_poster_image_base64(poster)
-
-    return {
-        "poster_id": poster_id,
-        "title": poster.title,
-        "image_data": image_base64,
-        "mime_type": "image/jpeg"  # StorageService统一保存为JPEG格式
-    }
-
-
-@router.get("/{poster_id}/image/binary", tags=["海报"])
-async def get_poster_image_binary(
     request: Request,
     poster_id: int,
     db: Session = Depends(get_db)
 ):
-    """获取海报图片（二进制格式，直接用于img标签）"""
+    """获取海报图片（二进制格式，直接用于img标签）
+
+    参数：
+    - poster_id: 海报ID
+
+    返回：
+    - 成功：返回JPEG格式的二进制图片数据
+    - 失败：404（海报或图片不存在）
+
+    特性：
+    - 支持ETag缓存，减少带宽消耗
+    - 支持HTTP 304 Not Modified响应
+    - 图片数据缓存24小时
+    - 自动处理图片版本更新
+
+    注意：
+    - 无需认证，公开接口
+    - 支持缓存控制头（Cache-Control, ETag）
+    - 统一返回JPEG格式二进制数据
+    - 前端可直接用于img标签的src属性
+    """
     from app.services.storage_service import StorageService
     from fastapi.responses import Response
 
@@ -126,6 +126,13 @@ async def create_poster(
 ):
     """创建海报"""
     try:
+        # 验证文件大小
+        if image_file.size and image_file.size > settings.MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"文件大小不能超过 {settings.MAX_FILE_SIZE // (1024*1024)}MB"
+            )
+
         # 构建海报数据
         poster_data = PosterCreate(
             title=title,
@@ -138,6 +145,8 @@ async def create_poster(
         poster = await PosterService.create_poster(db, poster_data, image_file)
         return poster
 
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -168,13 +177,20 @@ async def update_poster_image(
 ):
     """更新海报图片"""
     try:
+        # 验证文件大小
+        if image_file.size and image_file.size > settings.MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"文件大小不能超过 {settings.MAX_FILE_SIZE // (1024*1024)}MB"
+            )
+
         poster = await PosterService.update_poster_image(db, poster_id, image_file)
         if not poster:
             raise HTTPException(status_code=404, detail="海报不存在")
         return poster
 
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"更新海报图片失败: {e}")
         raise HTTPException(status_code=500, detail="更新海报图片失败")
