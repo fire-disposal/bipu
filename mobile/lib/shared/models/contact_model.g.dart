@@ -10,26 +10,20 @@ ContactResponse _$ContactResponseFromJson(Map<String, dynamic> json) =>
     ContactResponse(
       id: (json['id'] as num).toInt(),
       contactBipupuId: json['contact_bipupu_id'] as String,
-      username: json['username'] as String,
-      nickname: json['nickname'] as String?,
-      remark: json['remark'] as String?,
-      avatarUrl: json['avatar_url'] as String?,
-      isBlocked: json['is_blocked'] as bool? ?? false,
+      contactUsername: json['contact_username'] as String,
+      contactNickname: json['contact_nickname'] as String?,
+      alias: json['alias'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
     );
 
 Map<String, dynamic> _$ContactResponseToJson(ContactResponse instance) =>
     <String, dynamic>{
       'id': instance.id,
       'contact_bipupu_id': instance.contactBipupuId,
-      'username': instance.username,
-      'nickname': instance.nickname,
-      'remark': instance.remark,
-      'avatar_url': instance.avatarUrl,
-      'is_blocked': instance.isBlocked,
+      'contact_username': instance.contactUsername,
+      'contact_nickname': instance.contactNickname,
+      'alias': instance.alias,
       'created_at': instance.createdAt.toIso8601String(),
-      'updated_at': instance.updatedAt.toIso8601String(),
     };
 
 ContactCreate _$ContactCreateFromJson(Map<String, dynamic> json) =>

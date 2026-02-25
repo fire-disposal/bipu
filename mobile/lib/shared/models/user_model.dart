@@ -132,8 +132,8 @@ class UserModel {
   )
   final DateTime? updatedAt;
 
-  /// 时区
-  final String timezone;
+  /// 时区（后端可能不返回此字段）
+  final String? timezone;
 
   /// 头像版本号，用于缓存失效
   @JsonKey(name: 'avatar_version')
@@ -191,7 +191,7 @@ class UserModel {
       lastActive.hashCode ^
       createdAt.hashCode ^
       updatedAt.hashCode ^
-      timezone.hashCode ^
+      (timezone?.hashCode ?? 0) ^
       avatarVersion.hashCode;
 
   @override

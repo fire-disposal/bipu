@@ -9,24 +9,22 @@ part of 'block_model.dart';
 BlockedUserResponse _$BlockedUserResponseFromJson(Map<String, dynamic> json) =>
     BlockedUserResponse(
       id: (json['id'] as num).toInt(),
-      blockedUserBipupuId: json['blocked_user_bipupu_id'] as String,
+      bipupuId: json['bipupu_id'] as String,
       username: json['username'] as String,
       nickname: json['nickname'] as String?,
       avatarUrl: json['avatar_url'] as String?,
-      reason: json['reason'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      blockedAt: DateTime.parse(json['blocked_at'] as String),
     );
 
 Map<String, dynamic> _$BlockedUserResponseToJson(
   BlockedUserResponse instance,
 ) => <String, dynamic>{
   'id': instance.id,
-  'blocked_user_bipupu_id': instance.blockedUserBipupuId,
+  'bipupu_id': instance.bipupuId,
   'username': instance.username,
   'nickname': instance.nickname,
   'avatar_url': instance.avatarUrl,
-  'reason': instance.reason,
-  'created_at': instance.createdAt.toIso8601String(),
+  'blocked_at': instance.blockedAt.toIso8601String(),
 };
 
 BlockUserRequest _$BlockUserRequestFromJson(Map<String, dynamic> json) =>

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 /// BLE 连接状态
 enum BleConnectionState {
@@ -521,34 +520,3 @@ class BleManager {
     _connectionStateController.close();
   }
 }
-
-/// BLE 管理器提供者
-final bleManagerProvider = Provider<BleManager>((ref) {
-  final manager = BleManager();
-  ref.onDispose(() => manager.dispose());
-  return manager;
-});
-
-/// BLE 适配器状态提供者
-final bleAdapterStateProvider = StreamProvider<BluetoothAdapterState>((ref) {
-  final bleManager = ref.watch(bleManagerProvider);
-  return bleManager.adapterStateStream;
-});
-
-/// BLE 扫描结果提供者
-final bleScanResultsProvider = StreamProvider<List<BleScanResult>>((ref) {
-  final bleManager = ref.watch(bleManagerProvider);
-  return bleManager.scanResultsStream.map((result) => [result]);
-});
-
-/// BLE 连接设备提供者
-final bleConnectedDevicesProvider = StreamProvider<List<BleDevice>>((ref) {
-  final bleManager = ref.watch(bleManagerProvider);
-  return bleManager.connectedDevicesStream;
-});
-
-/// BLE 连接状态提供者
-final bleConnectionStateProvider = StreamProvider<BleConnectionState>((ref) {
-  final bleManager = ref.watch(bleManagerProvider);
-  return bleManager.connectionStateStream;
-});

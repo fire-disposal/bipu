@@ -13,40 +13,27 @@ class ContactResponse {
   final String contactBipupuId;
 
   /// 联系人用户名
-  final String username;
+  @JsonKey(name: 'contact_username')
+  final String contactUsername;
 
   /// 联系人昵称
-  final String? nickname;
+  @JsonKey(name: 'contact_nickname')
+  final String? contactNickname;
 
   /// 备注名
-  final String? remark;
-
-  /// 联系人头像URL
-  @JsonKey(name: 'avatar_url')
-  final String? avatarUrl;
-
-  /// 是否已拉黑
-  @JsonKey(name: 'is_blocked')
-  final bool isBlocked;
+  final String? alias;
 
   /// 创建时间
   @JsonKey(name: 'created_at')
   final DateTime createdAt;
 
-  /// 更新时间
-  @JsonKey(name: 'updated_at')
-  final DateTime updatedAt;
-
   ContactResponse({
     required this.id,
     required this.contactBipupuId,
-    required this.username,
-    this.nickname,
-    this.remark,
-    this.avatarUrl,
-    this.isBlocked = false,
+    required this.contactUsername,
+    this.contactNickname,
+    this.alias,
     required this.createdAt,
-    required this.updatedAt,
   });
 
   factory ContactResponse.fromJson(Map<String, dynamic> json) =>
@@ -55,9 +42,13 @@ class ContactResponse {
 
   /// 获取显示名称（优先使用备注，然后是昵称，最后是用户名）
   String get displayName {
-    if (remark != null && remark!.isNotEmpty) return remark!;
-    if (nickname != null && nickname!.isNotEmpty) return nickname!;
-    return username;
+    if (alias != null && alias!.isNotEmpty) {
+      return alias!;
+    }
+    if (contactNickname != null && contactNickname!.isNotEmpty) {
+      return contactNickname!;
+    }
+    return contactUsername;
   }
 
   @override
@@ -67,29 +58,23 @@ class ContactResponse {
           runtimeType == other.runtimeType &&
           id == other.id &&
           contactBipupuId == other.contactBipupuId &&
-          username == other.username &&
-          nickname == other.nickname &&
-          remark == other.remark &&
-          avatarUrl == other.avatarUrl &&
-          isBlocked == other.isBlocked &&
-          createdAt == other.createdAt &&
-          updatedAt == other.updatedAt;
+          contactUsername == other.contactUsername &&
+          contactNickname == other.contactNickname &&
+          alias == other.alias &&
+          createdAt == other.createdAt;
 
   @override
   int get hashCode =>
       id.hashCode ^
       contactBipupuId.hashCode ^
-      username.hashCode ^
-      nickname.hashCode ^
-      remark.hashCode ^
-      avatarUrl.hashCode ^
-      isBlocked.hashCode ^
-      createdAt.hashCode ^
-      updatedAt.hashCode;
+      contactUsername.hashCode ^
+      contactNickname.hashCode ^
+      alias.hashCode ^
+      createdAt.hashCode;
 
   @override
   String toString() {
-    return 'ContactResponse(id: $id, contactBipupuId: $contactBipupuId, username: $username, nickname: $nickname, remark: $remark, avatarUrl: $avatarUrl, isBlocked: $isBlocked, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'ContactResponse(id: $id, contactBipupuId: $contactBipupuId, contactUsername: $contactUsername, contactNickname: $contactNickname, alias: $alias, createdAt: $createdAt)';
   }
 }
 

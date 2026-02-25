@@ -9,8 +9,8 @@ class BlockedUserResponse {
   final int id;
 
   /// 被拉黑用户Bipupu ID
-  @JsonKey(name: 'blocked_user_bipupu_id')
-  final String blockedUserBipupuId;
+  @JsonKey(name: 'bipupu_id')
+  final String bipupuId;
 
   /// 被拉黑用户名
   final String username;
@@ -22,21 +22,17 @@ class BlockedUserResponse {
   @JsonKey(name: 'avatar_url')
   final String? avatarUrl;
 
-  /// 拉黑原因
-  final String? reason;
-
-  /// 创建时间（拉黑时间）
-  @JsonKey(name: 'created_at')
-  final DateTime createdAt;
+  /// 拉黑时间
+  @JsonKey(name: 'blocked_at')
+  final DateTime blockedAt;
 
   BlockedUserResponse({
     required this.id,
-    required this.blockedUserBipupuId,
+    required this.bipupuId,
     required this.username,
     this.nickname,
     this.avatarUrl,
-    this.reason,
-    required this.createdAt,
+    required this.blockedAt,
   });
 
   factory BlockedUserResponse.fromJson(Map<String, dynamic> json) =>
@@ -55,26 +51,24 @@ class BlockedUserResponse {
       other is BlockedUserResponse &&
           runtimeType == other.runtimeType &&
           id == other.id &&
-          blockedUserBipupuId == other.blockedUserBipupuId &&
+          bipupuId == other.bipupuId &&
           username == other.username &&
           nickname == other.nickname &&
           avatarUrl == other.avatarUrl &&
-          reason == other.reason &&
-          createdAt == other.createdAt;
+          blockedAt == other.blockedAt;
 
   @override
   int get hashCode =>
       id.hashCode ^
-      blockedUserBipupuId.hashCode ^
+      bipupuId.hashCode ^
       username.hashCode ^
       nickname.hashCode ^
       avatarUrl.hashCode ^
-      reason.hashCode ^
-      createdAt.hashCode;
+      blockedAt.hashCode;
 
   @override
   String toString() {
-    return 'BlockedUserResponse(id: $id, blockedUserBipupuId: $blockedUserBipupuId, username: $username, nickname: $nickname, avatarUrl: $avatarUrl, reason: $reason, createdAt: $createdAt)';
+    return 'BlockedUserResponse(id: $id, bipupuId: $bipupuId, username: $username, nickname: $nickname, avatarUrl: $avatarUrl, blockedAt: $blockedAt)';
   }
 }
 
