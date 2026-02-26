@@ -39,7 +39,7 @@ case "${CONTAINER_ROLE:-backend}" in
             exec $OVERRIDE_CMD
         else
             echo -e "${GREEN}启动FastAPI应用...${NC}"
-            exec uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 3 --timeout-keep-alive 5 --proxy-headers --forwarded-allow-ips '*'
+            exec uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --timeout-keep-alive 5 --proxy-headers --forwarded-allow-ips '*'
         fi
         ;;
         
@@ -48,7 +48,7 @@ case "${CONTAINER_ROLE:-backend}" in
             exec $OVERRIDE_CMD
         else
             echo -e "${GREEN}启动Celery Worker...${NC}"
-            exec uv run celery -A app.celery worker --loglevel=info -Q default -c 1
+            exec uv run celery -A app.celery worker --loglevel=info -Q default --pool=solo
         fi
         ;;
         
