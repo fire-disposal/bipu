@@ -1,0 +1,7 @@
+targets:
+  $default:
+    builders:
+      retrofit_generator:
+        enabled: true
+      json_serializable:
+        enabled: false
