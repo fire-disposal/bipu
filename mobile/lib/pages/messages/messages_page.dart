@@ -1,14 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:bipupu/core/network/network.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/services/auth_service.dart';
-import 'pages/subscriptions_management_page.dart';
-import 'pages/received_messages_page.dart';
-import 'pages/sent_messages_page.dart';
-import 'pages/system_messages_page.dart';
-import 'pages/favorites_page.dart';
 
 class MessagesPage extends StatefulWidget {
   const MessagesPage({super.key});

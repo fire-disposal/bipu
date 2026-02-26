@@ -14,8 +14,7 @@ abstract class ApiException implements Exception {
 
 /// 网络异常
 class NetworkException extends ApiException {
-  NetworkException({required String message, dynamic originalError})
-    : super(message: message, originalError: originalError);
+  NetworkException({required super.message, super.originalError});
 
   factory NetworkException.fromDioException(DioException error) {
     String message = '网络错误';
@@ -54,14 +53,10 @@ class NetworkException extends ApiException {
 /// 认证异常
 class AuthException extends ApiException {
   AuthException({
-    required String message,
-    int? statusCode,
-    dynamic originalError,
-  }) : super(
-         message: message,
-         statusCode: statusCode,
-         originalError: originalError,
-       );
+    required super.message,
+    super.statusCode,
+    super.originalError,
+  });
 
   factory AuthException.unauthorized() {
     return AuthException(message: '未授权，请重新登录', statusCode: 401);
@@ -81,15 +76,11 @@ class ServerException extends ApiException {
   final Map<String, dynamic>? responseData;
 
   ServerException({
-    required String message,
-    required int statusCode,
+    required super.message,
+    required int super.statusCode,
     this.responseData,
-    dynamic originalError,
-  }) : super(
-         message: message,
-         statusCode: statusCode,
-         originalError: originalError,
-       );
+    super.originalError,
+  });
 
   factory ServerException.fromResponse(Response response) {
     String message = '服务器错误';
@@ -113,10 +104,10 @@ class ValidationException extends ApiException {
   final Map<String, dynamic>? errors;
 
   ValidationException({
-    required String message,
+    required super.message,
     this.errors,
-    dynamic originalError,
-  }) : super(message: message, statusCode: 400, originalError: originalError);
+    super.originalError,
+  }) : super(statusCode: 400);
 
   factory ValidationException.fromResponse(Response response) {
     String message = '验证失败';
@@ -138,6 +129,5 @@ class ValidationException extends ApiException {
 
 /// 解析异常
 class ParseException extends ApiException {
-  ParseException({required String message, dynamic originalError})
-    : super(message: message, originalError: originalError);
+  ParseException({required super.message, super.originalError});
 }

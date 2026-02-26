@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/network/network.dart';
-import '../../../../core/network/api_exception.dart';
-import '../../../../core/api/models/contact_create.dart';
 
 class ContactsPage extends StatefulWidget {
   const ContactsPage({super.key});

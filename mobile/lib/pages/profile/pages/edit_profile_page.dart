@@ -72,7 +72,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Widget build(BuildContext context) {
     final user = _authService.currentUser;
 
-    Future<void> _pickAndCropImage() async {
+    Future<void> pickAndCropImage() async {
       try {
         final ImagePicker picker = ImagePicker();
         final XFile? image = await picker.pickImage(
@@ -131,7 +131,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       }
     }
 
-    Future<void> _selectDate() async {
+    Future<void> selectDate() async {
       final DateTime? picked = await showDatePicker(
         context: context,
         initialDate: _birthday ?? DateTime.now(),
@@ -145,7 +145,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       }
     }
 
-    Future<void> _saveProfile() async {
+    Future<void> saveProfile() async {
       if (_nicknameController.text.trim().isEmpty) {
         SnackBarManager.showValidationError('nickname');
         return;
@@ -200,7 +200,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         title: Text('edit_profile_page_title'.tr()),
         actions: [
           TextButton(
-            onPressed: _isLoading ? null : _saveProfile,
+            onPressed: _isLoading ? null : saveProfile,
             child: _isLoading
                 ? const SizedBox(
                     width: 20,
@@ -232,7 +232,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         ? CachedNetworkImageProvider(
                             _avatarUrl!.startsWith('http')
                                 ? _avatarUrl!
-                                : 'https://api.205716.xyz${_avatarUrl}',
+                                : 'https://api.205716.xyz$_avatarUrl',
                           )
                         : null,
                     child: _avatarUrl == null
@@ -247,7 +247,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     bottom: 0,
                     right: 0,
                     child: GestureDetector(
-                      onTap: _isUploadingAvatar ? null : _pickAndCropImage,
+                      onTap: _isUploadingAvatar ? null : pickAndCropImage,
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
@@ -317,7 +317,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             _buildDateField(
               label: 'birthday'.tr(),
               value: _birthday,
-              onTap: _selectDate,
+              onTap: selectDate,
               icon: Icons.cake_outlined,
             ),
             const SizedBox(height: 32),

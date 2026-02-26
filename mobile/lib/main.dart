@@ -3,14 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:provider/provider.dart';
 
 import 'core/state/app_state_management.dart';
 import 'core/utils/interaction_optimizer.dart';
 import 'core/network/network.dart';
 import 'core/api/export.dart';
 import 'pages/layout/main_layout.dart';
-import 'pages/pager/pager_page.dart';
+import 'pages/pager/pager_page_enhanced.dart';
 import 'pages/profile/profile_page.dart';
 import 'pages/profile/pages/security_page.dart';
 import 'pages/profile/pages/edit_profile_page.dart';
@@ -151,7 +150,10 @@ final GoRouter _router = GoRouter(
       builder: (context, state, child) => MainLayout(child: child),
       routes: [
         GoRoute(path: '/home', builder: (context, state) => const HomePage()),
-        GoRoute(path: '/pager', builder: (context, state) => const PagerPage()),
+        GoRoute(
+          path: '/pager',
+          builder: (context, state) => const PagerPageEnhanced(),
+        ),
         GoRoute(
           path: '/messages',
           builder: (context, state) => const MessagesPage(),

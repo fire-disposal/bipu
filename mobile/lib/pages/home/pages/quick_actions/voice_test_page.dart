@@ -26,7 +26,7 @@ class _VoiceTestPageState extends State<VoiceTestPage> {
   bool _isInitialized = false;
   bool _isPlaying = false;
   double _speed = 1.0;
-  int _maxSid = 173;
+  final int _maxSid = 173;
   bool _ttsMode = false; // false: ASR, true: TTS
 
   @override

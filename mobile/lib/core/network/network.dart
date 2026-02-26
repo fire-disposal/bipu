@@ -2,6 +2,7 @@
 ///
 /// 网络接口封装，围绕自动生成的 RestClient 构建
 /// 提供统一的异常处理、Token 管理、日志输出
+library;
 
 // 异常处理
 export 'api_exception.dart';

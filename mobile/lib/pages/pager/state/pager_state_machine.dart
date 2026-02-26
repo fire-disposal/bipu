@@ -1,4 +1,6 @@
 import 'package:equatable/equatable.dart';
+import '../models/operator_model.dart';
+import '../services/text_processor.dart';
 
 /// 拨号页面的状态机定义
 /// 定义了三个主要状态及其转换逻辑
@@ -18,12 +20,14 @@ class DialingPrepState extends PagerState {
   final String? selectedContactName;
   final bool isLoading;
   final String? errorMessage;
+  final OperatorPersonality? currentOperator; // 当前选择的接线员
 
   const DialingPrepState({
     this.targetId = '',
     this.selectedContactName,
     this.isLoading = false,
     this.errorMessage,
+    this.currentOperator,
   });
 
   DialingPrepState copyWith({
@@ -31,12 +35,14 @@ class DialingPrepState extends PagerState {
     String? selectedContactName,
     bool? isLoading,
     String? errorMessage,
+    OperatorPersonality? currentOperator,
   }) {
     return DialingPrepState(
       targetId: targetId ?? this.targetId,
       selectedContactName: selectedContactName ?? this.selectedContactName,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage,
+      currentOperator: currentOperator ?? this.currentOperator,
     );
   }
 
@@ -46,6 +52,7 @@ class DialingPrepState extends PagerState {
     selectedContactName,
     isLoading,
     errorMessage,
+    currentOperator,
   ];
 }
 
@@ -60,6 +67,10 @@ class InCallState extends PagerState {
   final String asrTranscript; // 实时转写文本
   final List<double> waveformData; // 声纹动效数据 (0-1范围)
   final bool isSilenceDetected; // 是否检测到静默
+  final OperatorPersonality? operator; // 当前接线员人格
+  final TextProcessingResult? textProcessingResult; // 文本处理结果
+  final bool hasEmojiDetected; // 是否检测到表情符号
+  final bool showEmojiWarning; // 是否显示表情符号警告
 
   const InCallState({
     required this.targetId,
@@ -70,6 +81,10 @@ class InCallState extends PagerState {
     this.asrTranscript = '',
     this.waveformData = const [],
     this.isSilenceDetected = false,
+    this.operator,
+    this.textProcessingResult,
+    this.hasEmojiDetected = false,
+    this.showEmojiWarning = false,
   });
 
   InCallState copyWith({
@@ -81,6 +96,10 @@ class InCallState extends PagerState {
     String? asrTranscript,
     List<double>? waveformData,
     bool? isSilenceDetected,
+    OperatorPersonality? operator,
+    TextProcessingResult? textProcessingResult,
+    bool? hasEmojiDetected,
+    bool? showEmojiWarning,
   }) {
     return InCallState(
       targetId: targetId ?? this.targetId,
@@ -91,6 +110,10 @@ class InCallState extends PagerState {
       asrTranscript: asrTranscript ?? this.asrTranscript,
       waveformData: waveformData ?? this.waveformData,
       isSilenceDetected: isSilenceDetected ?? this.isSilenceDetected,
+      operator: operator ?? this.operator,
+      textProcessingResult: textProcessingResult ?? this.textProcessingResult,
+      hasEmojiDetected: hasEmojiDetected ?? this.hasEmojiDetected,
+      showEmojiWarning: showEmojiWarning ?? this.showEmojiWarning,
     );
   }
 
@@ -104,6 +127,10 @@ class InCallState extends PagerState {
     asrTranscript,
     waveformData,
     isSilenceDetected,
+    operator,
+    textProcessingResult,
+    hasEmojiDetected,
+    showEmojiWarning,
   ];
 }
 
@@ -117,6 +144,10 @@ class FinalizeState extends PagerState {
   final String? sendErrorMessage;
   final bool showHangupButton; // 是否显示挂断按钮
   final bool isPlayingSuccessTts; // 是否正在播放成功TTS
+  final OperatorPersonality? operator; // 当前接线员人格
+  final bool isEditing; // 是否处于编辑模式
+  final TextProcessingResult? textProcessingResult; // 编辑的文本处理结果
+  final bool isNewlyUnlocked; // 该接线员是否首次完成对话（用于解锁提示）
 
   const FinalizeState({
     required this.targetId,
@@ -126,6 +157,10 @@ class FinalizeState extends PagerState {
     this.sendErrorMessage,
     this.showHangupButton = false,
     this.isPlayingSuccessTts = false,
+    this.operator,
+    this.isEditing = false,
+    this.textProcessingResult,
+    this.isNewlyUnlocked = false,
   });
 
   FinalizeState copyWith({
@@ -136,6 +171,10 @@ class FinalizeState extends PagerState {
     String? sendErrorMessage,
     bool? showHangupButton,
     bool? isPlayingSuccessTts,
+    OperatorPersonality? operator,
+    bool? isEditing,
+    TextProcessingResult? textProcessingResult,
+    bool? isNewlyUnlocked,
   }) {
     return FinalizeState(
       targetId: targetId ?? this.targetId,
@@ -145,6 +184,10 @@ class FinalizeState extends PagerState {
       sendErrorMessage: sendErrorMessage,
       showHangupButton: showHangupButton ?? this.showHangupButton,
       isPlayingSuccessTts: isPlayingSuccessTts ?? this.isPlayingSuccessTts,
+      operator: operator ?? this.operator,
+      isEditing: isEditing ?? this.isEditing,
+      textProcessingResult: textProcessingResult ?? this.textProcessingResult,
+      isNewlyUnlocked: isNewlyUnlocked ?? this.isNewlyUnlocked,
     );
   }
 
@@ -157,7 +200,25 @@ class FinalizeState extends PagerState {
     sendErrorMessage,
     showHangupButton,
     isPlayingSuccessTts,
+    operator,
+    isEditing,
+    textProcessingResult,
+    isNewlyUnlocked,
   ];
+}
+
+/// 操作员解锁提示状态
+class OperatorUnlockedState extends PagerState {
+  final OperatorPersonality operator;
+  final String unlockMessage;
+
+  const OperatorUnlockedState({
+    required this.operator,
+    this.unlockMessage = '恭喜！你已解锁新的接线员',
+  });
+
+  @override
+  List<Object?> get props => [operator, unlockMessage];
 }
 
 /// 错误状态

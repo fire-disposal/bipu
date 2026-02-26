@@ -4,6 +4,7 @@ import '../state/pager_state_machine.dart';
 import '../state/pager_cubit.dart';
 import '../widgets/operator_display_widget.dart';
 import '../widgets/waveform_animation_widget.dart';
+import '../widgets/speech_bubble_widget.dart';
 
 /// 通话中页面 (State 2)
 /// 显示虚拟接线员立绘，播放TTS，进行ASR语音转写
@@ -17,6 +18,32 @@ class InCallPage extends StatefulWidget {
 }
 
 class _InCallPageState extends State<InCallPage> {
+  final GlobalKey _operatorDisplayKey = GlobalKey();
+  final SpeechBubbleManager _speechBubbleManager = SpeechBubbleManager();
+  bool _hasShownGuidanceBubble = false;
+  final GlobalKey _speechBubbleContainerKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    // 延迟注册气泡容器，确保组件已挂载
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_speechBubbleContainerKey.currentState != null) {
+        // 由于_SpeechBubbleContainerState是私有类型，我们使用动态类型转换
+        final containerState =
+            _speechBubbleContainerKey.currentState! as dynamic;
+        _speechBubbleManager.registerContainer(containerState);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    // 清理气泡管理器
+    _speechBubbleManager.registerContainer(null);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<PagerCubit, PagerState>(
@@ -24,6 +51,29 @@ class _InCallPageState extends State<InCallPage> {
       builder: (context, state) {
         if (state is! InCallState) {
           return const SizedBox.shrink();
+        }
+
+        // 显示引导台词气泡
+        if (state.isTtsPlaying &&
+            state.currentTtsText.isNotEmpty &&
+            !_hasShownGuidanceBubble) {
+          _hasShownGuidanceBubble = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _speechBubbleManager.showSpeech(
+              text: state.currentTtsText,
+              id: 'guidance_tts',
+              displayDuration: const Duration(seconds: 5),
+              style: SpeechBubbleStyle.primary,
+              isOperator: true,
+              hasAudio: true,
+              position: SpeechBubblePosition.topRight,
+            );
+          });
+        }
+
+        // 重置气泡显示标志
+        if (!state.isTtsPlaying) {
+          _hasShownGuidanceBubble = false;
         }
 
         return Stack(
@@ -46,6 +96,17 @@ class _InCallPageState extends State<InCallPage> {
                 ],
               ),
             ),
+
+            // 台词气泡容器
+            if (_operatorDisplayKey.currentContext != null)
+              Positioned.fill(
+                child: SpeechBubbleContainer(
+                  key: _speechBubbleContainerKey,
+                  targetKey: _operatorDisplayKey,
+                  containerSize: MediaQuery.of(context).size,
+                  containerOffset: Offset.zero,
+                ),
+              ),
           ],
         );
       },
@@ -90,7 +151,7 @@ class _InCallPageState extends State<InCallPage> {
 
           // 取消按钮
           GestureDetector(
-            onTap: () => widget.cubit.cancel(),
+            onTap: () => widget.cubit.cancelDialing(),
             child: Container(
               width: 44,
               height: 44,
@@ -117,6 +178,7 @@ class _InCallPageState extends State<InCallPage> {
             SizedBox(
               height: 300,
               child: OperatorDisplayWidget(
+                key: _operatorDisplayKey,
                 imageUrl: state.operatorImageUrl,
                 isAnimating: state.isTtsPlaying || state.isAsrActive,
                 scale: 1.0,
@@ -138,38 +200,9 @@ class _InCallPageState extends State<InCallPage> {
                 ],
               ),
 
-            // TTS文本显示
-            if (state.currentTtsText.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade300),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '接线员说',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.blue.shade700,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      state.currentTtsText,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
+            // TTS文本显示（仅在无气泡时显示）
+            // 注：气泡会以浮动的形式显示在立绘附近
+            // 此处的显示已由气泡组件替代
             const SizedBox(height: 24),
 
             // ASR转写文本显示
@@ -251,9 +284,9 @@ class _InCallPageState extends State<InCallPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.1),
+        color: statusColor.withAlpha((0.1 * 255).round()),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: statusColor.withOpacity(0.3)),
+        border: Border.all(color: statusColor.withAlpha((0.3 * 255).round())),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -286,6 +319,25 @@ class _InCallPageState extends State<InCallPage> {
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
+          // 完成录音按钮（仅在ASR激活且有转写内容时显示）
+          if (state.isAsrActive && state.asrTranscript.isNotEmpty)
+            Expanded(
+              child: GestureDetector(
+                onTap: () => widget.cubit.finishAsrRecording(),
+                child: Container(
+                  height: 56,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.green.shade100,
+                    border: Border.all(color: Colors.green.shade300),
+                  ),
+                  child: Icon(Icons.check, color: Colors.green.shade600),
+                ),
+              ),
+            ),
+          if (state.isAsrActive && state.asrTranscript.isNotEmpty)
+            const SizedBox(width: 12),
+
           // 暂停/继续按钮
           Expanded(
             child: GestureDetector(
@@ -311,7 +363,7 @@ class _InCallPageState extends State<InCallPage> {
           // 挂断按钮
           Expanded(
             child: GestureDetector(
-              onTap: () => widget.cubit.cancel(),
+              onTap: () => widget.cubit.cancelDialing(),
               child: Container(
                 height: 56,
                 decoration: BoxDecoration(
@@ -326,5 +378,10 @@ class _InCallPageState extends State<InCallPage> {
         ],
       ),
     );
+  }
+
+  @override
+  void didUpdateWidget(InCallPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
   }
 }

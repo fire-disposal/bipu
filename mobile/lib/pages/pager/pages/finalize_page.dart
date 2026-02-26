@@ -170,6 +170,10 @@ class _FinalizePageState extends State<FinalizePage> {
 
   /// 构建消息显示
   Widget _buildMessageDisplay(FinalizeState state) {
+    if (state.isEditing) {
+      return _buildMessageEditingArea(state);
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -187,13 +191,49 @@ class _FinalizePageState extends State<FinalizePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '消息内容',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-              fontWeight: FontWeight.w500,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '消息内容',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              // 编辑按钮
+              if (!state.sendSuccess)
+                GestureDetector(
+                  onTap: () => widget.cubit.startEditingMessage(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.edit, size: 12, color: Colors.blue.shade600),
+                        const SizedBox(width: 4),
+                        Text(
+                          '编辑',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.blue.shade600,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 12),
           Container(
@@ -212,6 +252,169 @@ class _FinalizePageState extends State<FinalizePage> {
             '字数: ${state.messageContent.length}',
             style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
           ),
+
+          // 表情符号警告
+          if (state.textProcessingResult?.hasEmoji ?? false) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_rounded, size: 16, color: Colors.orange),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '检测到${state.textProcessingResult!.detectedEmojis.length}个表情符号，已自动移除',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.orange.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// 构建消息编辑区域
+  Widget _buildMessageEditingArea(FinalizeState state) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '编辑消息',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.blue.shade700,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => widget.cubit.cancelEditingMessage(),
+                child: Icon(Icons.close, size: 18, color: Colors.blue.shade600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            maxLines: 4,
+            minLines: 3,
+            controller: TextEditingController(text: state.messageContent),
+            onChanged: (value) => widget.cubit.updateEditingMessage(value),
+            decoration: InputDecoration(
+              hintText: '输入消息内容...',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              filled: true,
+              fillColor: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '字数: ${state.messageContent.length}',
+                style: TextStyle(fontSize: 11, color: Colors.blue.shade600),
+              ),
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => widget.cubit.cancelEditingMessage(),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Text(
+                        '取消',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => widget.cubit.finishEditingMessage(),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade600,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        '确认',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          // 表情符号检测警告
+          if (state.textProcessingResult?.hasEmoji ?? false) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.emoji_emotions, size: 16, color: Colors.orange),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '检测到表情符号，将被自动移除',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.orange.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -396,7 +599,7 @@ class _FinalizePageState extends State<FinalizePage> {
           // 返回按钮
           const SizedBox(height: 12),
           GestureDetector(
-            onTap: () => widget.cubit.cancel(),
+            onTap: () => widget.cubit.cancelDialing(),
             child: Container(
               height: 48,
               decoration: BoxDecoration(

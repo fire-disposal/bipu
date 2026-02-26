@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:bipupu/core/network/network.dart';
-import 'package:bipupu/core/network/api_exception.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';

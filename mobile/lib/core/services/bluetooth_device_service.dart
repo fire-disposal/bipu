@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert'; // 必须引用，用于 utf8.encode
-import 'dart:typed_data';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';

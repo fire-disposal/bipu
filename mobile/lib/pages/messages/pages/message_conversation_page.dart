@@ -6,12 +6,9 @@ import '../../../../core/api/models/message_create.dart';
 import '../../../../core/api/models/message_type.dart';
 import '../../../../core/api/models/favorite_create.dart';
 import '../../../../core/network/api_client.dart';
-import '../../../../pages/pager/widgets/waveform_widget.dart';
+import '../../../../pages/pager/widgets/waveform_visualization_widget.dart';
 
 import 'package:easy_localization/easy_localization.dart';
-
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
 
 class MessageConversationPage extends StatefulWidget {
   final String peerId;
@@ -170,10 +167,11 @@ class _MessageConversationPageState extends State<MessageConversationPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const SizedBox(height: 8),
-                                StaticWaveform(
-                                  waveformBase64: msg.waveform!.join(','),
+                                WaveformVisualizationWidget(
+                                  waveformData: msg.waveform!,
                                   height: 64,
-                                  color: isMe ? Colors.blue : Colors.green,
+                                  showGrid: false,
+                                  showLabels: false,
                                 ),
                               ],
                             ),

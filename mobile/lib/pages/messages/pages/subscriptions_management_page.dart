@@ -175,7 +175,7 @@ class _SubscriptionsManagementPageState
                     trailing: Switch(
                       value: isSubscribed,
                       onChanged: (value) => _toggleSubscription(service),
-                      activeColor: Colors.green,
+                      activeThumbColor: Colors.green,
                     ),
                     onTap: isSubscribed
                         ? () => _showPushTimeSettings(service)

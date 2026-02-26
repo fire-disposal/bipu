@@ -107,8 +107,9 @@ class _FavoritesPageState extends State<FavoritesPage> {
               child: ListView.separated(
                 itemCount: _favorites.length + (hasNextPage ? 1 : 0),
                 separatorBuilder: (_, index) {
-                  if (index == _favorites.length)
+                  if (index == _favorites.length) {
                     return const SizedBox.shrink();
+                  }
                   return const Divider(height: 1);
                 },
                 itemBuilder: (context, index) {

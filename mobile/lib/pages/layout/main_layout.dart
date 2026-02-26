@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../core/services/toast_service.dart';
 import '../../core/state/app_state_management.dart';
-import '../../core/voice/audio_resource_manager.dart';
 import 'enhanced_bottom_navigation.dart';
 
 /// 重构后的主布局

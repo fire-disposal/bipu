@@ -71,9 +71,9 @@ class AuthService {
 
       // 注册成功后自动登录
       await login(username, password);
-    } on AuthException catch (e) {
+    } on AuthException {
       rethrow;
-    } on ValidationException catch (e) {
+    } on ValidationException {
       rethrow;
     } catch (e) {
       rethrow;
@@ -100,13 +100,13 @@ class AuthService {
       // 获取当前用户信息
       await _fetchCurrentUser();
       _authStateController.value = AuthStatus.authenticated;
-    } on AuthException catch (e) {
+    } on AuthException {
       await TokenManager.clearTokens();
       rethrow;
-    } on ValidationException catch (e) {
+    } on ValidationException {
       await TokenManager.clearTokens();
       rethrow;
-    } on ServerException catch (e) {
+    } on ServerException {
       await TokenManager.clearTokens();
       rethrow;
     } catch (e) {
@@ -154,7 +154,7 @@ class AuthService {
         accessToken: token.accessToken,
         refreshToken: token.refreshToken,
       );
-    } on AuthException catch (e) {
+    } on AuthException {
       // Token 刷新失败，登出用户
       await logout();
       rethrow;
@@ -194,9 +194,9 @@ class AuthService {
         ),
         operationName: 'UpdatePassword',
       );
-    } on AuthException catch (e) {
+    } on AuthException {
       rethrow;
-    } on ValidationException catch (e) {
+    } on ValidationException {
       rethrow;
     } catch (e) {
       rethrow;
@@ -213,7 +213,7 @@ class AuthService {
         ),
         operationName: 'UpdateTimezone',
       );
-    } on AuthException catch (e) {
+    } on AuthException {
       rethrow;
     } catch (e) {
       rethrow;
@@ -228,7 +228,7 @@ class AuthService {
         () => apiClient.api.userProfile.getApiProfileMe(),
         operationName: 'GetCurrentUser',
       );
-    } on AuthException catch (e) {
+    } on AuthException {
       rethrow;
     } catch (e) {
       rethrow;

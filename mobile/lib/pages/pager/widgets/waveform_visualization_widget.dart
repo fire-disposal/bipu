@@ -158,7 +158,7 @@ class _WaveformVisualizationWidgetState
             _buildInfoRow('数据点数', '${widget.waveformData.length}'),
             _buildInfoRow('最小值', '$min'),
             _buildInfoRow('最大值', '$max'),
-            _buildInfoRow('平均值', '${avg.toStringAsFixed(2)}'),
+            _buildInfoRow('平均值', avg.toStringAsFixed(2)),
             _buildInfoRow('动态范围', '${max - min}'),
             _buildInfoRow('数据大小', '${widget.waveformData.length} 字节'),
           ],

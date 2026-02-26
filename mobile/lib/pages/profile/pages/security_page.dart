@@ -52,8 +52,9 @@ class _SecurityPageState extends State<SecurityPage> {
                       prefixIcon: const Icon(Icons.lock_outline),
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty)
+                      if (v == null || v.isEmpty) {
                         return 'enter_current_password'.tr();
+                      }
                       return null;
                     },
                   ),
@@ -66,8 +67,9 @@ class _SecurityPageState extends State<SecurityPage> {
                       prefixIcon: const Icon(Icons.lock),
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty)
+                      if (v == null || v.isEmpty) {
                         return 'enter_new_password'.tr();
+                      }
                       if (v.length < 6) return 'password_min_length'.tr();
                       return null;
                     },
@@ -81,10 +83,12 @@ class _SecurityPageState extends State<SecurityPage> {
                       prefixIcon: const Icon(Icons.lock),
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty)
+                      if (v == null || v.isEmpty) {
                         return 'enter_confirm_password'.tr();
-                      if (v != _newPasswordController.text)
+                      }
+                      if (v != _newPasswordController.text) {
                         return 'password_mismatch'.tr();
+                      }
                       return null;
                     },
                   ),

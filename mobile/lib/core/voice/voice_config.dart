@@ -4,8 +4,8 @@ class VoiceConfig {
   static const Map<String, String> asrModelFiles = {
     'asr/encoder-epoch-99-avg-1.int8.onnx':
         'assets/models/asr/encoder-epoch-99-avg-1.int8.onnx',
-    'asr/decoder-epoch-99-avg-1.onnx':
-        'assets/models/asr/decoder-epoch-99-avg-1.onnx',
+    'asr/decoder-epoch-99-avg-1.int8.onnx':
+        'assets/models/asr/decoder-epoch-99-avg-1.int8.onnx',
     'asr/joiner-epoch-99-avg-1.int8.onnx':
         'assets/models/asr/joiner-epoch-99-avg-1.int8.onnx',
     'asr/tokens.txt': 'assets/models/asr/tokens.txt',
@@ -13,13 +13,14 @@ class VoiceConfig {
 
   // ASR 模型文件名常量
   static const String asrEncoder = 'encoder-epoch-99-avg-1.int8.onnx';
-  static const String asrDecoder = 'decoder-epoch-99-avg-1.onnx';
+  static const String asrDecoder = 'decoder-epoch-99-avg-1.int8.onnx';
   static const String asrJoiner = 'joiner-epoch-99-avg-1.int8.onnx';
   static const String asrTokens = 'tokens.txt';
 
   // ============ TTS 模型配置 ============
   static const Map<String, String> ttsModelFiles = {
-    'tts/vits-aishell3.onnx': 'assets/models/tts/vits-aishell3.onnx',
+    'tts/vits-zh-hf-fanchen-C.onnx':
+        'assets/models/tts/vits-zh-hf-fanchen-C.onnx',
     'tts/tokens.txt': 'assets/models/tts/tokens.txt',
     'tts/lexicon.txt': 'assets/models/tts/lexicon.txt',
     'tts/phone.fst': 'assets/models/tts/phone.fst',
@@ -29,7 +30,7 @@ class VoiceConfig {
   };
 
   // TTS 模型文件名常量
-  static const String ttsModel = 'vits-aishell3';
+  static const String ttsModel = 'vits-zh-hf-fanchen-C';
   static const String ttsTokens = 'tokens';
   static const String ttsLexicon = 'lexicon';
   static const String ttsPhone = 'phone';
