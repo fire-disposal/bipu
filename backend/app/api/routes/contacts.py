@@ -82,6 +82,8 @@ async def get_contacts(
             page_size=page_size
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"获取联系人列表失败: {e}")
         raise HTTPException(status_code=500, detail="获取联系人列表失败")

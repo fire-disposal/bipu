@@ -6,7 +6,7 @@
 3. 验证：添加必要的验证约束
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 from typing import Optional, List
 
@@ -31,8 +31,7 @@ class ContactResponse(BaseModel):
     alias: Optional[str] = Field(None, description="备注名")
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ContactListResponse(BaseModel):

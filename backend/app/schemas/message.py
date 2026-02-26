@@ -7,7 +7,7 @@
 4. 实用：只包含实际使用的字段
 """
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from datetime import datetime
 from typing import Optional, List
 from enum import Enum
@@ -48,16 +48,15 @@ class MessageCreate(BaseModel):
 class MessageResponse(BaseModel):
     """消息响应"""
     id: int
-    sender_id: str = Field(..., description="发送者ID")
-    receiver_id: str = Field(..., description="接收者ID")
+    sender_bipupu_id: str = Field(..., description="发送者ID")
+    receiver_bipupu_id: str = Field(..., description="接收者ID")
     content: str
     message_type: MessageType
     pattern: Optional[dict] = None
     waveform: Optional[List[int]] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MessageListResponse(BaseModel):

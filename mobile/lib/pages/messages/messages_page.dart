@@ -132,16 +132,6 @@ class _MessagesPageState extends State<MessagesPage> {
                               color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
-                          if (isSettings)
-                            Text(
-                              'manage_subscriptions'.tr(),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                            ),
                         ],
                       ),
                     ),

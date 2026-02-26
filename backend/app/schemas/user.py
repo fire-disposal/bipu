@@ -7,7 +7,7 @@
 4. 分层：按使用场景分层设计模型
 """
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from datetime import datetime, date
 from typing import Optional
 from enum import Enum
@@ -95,8 +95,7 @@ class UserPublic(BaseModel):
     is_active: bool = Field(default=True, description="是否活跃")
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserPrivate(UserPublic):
@@ -114,8 +113,7 @@ class UserPrivate(UserPublic):
     last_active: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserLogin(BaseModel):

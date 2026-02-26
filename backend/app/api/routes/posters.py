@@ -1,7 +1,7 @@
 """海报API路由 - 极简版本"""
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form, Request
 from sqlalchemy.orm import Session
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 
 from app.db.database import get_db
 from app.models.user import User
@@ -15,24 +15,24 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-def _build_poster_response(poster) -> Dict[str, Any]:
+def _build_poster_response(poster) -> PosterResponse:
     """业务层构建海报响应 - 确保数据安全和一致性
     
     职责：
-    1. 将 SQLAlchemy 对象转换为字典
+    1. 将 SQLAlchemy 对象转换为 PosterResponse
     2. 动态生成 image_url
     3. 确保返回的数据符合 PosterResponse schema
     """
-    return {
-        'id': poster.id,
-        'title': poster.title,
-        'link_url': poster.link_url,
-        'image_url': f"/api/posters/{poster.id}/image" if poster.id else None,
-        'display_order': poster.display_order,
-        'is_active': poster.is_active,
-        'created_at': poster.created_at,
-        'updated_at': poster.updated_at
-    }
+    return PosterResponse(
+        id=poster.id,
+        title=poster.title,
+        link_url=poster.link_url,
+        image_url=f"/api/posters/{poster.id}/image" if poster.id else None,
+        display_order=poster.display_order,
+        is_active=poster.is_active,
+        created_at=poster.created_at,
+        updated_at=poster.updated_at
+    )
 
 
 @router.get("/", response_model=PosterListResponse)
@@ -43,15 +43,19 @@ async def get_posters(
     current_user: User = Depends(get_current_superuser_web)
 ):
     """获取海报列表（管理用）"""
-    skip = (page - 1) * page_size
-    posters, total = PosterService.get_all_posters(db, skip, page_size)
+    try:
+        skip = (page - 1) * page_size
+        posters, total = PosterService.get_all_posters(db, skip, page_size)
 
-    return {
-        "posters": [_build_poster_response(poster) for poster in posters],
-        "total": total,
-        "page": page,
-        "page_size": page_size
-    }
+        return PosterListResponse(
+            posters=[_build_poster_response(poster) for poster in posters],
+            total=total,
+            page=page,
+            page_size=page_size
+        )
+    except Exception as e:
+        logger.error(f"获取海报列表失败: {e}")
+        raise HTTPException(status_code=500, detail="获取海报列表失败")
 
 
 @router.get("/active", response_model=List[PosterResponse])

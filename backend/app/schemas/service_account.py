@@ -7,7 +7,7 @@
 4. 实用：优化数据结构，减少冗余
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 from typing import Optional, List
 from enum import Enum
@@ -34,8 +34,7 @@ class ServiceAccountResponse(ServiceAccountBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ServiceAccountList(BaseModel):

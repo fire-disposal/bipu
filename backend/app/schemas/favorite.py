@@ -6,7 +6,7 @@
 3. 实用：优化数据结构，减少嵌套
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 from typing import Optional, List
 
@@ -28,8 +28,7 @@ class FavoriteResponse(BaseModel):
     message_sender: str = Field(..., description="发送者ID")
     message_created_at: datetime = Field(..., description="消息创建时间")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FavoriteListResponse(BaseModel):

@@ -104,8 +104,8 @@ async def send_message(
 @router.get("/", response_model=MessageListResponse)
 async def get_messages(
     direction: str = Query("received", description="sent 或 received"),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -121,6 +121,9 @@ async def get_messages(
     - 失败：400（参数错误）
     """
     try:
+        if direction not in ["sent", "received"]:
+            raise HTTPException(status_code=400, detail="direction 必须是 'sent' 或 'received'")
+
         if direction == "sent":
             # 获取发送的消息
             query = db.query(Message).filter(
@@ -148,6 +151,8 @@ async def get_messages(
             page_size=page_size
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"获取消息列表失败: {e}")
         raise HTTPException(status_code=500, detail="获取消息列表失败")

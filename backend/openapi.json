@@ -428,9 +428,11 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
+              "description": "页码",
               "default": 1,
               "title": "Page"
-            }
+            },
+            "description": "页码"
           },
           {
             "name": "page_size",
@@ -440,9 +442,11 @@
               "type": "integer",
               "maximum": 100,
               "minimum": 1,
+              "description": "每页数量",
               "default": 20,
               "title": "Page Size"
-            }
+            },
+            "description": "每页数量"
           }
         ],
         "responses": {
@@ -4378,14 +4382,14 @@
             "type": "integer",
             "title": "Id"
           },
-          "sender_id": {
+          "sender_bipupu_id": {
             "type": "string",
-            "title": "Sender Id",
+            "title": "Sender Bipupu Id",
             "description": "发送者ID"
           },
-          "receiver_id": {
+          "receiver_bipupu_id": {
             "type": "string",
-            "title": "Receiver Id",
+            "title": "Receiver Bipupu Id",
             "description": "接收者ID"
           },
           "content": {
@@ -4430,8 +4434,8 @@
         "type": "object",
         "required": [
           "id",
-          "sender_id",
-          "receiver_id",
+          "sender_bipupu_id",
+          "receiver_bipupu_id",
           "content",
           "message_type",
           "created_at"
