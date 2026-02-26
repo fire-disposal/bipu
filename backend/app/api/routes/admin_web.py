@@ -5,6 +5,7 @@ from datetime import datetime, time
 from fastapi.responses import RedirectResponse
 import logging
 from app.models.service_account import ServiceAccount
+from app.models.push_log import PushLog
 from fastapi import UploadFile, File
 from app.db.database import get_db
 from app.models.user import User
@@ -397,3 +398,84 @@ async def trigger_service_push(
         )
 
     return RedirectResponse(url=f"/admin/service_accounts?msg={msg}", status_code=302)
+
+
+@router.get("/push_logs")
+async def admin_push_logs(
+    request: Request,
+    page: int = 1,
+    per_page: int = 50,
+    status: str = None,  # type: ignore
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser_web),
+):
+    """消息推送日志查看页面"""
+    from sqlalchemy import desc
+    
+    offset = (page - 1) * per_page
+    
+    # 构建查询
+    query = db.query(PushLog).order_by(desc(PushLog.created_at))
+    
+    # 按状态过滤
+    if status and status != 'all':
+        query = query.filter(PushLog.status == status)
+    
+    # 获取总数
+    total = query.count()
+    
+    # 获取分页数据
+    logs = query.offset(offset).limit(per_page).all()
+    
+    # 计算统计信息
+    all_logs = db.query(PushLog).all()
+    stats = {
+        'total': len(all_logs),
+        'success': len([l for l in all_logs if l.status == 'success']),
+        'failed': len([l for l in all_logs if l.status == 'failed']),
+        'processing': len([l for l in all_logs if l.status == 'processing']),
+        'pending': len([l for l in all_logs if l.status == 'pending']),
+    }
+    
+    return templates.TemplateResponse(
+        "push_logs.html",
+        {
+            "request": request,
+            "logs": logs,
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": (total + per_page - 1) // per_page,
+            "stats": stats,
+            "current_status": status or 'all',
+        },
+    )
+
+
+@router.get("/push_logs/{log_id}/detail")
+async def get_push_log_detail(
+    log_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser_web),
+):
+    """获取推送日志详情（JSON格式）"""
+    log = db.query(PushLog).filter(PushLog.id == log_id).first()
+    if not log:
+        raise HTTPException(status_code=404, detail="Push log not found")
+    
+    return {
+        "id": log.id,
+        "service_name": log.service_name,
+        "receiver_bipupu_id": log.receiver_bipupu_id,
+        "status": log.status.value if log.status else None,
+        "content_preview": log.content_preview,
+        "error_message": log.error_message,
+        "retry_count": log.retry_count,
+        "max_retries": log.max_retries,
+        "task_id": log.task_id,
+        "task_name": log.task_name,
+        "metadata": log.metadata,
+        "created_at": log.created_at.isoformat() if log.created_at else None,
+        "started_at": log.started_at.isoformat() if log.started_at else None,
+        "completed_at": log.completed_at.isoformat() if log.completed_at else None,
+    }

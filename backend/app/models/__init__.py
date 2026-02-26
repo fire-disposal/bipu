@@ -9,6 +9,7 @@ from app.models.trusted_contact import TrustedContact
 from app.models.favorite import Favorite
 from app.models.service_account import ServiceAccount
 from app.models.poster import Poster
+from app.models.push_log import PushLog, PushStatus
 
 __all__ = [
     "Base",
@@ -19,4 +20,6 @@ __all__ = [
     "Favorite",
     "ServiceAccount",
     "Poster",
+    "PushLog",
+    "PushStatus",
 ]
