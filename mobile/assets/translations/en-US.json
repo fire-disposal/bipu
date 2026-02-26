@@ -296,5 +296,26 @@
     "language_chinese_subtitle": "Chinese Simplified",
     "language_english": "English",
     "language_english_subtitle": "English",
-    "language_changed_immediately": "Language settings take effect immediately"
- }
+     "language_changed_immediately": "Language settings take effect immediately",
+     "message_from": "From",
+     "message_to": "To",
+     "sender_profile": "Sender Profile",
+     "view_profile": "View Profile",
+     "add_contact_button": "Add Contact",
+     "block_user_button": "Block User",
+     "unblock_user": "Unblock User",
+     "user_blocked": "User blocked",
+     "user_unblocked": "User unblocked",
+     "is_self": "This is your account",
+     "waveform_visualization": "Audio Waveform",
+     "waveform_label": "Audio Envelope",
+     "copy_waveform": "Copy Waveform",
+     "waveform_info": "Waveform Info",
+     "message_time": "Sent Time",
+     "message_pattern": "Pattern",
+     "message_content_label": "Message Content",
+     "sender_info": "Sender Info",
+     "message_actions": "Message Actions",
+     "copy_message": "Copy Message",
+     "message_copied": "Message copied"
+  }

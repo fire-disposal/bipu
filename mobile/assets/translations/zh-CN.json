@@ -296,5 +296,26 @@
     "language_chinese_subtitle": "Chinese Simplified",
     "language_english": "English",
     "language_english_subtitle": "English",
-    "language_changed_immediately": "语言设置已立即生效"
- }
+     "language_changed_immediately": "语言设置已立即生效",
+     "message_from": "来自",
+     "message_to": "发送给",
+     "sender_profile": "发送者资料",
+     "view_profile": "查看资料",
+     "add_contact_button": "添加联系人",
+     "block_user_button": "拉黑用户",
+     "unblock_user": "取消拉黑",
+     "user_blocked": "用户已拉黑",
+     "user_unblocked": "已取消拉黑",
+     "is_self": "这是你的账号",
+     "waveform_visualization": "音频波形",
+     "waveform_label": "音频包络",
+     "copy_waveform": "复制波形",
+     "waveform_info": "波形信息",
+     "message_time": "发送时间",
+     "message_pattern": "模式",
+     "message_content_label": "消息内容",
+     "sender_info": "发送者信息",
+     "message_actions": "消息操作",
+     "copy_message": "复制消息",
+     "message_copied": "消息已复制"
+  }
