@@ -212,25 +212,71 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 child: Stack(
                                   fit: StackFit.expand,
                                   children: [
-                                    // 背景渐变
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            Theme.of(context)
-                                                .colorScheme
-                                                .primary
-                                                .withValues(alpha: 0.3),
-                                            Theme.of(context)
-                                                .colorScheme
-                                                .secondary
-                                                .withValues(alpha: 0.3),
-                                          ],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
+                                    // 海报图片
+                                    if (poster.imageUrl != null &&
+                                        poster.imageUrl!.isNotEmpty)
+                                      CachedNetworkImage(
+                                        imageUrl: poster.imageUrl!,
+                                        fit: BoxFit.cover,
+                                        placeholder: (context, url) =>
+                                            Container(
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  colors: [
+                                                    Theme.of(context)
+                                                        .colorScheme
+                                                        .primary
+                                                        .withValues(alpha: 0.3),
+                                                    Theme.of(context)
+                                                        .colorScheme
+                                                        .secondary
+                                                        .withValues(alpha: 0.3),
+                                                  ],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                ),
+                                              ),
+                                            ),
+                                        errorWidget: (context, url, error) =>
+                                            Container(
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  colors: [
+                                                    Theme.of(context)
+                                                        .colorScheme
+                                                        .primary
+                                                        .withValues(alpha: 0.3),
+                                                    Theme.of(context)
+                                                        .colorScheme
+                                                        .secondary
+                                                        .withValues(alpha: 0.3),
+                                                  ],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                ),
+                                              ),
+                                            ),
+                                      )
+                                    else
+                                      // 背景渐变（无图片时）
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              Theme.of(context)
+                                                  .colorScheme
+                                                  .primary
+                                                  .withValues(alpha: 0.3),
+                                              Theme.of(context)
+                                                  .colorScheme
+                                                  .secondary
+                                                  .withValues(alpha: 0.3),
+                                            ],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
                                         ),
                                       ),
-                                    ),
                                     // 深色遮罩
                                     Container(
                                       decoration: BoxDecoration(

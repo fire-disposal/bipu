@@ -33,6 +33,7 @@ class PosterResponse(BaseModel):
     id: int
     title: str = Field(..., description="海报标题")
     link_url: Optional[str] = Field(None, description="点击跳转链接")
+    image_url: Optional[str] = Field(None, description="海报图片URL")
     display_order: int = Field(default=0, description="显示顺序")
     is_active: bool = Field(default=True, description="是否激活")
     created_at: datetime
@@ -40,6 +41,13 @@ class PosterResponse(BaseModel):
 
     class Config:
         from_attributes = True
+    
+    def model_dump(self, **kwargs):
+        """重写 model_dump 以动态生成 image_url"""
+        data = super().model_dump(**kwargs)
+        if self.id:
+            data['image_url'] = f"/api/posters/{self.id}/image"
+        return data
 
 
 class PosterListResponse(BaseModel):
