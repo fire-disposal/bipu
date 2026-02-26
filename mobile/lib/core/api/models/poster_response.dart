@@ -17,6 +17,7 @@ class PosterResponse {
     this.displayOrder = 0,
     this.isActive = true,
     this.linkUrl,
+    this.imageUrl,
   });
   
   factory PosterResponse.fromJson(Map<String, Object?> json) => _$PosterResponseFromJson(json);
@@ -29,6 +30,10 @@ class PosterResponse {
   /// 点击跳转链接
   @JsonKey(name: 'link_url')
   final String? linkUrl;
+
+  /// 海报图片URL
+  @JsonKey(name: 'image_url')
+  final String? imageUrl;
 
   /// 显示顺序
   @JsonKey(name: 'display_order')

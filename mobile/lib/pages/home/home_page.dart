@@ -236,6 +236,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                   end: Alignment.bottomRight,
                                                 ),
                                               ),
+                                              child: const SizedBox.expand(),
                                             ),
                                         errorWidget: (context, url, error) =>
                                             Container(
@@ -255,6 +256,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                   end: Alignment.bottomRight,
                                                 ),
                                               ),
+                                              child: const SizedBox.expand(),
                                             ),
                                       )
                                     else
@@ -276,6 +278,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                             end: Alignment.bottomRight,
                                           ),
                                         ),
+                                        child: const SizedBox.expand(),
                                       ),
                                     // 深色遮罩
                                     Container(
@@ -555,14 +558,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       '好友',
                       Icons.people_alt_rounded,
                       Colors.blue.shade600,
-                      () => context.push('/contacts'),
+                      () => context.push('/home/contacts'),
                     ),
                     _buildQuickActionCard(
                       context,
                       '语音测试',
                       Icons.mic,
                       const Color.fromARGB(255, 73, 255, 97),
-                      () => context.push('/voice_test'),
+                      () => context.push('/home/voice_test'),
                     ),
                   ],
                 ),

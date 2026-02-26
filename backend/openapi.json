@@ -4344,6 +4344,18 @@
             "title": "Link Url",
             "description": "点击跳转链接"
           },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url",
+            "description": "海报图片URL"
+          },
           "display_order": {
             "type": "integer",
             "title": "Display Order",
@@ -4396,10 +4408,7 @@
           "link_url": {
             "anyOf": [
               {
-                "type": "string",
-                "maxLength": 2083,
-                "minLength": 1,
-                "format": "uri"
+                "type": "string"
               },
               {
                 "type": "null"

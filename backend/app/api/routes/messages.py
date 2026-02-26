@@ -236,7 +236,6 @@ async def get_favorites(
             # 获取关联的消息
             message = db.query(Message).filter(Message.id == fav.message_id).first()
             if message:
-                # 使用model_validate自动处理类型转换
                 favorite_responses.append(FavoriteResponse.model_validate({
                     "id": fav.id,
                     "message_id": fav.message_id,
@@ -304,7 +303,6 @@ async def add_favorite(
         db.refresh(favorite)
 
         logger.info(f"消息收藏成功: user_id={current_user.id}, message_id={message_id}")
-        # 使用model_validate自动处理类型转换
         return FavoriteResponse.model_validate({
             "id": favorite.id,
             "message_id": favorite.message_id,

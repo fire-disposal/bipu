@@ -29,7 +29,7 @@ class SubscriptionSettingsResponse {
 
   /// 是否启用推送
   @JsonKey(name: 'is_enabled')
-  final bool isEnabled;
+  final bool? isEnabled;
 
   /// 服务号名称
   @JsonKey(name: 'service_name')

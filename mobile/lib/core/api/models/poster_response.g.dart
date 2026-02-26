@@ -15,6 +15,7 @@ PosterResponse _$PosterResponseFromJson(Map<String, dynamic> json) =>
       displayOrder: (json['display_order'] as num?)?.toInt() ?? 0,
       isActive: json['is_active'] as bool? ?? true,
       linkUrl: json['link_url'] as String?,
+      imageUrl: json['image_url'] as String?,
     );
 
 Map<String, dynamic> _$PosterResponseToJson(PosterResponse instance) =>
@@ -22,6 +23,7 @@ Map<String, dynamic> _$PosterResponseToJson(PosterResponse instance) =>
       'id': instance.id,
       'title': instance.title,
       'link_url': instance.linkUrl,
+      'image_url': instance.imageUrl,
       'display_order': instance.displayOrder,
       'is_active': instance.isActive,
       'created_at': instance.createdAt.toIso8601String(),

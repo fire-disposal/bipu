@@ -2,9 +2,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Text, JSON, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
 from app.models.base import Base
 
 

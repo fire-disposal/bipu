@@ -55,8 +55,8 @@ async def block_user(
 
         # 检查是否已拉黑
         existing_block = db.query(UserBlock).filter(
-            UserBlock.user_id == current_user.id,
-            UserBlock.blocked_user_id == blocked_user.id
+            UserBlock.blocker_id == current_user.id,
+            UserBlock.blocked_id == blocked_user.id
         ).first()
 
         if existing_block:
@@ -64,14 +64,14 @@ async def block_user(
 
         # 创建拉黑记录
         block = UserBlock(
-            user_id=current_user.id,
-            blocked_user_id=blocked_user.id
+            blocker_id=current_user.id,
+            blocked_id=blocked_user.id
         )
 
         db.add(block)
         db.commit()
 
-        logger.info(f"用户拉黑成功: user_id={current_user.id}, blocked_user_id={blocked_user.id}")
+        logger.info(f"用户拉黑成功: blocker_id={current_user.id}, blocked_id={blocked_user.id}")
         return SuccessResponse(message="用户已拉黑")
 
     except HTTPException:
@@ -101,14 +101,14 @@ async def get_blocked_users(
     try:
         # 查询黑名单
         query = db.query(UserBlock).filter(
-            UserBlock.user_id == current_user.id
+            UserBlock.blocker_id == current_user.id
         )
 
         # 计算总数
         total = query.count()
 
         # 分页查询
-        blocks = query.order_by(UserBlock.blocked_at.desc()) \
+        blocks = query.order_by(UserBlock.created_at.desc()) \
             .offset(params.skip) \
             .limit(params.size) \
             .all()
@@ -117,15 +117,14 @@ async def get_blocked_users(
         blocked_users = []
         for block in blocks:
             # 获取被拉黑的用户信息
-            blocked_user = db.query(User).filter(User.id == block.blocked_user_id).first()
+            blocked_user = db.query(User).filter(User.id == block.blocked_id).first()
             if blocked_user:
-                # 使用model_validate自动处理类型转换
                 blocked_users.append(BlockedUserResponse.model_validate({
                     "bipupu_id": blocked_user.bipupu_id,
                     "username": blocked_user.username,
                     "nickname": blocked_user.nickname,
                     "avatar_url": blocked_user.avatar_url,
-                    "blocked_at": block.blocked_at
+                    "blocked_at": block.created_at
                 }))
 
         return PaginatedResponse.create(blocked_users, total, params)
@@ -162,8 +161,8 @@ async def unblock_user(
 
         # 查找拉黑记录
         block = db.query(UserBlock).filter(
-            UserBlock.user_id == current_user.id,
-            UserBlock.blocked_user_id == blocked_user.id
+            UserBlock.blocker_id == current_user.id,
+            UserBlock.blocked_id == blocked_user.id
         ).first()
 
         if not block:
@@ -173,7 +172,7 @@ async def unblock_user(
         db.delete(block)
         db.commit()
 
-        logger.info(f"取消拉黑成功: user_id={current_user.id}, blocked_user_id={blocked_user.id}")
+        logger.info(f"取消拉黑成功: blocker_id={current_user.id}, blocked_id={blocked_user.id}")
         return SuccessResponse(message="已取消拉黑")
 
     except HTTPException:
@@ -211,14 +210,14 @@ async def check_block_status(
 
         # 检查是否被当前用户拉黑
         is_blocked = db.query(UserBlock).filter(
-            UserBlock.user_id == current_user.id,
-            UserBlock.blocked_user_id == target_user.id
+            UserBlock.blocker_id == current_user.id,
+            UserBlock.blocked_id == target_user.id
         ).first() is not None
 
         # 检查是否被对方拉黑
         is_blocked_by = db.query(UserBlock).filter(
-            UserBlock.user_id == target_user.id,
-            UserBlock.blocked_user_id == current_user.id
+            UserBlock.blocker_id == target_user.id,
+            UserBlock.blocked_id == current_user.id
         ).first() is not None
 
         return {
@@ -254,14 +253,14 @@ async def search_blocked_users(
     try:
         # 查询当前用户的黑名单
         blocks = db.query(UserBlock).filter(
-            UserBlock.user_id == current_user.id
+            UserBlock.blocker_id == current_user.id
         ).all()
 
         if not blocks:
             return []
 
         # 获取被拉黑的用户ID列表
-        blocked_user_ids = [block.blocked_user_id for block in blocks]
+        blocked_user_ids = [block.blocked_id for block in blocks]
 
         # 搜索匹配的用户
         search_pattern = f"%{query}%"
@@ -275,15 +274,14 @@ async def search_blocked_users(
         results = []
         for user in blocked_users:
             # 获取拉黑时间
-            block = next((b for b in blocks if b.blocked_user_id == user.id), None)
+            block = next((b for b in blocks if b.blocked_id == user.id), None)
             if block:
-                # 使用model_validate自动处理类型转换
                 results.append(BlockedUserResponse.model_validate({
                     "bipupu_id": user.bipupu_id,
                     "username": user.username,
                     "nickname": user.nickname,
                     "avatar_url": user.avatar_url,
-                    "blocked_at": block.blocked_at
+                    "blocked_at": block.created_at
                 }))
 
         return results
@@ -305,7 +303,7 @@ async def get_blocked_users_count(
     """
     try:
         count = db.query(UserBlock).filter(
-            UserBlock.user_id == current_user.id
+            UserBlock.blocker_id == current_user.id
         ).count()
 
         return CountResponse(count=count)

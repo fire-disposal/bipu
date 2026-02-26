@@ -22,7 +22,7 @@ class SubscriptionSettingsUpdate {
 
   /// 是否启用推送
   @JsonKey(name: 'is_enabled')
-  final bool isEnabled;
+  final bool? isEnabled;
 
   Map<String, Object?> toJson() => _$SubscriptionSettingsUpdateToJson(this);
 }

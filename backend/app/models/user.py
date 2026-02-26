@@ -40,7 +40,7 @@ class User(Base):
     blocked_by = relationship("UserBlock", foreign_keys="[UserBlock.blocked_id]", back_populates="blocked", cascade="all, delete-orphan")
 
     # 联系人关系
-    contacts = relationship("TrustedContact", foreign_keys="[TrustedContact.owner_id]", back_populates="owner", cascade="all, delete-orphan")
+    contacts = relationship("TrustedContact", foreign_keys="[TrustedContact.user_id]", back_populates="user", cascade="all, delete-orphan")
 
     # 订阅关系
     subscriptions = relationship(

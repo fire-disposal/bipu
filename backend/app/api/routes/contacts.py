@@ -66,7 +66,6 @@ async def get_contacts(
             ).first()
 
             if contact_user:
-                # 使用model_validate自动处理类型转换
                 contact_responses.append(ContactResponse.model_validate({
                     "id": contact.id,
                     "contact_id": contact.contact_bipupu_id,
@@ -139,7 +138,6 @@ async def create_contact(
         db.refresh(contact)
 
         logger.info(f"添加联系人成功: user_id={current_user.id}, contact_id={contact_data.contact_id}")
-        # 使用model_validate自动处理类型转换
         return ContactResponse.model_validate({
             "id": contact.id,
             "contact_id": contact.contact_bipupu_id,
