@@ -114,7 +114,7 @@ class ApiClient {
     } on DioException catch (e) {
       final apiException = _convertException(e);
       _logger.e(
-        '❌ Error: ${operationName ?? 'API Request'}: ${apiException.message}',
+        '❌ Error: ${operationName ?? 'API Request'}: ${apiException.message} (Status: ${e.response?.statusCode})',
       );
       rethrow;
     } catch (e) {

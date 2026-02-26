@@ -15,5 +15,8 @@ export 'api_client.dart';
 // Token 管理
 export 'token_manager.dart';
 
+// JWT 调试助手
+export 'jwt_debug_helper.dart';
+
 // 生成的 API 导出
 export '../api/export.dart';

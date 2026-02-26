@@ -173,7 +173,7 @@ def get_users_for_push_time(db: Session, service_name: str, target_hour_utc: int
     ).where(
         and_(
             subscription_table.c.service_account_id == service.id,
-            subscription_table.c.is_enabled == True
+            (subscription_table.c.is_enabled == True) | (subscription_table.c.is_enabled.is_(None))
         )
     )
 
@@ -468,7 +468,7 @@ def get_push_schedule_stats(db: Session) -> dict:
         ).where(
             and_(
                 subscription_table.c.service_account_id == service.id,
-                subscription_table.c.is_enabled == False
+                (subscription_table.c.is_enabled == False) & (subscription_table.c.is_enabled.is_not(None))
             )
         )
 

@@ -5,8 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import '../../../core/services/auth_service.dart';
+import 'pages/subscriptions_management_page.dart';
 
-enum MessageFilter { received, sent, subscription, management }
+enum MessageFilter { received, sent, system, nonSystem }
 
 class MessagesPage extends StatefulWidget {
   const MessagesPage({super.key});
@@ -58,18 +59,18 @@ class _MessagesPageState extends State<MessagesPage> {
     final List<MessageResponse> messages = List.from(_messages)
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    // Apply filter selection
+    // Apply filter selection - only based on MessageType
     final filtered = messages.where((msg) {
       switch (_selectedFilter) {
         case MessageFilter.received:
-          return msg.receiverId == myId;
+          return msg.receiverId == myId &&
+              msg.messageType != MessageType.system;
         case MessageFilter.sent:
-          return msg.senderId == myId;
-        case MessageFilter.subscription:
-          // 服务号 / 订阅类消息在后端统一为 SYSTEM
-          return msg.messageType.toString().toUpperCase().contains('SYSTEM');
-        case MessageFilter.management:
-          return true;
+          return msg.senderId == myId && msg.messageType != MessageType.system;
+        case MessageFilter.system:
+          return msg.messageType == MessageType.system;
+        case MessageFilter.nonSystem:
+          return msg.messageType != MessageType.system;
       }
     }).toList();
 
@@ -84,20 +85,17 @@ class _MessagesPageState extends State<MessagesPage> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // Four horizontal full-width menu bars
+                // Filter menu bars - simplified to system/non-system
                 _buildMenuBar(
                   'messages_menu_received'.tr(),
                   MessageFilter.received,
                 ),
                 _buildMenuBar('messages_menu_sent'.tr(), MessageFilter.sent),
                 _buildMenuBar(
-                  'messages_menu_subscription'.tr(),
-                  MessageFilter.subscription,
+                  'messages_menu_system'.tr(),
+                  MessageFilter.system,
                 ),
-                _buildMenuBar(
-                  'messages_menu_management'.tr(),
-                  MessageFilter.management,
-                ),
+                _buildManagementMenuBar(),
                 const Divider(height: 1),
                 Expanded(
                   child: filtered.isEmpty
@@ -151,13 +149,9 @@ class _MessagesPageState extends State<MessagesPage> {
       color: selected ? Theme.of(context).primaryColor.withOpacity(0.08) : null,
       child: InkWell(
         onTap: () {
-          if (filter == MessageFilter.management) {
-            _showManagementSheet();
-          } else {
-            setState(() {
-              _selectedFilter = filter;
-            });
-          }
+          setState(() {
+            _selectedFilter = filter;
+          });
         },
         child: Container(
           width: double.infinity,
@@ -175,42 +169,27 @@ class _MessagesPageState extends State<MessagesPage> {
     );
   }
 
-  void _showManagementSheet() {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+  Widget _buildManagementMenuBar() {
+    return Material(
+      child: InkWell(
+        onTap: () {
+          context.push('/messages/subscriptions');
+        },
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              ListTile(
-                leading: const Icon(Icons.refresh),
-                title: Text('management_refresh'.tr()),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  _refresh();
-                },
+              Text(
+                'subscription_management'.tr(),
+                style: const TextStyle(fontSize: 16),
               ),
-              ListTile(
-                leading: const Icon(Icons.clear_all),
-                title: Text('management_clear_local'.tr()),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  setState(() => _messages.clear());
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete_forever),
-                title: Text('management_delete_all_local'.tr()),
-                onTap: () async {
-                  Navigator.of(ctx).pop();
-                  setState(() => _messages.clear());
-                },
-              ),
+              const Icon(Icons.arrow_forward_ios, size: 16),
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

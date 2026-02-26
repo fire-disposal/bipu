@@ -199,7 +199,7 @@ async def get_user_subscriptions(
                     service_name=str(service.name),
                     service_description=str(service.description) if service.description else None,
                     push_time=push_time_str,
-                    is_enabled=setting.is_enabled,
+                    is_enabled=setting.is_enabled if setting.is_enabled is not None else True,
                     subscribed_at=setting.created_at,
                     updated_at=setting.updated_at,
                     push_time_source=push_time_source
@@ -268,7 +268,7 @@ async def get_subscription_settings(
         service_name=str(service.name),
         service_description=str(service.description) if service.description else None,
         push_time=push_time_str,
-        is_enabled=result.is_enabled,
+        is_enabled=result.is_enabled if result.is_enabled is not None else True,
         subscribed_at=result.created_at,
         updated_at=result.updated_at,
         push_time_source=push_time_source
@@ -378,7 +378,7 @@ async def update_subscription_settings(
             service_name=str(service.name),
             service_description=str(service.description) if service.description else None,
             push_time=push_time_str,
-            is_enabled=updated_result.is_enabled if updated_result else True,
+            is_enabled=(updated_result.is_enabled if updated_result.is_enabled is not None else True) if updated_result else True,
             subscribed_at=updated_result.created_at if updated_result else datetime.now(),
             updated_at=updated_result.updated_at if updated_result else None,
             push_time_source=push_time_source

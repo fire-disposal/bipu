@@ -386,13 +386,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   children: [
                     _buildQuickActionCard(
                       context,
-                      '订阅管理',
-                      Icons.subscriptions,
-                      Colors.purple.shade600,
-                      () => context.push('/messages/subscriptions'),
-                    ),
-                    _buildQuickActionCard(
-                      context,
                       '好友',
                       Icons.people_alt_rounded,
                       Colors.blue.shade600,

@@ -17,7 +17,7 @@ import 'pages/messages/messages_page.dart';
 import 'pages/messages/pages/message_detail_page.dart';
 import 'pages/messages/pages/favorites_page.dart';
 import 'pages/messages/pages/message_conversation_page.dart';
-import 'pages/home/pages/quick_actions/subscriptions_page.dart';
+import 'pages/messages/pages/subscriptions_management_page.dart';
 import 'pages/home/pages/quick_actions/contacts_page.dart';
 import 'pages/home/pages/quick_actions/user_search_page.dart';
 import 'pages/profile/pages/user_detail_page.dart';
@@ -192,8 +192,8 @@ final GoRouter _router = GoRouter(
           ],
         ),
         GoRoute(
-          path: '/home/subscriptions',
-          builder: (context, state) => const SubscriptionManagementPage(),
+          path: '/messages/subscriptions',
+          builder: (context, state) => const SubscriptionsManagementPage(),
         ),
         GoRoute(
           path: '/home/voice_test',

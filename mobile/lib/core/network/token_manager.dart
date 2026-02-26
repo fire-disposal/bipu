@@ -15,11 +15,21 @@ class TokenManager {
     String? refreshToken,
   }) async {
     try {
-      await StorageManager.setSecureData(_accessTokenKey, accessToken);
-      if (refreshToken != null) {
-        await StorageManager.setSecureData(_refreshTokenKey, refreshToken);
+      if (accessToken.isEmpty) {
+        throw Exception('Access token cannot be empty');
       }
-      debugPrint('✅ Tokens saved successfully');
+
+      await StorageManager.setSecureData(_accessTokenKey, accessToken);
+      debugPrint('✅ Access token saved: ${accessToken.substring(0, 20)}...');
+
+      if (refreshToken != null && refreshToken.isNotEmpty) {
+        await StorageManager.setSecureData(_refreshTokenKey, refreshToken);
+        debugPrint(
+          '✅ Refresh token saved: ${refreshToken.substring(0, 20)}...',
+        );
+      }
+
+      debugPrint('✅ All tokens saved successfully');
     } catch (e) {
       debugPrint('❌ Error saving tokens: $e');
       rethrow;
@@ -29,7 +39,13 @@ class TokenManager {
   /// 获取访问 Token
   static Future<String?> getAccessToken() async {
     try {
-      return await StorageManager.getSecureData(_accessTokenKey);
+      final token = await StorageManager.getSecureData(_accessTokenKey);
+      if (token != null && token.isNotEmpty) {
+        debugPrint('✅ Access token retrieved: ${token.substring(0, 20)}...');
+      } else {
+        debugPrint('⚠️ Access token is null or empty');
+      }
+      return token;
     } catch (e) {
       debugPrint('❌ Error reading access token: $e');
       return null;
@@ -52,9 +68,9 @@ class TokenManager {
       await StorageManager.setSecureData(_accessTokenKey, '');
       await StorageManager.setSecureData(_refreshTokenKey, '');
       tokenExpired.value = true;
-      debugPrint('✅ Tokens cleared successfully');
+      debugPrint('✅ All tokens cleared successfully from storage');
     } catch (e) {
-      debugPrint('❌ Error clearing tokens: $e');
+      debugPrint('❌ Error clearing tokens from storage: $e');
       rethrow;
     }
   }

@@ -53,7 +53,7 @@ class SubscriptionSettingsBase(BaseModel):
         pattern=r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$',
         description="推送时间，格式: HH:MM"
     )
-    is_enabled: bool = Field(default=True, description="是否启用推送")
+    is_enabled: Optional[bool] = Field(default=True, description="是否启用推送")
 
 
 class SubscriptionSettingsUpdate(SubscriptionSettingsBase):

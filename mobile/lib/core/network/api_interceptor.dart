@@ -24,8 +24,6 @@ class ApiInterceptor extends Interceptor {
     '/api/count',
     '/api/posters/',
     '/api/posters/active',
-    '/api/service_accounts/',
-    '/api/service_accounts/{name}/avatar',
   ];
 
   @override
@@ -40,7 +38,14 @@ class ApiInterceptor extends Interceptor {
       final token = await _getToken();
       if (token != null && token.isNotEmpty) {
         options.headers['Authorization'] = 'Bearer $token';
+        _logger.i('✅ Token attached to request: ${token.substring(0, 20)}...');
+      } else {
+        _logger.w(
+          '⚠️ No token available for authenticated endpoint: ${options.uri.path}',
+        );
       }
+    } else {
+      _logger.i('⏭️ Skipping auth for public endpoint: ${options.uri.path}');
     }
 
     handler.next(options);
@@ -107,9 +112,15 @@ class ApiInterceptor extends Interceptor {
   /// 获取 Token
   Future<String?> _getToken() async {
     try {
-      return await StorageManager.getSecureData(_tokenKey);
+      final token = await StorageManager.getSecureData(_tokenKey);
+      if (token == null || token.isEmpty) {
+        _logger.w('⚠️ Token is null or empty in storage');
+        return null;
+      }
+      _logger.i('✅ Token retrieved from storage: ${token.substring(0, 20)}...');
+      return token;
     } catch (e) {
-      _logger.e('Error reading token', error: e);
+      _logger.e('❌ Error reading token from storage', error: e);
       return null;
     }
   }
@@ -119,8 +130,9 @@ class ApiInterceptor extends Interceptor {
     try {
       await StorageManager.setSecureData(_tokenKey, '');
       await StorageManager.setSecureData(_refreshTokenKey, '');
+      _logger.i('✅ Auth info cleared from storage');
     } catch (e) {
-      _logger.e('Error clearing auth', error: e);
+      _logger.e('❌ Error clearing auth from storage', error: e);
     }
   }
 }
