@@ -4,7 +4,6 @@ import 'package:bipupu/core/network/api_exception.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../core/services/auth_service.dart';
 
 class SystemMessagesPage extends StatefulWidget {
   const SystemMessagesPage({super.key});
@@ -14,7 +13,6 @@ class SystemMessagesPage extends StatefulWidget {
 }
 
 class _SystemMessagesPageState extends State<SystemMessagesPage> {
-  final AuthService _authService = AuthService();
   List<MessageResponse> _messages = [];
   bool _isLoading = false;
   late SharedPreferences _prefs;

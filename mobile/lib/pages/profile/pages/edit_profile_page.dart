@@ -13,7 +13,7 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/api/models/user_update.dart';
 import '../../../../core/api/models/gender.dart';
-import '../../../../core/services/toast_service.dart';
+import '../../../../core/services/snackbar_manager.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -116,16 +116,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
           // 更新当前用户信息
           _authService.fetchCurrentUser();
 
-          ToastService().showSuccess('avatar_updated_success'.tr());
+          SnackBarManager.showSuccess('avatar_updated_success'.tr());
         } catch (e) {
-          ToastService().showError(
+          SnackBarManager.showError(
             'avatar_upload_failed'.tr(args: [e.toString()]),
           );
         } finally {
           setState(() => _isUploadingAvatar = false);
         }
       } catch (e) {
-        ToastService().showError(
+        SnackBarManager.showError(
           'image_selection_failed'.tr(args: [e.toString()]),
         );
       }
@@ -147,7 +147,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     Future<void> _saveProfile() async {
       if (_nicknameController.text.trim().isEmpty) {
-        ToastService().showError('nickname_required'.tr());
+        SnackBarManager.showValidationError('nickname');
         return;
       }
 
@@ -181,17 +181,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
         // 更新当前用户信息
         _authService.fetchCurrentUser();
-        ToastService().showSuccess('profile_updated_success'.tr());
+        SnackBarManager.showUpdateSuccess();
 
         if (context.mounted) {
           context.pop();
         }
       } on ApiException catch (e) {
-        ToastService().showError('update_failed_message'.tr(args: [e.message]));
+        SnackBarManager.showOperationFailed('update', e.message);
       } catch (e) {
-        ToastService().showError(
-          'update_failed_message'.tr(args: [e.toString()]),
-        );
+        SnackBarManager.showOperationFailed('update', e.toString());
       } finally {
         setState(() => _isLoading = false);
       }

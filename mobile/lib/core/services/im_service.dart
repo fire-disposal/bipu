@@ -6,6 +6,7 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../network/network.dart';
 import 'bluetooth_device_service.dart';
 import 'auth_service.dart';
+import 'toast_service.dart';
 
 /// 统一的 IM 服务 - 处理消息和联系人的获取、轮询和转发
 class ImService extends ChangeNotifier {
@@ -36,6 +37,7 @@ class ImService extends ChangeNotifier {
   int _lastMessageId = 0; // 用于增量同步
   bool _isAppInForeground = true;
   bool _isOnline = true;
+  bool _showMessageNotifications = true; // 控制是否显示消息通知
 
   // Getters
   List<dynamic> get messages => List.unmodifiable(_messages);
@@ -229,21 +231,88 @@ class ImService extends ChangeNotifier {
     }
   }
 
-  /// 转发新消息到蓝牙设备
+  /// 转发新消息到蓝牙设备并显示通知
   void _forwardNewMessagesToBluetooth(List<dynamic> newMessages) {
-    if (_bluetoothService.connectionState.value !=
-        BluetoothConnectionState.connected) {
+    if (newMessages.isEmpty) {
       return;
     }
 
-    for (final message in newMessages) {
-      try {
-        final formattedMessage = _formatMessageForBluetooth(message);
-        _bluetoothService.sendTextMessage(formattedMessage);
-        log('IM Service: Forwarded message to Bluetooth device');
-      } catch (e) {
-        log('IM Service: Failed to forward message to Bluetooth: $e');
+    // 转发到蓝牙设备
+    if (_bluetoothService.connectionState.value ==
+        BluetoothConnectionState.connected) {
+      for (final message in newMessages) {
+        try {
+          final formattedMessage = _formatMessageForBluetooth(message);
+          _bluetoothService.sendTextMessage(formattedMessage);
+          log('IM Service: Forwarded message to Bluetooth device');
+        } catch (e) {
+          log('IM Service: Failed to forward message to Bluetooth: $e');
+        }
       }
+    }
+
+    // 显示消息通知
+    _displayMessageNotifications(newMessages);
+  }
+
+  /// 显示消息通知
+  void _displayMessageNotifications(List<dynamic> newMessages) {
+    if (!_showMessageNotifications || newMessages.isEmpty) {
+      return;
+    }
+
+    try {
+      final toastService = ToastService();
+
+      if (newMessages.length == 1) {
+        final message = newMessages.first;
+        final senderName = _getSenderName(message);
+        final content = _getMessagePreview(message);
+        final notificationText = '$senderName: $content';
+
+        toastService.showMessage(
+          notificationText,
+          duration: const Duration(seconds: 4),
+        );
+      } else {
+        // 多条消息时显示统计
+        toastService.showMessage(
+          '收到 ${newMessages.length} 条新消息',
+          duration: const Duration(seconds: 4),
+        );
+      }
+
+      log(
+        'IM Service: Showed message notification for ${newMessages.length} message(s)',
+      );
+    } catch (e) {
+      log('IM Service: Error showing message notification: $e');
+    }
+  }
+
+  /// 获取发送者名称
+  String _getSenderName(dynamic message) {
+    try {
+      final senderContact = _contacts.firstWhere(
+        (contact) => contact.bipupuId == message.senderBipupuId,
+        orElse: () => null,
+      );
+      return senderContact?.name ?? message.senderBipupuId ?? 'Unknown';
+    } catch (_) {
+      return message.senderBipupuId ?? 'Unknown';
+    }
+  }
+
+  /// 获取消息预览
+  String _getMessagePreview(dynamic message) {
+    try {
+      final content = message.content ?? '';
+      if (content.length > 30) {
+        return '${content.substring(0, 30)}...';
+      }
+      return content;
+    } catch (_) {
+      return 'New message';
     }
   }
 
@@ -357,6 +426,15 @@ class ImService extends ChangeNotifier {
       _applyPollingInterval();
     }
   }
+
+  /// 设置是否显示消息通知
+  void setShowMessageNotifications(bool show) {
+    _showMessageNotifications = show;
+    log('IM Service: Message notifications ${show ? 'enabled' : 'disabled'}');
+  }
+
+  /// 获取消息通知状态
+  bool get showMessageNotifications => _showMessageNotifications;
 
   @override
   void dispose() {

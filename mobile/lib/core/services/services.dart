@@ -10,3 +10,4 @@ export 'bluetooth_device_service.dart';
 // UI相关服务
 export 'theme_service.dart';
 export 'toast_service.dart';
+export 'snackbar_manager.dart';

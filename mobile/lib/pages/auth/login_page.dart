@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/services/auth_service.dart';
-import '../../core/services/toast_service.dart';
+import '../../core/services/snackbar_manager.dart';
 import '../../core/network/network.dart';
 import '../../core/network/api_exception.dart';
 
@@ -22,7 +22,7 @@ class _UserLoginPageState extends State<UserLoginPage> {
     final password = _passwordController.text;
 
     if (username.isEmpty || password.isEmpty) {
-      ToastService().showWarning('Please enter username and password');
+      SnackBarManager.showInputWarning('Please enter username and password');
       return;
     }
 
@@ -36,7 +36,7 @@ class _UserLoginPageState extends State<UserLoginPage> {
     } on AuthException catch (e) {
       // 认证异常：用户名或密码错误、Token 过期等
       if (mounted) {
-        ToastService().showError('Authentication failed: ${e.message}');
+        SnackBarManager.showError('Authentication failed: ${e.message}');
       }
     } on ValidationException catch (e) {
       // 验证异常：输入格式错误等
@@ -49,32 +49,32 @@ class _UserLoginPageState extends State<UserLoginPage> {
         errorMessage = e.message;
       }
       if (mounted) {
-        ToastService().showError(errorMessage);
+        SnackBarManager.showError(errorMessage);
       }
     } on NetworkException catch (e) {
       // 网络异常：连接超时、网络不可用等
       if (mounted) {
-        ToastService().showError('Network error: ${e.message}');
+        SnackBarManager.showNetworkError(e.message);
       }
     } on ServerException catch (e) {
       // 服务器异常：5xx 错误
       if (mounted) {
-        ToastService().showError('Server error: ${e.message}');
+        SnackBarManager.showServerError(e.message);
       }
     } on ParseException catch (e) {
       // 解析异常：响应格式错误
       if (mounted) {
-        ToastService().showError('Data parsing error: ${e.message}');
+        SnackBarManager.showError('Data parsing error: ${e.message}');
       }
     } on ApiException catch (e) {
       // 其他 API 异常
       if (mounted) {
-        ToastService().showError('API error: ${e.message}');
+        SnackBarManager.showError('API error: ${e.message}');
       }
     } catch (e) {
       // 未知异常
       if (mounted) {
-        ToastService().showError('Login failed: $e');
+        SnackBarManager.showError('Login failed: $e');
       }
     } finally {
       if (mounted) {
