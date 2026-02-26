@@ -18,6 +18,7 @@ from app.db.database import get_db
 from app.models.user import User
 from app.core.logging import get_logger
 from app.services.redis_service import RedisService
+from app.core.exceptions import AdminAuthException
 
 logger = get_logger(__name__)
 
@@ -189,29 +190,63 @@ async def get_current_user_web(
     request: Request,
     db: Session = Depends(get_db)
 ) -> Optional[User]:
-    """Web界面获取当前用户（基于会话）"""
-    # 从会话中获取用户ID
-    user_id = request.session.get("user_id")
-    if not user_id:
+    """Web界面获取当前用户（基于cookie）"""
+    try:
+        # 从cookie中获取访问令牌
+        access_token = request.cookies.get("access_token")
+        if not access_token:
+            logger.debug("No access_token found in cookies")
+            return None
+
+        # 提取Bearer令牌
+        if access_token.startswith("Bearer "):
+            token = access_token[7:]  # 移除 "Bearer " 前缀
+        else:
+            token = access_token
+
+        # 解码令牌
+        payload = decode_token(token)
+        if payload is None:
+            logger.debug("Invalid token")
+            return None
+
+        # 检查令牌类型
+        token_type = payload.get("type")
+        if token_type != "access":
+            logger.warning(f"Invalid token type: {token_type}")
+            return None
+
+        # 获取用户ID
+        user_id = payload.get("sub")
+        if user_id is None:
+            logger.warning("Token missing sub claim")
+            return None
+
+        # 查找用户
+        user = db.query(User).filter(
+            User.id == user_id,
+            User.is_active
+        ).first()
+
+        if user is None:
+            logger.warning(f"User not found: {user_id}")
+            return None
+
+        return user
+            
+    except Exception as e:
+        logger.warning(f"Error getting user from cookie: {e}")
         return None
-
-    user = db.query(User).filter(
-        User.id == user_id,
-        User.is_active
-    ).first()
-
-    return user
 
 
 async def get_current_superuser_web(
     current_user: User = Depends(get_current_user_web)
 ) -> User:
     """Web界面获取当前超级用户"""
-    if not current_user or not current_user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="权限不足"
-        )
+    if not current_user:
+        raise AdminAuthException("未登录")
+    if not current_user.is_superuser:
+        raise AdminAuthException("权限不足")
     return current_user
 
 

@@ -1,5 +1,4 @@
-from alembic.autogenerate.compare import log
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
@@ -7,7 +6,7 @@ import os
 from app.api.router import api_router
 from app.api.routes.root import router as root_router
 from app.core.config import settings
-from app.db.database import redis_client, MemoryCacheWrapper, init_db, init_redis
+from app.db.database import redis_client, MemoryCacheWrapper, init_redis
 from app.db.init_data import init_default_data
 from app.core.logging import get_logger
 import uvicorn
@@ -15,6 +14,7 @@ from app.core.openapi_util import export_openapi_json
 from app.core.exceptions import custom_exception_handler, http_exception_handler, general_exception_handler, BaseCustomException, AdminAuthException, admin_auth_exception_handler, request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
 
 from app.core.logging import setup_logging
 setup_logging()
@@ -110,7 +110,7 @@ def create_app() -> FastAPI:
     )
 
     # 配置Jinja2模板
-    templates = Jinja2Templates(directory="templates")
+    Jinja2Templates(directory="templates")
 
     # 挂载静态文件 (替代 Nginx 功能)
     # 确保上传目录存在
@@ -133,6 +133,7 @@ def create_app() -> FastAPI:
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)  # type: ignore
     app.add_exception_handler(RequestValidationError, request_validation_exception_handler)  # type: ignore
     app.add_exception_handler(Exception, general_exception_handler)
+    
     return app
 
 app = create_app()

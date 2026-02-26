@@ -4590,7 +4590,14 @@
             "description": "推送时间，格式: HH:MM"
           },
           "is_enabled": {
-            "type": "boolean",
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Is Enabled",
             "description": "是否启用推送",
             "default": true
@@ -4661,7 +4668,14 @@
             "description": "推送时间，格式: HH:MM"
           },
           "is_enabled": {
-            "type": "boolean",
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Is Enabled",
             "description": "是否启用推送",
             "default": true
