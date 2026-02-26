@@ -45,13 +45,13 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[Use
     """验证用户凭据"""
     user = db.query(User).filter(
         User.username == username,
-        User.is_active == True
+        User.is_active
     ).first()
 
     if not user:
         return None
 
-    if not verify_password(password, user.password_hash):
+    if not verify_password(password, str(user.hashed_password)):
         return None
 
     return user
@@ -154,7 +154,7 @@ async def get_current_user(
     # 查找用户
     user = db.query(User).filter(
         User.username == username,
-        User.is_active == True
+        User.is_active
     ).first()
 
     if user is None:
@@ -197,7 +197,7 @@ async def get_current_user_web(
 
     user = db.query(User).filter(
         User.id == user_id,
-        User.is_active == True
+        User.is_active
     ).first()
 
     return user

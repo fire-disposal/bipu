@@ -67,6 +67,7 @@ class ApiClient {
     const baseUrl = String.fromEnvironment(
       'API_BASE_URL',
       defaultValue: 'https://api.205716.xyz',
+      // defaultValue: 'http://localhost:8000',
     );
     return baseUrl;
   }

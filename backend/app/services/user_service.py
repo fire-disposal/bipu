@@ -31,7 +31,7 @@ class UserService:
             # 创建用户对象
             user = User(
                 username=user_data.username,
-                password_hash=get_password_hash(user_data.password),
+                hashed_password=get_password_hash(user_data.password),
                 nickname=user_data.nickname,
                 bipupu_id=bipupu_id,
                 is_active=True,
@@ -95,11 +95,11 @@ class UserService:
         """更新用户密码"""
         try:
             # 验证原密码
-            if not verify_password(password_data.old_password, user.password_hash):
+            if not verify_password(password_data.old_password, str(user.hashed_password)):
                 return False
 
             # 更新密码
-            user.password_hash = get_password_hash(password_data.new_password)
+            user.hashed_password = get_password_hash(password_data.new_password)
             user.updated_at = datetime.now(timezone.utc)
 
             db.add(user)
@@ -191,7 +191,7 @@ class UserService:
     def get_active_users(db: Session, skip: int = 0, limit: int = 100) -> list[User]:
         """获取活跃用户列表"""
         return db.query(User).filter(
-            User.is_active == True
+            User.is_active
         ).offset(skip).limit(limit).all()
 
     @staticmethod
@@ -199,7 +199,7 @@ class UserService:
         """搜索用户"""
         search_pattern = f"%{query}%"
         return db.query(User).filter(
-            User.is_active == True,
+            User.is_active,
             (User.username.ilike(search_pattern) | User.nickname.ilike(search_pattern))
         ).offset(skip).limit(limit).all()
 
@@ -211,4 +211,4 @@ class UserService:
     @staticmethod
     def count_active_users(db: Session) -> int:
         """统计活跃用户数"""
-        return db.query(User).filter(User.is_active == True).count()
+        return db.query(User).filter(User.is_active).count()

@@ -3470,6 +3470,11 @@
             "type": "string",
             "title": "Redoc Url",
             "description": "Redoc文档URL"
+          },
+          "admin_url": {
+            "type": "string",
+            "title": "Admin Url",
+            "description": "管理后台URL"
           }
         },
         "type": "object",
@@ -3478,7 +3483,8 @@
           "version",
           "project",
           "docs_url",
-          "redoc_url"
+          "redoc_url",
+          "admin_url"
         ],
         "title": "ApiInfoResponse",
         "description": "API信息响应"

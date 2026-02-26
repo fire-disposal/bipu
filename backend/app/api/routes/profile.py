@@ -150,11 +150,11 @@ async def update_password(
     """更新密码"""
     try:
         # 验证原密码
-        if not verify_password(password_data.old_password, current_user.password_hash):
+        if not verify_password(password_data.old_password, str(current_user.hashed_password)):
             raise ValidationException("原密码错误")
 
         # 更新密码
-        current_user.password_hash = get_password_hash(password_data.new_password)
+        current_user.hashed_password = get_password_hash(password_data.new_password)
 
         db.add(current_user)
         db.commit()

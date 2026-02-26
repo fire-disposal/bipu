@@ -5,6 +5,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../network/network.dart';
 import 'bluetooth_device_service.dart';
+import 'auth_service.dart';
 
 /// 统一的 IM 服务 - 处理消息和联系人的获取、轮询和转发
 class ImService extends ChangeNotifier {
@@ -80,6 +81,13 @@ class ImService extends ChangeNotifier {
   /// 启动轮询
   void _startPolling() {
     if (_messageTimer != null && _messageTimer!.isActive) {
+      return;
+    }
+
+    // 检查认证状态，未登录不启动轮询
+    final authService = AuthService();
+    if (authService.authState.value != AuthStatus.authenticated) {
+      log('IM Service: Not authenticated, skipping polling');
       return;
     }
 

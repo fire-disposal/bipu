@@ -65,11 +65,14 @@ async def register_user(
             raise ValidationException("用户名已存在")
 
         # 创建用户
+        import random
+        bipupu_id = str(random.randint(10000000, 99999999))
         user = User(
             username=user_data.username,
-            password_hash=get_password_hash(user_data.password),
+            hashed_password=get_password_hash(user_data.password),
             nickname=user_data.nickname,
-            is_active=True
+            is_active=True,
+            bipupu_id=bipupu_id
         )
 
         db.add(user)
@@ -115,7 +118,7 @@ async def login_user(
         # 查找用户
         user = db.query(User).filter(
             User.username == login_data.username,
-            User.is_active == True
+            User.is_active
         ).first()
 
         if not user:
@@ -123,7 +126,7 @@ async def login_user(
             raise ValidationException("用户名或密码错误")
 
         # 验证密码
-        if not verify_password(login_data.password, user.password_hash):
+        if not verify_password(login_data.password, str(user.hashed_password)):
             logger.warning(f"登录失败: 密码错误 username={login_data.username}")
             raise ValidationException("用户名或密码错误")
 
@@ -196,7 +199,7 @@ async def refresh_token(
         # 查找用户
         user = db.query(User).filter(
             User.username == username,
-            User.is_active == True
+            User.is_active
         ).first()
 
         if not user:
