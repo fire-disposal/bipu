@@ -10,8 +10,10 @@ class AudioResourceManager {
       AudioResourceManager._internal();
   factory AudioResourceManager() => _instance;
   AudioResourceManager._internal();
+
   final Queue<Completer<void>> _queue = Queue<Completer<void>>();
   bool _locked = false;
+  AudioSession? _session;
 
   /// Acquire the audio resource. Returns a token (function) to release it.
   Future<VoidCallback> acquire({Duration? timeout}) async {
@@ -31,7 +33,6 @@ class AudioResourceManager {
         await completer.future;
       }
     } catch (e) {
-      // timed out -> remove from queue if still present
       _queue.remove(completer);
       rethrow;
     }
@@ -49,14 +50,12 @@ class AudioResourceManager {
     return null;
   }
 
-  AudioSession? _session;
   Future<void> _ensureAudioSessionActive() async {
     try {
       _session ??= await AudioSession.instance;
       await _session!.configure(const AudioSessionConfiguration.speech());
       await _session!.setActive(true);
     } catch (e) {
-      // If audio_session isn't available or fails, we still proceed with _locked state.
       if (kDebugMode) print('AudioSession activation failed: $e');
     }
   }
@@ -68,11 +67,9 @@ class AudioResourceManager {
       released = true;
       if (_queue.isNotEmpty) {
         final next = _queue.removeFirst();
-        // grant to next waiter
         Future.microtask(() => next.complete());
       } else {
         _locked = false;
-        // deactivate audio session when nobody holds the lock
         try {
           _session?.setActive(false);
         } catch (_) {}

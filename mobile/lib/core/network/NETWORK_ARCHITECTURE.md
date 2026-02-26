@@ -108,7 +108,7 @@
 #### 1. 登录
 
 ```dart
-import 'package:flutter_user/core/network/network.dart';
+import 'package:bipupu/core/network/network.dart';
 
 try {
   final token = await ApiClient.instance.api.authentication.postApiPublicLogin(
@@ -306,7 +306,7 @@ sendTimeout: const Duration(seconds: 15),
 
 #### 旧代码
 ```dart
-import 'package:flutter_user/core/network/network_service.dart';
+import 'package:bipupu/core/network/network_service.dart';
 
 final networkService = NetworkService.instance;
 final user = await networkService.api.userProfile.getMe();
@@ -314,7 +314,7 @@ final user = await networkService.api.userProfile.getMe();
 
 #### 新代码
 ```dart
-import 'package:flutter_user/core/network/network.dart';
+import 'package:bipupu/core/network/network.dart';
 
 final user = await ApiClient.instance.api.userProfile.getApiProfileMe();
 ```
@@ -348,7 +348,7 @@ A: Token 存储在 `StorageManager` 的安全存储中，使用 `FlutterSecureSt
 - [`api_client.dart`](api_client.dart) - API 客户端
 - [`token_manager.dart`](token_manager.dart) - Token 管理器
 - [`network.dart`](network.dart) - 导出文件
-- `package:flutter_user/core/api/export.dart` - 生成的 API 导出
+- `package:bipupu/core/api/export.dart` - 生成的 API 导出
 
 ## 支持
 

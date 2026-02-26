@@ -8,37 +8,33 @@ import 'core/state/app_state_management.dart';
 import 'core/utils/interaction_optimizer.dart';
 import 'core/network/network.dart';
 import 'core/api/export.dart';
-import 'features/layout/main_layout.dart';
-import 'features/pager/pages/pager_page.dart';
-import 'features/profile/pages/profile_page.dart';
-import 'features/profile/pages/about_page.dart';
-import 'features/profile/pages/language_page.dart';
-import 'features/profile/pages/notifications_page.dart';
-import 'features/profile/pages/privacy_page.dart';
-import 'features/profile/pages/profile_edit_page.dart';
-import 'features/profile/pages/security_page.dart';
-import 'features/profile/pages/settings_page.dart';
-import 'features/chat/pages/conversation_list_page.dart';
-import 'features/chat/pages/message_detail_page.dart';
-import 'features/chat/pages/favorites_page.dart';
-import 'features/chat/pages/subscription_management_page.dart';
-import 'features/contacts/pages/contacts_page.dart';
-import 'features/contacts/pages/user_search_page.dart';
-import 'features/profile/pages/user_detail_page.dart';
+import 'pages/layout/main_layout.dart';
+import 'pages/pager/pager_page.dart';
+import 'pages/profile/profile_page.dart';
+import 'pages/profile/pages/security_page.dart';
+import 'pages/common/widgets/settings_dialog.dart';
+import 'pages/messages/messages_page.dart';
+import 'pages/messages/pages/message_detail_page.dart';
+import 'pages/messages/pages/favorites_page.dart';
+import 'pages/messages/pages/message_conversation_page.dart';
+import 'pages/home/pages/quick_actions/subscriptions_page.dart';
+import 'pages/home/pages/quick_actions/contacts_page.dart';
+import 'pages/home/pages/quick_actions/user_search_page.dart';
+import 'pages/profile/pages/user_detail_page.dart';
 import 'core/services/im_service.dart';
-import 'features/layout/discover_page.dart';
+import 'pages/layout/discover_page.dart';
 
 import 'core/services/auth_service.dart';
 import 'core/services/toast_service.dart';
 import 'core/storage/storage_manager.dart';
 import 'core/theme/app_theme_optimized.dart';
 import 'core/utils/logger.dart';
-import 'features/auth/login_page.dart';
-import 'features/auth/register_page.dart';
-import 'features/bluetooth/bluetooth_scan_page.dart';
-import 'features/bluetooth/device_detail_page.dart';
-import 'features/voice_test/voice_test_page.dart';
-import 'features/home/home_page.dart';
+import 'pages/auth/login_page.dart';
+import 'pages/auth/register_page.dart';
+import 'pages/profile/pages/bluetooth/bluetooth_scan_page.dart';
+import 'pages/profile/pages/bluetooth/device_detail_page.dart';
+import 'pages/home/pages/quick_actions/voice_test_page.dart';
+import 'pages/home/home_page.dart';
 
 Future<void> main() async {
   // Catch errors
@@ -177,13 +173,16 @@ final GoRouter _router = GoRouter(
               builder: (context, state) => const FavoritesPage(),
             ),
             GoRoute(
-              path: 'subscriptions',
-              builder: (context, state) => const SubscriptionManagementPage(),
+              path: 'conversation',
+              builder: (context, state) {
+                final peerId = state.extra as String? ?? '';
+                return MessageConversationPage(peerId: peerId);
+              },
             ),
           ],
         ),
         GoRoute(
-          path: '/contacts',
+          path: '/home/contacts',
           builder: (context, state) => const ContactsPage(),
           routes: [
             GoRoute(
@@ -193,10 +192,17 @@ final GoRouter _router = GoRouter(
           ],
         ),
         GoRoute(
+          path: '/home/subscriptions',
+          builder: (context, state) => const SubscriptionManagementPage(),
+        ),
+        GoRoute(
+          path: '/home/voice_test',
+          builder: (context, state) => const VoiceTestPage(),
+        ),
+        GoRoute(
           path: '/discover',
           builder: (context, state) => const DiscoverPage(),
         ),
-        // Subscription Page Deleted
         GoRoute(
           path: '/profile',
           builder: (context, state) => const ProfilePage(),
@@ -210,7 +216,13 @@ final GoRouter _router = GoRouter(
             ),
             GoRoute(
               path: 'edit',
-              builder: (context, state) => const ProfileEditPage(),
+              builder: (context, state) {
+                // 显示编辑资料对话框
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  SettingsDialog.showSettingsDialog(context);
+                });
+                return const SizedBox.shrink();
+              },
             ),
             GoRoute(
               path: 'security',
@@ -218,23 +230,53 @@ final GoRouter _router = GoRouter(
             ),
             GoRoute(
               path: 'privacy',
-              builder: (context, state) => const PrivacyPage(),
+              builder: (context, state) {
+                // 显示隐私设置对话框
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  SettingsDialog.showPrivacyDialog(context);
+                });
+                return const SizedBox.shrink();
+              },
             ),
             GoRoute(
               path: 'notifications',
-              builder: (context, state) => const NotificationsPage(),
+              builder: (context, state) {
+                // 显示通知设置对话框
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  SettingsDialog.showNotificationsDialog(context);
+                });
+                return const SizedBox.shrink();
+              },
             ),
             GoRoute(
               path: 'language',
-              builder: (context, state) => const LanguagePage(),
+              builder: (context, state) {
+                // 显示语言设置对话框
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  SettingsDialog.showLanguageDialog(context);
+                });
+                return const SizedBox.shrink();
+              },
             ),
             GoRoute(
               path: 'settings',
-              builder: (context, state) => const SettingsPage(),
+              builder: (context, state) {
+                // 显示设置菜单对话框
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  SettingsDialog.showSettingsDialog(context);
+                });
+                return const SizedBox.shrink();
+              },
             ),
             GoRoute(
               path: 'about',
-              builder: (context, state) => const AboutPage(),
+              builder: (context, state) {
+                // 显示关于对话框
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  SettingsDialog.showAboutDialog(context);
+                });
+                return const SizedBox.shrink();
+              },
             ),
           ],
         ),
@@ -254,15 +296,11 @@ final GoRouter _router = GoRouter(
     ),
     // Chat (conversation bubble) UI removed in favor of message-based flow.
     GoRoute(
-      path: '/voice_test',
-      builder: (context, state) => const VoiceTestPage(),
-    ),
-    GoRoute(
-      path: '/bluetooth/scan',
+      path: '/profile/bluetooth/scan',
       builder: (context, state) => const BluetoothScanPage(),
     ),
     GoRoute(
-      path: '/bluetooth/device',
+      path: '/profile/bluetooth/device',
       builder: (context, state) => const DeviceDetailPage(),
     ),
   ],

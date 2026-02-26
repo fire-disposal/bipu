@@ -51,7 +51,7 @@
 #### 1. 登录
 
 ```dart
-import 'package:flutter_user/core/network/network.dart';
+import 'package:bipupu/core/network/network.dart';
 
 try {
   final token = await ApiService.instance.login(
@@ -227,7 +227,7 @@ sendTimeout: const Duration(seconds: 15),
 
 #### 旧代码
 ```dart
-import 'package:flutter_user/core/network/network_service.dart';
+import 'package:bipupu/core/network/network_service.dart';
 
 final networkService = NetworkService.instance;
 final user = await networkService.api.userProfile.getMe();
@@ -235,7 +235,7 @@ final user = await networkService.api.userProfile.getMe();
 
 #### 新代码
 ```dart
-import 'package:flutter_user/core/network/network.dart';
+import 'package:bipupu/core/network/network.dart';
 
 final user = await ApiService.instance.getCurrentUser();
 ```
@@ -261,7 +261,7 @@ A: 启用 Debug 模式，日志会自动输出到控制台。
 - [`api_client.dart`](api_client.dart) - API 客户端
 - [`api_service.dart`](api_service.dart) - API 服务
 - [`network.dart`](network.dart) - 导出文件
-- `package:flutter_user/generated/api/export.dart` - 生成的 API 导出
+- `package:bipupu/generated/api/export.dart` - 生成的 API 导出
 
 ## 最佳实践
 

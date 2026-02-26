@@ -119,10 +119,12 @@ async def login_user(
         ).first()
 
         if not user:
+            logger.warning(f"登录失败: 用户不存在 username={login_data.username}")
             raise ValidationException("用户名或密码错误")
 
         # 验证密码
         if not verify_password(login_data.password, user.password_hash):
+            logger.warning(f"登录失败: 密码错误 username={login_data.username}")
             raise ValidationException("用户名或密码错误")
 
         # 更新最后活跃时间

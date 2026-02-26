@@ -30,7 +30,6 @@ class AuthService {
           await _fetchCurrentUser();
           _authStateController.value = AuthStatus.authenticated;
         } catch (e) {
-          debugPrint('Error fetching user: $e');
           // Token 无效，清除本地数据
           await TokenManager.clearTokens();
           _authStateController.value = AuthStatus.unauthenticated;
@@ -39,7 +38,6 @@ class AuthService {
         _authStateController.value = AuthStatus.unauthenticated;
       }
     } catch (e) {
-      debugPrint('AuthService initialization failed: $e');
       _authStateController.value = AuthStatus.unauthenticated;
     }
 
@@ -60,7 +58,7 @@ class AuthService {
   }) async {
     try {
       final apiClient = ApiClient.instance;
-      final user = await apiClient.execute(
+      await apiClient.execute(
         () => apiClient.api.authentication.postApiPublicRegister(
           body: UserCreate(
             username: username,
@@ -74,13 +72,10 @@ class AuthService {
       // 注册成功后自动登录
       await login(username, password);
     } on AuthException catch (e) {
-      debugPrint('Registration auth error: ${e.message}');
       rethrow;
     } on ValidationException catch (e) {
-      debugPrint('Registration validation error: ${e.message}');
       rethrow;
     } catch (e) {
-      debugPrint('Registration error: $e');
       rethrow;
     }
   }
@@ -106,15 +101,15 @@ class AuthService {
       await _fetchCurrentUser();
       _authStateController.value = AuthStatus.authenticated;
     } on AuthException catch (e) {
-      debugPrint('Login auth error: ${e.message}');
       await TokenManager.clearTokens();
       rethrow;
     } on ValidationException catch (e) {
-      debugPrint('Login validation error: ${e.message}');
+      await TokenManager.clearTokens();
+      rethrow;
+    } on ServerException catch (e) {
       await TokenManager.clearTokens();
       rethrow;
     } catch (e) {
-      debugPrint('Login error: $e');
       await TokenManager.clearTokens();
       rethrow;
     }
@@ -128,10 +123,8 @@ class AuthService {
         () => apiClient.api.authentication.postApiPublicLogout(),
         operationName: 'Logout',
       );
-    } on AuthException catch (e) {
-      debugPrint('Logout auth error: ${e.message}');
     } catch (e) {
-      debugPrint('Logout error: $e');
+      // 忽略登出错误，继续清除本地数据
     } finally {
       // 无论 API 调用是否成功，都清除本地数据
       await TokenManager.clearTokens();
@@ -162,12 +155,10 @@ class AuthService {
         refreshToken: token.refreshToken,
       );
     } on AuthException catch (e) {
-      debugPrint('Token refresh auth error: ${e.message}');
       // Token 刷新失败，登出用户
       await logout();
       rethrow;
     } catch (e) {
-      debugPrint('Token refresh error: $e');
       await logout();
       rethrow;
     }
@@ -182,11 +173,7 @@ class AuthService {
         operationName: 'VerifyToken',
       );
       return true;
-    } on AuthException catch (e) {
-      debugPrint('Token verification failed: ${e.message}');
-      return false;
     } catch (e) {
-      debugPrint('Token verification error: $e');
       return false;
     }
   }
@@ -208,13 +195,10 @@ class AuthService {
         operationName: 'UpdatePassword',
       );
     } on AuthException catch (e) {
-      debugPrint('Update password auth error: ${e.message}');
       rethrow;
     } on ValidationException catch (e) {
-      debugPrint('Update password validation error: ${e.message}');
       rethrow;
     } catch (e) {
-      debugPrint('Update password error: $e');
       rethrow;
     }
   }
@@ -230,10 +214,8 @@ class AuthService {
         operationName: 'UpdateTimezone',
       );
     } on AuthException catch (e) {
-      debugPrint('Update timezone auth error: ${e.message}');
       rethrow;
     } catch (e) {
-      debugPrint('Update timezone error: $e');
       rethrow;
     }
   }
@@ -247,10 +229,8 @@ class AuthService {
         operationName: 'GetCurrentUser',
       );
     } on AuthException catch (e) {
-      debugPrint('Fetch current user auth error: ${e.message}');
       rethrow;
     } catch (e) {
-      debugPrint('Fetch current user error: $e');
       rethrow;
     }
   }
@@ -258,7 +238,6 @@ class AuthService {
   /// Token 过期处理
   void _onTokenExpired() {
     if (TokenManager.tokenExpired.value) {
-      debugPrint('AuthService: Token expired, logging out');
       _currentUser = null;
       _authStateController.value = AuthStatus.unauthenticated;
     }

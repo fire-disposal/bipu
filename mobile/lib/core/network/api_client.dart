@@ -16,16 +16,7 @@ class ApiClient {
   late final Logger _logger;
 
   ApiClient._internal() {
-    _logger = Logger(
-      printer: PrettyPrinter(
-        methodCount: 2,
-        errorMethodCount: 8,
-        lineLength: 120,
-        colors: true,
-        printEmojis: true,
-        dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
-      ),
-    );
+    _logger = Logger(printer: SimplePrinter());
 
     _initializeDio();
     _restClient = RestClient(_dio);
@@ -122,15 +113,11 @@ class ApiClient {
     } on DioException catch (e) {
       final apiException = _convertException(e);
       _logger.e(
-        '❌ Error: ${operationName ?? 'API Request'}',
-        error: apiException.message,
+        '❌ Error: ${operationName ?? 'API Request'}: ${apiException.message}',
       );
       rethrow;
     } catch (e) {
-      _logger.e(
-        '❌ Unexpected Error: ${operationName ?? 'API Request'}',
-        error: e,
-      );
+      _logger.e('❌ Unexpected Error: ${operationName ?? 'API Request'}: $e');
       rethrow;
     }
   }

@@ -5,6 +5,7 @@ import 'package:sound_stream/sound_stream.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 import 'model_manager.dart';
+import 'voice_config.dart';
 import '../utils/logger.dart';
 
 class ASREngine {
@@ -28,8 +29,6 @@ class ASREngine {
       StreamController.broadcast();
   Stream<double> get onVolume => _volumeController.stream;
 
-  final List<int> _currentWaveData = [];
-
   bool get isInitialized => _isInitialized;
 
   Future<void> init() async {
@@ -41,20 +40,10 @@ class ASREngine {
     try {
       sherpa.initBindings();
 
-      final modelFiles = {
-        'asr/encoder-epoch-99-avg-1.int8.onnx':
-            'assets/models/asr/encoder-epoch-99-avg-1.int8.onnx',
-        'asr/decoder-epoch-99-avg-1.onnx':
-            'assets/models/asr/decoder-epoch-99-avg-1.onnx',
-        'asr/joiner-epoch-99-avg-1.int8.onnx':
-            'assets/models/asr/joiner-epoch-99-avg-1.int8.onnx',
-        'asr/tokens.txt': 'assets/models/asr/tokens.txt',
-      };
-
-      await ModelManager.instance.ensureInitialized(modelFiles);
+      await ModelManager.instance.ensureInitialized(VoiceConfig.asrModelFiles);
 
       final modelPaths = <String, String>{};
-      for (final key in modelFiles.keys) {
+      for (final key in VoiceConfig.asrModelFiles.keys) {
         final p = ModelManager.instance.getModelPath(key);
         if (p == null) throw Exception('ModelManager failed to prepare $key');
         modelPaths[key.split('/').last] = p;
@@ -63,18 +52,21 @@ class ASREngine {
       final config = sherpa.OnlineRecognizerConfig(
         model: sherpa.OnlineModelConfig(
           transducer: sherpa.OnlineTransducerModelConfig(
-            encoder: modelPaths['encoder-epoch-99-avg-1.int8.onnx']!,
-            decoder: modelPaths['decoder-epoch-99-avg-1.onnx']!,
-            joiner: modelPaths['joiner-epoch-99-avg-1.int8.onnx']!,
+            encoder: modelPaths[VoiceConfig.asrEncoder]!,
+            decoder: modelPaths[VoiceConfig.asrDecoder]!,
+            joiner: modelPaths[VoiceConfig.asrJoiner]!,
           ),
-          tokens: modelPaths['tokens.txt']!,
-          numThreads: 1,
-          provider: 'cpu',
-          debug: false,
-          modelType: 'zipformer',
+          tokens: modelPaths[VoiceConfig.asrTokens]!,
+          numThreads: VoiceConfig.asrNumThreads,
+          provider: VoiceConfig.asrProvider,
+          debug: VoiceConfig.asrDebug,
+          modelType: VoiceConfig.asrModelType,
         ),
-        feat: const sherpa.FeatureConfig(sampleRate: 16000, featureDim: 80),
-        enableEndpoint: true,
+        feat: sherpa.FeatureConfig(
+          sampleRate: VoiceConfig.asrSampleRate,
+          featureDim: VoiceConfig.asrFeatureDim,
+        ),
+        enableEndpoint: VoiceConfig.asrEnableEndpoint,
       );
 
       _recognizer = sherpa.OnlineRecognizer(config);
@@ -99,19 +91,14 @@ class ASREngine {
     if (!_isInitialized) await init();
 
     _stream = _recognizer!.createStream();
-    _currentWaveData.clear();
 
     await _recorder.initialize();
     _recorderSub = _recorder.audioStream.listen(
       (data) {
         try {
-          final bytes = data;
-          _onAudioBuffer(_convertBytesToFloat(bytes));
+          final floatSamples = _convertBytesToFloat(data);
           if (_stream != null) {
-            _stream!.acceptWaveform(
-              samples: _convertBytesToFloat(bytes),
-              sampleRate: 16000,
-            );
+            _stream!.acceptWaveform(samples: floatSamples, sampleRate: 16000);
             while (_recognizer!.isReady(_stream!)) {
               _recognizer!.decode(_stream!);
             }
@@ -121,15 +108,7 @@ class ASREngine {
               _resultController.add(text);
             }
           }
-          final floatSamples = _convertBytesToFloat(bytes);
-          double sum = 0.0;
-          for (var i = 0; i < floatSamples.length; i++) {
-            sum += floatSamples[i] * floatSamples[i];
-          }
-          final rms = floatSamples.isEmpty
-              ? 0.0
-              : math.sqrt(sum / floatSamples.length);
-          _volumeController.add(rms.clamp(0.0, 1.0));
+          _emitVolume(floatSamples);
         } catch (e) {
           logger.e('Error processing audio buffer: $e');
         }
@@ -158,16 +137,14 @@ class ASREngine {
     return '';
   }
 
-  void _onAudioBuffer(Float32List buffer) {
-    // 激进压缩：每 1600 个采样点（0.1s）取一个最大值
-    double max = 0;
-    for (var s in buffer) {
-      if (s.abs() > max) max = s.abs();
+  void _emitVolume(Float32List samples) {
+    double sum = 0.0;
+    for (var sample in samples) {
+      sum += sample * sample;
     }
-    _currentWaveData.add((max * 255).toInt());
+    final rms = samples.isEmpty ? 0.0 : math.sqrt(sum / samples.length);
+    _volumeController.add(rms.clamp(0.0, 1.0));
   }
-
-  List<int> getFinalWave() => _currentWaveData;
 
   Float32List _convertBytesToFloat(Uint8List bytes) {
     final sampleCount = bytes.length ~/ 2;
