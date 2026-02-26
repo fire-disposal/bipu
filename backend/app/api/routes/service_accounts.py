@@ -145,7 +145,7 @@ async def get_service_avatar(request: Request, name: str, db: Session = Depends(
     )
 
 
-@router.get("/subscriptions/", response_model=UserSubscriptionList, tags=["订阅"])
+@router.get("/subscriptions/", response_model=UserSubscriptionList)
 async def get_user_subscriptions(
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
@@ -208,7 +208,7 @@ async def get_user_subscriptions(
     return {"subscriptions": subscriptions, "total": len(subscriptions)}
 
 
-@router.get("/{name}/settings", response_model=SubscriptionSettingsResponse, tags=["订阅"])
+@router.get("/{name}/settings", response_model=SubscriptionSettingsResponse)
 async def get_subscription_settings(
     name: str,
     current_user: User = Depends(get_current_user),
@@ -273,7 +273,7 @@ async def get_subscription_settings(
     )
 
 
-@router.put("/{name}/settings", response_model=SubscriptionSettingsResponse, tags=["订阅"])
+@router.put("/{name}/settings", response_model=SubscriptionSettingsResponse)
 async def update_subscription_settings(
     name: str,
     settings_update: SubscriptionSettingsUpdate,
@@ -388,7 +388,7 @@ async def update_subscription_settings(
         raise HTTPException(status_code=500, detail="Failed to update subscription settings")
 
 
-@router.post("/{name}/subscribe", tags=["订阅"])
+@router.post("/{name}/subscribe")
 async def subscribe_service_account(
     name: str,
     settings_update: Optional[SubscriptionSettingsUpdate] = None,
@@ -494,7 +494,7 @@ async def subscribe_service_account(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.delete("/{name}/subscribe", tags=["订阅"])
+@router.delete("/{name}/subscribe")
 async def unsubscribe_service_account(
     name: str,
     current_user: User = Depends(get_current_user),

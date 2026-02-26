@@ -29,7 +29,7 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.post("/avatar", response_model=UserPrivate, tags=["用户资料"])
+@router.post("/avatar", response_model=UserPrivate)
 async def upload_avatar(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -93,7 +93,7 @@ async def upload_avatar(
         raise ValidationException(f"头像上传失败: {str(e)}")
 
 
-@router.get("/me", response_model=UserPrivate, tags=["用户资料"])
+@router.get("/me", response_model=UserPrivate)
 async def get_current_user_info(
     current_user: User = Depends(get_current_active_user)
 ):
@@ -101,7 +101,7 @@ async def get_current_user_info(
     return current_user
 
 
-@router.get("/", response_model=UserPrivate, tags=["用户资料"])
+@router.get("/", response_model=UserPrivate)
 async def get_profile(
     current_user: User = Depends(get_current_active_user)
 ):
@@ -109,7 +109,7 @@ async def get_profile(
     return current_user
 
 
-@router.put("/", response_model=UserPrivate, tags=["用户资料"])
+@router.put("/", response_model=UserPrivate)
 async def update_profile(
     update_data: UserUpdate,
     db: Session = Depends(get_db),
@@ -141,7 +141,7 @@ async def update_profile(
         raise HTTPException(status_code=500, detail="更新失败")
 
 
-@router.put("/password", response_model=SuccessResponse, tags=["用户资料"])
+@router.put("/password", response_model=SuccessResponse)
 async def update_password(
     password_data: UserPasswordUpdate,
     db: Session = Depends(get_db),
@@ -170,7 +170,7 @@ async def update_password(
         raise HTTPException(status_code=500, detail="密码更新失败")
 
 
-@router.put("/timezone", response_model=SuccessResponse, tags=["用户资料"])
+@router.put("/timezone", response_model=SuccessResponse)
 async def update_timezone(
     timezone_data: TimezoneUpdate,
     db: Session = Depends(get_db),
@@ -193,7 +193,7 @@ async def update_timezone(
         raise HTTPException(status_code=500, detail="时区更新失败")
 
 
-@router.get("/push-settings", response_model=dict, tags=["用户资料"])
+@router.get("/push-settings", response_model=dict)
 async def get_push_settings(
     current_user: User = Depends(get_current_active_user)
 ):
@@ -201,7 +201,7 @@ async def get_push_settings(
     return {"message": "推送设置功能暂未实现"}
 
 
-@router.get("/avatar/{bipupu_id}", tags=["用户资料"])
+@router.get("/avatar/{bipupu_id}")
 async def get_user_avatar(
     request: Request,
     bipupu_id: str,

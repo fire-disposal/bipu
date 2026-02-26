@@ -13,7 +13,7 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.get("/users/{bipupu_id}", response_model=UserPublic, tags=["用户"])
+@router.get("/users/{bipupu_id}", response_model=UserPublic)
 async def get_user_by_bipupu_id(
     bipupu_id: str,
     db: Session = Depends(get_db)
@@ -49,7 +49,7 @@ async def get_user_by_bipupu_id(
     return user
 
 
-@router.get("/users/{bipupu_id}/avatar", tags=["用户"])
+@router.get("/users/{bipupu_id}/avatar")
 async def get_user_avatar_by_bipupu_id(
     request: Request,
     bipupu_id: str,

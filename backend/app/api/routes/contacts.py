@@ -24,7 +24,7 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.get("/", response_model=ContactListResponse, tags=["联系人"])
+@router.get("/", response_model=ContactListResponse)
 async def get_contacts(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
@@ -88,7 +88,7 @@ async def get_contacts(
         raise HTTPException(status_code=500, detail="获取联系人列表失败")
 
 
-@router.post("/", response_model=ContactResponse, status_code=status.HTTP_201_CREATED, tags=["联系人"])
+@router.post("/", response_model=ContactResponse, status_code=status.HTTP_201_CREATED)
 async def create_contact(
     contact_data: ContactCreate,
     current_user: User = Depends(get_current_user),
@@ -157,7 +157,7 @@ async def create_contact(
         raise HTTPException(status_code=500, detail="添加联系人失败")
 
 
-@router.put("/{contact_id}", response_model=SuccessResponse, tags=["联系人"])
+@router.put("/{contact_id}", response_model=SuccessResponse)
 async def update_contact(
     contact_id: str,
     contact_data: ContactUpdate,
@@ -202,7 +202,7 @@ async def update_contact(
         raise HTTPException(status_code=500, detail="更新联系人备注失败")
 
 
-@router.delete("/{contact_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["联系人"])
+@router.delete("/{contact_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_contact(
     contact_id: str,
     current_user: User = Depends(get_current_user),

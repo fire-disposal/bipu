@@ -1,0 +1,137 @@
+{
+  "op_karen": {
+    "voicePackageId": "voice_karen",
+    "name": "Karen",
+    "description": "Professional and calm operator.",
+    "scripts": {
+      "greeting": "您好，这里是 Bipupu 接线台。很高兴为您服务。",
+      "askRecipientId": "请您先告诉我收信方的号码。",
+      "confirmRecipientId": "好的，我来跟您确认一下，对方的号码是“{recipientId}”对吗？您可以告诉我“确定”或者“修改”。",
+      "guideRecordMessage": "好的，谢谢。您现在可以在这里录下想要发送的信息，我会帮您传递到对方的pupu机上。如果您准备好了，直接对我说信息内容就可以了。",
+      "transcribing": "好的，请您稍等，我正在记录。",
+      "waiting_effect": "keyboard_sound",
+      "confirmMessage": "现在与您确认一下信息内容，您想传达的是“{message}”对吗？如果内容准确无误，您告诉我“发送”就可以了。如果内容有误，请您说“重录”，我们再来一次。",
+      "send": "好的，我会立刻为您传送信息。",
+      "farewell": "感谢您的使用，祝您今天一切顺利。",
+      "clarify": "抱歉，我没有听清楚，请您再说一遍。",
+      "timeout": "抱歉，请再说一遍？"
+    }
+  },
+  "op_luna": {
+    "voicePackageId": "voice_luna",
+    "name": "Luna",
+    "description": "Energetic and friendly assistant.",
+    "scripts": {
+      "greeting": "Hi Hi~ 今天过得好吗？恭喜你来到了本大王的Bipupu接线台！",
+      "askRecipientId": "让我们来看看是谁马上要因为收到信息而开心啦！啊对对对，就是让你说一下对方的号码。",
+      "confirmRecipientId": "“{recipientId}”，对吧？没问题呢你就说一下“确定！”错了的话你就说“修改”，然后再重新告诉我一次噜。",
+      "guideRecordMessage": "来吧来吧，我最爱帮人传小纸条了！想好要说什么没？我“嘟——”一声之后你就开始说话嗷。",
+      "transcribing": "OK OK，我…记…完…了!",
+      "waiting_effect": "keyboard_sound",
+      "confirmMessage": "给你念一下，我记下来的是“{message}”。没错吧？你说“发送”，我就咻——地一下给它发走了。要是还得改，那你就说“重录”。",
+      "send": "完～美！发走啦，现在后悔也来不及啦！",
+      "farewell": "祝你好运！Bye～bye～",
+      "clarify": "抱歉，我没有听清楚，请你再说一遍哦～",
+      "timeout": "抱歉，请再说一遍？"
+    }
+  },
+  "op_system": {
+    "voicePackageId": "voice_system",
+    "name": "System",
+    "description": "Minimalistic system interface.",
+    "scripts": {
+      "greeting": "连接建立。Bipupu接线系统待命。",
+      "askRecipientId": "收信方ID录入。",
+      "confirmRecipientId": "请确认收信方ID。“{recipientId}”。选择“确定”或“修改”。",
+      "guideRecordMessage": "如提供信息，我将执行传输。请在嘟声后说出信息。",
+      "transcribing": "转写完成",
+      "waiting_effect": "none",
+      "confirmMessage": "请确认内容是否准确。待传输信息为“{message}“。选择“发送”或“重录”。",
+      "send": "传输已执行。",
+      "farewell": "连接结束。",
+      "clarify": "抱歉，请再说一遍？",
+      "timeout": "抱歉，请再说一遍？"
+    }
+  }
+  ,
+  "op_001": {
+    "voicePackageId": "voice_001",
+    "ttsSid": 0,
+    "portrait": "images/operators/op_001.png",
+    "name": "专业接线员青年男",
+    "description": "专业、亲切的接线员（青年男声）。",
+    "scripts": {
+      "greeting": "您好，这里是 Bipupu 接线台，我是您的接线员。",
+      "askRecipientId": "请告诉我收信方的号码。",
+      "confirmRecipientId": "确认一下，收信方的号码是“{recipientId}”，请说“确定”或“修改”。",
+      "guideRecordMessage": "请在嘟声后说出您要发送的内容，完成后说“好了”或者等待我提示结束。",
+      "transcribing": "我在记录您的内容，请稍等。",
+      "waiting_effect": "keyboard_sound",
+      "confirmMessage": "我记录的是“{message}”，是否发送？说“发送”或“重录”。",
+      "send": "好的，消息已为您发送。",
+      "farewell": "感谢使用，祝您愉快。",
+      "clarify": "抱歉，我没有听清，请再说一遍。",
+      "timeout": "抱歉，能再重复一次吗？"
+    }
+  },
+  "op_002": {
+    "voicePackageId": "voice_002",
+    "ttsSid": 1,
+    "portrait": "images/operators/op_002.png",
+    "name": "冷漠高效机器人",
+    "description": "冷静、简练的机器人风格接线员。",
+    "scripts": {
+      "greeting": "系统连接。Bipupu 接线台。",
+      "askRecipientId": "请输入收信方编号。",
+      "confirmRecipientId": "编号“{recipientId}”确认，请回复“确定”或“修改”。",
+      "guideRecordMessage": "请在提示音后开始说话，我将转写并发送。",
+      "transcribing": "转写中，请稍候。",
+      "waiting_effect": "none",
+      "confirmMessage": "确认内容：“{message}”。是否发送？",
+      "send": "已执行发送操作。",
+      "farewell": "连接结束。",
+      "clarify": "未识别内容，请重试。",
+      "timeout": "未检测到语音，请再说一次。"
+    }
+  },
+  "op_003": {
+    "voicePackageId": "voice_003",
+    "ttsSid": 2,
+    "portrait": "images/operators/op_003.png",
+    "name": "活泼话痨少女",
+    "description": "活泼、热情、喜欢唠叨的接线员（少女声）。",
+    "scripts": {
+      "greeting": "嗨～欢迎来到 Bipupu 接线台，我好开心见到你～",
+      "askRecipientId": "快告诉我收信方的号码吧~",
+      "confirmRecipientId": "嗯……号码是“{recipientId}”？说“确定”或者“修改”啦～",
+      "guideRecordMessage": "好了好了，说你要传的话吧，我会认真记下来的，嘟～",
+      "transcribing": "嗯哼，我记下了，马上读给你听～",
+      "waiting_effect": "keyboard_sound",
+      "confirmMessage": "我写的是“{message}”，没错吧？说“发送”就好了哦～",
+      "send": "收到啦～已经帮你发出去了～",
+      "farewell": "拜拜～下次再来玩～",
+      "clarify": "诶？我没听清楚，可以再说一次吗～",
+      "timeout": "抱歉，我没听到你说话，能再来一次吗～"
+    }
+  },
+  "op_004": {
+    "voicePackageId": "voice_004",
+    "ttsSid": 3,
+    "portrait": "images/operators/op_004.png",
+    "name": "黑帮顾问中年男",
+    "description": "低沉沙哑、稳重威严的中年男声接线员。",
+    "scripts": {
+      "greeting": "喂，接线台已连接。说吧，你想传什么。",
+      "askRecipientId": "告诉我收信方的号码。",
+      "confirmRecipientId": "号码“{recipientId}”是吧？确认请说“确定”，否则说“修改”。",
+      "guideRecordMessage": "开始说吧，我会为你转写并传出去。",
+      "transcribing": "正在转写，请稍候。",
+      "waiting_effect": "none",
+      "confirmMessage": "内容为“{message}”。是否发送？",
+      "send": "消息已发出，处理完毕。",
+      "farewell": "结束通话。",
+      "clarify": "我没有听清楚，请重复。",
+      "timeout": "你没有说话，请再说一遍。"
+    }
+  }
+}

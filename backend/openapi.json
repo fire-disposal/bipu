@@ -8,9 +8,6 @@
   "paths": {
     "/health": {
       "get": {
-        "tags": [
-          "系统"
-        ],
         "summary": "Health Check",
         "description": "系统健康检查",
         "operationId": "health_check_health_get",
@@ -30,9 +27,6 @@
     },
     "/ready": {
       "get": {
-        "tags": [
-          "系统"
-        ],
         "summary": "Readiness Check",
         "description": "就绪检查端点",
         "operationId": "readiness_check_ready_get",
@@ -52,9 +46,6 @@
     },
     "/live": {
       "get": {
-        "tags": [
-          "系统"
-        ],
         "summary": "Liveness Check",
         "description": "存活检查端点",
         "operationId": "liveness_check_live_get",
@@ -74,9 +65,6 @@
     },
     "/": {
       "get": {
-        "tags": [
-          "系统"
-        ],
         "summary": "Root",
         "description": "根路径 - 返回API信息",
         "operationId": "root__get",
@@ -94,11 +82,98 @@
         }
       }
     },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Health Check",
+        "description": "系统健康检查",
+        "operationId": "health_check_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ready": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Readiness Check",
+        "description": "就绪检查端点",
+        "operationId": "readiness_check_api_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/live": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Liveness Check",
+        "description": "存活检查端点",
+        "operationId": "liveness_check_api_live_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Root",
+        "description": "根路径 - 返回API信息",
+        "operationId": "root_api__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiInfoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/public/register": {
       "post": {
         "tags": [
-          "认证",
-          "认证"
+          "authentication"
         ],
         "summary": "Register User",
         "description": "用户注册\n\n参数：\n- username: 用户名，用于登录\n- password: 密码，长度限制为6-128字符\n- nickname: 昵称，可选\n\n返回：\n- 成功：返回新创建的用户信息\n- 失败：400（验证失败）或500（数据库操作失败）\n\n特性：\n- 密码自动哈希存储\n- 自动生成唯一的 bipupu_id\n- 验证用户名和密码格式\n\n注意：\n- 用户名必须是唯一的\n- 密码在传输和存储中都会加密\n- 注册后用户自动处于活跃状态",
@@ -140,8 +215,7 @@
     "/api/public/login": {
       "post": {
         "tags": [
-          "认证",
-          "认证"
+          "authentication"
         ],
         "summary": "Login User",
         "description": "用户登录\n\n参数：\n- username: 用户名\n- password: 密码\n\n返回：\n- 成功：返回访问令牌和刷新令牌\n- 失败：401（认证失败）或400（验证失败）\n\n特性：\n- 支持JWT令牌\n- 令牌有过期时间\n- 支持刷新令牌机制\n\n注意：\n- 只允许活跃用户登录\n- 令牌存储在安全的地方",
@@ -183,8 +257,7 @@
     "/api/public/refresh": {
       "post": {
         "tags": [
-          "认证",
-          "认证"
+          "authentication"
         ],
         "summary": "Refresh Token",
         "description": "刷新访问令牌\n\n参数：\n- refresh_token: 刷新令牌\n\n返回：\n- 成功：返回新的访问令牌和刷新令牌\n- 失败：401（令牌无效或过期）或400（验证失败）\n\n特性：\n- 使用刷新令牌获取新的访问令牌\n- 刷新令牌可以轮换\n- 支持令牌黑名单\n\n注意：\n- 刷新令牌只能使用一次\n- 旧的刷新令牌会被加入黑名单",
@@ -226,8 +299,7 @@
     "/api/public/logout": {
       "post": {
         "tags": [
-          "认证",
-          "认证"
+          "authentication"
         ],
         "summary": "Logout User",
         "description": "用户登出\n\n参数：\n- Authorization: Bearer令牌\n\n返回：\n- 成功：返回登出成功消息\n- 失败：401（认证失败）\n\n特性：\n- 将访问令牌加入黑名单\n- 支持立即令牌失效\n\n注意：\n- 登出后令牌立即失效\n- 需要有效的访问令牌",
@@ -254,8 +326,7 @@
     "/api/public/verify-token": {
       "get": {
         "tags": [
-          "认证",
-          "认证"
+          "authentication"
         ],
         "summary": "Verify Token",
         "description": "验证令牌有效性\n\n参数：\n- Authorization: Bearer令牌\n\n返回：\n- 成功：返回验证成功消息\n- 失败：401（令牌无效）\n\n特性：\n- 快速令牌验证\n- 不执行数据库查询\n\n注意：\n- 只验证令牌格式和签名\n- 不检查用户状态",
@@ -282,8 +353,7 @@
     "/api/messages/": {
       "post": {
         "tags": [
-          "消息",
-          "消息"
+          "messages"
         ],
         "summary": "Send Message",
         "description": "发送消息\n\n支持：\n- 用户间传讯（receiver_id 为用户的 bipupu_id）\n- 向服务号发送消息（receiver_id 为服务号 ID）\n\n参数：\n- receiver_id: 接收者ID\n- content: 消息内容（1-5000字符）\n- message_type: 消息类型（NORMAL, VOICE, SYSTEM）\n- pattern: 扩展模式数据（可选）\n- waveform: 音频波形数据（可选，0-255整数数组，最多128个点）\n\n返回：\n- 成功：返回创建的消息\n- 失败：400（参数错误）或404（接收者不存在）",
@@ -328,8 +398,7 @@
       },
       "get": {
         "tags": [
-          "消息",
-          "消息"
+          "messages"
         ],
         "summary": "Get Messages",
         "description": "获取消息列表\n\n参数：\n- direction: sent（发件箱）或 received（收件箱）\n- page: 页码（从1开始）\n- page_size: 每页数量（1-100）\n\n返回：\n- 成功：返回消息列表\n- 失败：400（参数错误）",
@@ -403,8 +472,7 @@
     "/api/messages/poll": {
       "get": {
         "tags": [
-          "消息",
-          "消息"
+          "messages"
         ],
         "summary": "Poll Messages",
         "description": "长轮询接口：\n如果数据库有比 last_msg_id 更新的消息，立即返回。\n如果没有，则异步等待直到有新消息或超时。\n\n参数：\n- last_msg_id: 最后收到的消息ID\n- timeout: 轮询超时时间（1-120秒）\n\n返回：\n- 成功：返回新消息列表和是否有更多消息的标志\n- 失败：400（参数错误）",
@@ -470,8 +538,7 @@
     "/api/messages/favorites": {
       "get": {
         "tags": [
-          "消息",
-          "消息"
+          "messages"
         ],
         "summary": "Get Favorites",
         "description": "获取收藏消息列表\n\n参数：\n- page: 页码（从1开始）\n- page_size: 每页数量（1-100）\n\n返回：\n- 成功：返回收藏消息列表\n- 失败：400（参数错误）",
@@ -533,8 +600,7 @@
     "/api/messages/{message_id}/favorite": {
       "post": {
         "tags": [
-          "消息",
-          "消息"
+          "messages"
         ],
         "summary": "Add Favorite",
         "description": "收藏消息\n\n参数：\n- message_id: 消息ID\n- note: 备注（可选，最多200字符）\n\n返回：\n- 成功：返回创建的收藏\n- 失败：404（消息不存在）或409（已收藏）",
@@ -590,8 +656,7 @@
       },
       "delete": {
         "tags": [
-          "消息",
-          "消息"
+          "messages"
         ],
         "summary": "Remove Favorite",
         "description": "取消收藏消息\n\n参数：\n- message_id: 消息ID\n\n返回：\n- 成功：204 No Content\n- 失败：404（收藏不存在）",
@@ -632,8 +697,7 @@
     "/api/messages/{message_id}": {
       "delete": {
         "tags": [
-          "消息",
-          "消息"
+          "messages"
         ],
         "summary": "Delete Message",
         "description": "删除消息（仅限发送者）\n\n参数：\n- message_id: 消息ID\n\n返回：\n- 成功：204 No Content\n- 失败：404（消息不存在）或403（无权限）",
@@ -671,15 +735,14 @@
         }
       }
     },
-    "/api/": {
+    "/api/blocks/": {
       "post": {
         "tags": [
-          "黑名单",
-          "黑名单"
+          "blacklist"
         ],
         "summary": "Block User",
         "description": "拉黑用户\n\n参数：\n- bipupu_id: 要拉黑的用户ID\n\n返回：\n- 成功：返回成功消息\n- 失败：400（参数错误）或404（用户不存在）或409（已拉黑）",
-        "operationId": "block_user_api__post",
+        "operationId": "block_user_api_blocks__post",
         "security": [
           {
             "HTTPBearer": []
@@ -720,12 +783,11 @@
       },
       "get": {
         "tags": [
-          "黑名单",
-          "黑名单"
+          "blacklist"
         ],
         "summary": "Get Blocked Users",
         "description": "获取黑名单列表\n\n参数：\n- page: 页码（从1开始）\n- size: 每页数量（1-100）\n\n返回：\n- 成功：返回黑名单用户列表\n- 失败：400（参数错误）",
-        "operationId": "get_blocked_users_api__get",
+        "operationId": "get_blocked_users_api_blocks__get",
         "security": [
           {
             "HTTPBearer": []
@@ -784,15 +846,14 @@
         }
       }
     },
-    "/api/{bipupu_id}": {
+    "/api/blocks/{bipupu_id}": {
       "delete": {
         "tags": [
-          "黑名单",
-          "黑名单"
+          "blacklist"
         ],
         "summary": "Unblock User",
         "description": "取消拉黑用户\n\n参数：\n- bipupu_id: 要取消拉黑的用户ID\n\n返回：\n- 成功：返回成功消息\n- 失败：404（未拉黑该用户）",
-        "operationId": "unblock_user_api__bipupu_id__delete",
+        "operationId": "unblock_user_api_blocks__bipupu_id__delete",
         "security": [
           {
             "HTTPBearer": []
@@ -833,15 +894,14 @@
         }
       }
     },
-    "/api/check/{bipupu_id}": {
+    "/api/blocks/check/{bipupu_id}": {
       "get": {
         "tags": [
-          "黑名单",
-          "黑名单"
+          "blacklist"
         ],
         "summary": "Check Block Status",
         "description": "检查用户是否被拉黑\n\n参数：\n- bipupu_id: 要检查的用户ID\n\n返回：\n- 成功：返回检查结果\n- 失败：404（用户不存在）",
-        "operationId": "check_block_status_api_check__bipupu_id__get",
+        "operationId": "check_block_status_api_blocks_check__bipupu_id__get",
         "security": [
           {
             "HTTPBearer": []
@@ -866,7 +926,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true,
-                  "title": "Response Check Block Status Api Check  Bipupu Id  Get"
+                  "title": "Response Check Block Status Api Blocks Check  Bipupu Id  Get"
                 }
               }
             }
@@ -884,15 +944,14 @@
         }
       }
     },
-    "/api/search": {
+    "/api/blocks/search": {
       "get": {
         "tags": [
-          "黑名单",
-          "黑名单"
+          "blacklist"
         ],
         "summary": "Search Blocked Users",
         "description": "搜索黑名单用户\n\n参数：\n- query: 搜索关键词\n- limit: 返回结果数量（1-50）\n\n返回：\n- 成功：返回匹配的黑名单用户列表\n- 失败：400（参数错误）",
-        "operationId": "search_blocked_users_api_search_get",
+        "operationId": "search_blocked_users_api_blocks_search_get",
         "security": [
           {
             "HTTPBearer": []
@@ -935,7 +994,7 @@
                   "items": {
                     "$ref": "#/components/schemas/BlockedUserResponse"
                   },
-                  "title": "Response Search Blocked Users Api Search Get"
+                  "title": "Response Search Blocked Users Api Blocks Search Get"
                 }
               }
             }
@@ -953,15 +1012,14 @@
         }
       }
     },
-    "/api/count": {
+    "/api/blocks/count": {
       "get": {
         "tags": [
-          "黑名单",
-          "黑名单"
+          "blacklist"
         ],
         "summary": "Get Blocked Users Count",
         "description": "获取黑名单用户数量\n\n返回：\n- 成功：返回黑名单用户数量",
-        "operationId": "get_blocked_users_count_api_count_get",
+        "operationId": "get_blocked_users_count_api_blocks_count_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -984,8 +1042,7 @@
     "/api/profile/avatar": {
       "post": {
         "tags": [
-          "用户资料",
-          "用户资料"
+          "user-profile"
         ],
         "summary": "Upload Avatar",
         "description": "上传并更新用户头像",
@@ -1032,8 +1089,7 @@
     "/api/profile/me": {
       "get": {
         "tags": [
-          "用户资料",
-          "用户资料"
+          "user-profile"
         ],
         "summary": "Get Current User Info",
         "description": "获取当前用户信息",
@@ -1060,8 +1116,7 @@
     "/api/profile/": {
       "get": {
         "tags": [
-          "用户资料",
-          "用户资料"
+          "user-profile"
         ],
         "summary": "Get Profile",
         "description": "获取个人资料（兼容性接口）",
@@ -1086,8 +1141,7 @@
       },
       "put": {
         "tags": [
-          "用户资料",
-          "用户资料"
+          "user-profile"
         ],
         "summary": "Update Profile",
         "description": "更新个人资料",
@@ -1134,8 +1188,7 @@
     "/api/profile/password": {
       "put": {
         "tags": [
-          "用户资料",
-          "用户资料"
+          "user-profile"
         ],
         "summary": "Update Password",
         "description": "更新密码",
@@ -1182,8 +1235,7 @@
     "/api/profile/timezone": {
       "put": {
         "tags": [
-          "用户资料",
-          "用户资料"
+          "user-profile"
         ],
         "summary": "Update Timezone",
         "description": "更新时区",
@@ -1230,8 +1282,7 @@
     "/api/profile/push-settings": {
       "get": {
         "tags": [
-          "用户资料",
-          "用户资料"
+          "user-profile"
         ],
         "summary": "Get Push Settings",
         "description": "获取推送设置（兼容性接口）",
@@ -1260,8 +1311,7 @@
     "/api/profile/avatar/{bipupu_id}": {
       "get": {
         "tags": [
-          "用户资料",
-          "用户资料"
+          "user-profile"
         ],
         "summary": "Get User Avatar",
         "description": "获取用户头像（公开接口）",
@@ -1299,15 +1349,14 @@
         }
       }
     },
-    "/api/users/{bipupu_id}": {
+    "/api/users/users/{bipupu_id}": {
       "get": {
         "tags": [
-          "用户",
-          "用户"
+          "users"
         ],
         "summary": "Get User By Bipupu Id",
         "description": "通过 bipupu_id 获取用户公开信息\n\n参数：\n- bipupu_id: 用户的业务标识符\n\n返回：\n- 成功：返回用户公开信息\n- 失败：404（用户不存在）\n\n包含信息：\n- 用户名、昵称、bipupu_id\n- 头像URL\n- 用户状态（是否活跃）\n- 创建时间等基本信息\n\n注意：\n- 无需认证，公开接口\n- 不返回敏感信息（如邮箱、密码等）\n- 只返回 is_active=True 的用户信息",
-        "operationId": "get_user_by_bipupu_id_api_users__bipupu_id__get",
+        "operationId": "get_user_by_bipupu_id_api_users_users__bipupu_id__get",
         "parameters": [
           {
             "name": "bipupu_id",
@@ -1343,15 +1392,14 @@
         }
       }
     },
-    "/api/users/{bipupu_id}/avatar": {
+    "/api/users/users/{bipupu_id}/avatar": {
       "get": {
         "tags": [
-          "用户",
-          "用户"
+          "users"
         ],
         "summary": "Get User Avatar By Bipupu Id",
         "description": "通过 bipupu_id 获取用户头像\n\n参数：\n- bipupu_id: 用户的业务标识符\n\n特性：\n- 支持ETag缓存，减少带宽消耗\n- 支持HTTP 304 Not Modified响应\n- 头像数据缓存24小时\n- 自动处理头像版本更新\n\n返回：\n- 成功：返回JPEG格式的头像图片\n- 失败：404（用户或头像不存在）\n\n注意：\n- 无需认证，公开接口\n- 支持缓存控制头（Cache-Control, ETag）\n- 如果用户没有头像，返回404错误\n- 前端应处理无头像情况（如显示首字母）",
-        "operationId": "get_user_avatar_by_bipupu_id_api_users__bipupu_id__avatar_get",
+        "operationId": "get_user_avatar_by_bipupu_id_api_users_users__bipupu_id__avatar_get",
         "parameters": [
           {
             "name": "bipupu_id",
@@ -1388,8 +1436,7 @@
     "/api/contacts/": {
       "get": {
         "tags": [
-          "联系人",
-          "联系人"
+          "contacts"
         ],
         "summary": "Get Contacts",
         "description": "获取联系人列表\n\n参数：\n- page: 页码（从1开始）\n- page_size: 每页数量（1-100）\n\n返回：\n- 成功：返回联系人列表\n- 失败：400（参数错误）",
@@ -1453,8 +1500,7 @@
       },
       "post": {
         "tags": [
-          "联系人",
-          "联系人"
+          "contacts"
         ],
         "summary": "Create Contact",
         "description": "添加联系人\n\n参数：\n- contact_id: 联系人用户ID\n- alias: 备注名（可选，最多50字符）\n\n返回：\n- 成功：返回创建的联系人\n- 失败：400（参数错误）或404（用户不存在）或409（已是联系人）",
@@ -1501,8 +1547,7 @@
     "/api/contacts/{contact_id}": {
       "put": {
         "tags": [
-          "联系人",
-          "联系人"
+          "contacts"
         ],
         "summary": "Update Contact",
         "description": "更新联系人备注\n\n参数：\n- contact_id: 联系人用户ID\n- alias: 新的备注名（可选，最多50字符）\n\n返回：\n- 成功：返回更新成功消息\n- 失败：404（联系人不存在）",
@@ -1558,8 +1603,7 @@
       },
       "delete": {
         "tags": [
-          "联系人",
-          "联系人"
+          "contacts"
         ],
         "summary": "Delete Contact",
         "description": "删除联系人\n\n参数：\n- contact_id: 联系人用户ID\n\n返回：\n- 成功：204 No Content\n- 失败：404（联系人不存在）",
@@ -1600,7 +1644,7 @@
     "/api/service_accounts/": {
       "get": {
         "tags": [
-          "服务号",
+          "service-accounts",
           "服务号"
         ],
         "summary": "List Service Accounts",
@@ -1660,7 +1704,7 @@
     "/api/service_accounts/{name}": {
       "get": {
         "tags": [
-          "服务号",
+          "service-accounts",
           "服务号"
         ],
         "summary": "Get Service Account",
@@ -1709,7 +1753,7 @@
     "/api/service_accounts/{name}/avatar": {
       "get": {
         "tags": [
-          "服务号",
+          "service-accounts",
           "服务号"
         ],
         "summary": "Get Service Avatar",
@@ -1751,8 +1795,7 @@
     "/api/service_accounts/subscriptions/": {
       "get": {
         "tags": [
-          "服务号",
-          "订阅"
+          "service-accounts"
         ],
         "summary": "Get User Subscriptions",
         "description": "获取当前用户订阅的所有服务号列表\n\n返回：\n- subscriptions: 订阅的服务号列表，包含服务信息和订阅设置\n- total: 订阅的服务号总数\n\n包含信息：\n- 服务号基本信息（名称、描述、头像等）\n- 订阅设置（推送时间、启用状态、订阅时间等）\n\n注意：需要用户认证",
@@ -1779,8 +1822,7 @@
     "/api/service_accounts/{name}/settings": {
       "get": {
         "tags": [
-          "服务号",
-          "订阅"
+          "service-accounts"
         ],
         "summary": "Get Subscription Settings",
         "description": "获取指定服务号的订阅设置\n\n参数：\n- name: 服务号名称\n\n返回：\n- 成功：返回该服务号的订阅设置详情\n- 失败：404（服务号不存在或未订阅）\n\n包含信息：\n- 服务号基本信息\n- 推送时间设置及来源\n- 订阅启用状态\n- 订阅时间戳\n\n注意：需要用户认证且已订阅该服务号",
@@ -1826,8 +1868,7 @@
       },
       "put": {
         "tags": [
-          "服务号",
-          "订阅"
+          "service-accounts"
         ],
         "summary": "Update Subscription Settings",
         "description": "更新服务号订阅设置\n\n参数：\n- name: 服务号名称\n- push_time: 推送时间（HH:MM格式），可选\n- is_enabled: 是否启用推送，可选\n\n返回：\n- 成功：返回更新后的订阅设置\n- 失败：404（服务号不存在或未订阅）或400（时间格式无效）\n\n注意：\n- 需要用户认证且已订阅该服务号\n- 推送时间格式必须为 HH:MM（24小时制）\n- 如果只更新部分字段，其他字段保持不变\n- 设置 push_time=null 可清除个人化设置，恢复使用默认时间",
@@ -1885,8 +1926,7 @@
     "/api/service_accounts/{name}/subscribe": {
       "post": {
         "tags": [
-          "服务号",
-          "订阅"
+          "service-accounts"
         ],
         "summary": "Subscribe Service Account",
         "description": "订阅服务号\n\n参数：\n- name: 要订阅的服务号名称\n- push_time: 初始推送时间（HH:MM格式），可选\n- is_enabled: 初始启用状态，可选，默认为True\n\n返回：\n- 成功：返回订阅成功信息\n- 失败：404（服务号不存在）或400（已订阅）或500（数据库操作失败）\n\n注意：\n- 需要用户认证\n- 只能订阅 is_active=True 的服务号\n- 推送时间格式必须为 HH:MM（24小时制）\n- 如果未提供推送时间，使用服务号默认推送时间",
@@ -1947,8 +1987,7 @@
       },
       "delete": {
         "tags": [
-          "服务号",
-          "订阅"
+          "service-accounts"
         ],
         "summary": "Unsubscribe Service Account",
         "description": "取消订阅服务号\n\n参数：\n- name: 要取消订阅的服务号名称\n\n返回：\n- 成功：返回取消订阅成功信息\n- 失败：404（服务号不存在）或400（未订阅）或500（数据库操作失败）\n\n注意：\n- 需要用户认证\n- 取消订阅后，该服务号的推送将停止\n- 订阅记录将被删除，相关设置不会保留",
@@ -1994,8 +2033,7 @@
     "/api/posters/": {
       "get": {
         "tags": [
-          "海报",
-          "海报"
+          "posters"
         ],
         "summary": "Get Posters",
         "description": "获取海报列表（管理用）",
@@ -2054,8 +2092,7 @@
       },
       "post": {
         "tags": [
-          "海报",
-          "海报"
+          "posters"
         ],
         "summary": "Create Poster",
         "description": "创建海报",
@@ -2097,8 +2134,7 @@
     "/api/posters/active": {
       "get": {
         "tags": [
-          "海报",
-          "海报"
+          "posters"
         ],
         "summary": "Get Active Posters",
         "description": "获取激活的海报列表（前端轮播用）",
@@ -2150,8 +2186,7 @@
     "/api/posters/{poster_id}": {
       "get": {
         "tags": [
-          "海报",
-          "海报"
+          "posters"
         ],
         "summary": "Get Poster",
         "description": "获取单个海报详情",
@@ -2192,8 +2227,7 @@
       },
       "put": {
         "tags": [
-          "海报",
-          "海报"
+          "posters"
         ],
         "summary": "Update Poster",
         "description": "更新海报信息",
@@ -2244,8 +2278,7 @@
       },
       "delete": {
         "tags": [
-          "海报",
-          "海报"
+          "posters"
         ],
         "summary": "Delete Poster",
         "description": "删除海报",
@@ -2281,8 +2314,7 @@
     "/api/posters/{poster_id}/image": {
       "get": {
         "tags": [
-          "海报",
-          "海报"
+          "posters"
         ],
         "summary": "Get Poster Image",
         "description": "获取海报图片（二进制格式，直接用于img标签）\n\n参数：\n- poster_id: 海报ID\n\n返回：\n- 成功：返回JPEG格式的二进制图片数据\n- 失败：404（海报或图片不存在）\n\n特性：\n- 支持ETag缓存，减少带宽消耗\n- 支持HTTP 304 Not Modified响应\n- 图片数据缓存24小时\n- 自动处理图片版本更新\n\n注意：\n- 无需认证，公开接口\n- 支持缓存控制头（Cache-Control, ETag）\n- 统一返回JPEG格式二进制数据\n- 前端可直接用于img标签的src属性",
@@ -2321,8 +2353,7 @@
       },
       "put": {
         "tags": [
-          "海报",
-          "海报"
+          "posters"
         ],
         "summary": "Update Poster Image",
         "description": "更新海报图片",
@@ -2372,11 +2403,548 @@
         }
       }
     },
-    "/admin/login": {
+    "/api/admin/login": {
       "get": {
         "tags": [
-          "管理后台"
+          "admin"
         ],
+        "summary": "Admin Login Page",
+        "description": "管理后台登录页面",
+        "operationId": "admin_login_page_api_admin_login_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Admin Login",
+        "description": "处理管理后台登录",
+        "operationId": "admin_login_api_admin_login_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_admin_login_api_admin_login_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/logout": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Admin Logout",
+        "description": "处理管理后台登出",
+        "operationId": "admin_logout_api_admin_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Admin Dashboard",
+        "description": "管理后台仪表板",
+        "operationId": "admin_dashboard_api_admin__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Admin Users",
+        "description": "用户管理页面",
+        "operationId": "admin_users_api_admin_users_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Per Page"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{user_id}": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Admin User Detail",
+        "description": "用户详情页面",
+        "operationId": "admin_user_detail_api_admin_users__user_id__get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{user_id}/toggle": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Toggle User Status",
+        "description": "切换用户激活状态（启用/禁用）",
+        "operationId": "toggle_user_status_api_admin_users__user_id__toggle_post",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/messages": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Admin Messages",
+        "description": "消息管理页面",
+        "operationId": "admin_messages_api_admin_messages_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Per Page"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/posters": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Posters Page",
+        "description": "海报管理页面",
+        "operationId": "posters_page_api_admin_posters_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/service_accounts": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Admin Services",
+        "description": "服务号管理页面",
+        "operationId": "admin_services_api_admin_service_accounts_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Per Page"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/service_accounts/{service_id}/toggle": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Toggle Service Status",
+        "description": "切换服务号激活状态",
+        "operationId": "toggle_service_status_api_admin_service_accounts__service_id__toggle_post",
+        "parameters": [
+          {
+            "name": "service_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Service Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/service_accounts/{service_id}/avatar": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Upload Service Avatar",
+        "description": "上传服务号头像",
+        "operationId": "upload_service_avatar_api_admin_service_accounts__service_id__avatar_post",
+        "parameters": [
+          {
+            "name": "service_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Service Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_service_avatar_api_admin_service_accounts__service_id__avatar_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/service_accounts/{service_id}/push-time": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Update Service Push Time",
+        "description": "更新服务号推送时间和描述",
+        "operationId": "update_service_push_time_api_admin_service_accounts__service_id__push_time_post",
+        "parameters": [
+          {
+            "name": "service_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Service Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_update_service_push_time_api_admin_service_accounts__service_id__push_time_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/service_accounts/{service_name}/trigger-push": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Trigger Service Push",
+        "description": "立即触发服务号推送任务（无视时间和用户限制）",
+        "operationId": "trigger_service_push_api_admin_service_accounts__service_name__trigger_push_post",
+        "parameters": [
+          {
+            "name": "service_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Service Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/login": {
+      "get": {
         "summary": "Admin Login Page",
         "description": "管理后台登录页面",
         "operationId": "admin_login_page_admin_login_get",
@@ -2392,9 +2960,6 @@
         }
       },
       "post": {
-        "tags": [
-          "管理后台"
-        ],
         "summary": "Admin Login",
         "description": "处理管理后台登录",
         "operationId": "admin_login_admin_login_post",
@@ -2432,9 +2997,6 @@
     },
     "/admin/logout": {
       "post": {
-        "tags": [
-          "管理后台"
-        ],
         "summary": "Admin Logout",
         "description": "处理管理后台登出",
         "operationId": "admin_logout_admin_logout_post",
@@ -2452,9 +3014,6 @@
     },
     "/admin/": {
       "get": {
-        "tags": [
-          "管理后台"
-        ],
         "summary": "Admin Dashboard",
         "description": "管理后台仪表板",
         "operationId": "admin_dashboard_admin__get",
@@ -2472,9 +3031,6 @@
     },
     "/admin/users": {
       "get": {
-        "tags": [
-          "管理后台"
-        ],
         "summary": "Admin Users",
         "description": "用户管理页面",
         "operationId": "admin_users_admin_users_get",
@@ -2524,9 +3080,6 @@
     },
     "/admin/users/{user_id}": {
       "get": {
-        "tags": [
-          "管理后台"
-        ],
         "summary": "Admin User Detail",
         "description": "用户详情页面",
         "operationId": "admin_user_detail_admin_users__user_id__get",
@@ -2565,9 +3118,6 @@
     },
     "/admin/users/{user_id}/toggle": {
       "post": {
-        "tags": [
-          "管理后台"
-        ],
         "summary": "Toggle User Status",
         "description": "切换用户激活状态（启用/禁用）",
         "operationId": "toggle_user_status_admin_users__user_id__toggle_post",
@@ -2606,9 +3156,6 @@
     },
     "/admin/messages": {
       "get": {
-        "tags": [
-          "管理后台"
-        ],
         "summary": "Admin Messages",
         "description": "消息管理页面",
         "operationId": "admin_messages_admin_messages_get",
@@ -2658,9 +3205,6 @@
     },
     "/admin/posters": {
       "get": {
-        "tags": [
-          "管理后台"
-        ],
         "summary": "Posters Page",
         "description": "海报管理页面",
         "operationId": "posters_page_admin_posters_get",
@@ -2678,9 +3222,6 @@
     },
     "/admin/service_accounts": {
       "get": {
-        "tags": [
-          "管理后台"
-        ],
         "summary": "Admin Services",
         "description": "服务号管理页面",
         "operationId": "admin_services_admin_service_accounts_get",
@@ -2730,9 +3271,6 @@
     },
     "/admin/service_accounts/{service_id}/toggle": {
       "post": {
-        "tags": [
-          "管理后台"
-        ],
         "summary": "Toggle Service Status",
         "description": "切换服务号激活状态",
         "operationId": "toggle_service_status_admin_service_accounts__service_id__toggle_post",
@@ -2771,9 +3309,6 @@
     },
     "/admin/service_accounts/{service_id}/avatar": {
       "post": {
-        "tags": [
-          "管理后台"
-        ],
         "summary": "Upload Service Avatar",
         "description": "上传服务号头像",
         "operationId": "upload_service_avatar_admin_service_accounts__service_id__avatar_post",
@@ -2822,9 +3357,6 @@
     },
     "/admin/service_accounts/{service_id}/push-time": {
       "post": {
-        "tags": [
-          "管理后台"
-        ],
         "summary": "Update Service Push Time",
         "description": "更新服务号推送时间和描述",
         "operationId": "update_service_push_time_admin_service_accounts__service_id__push_time_post",
@@ -2873,9 +3405,6 @@
     },
     "/admin/service_accounts/{service_name}/trigger-push": {
       "post": {
-        "tags": [
-          "管理后台"
-        ],
         "summary": "Trigger Service Push",
         "description": "立即触发服务号推送任务（无视时间和用户限制）",
         "operationId": "trigger_service_push_admin_service_accounts__service_name__trigger_push_post",
@@ -2890,365 +3419,6 @@
             }
           }
         ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/admin/test_contacts": {
-      "get": {
-        "tags": [
-          "管理后台"
-        ],
-        "summary": "Admin Test Contacts",
-        "description": "API测试页面 (联系人与黑名单)",
-        "operationId": "admin_test_contacts_admin_test_contacts_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/admin/test_contacts/add": {
-      "post": {
-        "tags": [
-          "管理后台"
-        ],
-        "summary": "Admin Add Contact",
-        "description": "处理添加联系人测试",
-        "operationId": "admin_add_contact_admin_test_contacts_add_post",
-        "requestBody": {
-          "content": {
-            "application/x-www-form-urlencoded": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_admin_add_contact_admin_test_contacts_add_post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/admin/test_contacts/remove": {
-      "post": {
-        "tags": [
-          "管理后台"
-        ],
-        "summary": "Admin Remove Contact",
-        "description": "处理删除联系人测试",
-        "operationId": "admin_remove_contact_admin_test_contacts_remove_post",
-        "requestBody": {
-          "content": {
-            "application/x-www-form-urlencoded": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_admin_remove_contact_admin_test_contacts_remove_post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/admin/test_contacts/block": {
-      "post": {
-        "tags": [
-          "管理后台"
-        ],
-        "summary": "Admin Block User",
-        "description": "处理添加黑名单测试",
-        "operationId": "admin_block_user_admin_test_contacts_block_post",
-        "requestBody": {
-          "content": {
-            "application/x-www-form-urlencoded": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_admin_block_user_admin_test_contacts_block_post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/admin/test_contacts/unblock": {
-      "post": {
-        "tags": [
-          "管理后台"
-        ],
-        "summary": "Admin Unblock User",
-        "description": "处理移除黑名单测试",
-        "operationId": "admin_unblock_user_admin_test_contacts_unblock_post",
-        "requestBody": {
-          "content": {
-            "application/x-www-form-urlencoded": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_admin_unblock_user_admin_test_contacts_unblock_post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/admin/test_profile": {
-      "get": {
-        "tags": [
-          "管理后台"
-        ],
-        "summary": "Admin Test Profile",
-        "description": "API测试页面 (用户资料设置)",
-        "operationId": "admin_test_profile_admin_test_profile_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/admin/test_profile/avatar": {
-      "post": {
-        "tags": [
-          "管理后台"
-        ],
-        "summary": "Admin Update Avatar",
-        "description": "处理更新头像测试",
-        "operationId": "admin_update_avatar_admin_test_profile_avatar_post",
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_admin_update_avatar_admin_test_profile_avatar_post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/admin/test_profile/avatar/delete": {
-      "post": {
-        "tags": [
-          "管理后台"
-        ],
-        "summary": "Admin Delete Avatar",
-        "description": "处理删除头像测试",
-        "operationId": "admin_delete_avatar_admin_test_profile_avatar_delete_post",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/admin/test_profile/update": {
-      "post": {
-        "tags": [
-          "管理后台"
-        ],
-        "summary": "Admin Update Profile",
-        "description": "处理更新用户资料测试",
-        "operationId": "admin_update_profile_admin_test_profile_update_post",
-        "requestBody": {
-          "content": {
-            "application/x-www-form-urlencoded": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_admin_update_profile_admin_test_profile_update_post"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/admin/test_chat": {
-      "get": {
-        "tags": [
-          "管理后台"
-        ],
-        "summary": "Admin Test Chat",
-        "description": "API测试页面 (消息)",
-        "operationId": "admin_test_chat_admin_test_chat_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/admin/test_chat/send": {
-      "post": {
-        "tags": [
-          "管理后台"
-        ],
-        "summary": "Admin Send Message",
-        "description": "处理发送消息测试",
-        "operationId": "admin_send_message_admin_test_chat_send_post",
-        "requestBody": {
-          "content": {
-            "application/x-www-form-urlencoded": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_admin_send_message_admin_test_chat_send_post"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -3375,43 +3545,6 @@
         "title": "BlockedUserResponse",
         "description": "被拉黑用户信息"
       },
-      "Body_admin_add_contact_admin_test_contacts_add_post": {
-        "properties": {
-          "contact_bipupu_id": {
-            "type": "string",
-            "title": "Contact Bipupu Id"
-          },
-          "alias": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Alias"
-          }
-        },
-        "type": "object",
-        "required": [
-          "contact_bipupu_id"
-        ],
-        "title": "Body_admin_add_contact_admin_test_contacts_add_post"
-      },
-      "Body_admin_block_user_admin_test_contacts_block_post": {
-        "properties": {
-          "blocked_bipupu_id": {
-            "type": "string",
-            "title": "Blocked Bipupu Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "blocked_bipupu_id"
-        ],
-        "title": "Body_admin_block_user_admin_test_contacts_block_post"
-      },
       "Body_admin_login_admin_login_post": {
         "properties": {
           "username": {
@@ -3430,129 +3563,23 @@
         ],
         "title": "Body_admin_login_admin_login_post"
       },
-      "Body_admin_remove_contact_admin_test_contacts_remove_post": {
+      "Body_admin_login_api_admin_login_post": {
         "properties": {
-          "contact_id": {
-            "type": "integer",
-            "title": "Contact Id"
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
           }
         },
         "type": "object",
         "required": [
-          "contact_id"
+          "username",
+          "password"
         ],
-        "title": "Body_admin_remove_contact_admin_test_contacts_remove_post"
-      },
-      "Body_admin_send_message_admin_test_chat_send_post": {
-        "properties": {
-          "receiver_id": {
-            "type": "string",
-            "title": "Receiver Id"
-          },
-          "content": {
-            "type": "string",
-            "title": "Content"
-          },
-          "message_type": {
-            "type": "string",
-            "title": "Message Type"
-          }
-        },
-        "type": "object",
-        "required": [
-          "receiver_id",
-          "content",
-          "message_type"
-        ],
-        "title": "Body_admin_send_message_admin_test_chat_send_post"
-      },
-      "Body_admin_unblock_user_admin_test_contacts_unblock_post": {
-        "properties": {
-          "blocked_id": {
-            "type": "integer",
-            "title": "Blocked Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "blocked_id"
-        ],
-        "title": "Body_admin_unblock_user_admin_test_contacts_unblock_post"
-      },
-      "Body_admin_update_avatar_admin_test_profile_avatar_post": {
-        "properties": {
-          "avatar_file": {
-            "type": "string",
-            "format": "binary",
-            "title": "Avatar File"
-          }
-        },
-        "type": "object",
-        "required": [
-          "avatar_file"
-        ],
-        "title": "Body_admin_update_avatar_admin_test_profile_avatar_post"
-      },
-      "Body_admin_update_profile_admin_test_profile_update_post": {
-        "properties": {
-          "nickname": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Nickname"
-          },
-          "bio": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Bio"
-          },
-          "gender": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Gender"
-          },
-          "birth_date": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Birth Date"
-          },
-          "location": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Location"
-          }
-        },
-        "type": "object",
-        "title": "Body_admin_update_profile_admin_test_profile_update_post"
+        "title": "Body_admin_login_api_admin_login_post"
       },
       "Body_create_poster_api_posters__post": {
         "properties": {
@@ -3632,6 +3659,23 @@
         ],
         "title": "Body_update_service_push_time_admin_service_accounts__service_id__push_time_post"
       },
+      "Body_update_service_push_time_api_admin_service_accounts__service_id__push_time_post": {
+        "properties": {
+          "push_time": {
+            "type": "string",
+            "title": "Push Time"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "push_time"
+        ],
+        "title": "Body_update_service_push_time_api_admin_service_accounts__service_id__push_time_post"
+      },
       "Body_upload_avatar_api_profile_avatar_post": {
         "properties": {
           "file": {
@@ -3659,6 +3703,20 @@
           "file"
         ],
         "title": "Body_upload_service_avatar_admin_service_accounts__service_id__avatar_post"
+      },
+      "Body_upload_service_avatar_api_admin_service_accounts__service_id__avatar_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_service_avatar_api_admin_service_accounts__service_id__avatar_post"
       },
       "ContactCreate": {
         "properties": {
@@ -5251,44 +5309,52 @@
   },
   "tags": [
     {
-      "name": "系统",
-      "description": "系统健康检查、服务信息与API根路径"
+      "name": "system",
+      "description": "System health checks, service information and API root path"
     },
     {
-      "name": "认证",
-      "description": "用户注册、登录、令牌刷新、登出等认证相关接口"
+      "name": "authentication",
+      "description": "User registration, login, token refresh, logout and other authentication related interfaces"
     },
     {
-      "name": "消息",
-      "description": "即时消息发送、接收、收藏、删除等消息管理功能"
+      "name": "messages",
+      "description": "Instant message sending, receiving, favoriting, deletion and other message management functions"
     },
     {
-      "name": "联系人",
-      "description": "联系人添加、查询、更新、删除等联系人管理功能"
+      "name": "contacts",
+      "description": "Contact adding, querying, updating, deletion and other contact management functions"
     },
     {
-      "name": "黑名单",
-      "description": "用户拉黑、解除拉黑、黑名单查询功能"
+      "name": "blacklist",
+      "description": "User blocking, unblocking, blacklist query functions"
     },
     {
-      "name": "用户资料",
-      "description": "用户个人信息、头像、密码、推送设置等资料管理"
+      "name": "user-profile",
+      "description": "User personal information, avatar, password, push settings and other profile management"
     },
     {
-      "name": "用户",
-      "description": "用户公开信息查询，包括用户资料和头像获取"
+      "name": "users",
+      "description": "User public information query, including user profiles and avatar retrieval"
     },
     {
-      "name": "服务号",
-      "description": "服务号列表、详情、订阅管理、推送设置等功能"
+      "name": "service-accounts",
+      "description": "Service account list, details, subscription management, push settings and other functions"
     },
     {
-      "name": "订阅",
-      "description": "用户订阅的服务号列表及订阅设置管理"
+      "name": "subscriptions",
+      "description": "User subscribed service account list and subscription settings management"
     },
     {
-      "name": "管理后台",
-      "description": "管理员后台管理界面，包括用户、消息、服务号管理"
+      "name": "admin",
+      "description": "Administrator backend management interface, including user, message, service account management"
+    },
+    {
+      "name": "posters",
+      "description": "Poster management, including creation, update, deletion and image handling"
+    },
+    {
+      "name": "websocket",
+      "description": "WebSocket connections for real-time messaging and notifications"
     }
   ]
 }
