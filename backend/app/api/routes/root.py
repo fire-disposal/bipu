@@ -6,22 +6,22 @@ from app.schemas.common import HealthResponse, ReadyResponse, LiveResponse, ApiI
 
 router = APIRouter()
 
-@router.get("/health", response_model=HealthResponse, tags=["系统"])
+@router.get("/health", response_model=HealthResponse)
 async def health_check():
     """系统健康检查"""
     return {"status": "healthy", "service": settings.PROJECT_NAME}
 
-@router.get("/ready", response_model=ReadyResponse, tags=["系统"])
+@router.get("/ready", response_model=ReadyResponse)
 async def readiness_check():
     """就绪检查端点"""
     return {"status": "ready"}
 
-@router.get("/live", response_model=LiveResponse, tags=["系统"])
+@router.get("/live", response_model=LiveResponse)
 async def liveness_check():
     """存活检查端点"""
     return {"status": "alive"}
 
-@router.get("/", response_model=ApiInfoResponse, tags=["系统"])
+@router.get("/", response_model=ApiInfoResponse)
 async def root():
     """根路径 - 返回API信息"""
     return {

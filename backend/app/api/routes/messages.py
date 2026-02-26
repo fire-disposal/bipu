@@ -31,7 +31,7 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.post("/", response_model=MessageResponse, status_code=status.HTTP_201_CREATED, tags=["消息"])
+@router.post("/", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
 async def send_message(
     message_data: MessageCreate,
     current_user: User = Depends(get_current_user),
@@ -101,7 +101,7 @@ async def send_message(
         raise HTTPException(status_code=500, detail="消息发送失败")
 
 
-@router.get("/", response_model=MessageListResponse, tags=["消息"])
+@router.get("/", response_model=MessageListResponse)
 async def get_messages(
     direction: str = Query("received", description="sent 或 received"),
     page: int = Query(1, ge=1),
@@ -153,7 +153,7 @@ async def get_messages(
         raise HTTPException(status_code=500, detail="获取消息列表失败")
 
 
-@router.get("/poll", response_model=MessagePollResponse, tags=["消息"])
+@router.get("/poll", response_model=MessagePollResponse)
 async def poll_messages(
     last_msg_id: int = Query(0, ge=0, description="最后收到的消息ID"),
     timeout: int = Query(30, ge=1, le=120, description="轮询超时时间（秒）"),
@@ -198,7 +198,7 @@ async def poll_messages(
         raise HTTPException(status_code=500, detail="轮询消息失败")
 
 
-@router.get("/favorites", response_model=FavoriteListResponse, tags=["消息"])
+@router.get("/favorites", response_model=FavoriteListResponse)
 async def get_favorites(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -259,7 +259,7 @@ async def get_favorites(
         raise HTTPException(status_code=500, detail="获取收藏列表失败")
 
 
-@router.post("/{message_id}/favorite", response_model=FavoriteResponse, tags=["消息"])
+@router.post("/{message_id}/favorite", response_model=FavoriteResponse)
 async def add_favorite(
     message_id: int,
     favorite_data: FavoriteCreate,
@@ -323,7 +323,7 @@ async def add_favorite(
         raise HTTPException(status_code=500, detail="收藏消息失败")
 
 
-@router.delete("/{message_id}/favorite", status_code=status.HTTP_204_NO_CONTENT, tags=["消息"])
+@router.delete("/{message_id}/favorite", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_favorite(
     message_id: int,
     current_user: User = Depends(get_current_user),
@@ -364,7 +364,7 @@ async def remove_favorite(
         raise HTTPException(status_code=500, detail="取消收藏失败")
 
 
-@router.delete("/{message_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["消息"])
+@router.delete("/{message_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_message(
     message_id: int,
     current_user: User = Depends(get_current_user),

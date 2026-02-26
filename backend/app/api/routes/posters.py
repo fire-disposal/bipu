@@ -16,7 +16,7 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.get("/", response_model=PosterListResponse, tags=["海报"])
+@router.get("/", response_model=PosterListResponse)
 async def get_posters(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
@@ -35,7 +35,7 @@ async def get_posters(
     }
 
 
-@router.get("/active", response_model=List[PosterResponse], tags=["海报"])
+@router.get("/active", response_model=List[PosterResponse])
 async def get_active_posters(
     limit: int = Query(10, ge=1, le=20, description="返回数量"),
     db: Session = Depends(get_db)
@@ -45,7 +45,7 @@ async def get_active_posters(
     return posters
 
 
-@router.get("/{poster_id}", response_model=PosterResponse, tags=["海报"])
+@router.get("/{poster_id}", response_model=PosterResponse)
 async def get_poster(
     poster_id: int,
     db: Session = Depends(get_db),
@@ -58,7 +58,7 @@ async def get_poster(
     return poster
 
 
-@router.get("/{poster_id}/image", tags=["海报"])
+@router.get("/{poster_id}/image")
 async def get_poster_image(
     request: Request,
     poster_id: int,
@@ -114,7 +114,7 @@ async def get_poster_image(
     )
 
 
-@router.post("/", response_model=PosterResponse, status_code=status.HTTP_201_CREATED, tags=["海报"])
+@router.post("/", response_model=PosterResponse, status_code=status.HTTP_201_CREATED)
 async def create_poster(
     title: str = Form(..., description="海报标题"),
     link_url: Optional[str] = Form(None, description="点击跳转链接"),
@@ -154,7 +154,7 @@ async def create_poster(
         raise HTTPException(status_code=500, detail="创建海报失败")
 
 
-@router.put("/{poster_id}", response_model=PosterResponse, tags=["海报"])
+@router.put("/{poster_id}", response_model=PosterResponse)
 async def update_poster(
     poster_id: int,
     poster_data: PosterUpdate,
@@ -168,7 +168,7 @@ async def update_poster(
     return poster
 
 
-@router.put("/{poster_id}/image", response_model=PosterResponse, tags=["海报"])
+@router.put("/{poster_id}/image", response_model=PosterResponse)
 async def update_poster_image(
     poster_id: int,
     image_file: UploadFile = File(..., description="新海报图片"),
@@ -196,7 +196,7 @@ async def update_poster_image(
         raise HTTPException(status_code=500, detail="更新海报图片失败")
 
 
-@router.delete("/{poster_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["海报"])
+@router.delete("/{poster_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_poster(
     poster_id: int,
     db: Session = Depends(get_db),

@@ -32,7 +32,7 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.post("/register", response_model=UserPrivate, tags=["认证"])
+@router.post("/register", response_model=UserPrivate)
 async def register_user(
     user_data: UserCreate,
     db: Session = Depends(get_db)
@@ -87,7 +87,7 @@ async def register_user(
         raise HTTPException(status_code=500, detail="注册失败")
 
 
-@router.post("/login", response_model=Token, tags=["认证"])
+@router.post("/login", response_model=Token)
 async def login_user(
     login_data: UserLogin,
     db: Session = Depends(get_db)
@@ -158,7 +158,7 @@ async def login_user(
         raise HTTPException(status_code=500, detail="登录失败")
 
 
-@router.post("/refresh", response_model=Token, tags=["认证"])
+@router.post("/refresh", response_model=Token)
 async def refresh_token(
     token_data: TokenRefresh,
     db: Session = Depends(get_db)
@@ -240,7 +240,7 @@ async def refresh_token(
         raise HTTPException(status_code=500, detail="令牌刷新失败")
 
 
-@router.post("/logout", response_model=SuccessResponse, tags=["认证"])
+@router.post("/logout", response_model=SuccessResponse)
 async def logout_user(
     credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
     current_user: User = Depends(lambda: None)  # 占位符，实际由依赖注入
@@ -283,7 +283,7 @@ async def logout_user(
         raise HTTPException(status_code=500, detail="登出失败")
 
 
-@router.get("/verify-token", response_model=SuccessResponse, tags=["认证"])
+@router.get("/verify-token", response_model=SuccessResponse)
 async def verify_token(
     credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer())
 ):

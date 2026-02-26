@@ -1,0 +1,10 @@
+swagger_parser:
+  schema_path: ../backend/openapi.json # 你的 swagger 文件路径
+  output_directory: lib/core/api # 生成代码的存放目录
+  language: dart
+  client_api_name: RestClient
+  proxy_client: dio
+  freezed: false
+  use_internal_retrofit_annotations: true
+  path_method_name: true
+  json_serializable: true

@@ -24,7 +24,7 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.post("/", response_model=SuccessResponse, tags=["黑名单"])
+@router.post("/", response_model=SuccessResponse)
 async def block_user(
     block_data: BlockUserRequest,
     current_user: User = Depends(get_current_active_user),
@@ -82,7 +82,7 @@ async def block_user(
         raise HTTPException(status_code=500, detail="拉黑用户失败")
 
 
-@router.get("/", response_model=PaginatedResponse[BlockedUserResponse], tags=["黑名单"])
+@router.get("/", response_model=PaginatedResponse[BlockedUserResponse])
 async def get_blocked_users(
     params: PaginationParams = Depends(),
     current_user: User = Depends(get_current_active_user),
@@ -135,7 +135,7 @@ async def get_blocked_users(
         raise HTTPException(status_code=500, detail="获取黑名单列表失败")
 
 
-@router.delete("/{bipupu_id}", response_model=SuccessResponse, tags=["黑名单"])
+@router.delete("/{bipupu_id}", response_model=SuccessResponse)
 async def unblock_user(
     bipupu_id: str,
     current_user: User = Depends(get_current_active_user),
@@ -184,7 +184,7 @@ async def unblock_user(
         raise HTTPException(status_code=500, detail="取消拉黑失败")
 
 
-@router.get("/check/{bipupu_id}", response_model=dict, tags=["黑名单"])
+@router.get("/check/{bipupu_id}", response_model=dict)
 async def check_block_status(
     bipupu_id: str,
     current_user: User = Depends(get_current_active_user),
@@ -234,7 +234,7 @@ async def check_block_status(
         raise HTTPException(status_code=500, detail="检查拉黑状态失败")
 
 
-@router.get("/search", response_model=List[BlockedUserResponse], tags=["黑名单"])
+@router.get("/search", response_model=List[BlockedUserResponse])
 async def search_blocked_users(
     query: str = Query(..., description="搜索关键词（用户名或昵称）"),
     limit: int = Query(10, ge=1, le=50, description="返回结果数量"),
@@ -293,7 +293,7 @@ async def search_blocked_users(
         raise HTTPException(status_code=500, detail="搜索黑名单用户失败")
 
 
-@router.get("/count", response_model=CountResponse, tags=["黑名单"])
+@router.get("/count", response_model=CountResponse)
 async def get_blocked_users_count(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)

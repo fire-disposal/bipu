@@ -85,16 +85,18 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     tags_metadata = [
-        {"name": "系统", "description": "系统健康检查、服务信息与API根路径"},
-        {"name": "认证", "description": "用户注册、登录、令牌刷新、登出等认证相关接口"},
-        {"name": "消息", "description": "即时消息发送、接收、收藏、删除等消息管理功能"},
-        {"name": "联系人", "description": "联系人添加、查询、更新、删除等联系人管理功能"},
-        {"name": "黑名单", "description": "用户拉黑、解除拉黑、黑名单查询功能"},
-        {"name": "用户资料", "description": "用户个人信息、头像、密码、推送设置等资料管理"},
-        {"name": "用户", "description": "用户公开信息查询，包括用户资料和头像获取"},
-        {"name": "服务号", "description": "服务号列表、详情、订阅管理、推送设置等功能"},
-        {"name": "订阅", "description": "用户订阅的服务号列表及订阅设置管理"},
-        {"name": "管理后台", "description": "管理员后台管理界面，包括用户、消息、服务号管理"},
+        {"name": "system", "description": "System health checks, service information and API root path"},
+        {"name": "authentication", "description": "User registration, login, token refresh, logout and other authentication related interfaces"},
+        {"name": "messages", "description": "Instant message sending, receiving, favoriting, deletion and other message management functions"},
+        {"name": "contacts", "description": "Contact adding, querying, updating, deletion and other contact management functions"},
+        {"name": "blacklist", "description": "User blocking, unblocking, blacklist query functions"},
+        {"name": "user-profile", "description": "User personal information, avatar, password, push settings and other profile management"},
+        {"name": "users", "description": "User public information query, including user profiles and avatar retrieval"},
+        {"name": "service-accounts", "description": "Service account list, details, subscription management, push settings and other functions"},
+        {"name": "subscriptions", "description": "User subscribed service account list and subscription settings management"},
+        {"name": "admin", "description": "Administrator backend management interface, including user, message, service account management"},
+        {"name": "posters", "description": "Poster management, including creation, update, deletion and image handling"},
+        {"name": "websocket", "description": "WebSocket connections for real-time messaging and notifications"},
     ]
     app = FastAPI(
         title=settings.PROJECT_NAME,
