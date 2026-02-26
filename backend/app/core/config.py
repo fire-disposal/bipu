@@ -26,8 +26,8 @@ class Settings(BaseSettings):
     # JWT配置
     SECRET_KEY: str = "your-super-secret-jwt-key-change-this-in-production"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24小时
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # 30天
     JWT_TOKEN_PREFIX: str = "Bearer"
 
     # 安全配置
