@@ -48,7 +48,7 @@ case "${CONTAINER_ROLE:-backend}" in
             exec $OVERRIDE_CMD
         else
             echo -e "${GREEN}启动Celery Worker...${NC}"
-            exec uv run celery -A app.celery worker --loglevel=info -Q default -c 4
+            exec uv run celery -A app.celery worker --loglevel=info -Q default -c 1
         fi
         ;;
         
