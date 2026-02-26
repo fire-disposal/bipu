@@ -20,11 +20,14 @@ class MessageDetailPage extends StatefulWidget {
 
 class _MessageDetailPageState extends State<MessageDetailPage> {
   final ImService _imService = ImService();
+  bool _isFavorited = false;
+  bool _isLoadingFavorite = false;
 
   @override
   void initState() {
     super.initState();
     _imService.addListener(_onImChanged);
+    _checkFavoriteStatus();
   }
 
   @override
@@ -35,6 +38,82 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
 
   void _onImChanged() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _checkFavoriteStatus() async {
+    // 检查消息是否已收藏
+    try {
+      final apiClient = ApiClient.instance;
+      final response = await apiClient.execute(
+        () => apiClient.api.messages.getApiMessagesFavorites(
+          page: 1,
+          pageSize: 100,
+        ),
+        operationName: 'GetFavorites',
+      );
+
+      if (mounted) {
+        setState(() {
+          _isFavorited = response.favorites.any(
+            (fav) => fav.messageId == widget.message.id,
+          );
+        });
+      }
+    } catch (e) {
+      debugPrint('检查收藏状态失败: $e');
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    if (_isLoadingFavorite) return;
+
+    setState(() => _isLoadingFavorite = true);
+    try {
+      final apiClient = ApiClient.instance;
+
+      if (_isFavorited) {
+        // 取消收藏
+        await apiClient.execute(
+          () => apiClient.api.messages.deleteApiMessagesMessageIdFavorite(
+            messageId: widget.message.id,
+          ),
+          operationName: 'RemoveFavorite',
+        );
+        if (mounted) {
+          setState(() => _isFavorited = false);
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('unfavorited'.tr())));
+        }
+      } else {
+        // 添加收藏
+        await apiClient.execute(
+          () => apiClient.api.messages.postApiMessagesMessageIdFavorite(
+            messageId: widget.message.id,
+            body: FavoriteCreate(note: ''),
+          ),
+          operationName: 'AddFavorite',
+        );
+        if (mounted) {
+          setState(() => _isFavorited = true);
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('favorited'.tr())));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _isFavorited ? 'unfavorite_failed'.tr() : 'favorite_failed'.tr(),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingFavorite = false);
+    }
   }
 
   @override
@@ -150,36 +229,15 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
               Row(
                 children: [
                   ElevatedButton.icon(
-                    onPressed: () async {
-                      try {
-                        final apiClient = ApiClient.instance;
-                        await apiClient.execute(
-                          () => apiClient.api.messages
-                              .postApiMessagesMessageIdFavorite(
-                                messageId: msg.id,
-                                body: FavoriteCreate(note: ''),
-                              ),
-                          operationName: 'AddFavorite',
-                        );
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('favorited'.tr())),
-                          );
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'favorite_failed'.tr(args: [e.toString()]),
-                              ),
-                            ),
-                          );
-                        }
-                      }
-                    },
-                    icon: const Icon(Icons.favorite),
-                    label: Text('action_favorite'.tr()),
+                    onPressed: _isLoadingFavorite ? null : _toggleFavorite,
+                    icon: Icon(
+                      _isFavorited ? Icons.favorite : Icons.favorite_outline,
+                    ),
+                    label: Text(
+                      _isFavorited
+                          ? 'action_unfavorite'.tr()
+                          : 'action_favorite'.tr(),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton.icon(

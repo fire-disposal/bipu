@@ -13,7 +13,7 @@ class ProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final authService = AuthService();
     final user = authService.currentUser;
-    final username = user?.nickname ?? user?.username ?? "未登录";
+    final username = user?.nickname ?? user?.username ?? "not_logged_in".tr();
 
     final bipupuId = user?.bipupuId ?? '';
 
@@ -82,8 +82,8 @@ class ProfilePage extends StatelessWidget {
                                   );
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('已复制 Bipupu ID'),
+                                      SnackBar(
+                                        content: Text('copied_bipupu_id'.tr()),
                                       ),
                                     );
                                   }
@@ -140,8 +140,8 @@ class ProfilePage extends StatelessWidget {
                             Icons.bluetooth_connected,
                             color: Theme.of(context).colorScheme.primary,
                           ),
-                          title: const Text('Pupu机'),
-                          subtitle: const Text('查看已绑定的设备'),
+                          title: Text('pupu_device'.tr()),
+                          subtitle: Text('view_bound_devices'.tr()),
                           trailing: const Icon(Icons.chevron_right),
                           onTap: () => context.push('/bluetooth/scan'),
                         ),
@@ -151,8 +151,8 @@ class ProfilePage extends StatelessWidget {
                             Icons.person_outline,
                             color: Theme.of(context).colorScheme.primary,
                           ),
-                          title: const Text('个人档案'),
-                          subtitle: const Text('编辑个人资料'),
+                          title: Text('personal_profile'.tr()),
+                          subtitle: Text('edit_profile'.tr()),
                           trailing: const Icon(Icons.chevron_right),
                           onTap: () => context.push('/profile/edit_profile'),
                         ),
@@ -162,8 +162,8 @@ class ProfilePage extends StatelessWidget {
                             Icons.security,
                             color: Theme.of(context).colorScheme.primary,
                           ),
-                          title: const Text('账号与安全'),
-                          subtitle: const Text('修改密码'),
+                          title: Text('account_security'.tr()),
+                          subtitle: Text('change_password'.tr()),
                           trailing: const Icon(Icons.chevron_right),
                           onTap: () => context.push('/profile/security'),
                         ),
@@ -173,8 +173,8 @@ class ProfilePage extends StatelessWidget {
                             Icons.language,
                             color: Theme.of(context).colorScheme.primary,
                           ),
-                          title: const Text('语言'),
-                          subtitle: const Text('切换应用语言'),
+                          title: Text('language'.tr()),
+                          subtitle: Text('switch_language'.tr()),
                           trailing: const Icon(Icons.chevron_right),
                           onTap: () => _showLanguageSelector(context),
                         ),
@@ -184,17 +184,17 @@ class ProfilePage extends StatelessWidget {
                             Icons.cleaning_services_outlined,
                             color: Theme.of(context).colorScheme.primary,
                           ),
-                          title: const Text('清除缓存'),
-                          subtitle: const Text('清除所有本地存储数据'),
+                          title: Text('clear_cache'.tr()),
+                          subtitle: Text('clear_local_data'.tr()),
                           trailing: const Icon(Icons.chevron_right),
                           onTap: () => _showClearCacheDialog(context),
                         ),
                         Divider(height: 1, indent: 56),
                         ListTile(
                           leading: Icon(Icons.logout, color: Colors.red),
-                          title: const Text(
-                            '退出登录',
-                            style: TextStyle(color: Colors.red),
+                          title: Text(
+                            'logout'.tr(),
+                            style: const TextStyle(color: Colors.red),
                           ),
                           trailing: const Icon(
                             Icons.chevron_right,
@@ -228,12 +228,12 @@ void _showLogoutDialog(BuildContext context) {
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('退出登录'),
-      content: const Text('确定要退出当前账号吗？'),
+      title: Text('logout'.tr()),
+      content: Text('confirm_logout'.tr()),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('取消'),
+          child: Text('cancel'.tr()),
         ),
         TextButton(
           onPressed: () async {
@@ -241,7 +241,10 @@ void _showLogoutDialog(BuildContext context) {
             await AuthService().logout();
             if (context.mounted) context.go('/login');
           },
-          child: const Text('确定', style: TextStyle(color: Colors.red)),
+          child: Text(
+            'confirm'.tr(),
+            style: const TextStyle(color: Colors.red),
+          ),
         ),
       ],
     ),
@@ -252,12 +255,12 @@ void _showClearCacheDialog(BuildContext context) {
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('清除本地缓存'),
-      content: const Text('确定要清除所有本地缓存数据吗？此操作不可撤销。'),
+      title: Text('clear_local_cache'.tr()),
+      content: Text('confirm_clear_cache'.tr()),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('取消'),
+          child: Text('cancel'.tr()),
         ),
         TextButton(
           onPressed: () async {
@@ -269,19 +272,26 @@ void _showClearCacheDialog(BuildContext context) {
               await Hive.initFlutter();
               // 显示成功消息
               if (context.mounted) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('本地缓存已清除')));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('local_cache_cleared'.tr())),
+                );
               }
             } catch (e) {
               if (context.mounted) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('清除缓存失败: $e')));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'clear_cache_failed'.tr(args: [e.toString()]),
+                    ),
+                  ),
+                );
               }
             }
           },
-          child: const Text('确定', style: TextStyle(color: Colors.red)),
+          child: Text(
+            'confirm'.tr(),
+            style: const TextStyle(color: Colors.red),
+          ),
         ),
       ],
     ),

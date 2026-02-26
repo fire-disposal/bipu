@@ -20,6 +20,9 @@ import 'pages/messages/pages/message_detail_page.dart';
 import 'pages/messages/pages/favorites_page.dart';
 import 'pages/messages/pages/message_conversation_page.dart';
 import 'pages/messages/pages/subscriptions_management_page.dart';
+import 'pages/messages/pages/received_messages_page.dart';
+import 'pages/messages/pages/sent_messages_page.dart';
+import 'pages/messages/pages/system_messages_page.dart';
 import 'pages/home/pages/quick_actions/contacts_page.dart';
 import 'pages/home/pages/quick_actions/user_search_page.dart';
 import 'pages/profile/pages/user_detail_page.dart';
@@ -169,6 +172,18 @@ final GoRouter _router = GoRouter(
                 // Fallback: show empty scaffold
                 return const Scaffold(body: Center(child: Text('消息未找到')));
               },
+            ),
+            GoRoute(
+              path: 'received',
+              builder: (context, state) => const ReceivedMessagesPage(),
+            ),
+            GoRoute(
+              path: 'sent',
+              builder: (context, state) => const SentMessagesPage(),
+            ),
+            GoRoute(
+              path: 'system',
+              builder: (context, state) => const SystemMessagesPage(),
             ),
             GoRoute(
               path: 'favorites',

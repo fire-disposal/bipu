@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 import '../../../../core/services/auth_service.dart';
 import '../../../../core/network/api_client.dart';
@@ -89,14 +90,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
           aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
           uiSettings: [
             AndroidUiSettings(
-              toolbarTitle: '裁剪头像',
+              toolbarTitle: 'crop_avatar'.tr(),
               toolbarColor: Theme.of(context).primaryColor,
               toolbarWidgetColor: Colors.white,
               initAspectRatio: CropAspectRatioPreset.square,
               lockAspectRatio: true,
             ),
             IOSUiSettings(
-              title: '裁剪头像',
+              title: 'crop_avatar'.tr(),
               aspectRatioLockEnabled: true,
               aspectRatioPickerButtonHidden: true,
             ),
@@ -115,14 +116,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
           // 更新当前用户信息
           _authService.fetchCurrentUser();
 
-          ToastService().showSuccess('头像更新成功');
+          ToastService().showSuccess('avatar_updated_success'.tr());
         } catch (e) {
-          ToastService().showError('头像上传失败: $e');
+          ToastService().showError(
+            'avatar_upload_failed'.tr(args: [e.toString()]),
+          );
         } finally {
           setState(() => _isUploadingAvatar = false);
         }
       } catch (e) {
-        ToastService().showError('选择图片失败: $e');
+        ToastService().showError(
+          'image_selection_failed'.tr(args: [e.toString()]),
+        );
       }
     }
 
@@ -142,7 +147,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     Future<void> _saveProfile() async {
       if (_nicknameController.text.trim().isEmpty) {
-        ToastService().showError('昵称不能为空');
+        ToastService().showError('nickname_required'.tr());
         return;
       }
 
@@ -176,15 +181,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
         // 更新当前用户信息
         _authService.fetchCurrentUser();
-        ToastService().showSuccess('个人资料更新成功');
+        ToastService().showSuccess('profile_updated_success'.tr());
 
         if (context.mounted) {
           context.pop();
         }
       } on ApiException catch (e) {
-        ToastService().showError('更新失败: ${e.message}');
+        ToastService().showError('update_failed_message'.tr(args: [e.message]));
       } catch (e) {
-        ToastService().showError('更新失败: $e');
+        ToastService().showError(
+          'update_failed_message'.tr(args: [e.toString()]),
+        );
       } finally {
         setState(() => _isLoading = false);
       }
@@ -192,7 +199,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('编辑个人档案'),
+        title: Text('edit_profile_page_title'.tr()),
         actions: [
           TextButton(
             onPressed: _isLoading ? null : _saveProfile,
@@ -202,7 +209,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('保存', style: TextStyle(fontSize: 16)),
+                : Text(
+                    'save_button'.tr(),
+                    style: const TextStyle(fontSize: 16),
+                  ),
           ),
         ],
       ),
@@ -271,12 +281,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
             const SizedBox(height: 32),
 
             // 基本信息部分
-            _buildSectionTitle('基本信息'),
+            _buildSectionTitle('basic_info'.tr()),
             const SizedBox(height: 12),
             _buildTextField(
               controller: _nicknameController,
-              label: '昵称',
-              hint: '请输入昵称',
+              label: 'nickname'.tr(),
+              hint: 'enter_nickname'.tr(),
               icon: Icons.person_outline,
               required: true,
             ),
@@ -285,11 +295,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
             // 性别选择
             _buildDropdownField<Gender>(
               value: _gender,
-              label: '性别',
+              label: 'gender'.tr(),
               items: [
-                DropdownMenuItem(value: Gender.male, child: const Text('男')),
-                DropdownMenuItem(value: Gender.female, child: const Text('女')),
-                DropdownMenuItem(value: Gender.other, child: const Text('其他')),
+                DropdownMenuItem(
+                  value: Gender.male,
+                  child: Text('gender_male'.tr()),
+                ),
+                DropdownMenuItem(
+                  value: Gender.female,
+                  child: Text('gender_female'.tr()),
+                ),
+                DropdownMenuItem(
+                  value: Gender.other,
+                  child: Text('gender_other'.tr()),
+                ),
               ],
               onChanged: (value) => setState(() => _gender = value),
               icon: Icons.wc,
@@ -298,7 +317,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
             // 生日选择
             _buildDateField(
-              label: '生日',
+              label: 'birthday'.tr(),
               value: _birthday,
               onTap: _selectDate,
               icon: Icons.cake_outlined,
@@ -306,40 +325,40 @@ class _EditProfilePageState extends State<EditProfilePage> {
             const SizedBox(height: 32),
 
             // 详细信息部分
-            _buildSectionTitle('详细信息'),
+            _buildSectionTitle('detailed_info'.tr()),
             const SizedBox(height: 12),
             _buildTextField(
               controller: _mbtiController,
-              label: 'MBTI类型',
-              hint: '例如: INTJ, ENFP',
+              label: 'mbti_type'.tr(),
+              hint: 'mbti_example'.tr(),
               icon: Icons.psychology_outlined,
             ),
             const SizedBox(height: 16),
             _buildTextField(
               controller: _birthTimeController,
-              label: '出生时间',
-              hint: '格式: HH:MM (例如: 14:30)',
+              label: 'birth_time'.tr(),
+              hint: 'birth_time_format'.tr(),
               icon: Icons.access_time,
             ),
             const SizedBox(height: 16),
             _buildTextField(
               controller: _birthplaceController,
-              label: '出生地',
-              hint: '请输入出生地',
+              label: 'birthplace'.tr(),
+              hint: 'enter_birthplace'.tr(),
               icon: Icons.location_on_outlined,
             ),
             const SizedBox(height: 16),
             _buildTextField(
               controller: _zodiacController,
-              label: '星座',
-              hint: '例如: 白羊座, 金牛座',
+              label: 'zodiac'.tr(),
+              hint: 'zodiac_example'.tr(),
               icon: Icons.star_outline,
             ),
             const SizedBox(height: 16),
             _buildTextField(
               controller: _baziController,
-              label: '生辰八字',
-              hint: '例如: 甲子年乙丑月丙寅月丁卯时',
+              label: 'bazi'.tr(),
+              hint: 'bazi_example'.tr(),
               icon: Icons.calendar_today_outlined,
             ),
             const SizedBox(height: 32),
@@ -424,7 +443,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
           suffixIcon: const Icon(Icons.calendar_today, size: 20),
         ),
         child: Text(
-          value != null ? DateFormat('yyyy年MM月dd日').format(value) : '请选择日期',
+          value != null
+              ? DateFormat('yyyy年MM月dd日').format(value)
+              : 'select_date'.tr(),
           style: TextStyle(
             color: value != null ? Colors.black87 : Colors.grey,
             fontSize: 16,

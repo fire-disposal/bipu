@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:bipupu/core/network/network.dart';
 import 'package:bipupu/core/network/api_exception.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -116,7 +117,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   child: FadeTransition(
                     opacity: _titleFadeAnimation,
                     child: Text(
-                      '欢迎回来',
+                      'welcome_back'.tr(),
                       style: TextStyle(
                         fontSize: 16,
                         color: Theme.of(
@@ -173,7 +174,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   child: FadeTransition(
                     opacity: _titleFadeAnimation,
                     child: Text(
-                      '连接 · 沟通 · 发现',
+                      'connection_communication_discovery'.tr(),
                       style: TextStyle(
                         fontSize: 14,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -334,7 +335,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                 top: 4,
                                               ),
                                               child: Text(
-                                                '点击查看详情',
+                                                'click_for_details'.tr(),
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   color: Colors.white
@@ -429,7 +430,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              '我的设备',
+                              'my_device'.tr(),
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -459,7 +460,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   ),
                                   const SizedBox(width: 3),
                                   Text(
-                                    '未连接',
+                                    'not_connected'.tr(),
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w500,
@@ -494,7 +495,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '设备控制',
+                                    'device_control'.tr(),
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
@@ -505,7 +506,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    '连接蓝牙设备以启用控制功能',
+                                    'connect_bluetooth_to_enable'.tr(),
                                     style: TextStyle(
                                       color: Theme.of(
                                         context,
@@ -542,7 +543,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 Icon(Icons.bluetooth_searching, size: 18),
                                 const SizedBox(width: 6),
                                 Text(
-                                  '连接设备',
+                                  'connect_device'.tr(),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w600,
                                     fontSize: 14,
@@ -557,7 +558,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
 
                 GridView.count(
                   shrinkWrap: true,
@@ -569,14 +570,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   children: [
                     _buildQuickActionCard(
                       context,
-                      '好友',
+                      'friends'.tr(),
                       Icons.people_alt_rounded,
                       Colors.blue.shade600,
                       () => context.push('/home/contacts'),
                     ),
                     _buildQuickActionCard(
                       context,
-                      '语音测试',
+                      'voice_test_title'.tr(),
                       Icons.mic,
                       const Color.fromARGB(255, 73, 255, 97),
                       () => context.push('/home/voice_test'),

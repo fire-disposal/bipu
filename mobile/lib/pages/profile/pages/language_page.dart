@@ -12,8 +12,8 @@ class _LanguagePageState extends State<LanguagePage> {
   late Locale _currentLocale;
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _currentLocale = context.locale;
   }
 
@@ -35,7 +35,7 @@ class _LanguagePageState extends State<LanguagePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('语言设置'),
+        title: Text('language_settings_page'.tr()),
         backgroundColor: colorScheme.primaryContainer,
         foregroundColor: colorScheme.onPrimaryContainer,
       ),
@@ -45,7 +45,7 @@ class _LanguagePageState extends State<LanguagePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '选择语言',
+              'select_language'.tr(),
               style: theme.textTheme.headlineSmall?.copyWith(
                 color: colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
@@ -57,8 +57,8 @@ class _LanguagePageState extends State<LanguagePage> {
                 children: [
                   ListTile(
                     leading: const Icon(Icons.language),
-                    title: const Text('简体中文'),
-                    subtitle: const Text('Chinese Simplified'),
+                    title: Text('language_chinese'.tr()),
+                    subtitle: Text('language_chinese_subtitle'.tr()),
                     trailing: _currentLocale.languageCode == 'zh'
                         ? const Icon(Icons.check_circle, color: Colors.blue)
                         : null,
@@ -67,8 +67,8 @@ class _LanguagePageState extends State<LanguagePage> {
                   const Divider(),
                   ListTile(
                     leading: const Icon(Icons.language),
-                    title: const Text('English'),
-                    subtitle: const Text('English'),
+                    title: Text('language_english'.tr()),
+                    subtitle: Text('language_english_subtitle'.tr()),
                     trailing: _currentLocale.languageCode == 'en'
                         ? const Icon(Icons.check_circle, color: Colors.blue)
                         : null,
@@ -79,7 +79,7 @@ class _LanguagePageState extends State<LanguagePage> {
             ),
             const SizedBox(height: 16),
             Text(
-              '语言设置已立即生效',
+              'language_changed_immediately'.tr(),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: colorScheme.onSurface.withOpacity(0.6),
               ),
