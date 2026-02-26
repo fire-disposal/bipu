@@ -2,13 +2,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form, Request
 from sqlalchemy.orm import Session
 from typing import Optional, List
-import base64
 
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.poster import PosterCreate, PosterUpdate, PosterResponse, PosterListResponse
 from app.services.poster_service import PosterService
-from app.core.security import get_current_user, get_current_superuser_web
+from app.core.security import get_current_superuser_web
 from app.core.config import settings
 from app.core.logging import get_logger
 
@@ -28,7 +27,7 @@ async def get_posters(
     posters, total = PosterService.get_all_posters(db, skip, page_size)
 
     return {
-        "posters": posters,
+        "posters": [poster.model_dump() for poster in posters],
         "total": total,
         "page": page,
         "page_size": page_size
@@ -42,7 +41,8 @@ async def get_active_posters(
 ):
     """获取激活的海报列表（前端轮播用）"""
     posters = PosterService.get_active_posters(db, limit)
-    return posters
+    # 显式调用 model_dump() 以确保 image_url 被正确生成
+    return [poster.model_dump() for poster in posters]
 
 
 @router.get("/{poster_id}", response_model=PosterResponse)
@@ -55,7 +55,7 @@ async def get_poster(
     poster = PosterService.get_poster(db, poster_id)
     if not poster:
         raise HTTPException(status_code=404, detail="海报不存在")
-    return poster
+    return poster.model_dump()
 
 
 @router.get("/{poster_id}/image")
@@ -155,7 +155,7 @@ async def create_poster(
 
         # 创建海报
         poster = await PosterService.create_poster(db, poster_data, image_file)
-        return poster
+        return poster.model_dump()
 
     except HTTPException:
         raise
@@ -177,7 +177,7 @@ async def update_poster(
     poster = PosterService.update_poster(db, poster_id, poster_data)
     if not poster:
         raise HTTPException(status_code=404, detail="海报不存在")
-    return poster
+    return poster.model_dump()
 
 
 @router.put("/{poster_id}/image", response_model=PosterResponse)
@@ -199,7 +199,7 @@ async def update_poster_image(
         poster = await PosterService.update_poster_image(db, poster_id, image_file)
         if not poster:
             raise HTTPException(status_code=404, detail="海报不存在")
-        return poster
+        return poster.model_dump()
 
     except HTTPException:
         raise
