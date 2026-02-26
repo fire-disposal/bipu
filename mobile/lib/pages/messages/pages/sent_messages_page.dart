@@ -62,28 +62,19 @@ class _SentMessagesPageState extends State<SentMessagesPage> {
     }
   }
 
+  /// 获取发件箱消息（使用新的独立 API）
   Future<void> _loadMessages() async {
     setState(() => _isLoading = true);
     try {
-      final response = await ApiClient.instance.api.messages.getApiMessages(
-        direction: 'sent',
+      final response = await ApiClient.instance.api.messages.getApiMessagesSent(
+        page: 1,
+        pageSize: 50,
       );
-      final currentUser = _authService.currentUser;
-      if (currentUser != null) {
-        final myId = currentUser.bipupuId;
-        final filtered = response.messages
-            .where(
-              (msg) =>
-                  msg.senderBipupuId == myId &&
-                  msg.messageType != MessageType.system,
-            )
-            .toList();
-        setState(() {
-          _messages = filtered;
-        });
-      }
+      setState(() {
+        _messages = response.messages;
+      });
     } on ApiException catch (e) {
-      debugPrint('Error loading messages: ${e.message}');
+      debugPrint('Error loading sent messages: ${e.message}');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

@@ -52,12 +52,14 @@ class _MessagesClient implements MessagesClient {
     String? direction = 'received',
     int? page = 1,
     int? pageSize = 20,
+    int? sinceId = 0,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{
       r'direction': direction,
       r'page': page,
       r'page_size': pageSize,
+      r'since_id': sinceId,
     };
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
@@ -110,6 +112,42 @@ class _MessagesClient implements MessagesClient {
     late MessagePollResponse _value;
     try {
       _value = MessagePollResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<MessageListResponse> getApiMessagesSent({
+    int? page = 1,
+    int? pageSize = 20,
+    int? sinceId = 0,
+  }) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{
+      r'page': page,
+      r'page_size': pageSize,
+      r'since_id': sinceId,
+    };
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<MessageListResponse>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/api/messages/sent',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, Object?>>(_options);
+    late MessageListResponse _value;
+    try {
+      _value = MessageListResponse.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options, response: _result);
       rethrow;

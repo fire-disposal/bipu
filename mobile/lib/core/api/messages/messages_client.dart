@@ -44,12 +44,13 @@ abstract class MessagesClient {
 
   /// Get Messages.
   ///
-  /// 获取消息列表.
+  /// 获取消息列表（支持增量同步）.
   ///
   /// 参数：.
   /// - direction: sent（发件箱）或 received（收件箱）.
   /// - page: 页码（从1开始）.
   /// - page_size: 每页数量（1-100）.
+  /// - since_id: 增量同步参数，只返回 id > since_id 的消息（默认0表示全量）.
   ///
   /// 返回：.
   /// - 成功：返回消息列表.
@@ -60,26 +61,37 @@ abstract class MessagesClient {
   /// [page] - 页码.
   ///
   /// [pageSize] - 每页数量.
+  ///
+  /// [sinceId] - 增量同步：只返回 id > since_id 的消息.
   @GET('/api/messages/')
   Future<MessageListResponse> getApiMessages({
     @Query('direction') String? direction = 'received',
     @Query('page') int? page = 1,
     @Query('page_size') int? pageSize = 20,
+    @Query('since_id') int? sinceId = 0,
   });
 
   /// Poll Messages.
   ///
-  /// 长轮询接口：.
-  /// 如果数据库有比 last_msg_id 更新的消息，立即返回。.
-  /// 如果没有，则异步等待直到有新消息或超时。.
+  /// 真正的长轮询接口（Long Polling）：.
+  ///
+  /// 工作流程：.
+  /// 1. 如果数据库有比 last_msg_id 更新的消息，立即返回.
+  /// 2. 如果没有，则异步等待直到有新消息或超时.
+  /// 3. 每秒检查一次数据库，减少数据库查询压力.
   ///
   /// 参数：.
-  /// - last_msg_id: 最后收到的消息ID.
+  /// - last_msg_id: 最后收到的消息ID（增量同步）.
   /// - timeout: 轮询超时时间（1-120秒）.
   ///
   /// 返回：.
   /// - 成功：返回新消息列表和是否有更多消息的标志.
   /// - 失败：400（参数错误）.
+  ///
+  /// 优点：.
+  /// - 实时性高：有新消息立即返回.
+  /// - 请求频率低：无新消息时连接挂起.
+  /// - 数据传输少：只返回新消息.
   ///
   /// [lastMsgId] - 最后收到的消息ID.
   ///
@@ -88,6 +100,31 @@ abstract class MessagesClient {
   Future<MessagePollResponse> getApiMessagesPoll({
     @Query('last_msg_id') int? lastMsgId = 0,
     @Query('timeout') int? timeout = 30,
+  });
+
+  /// Get Sent Messages.
+  ///
+  /// 获取用户发出的消息（发件箱）.
+  ///
+  /// 参数：.
+  /// - page: 页码（从1开始）.
+  /// - page_size: 每页数量（1-100）.
+  /// - since_id: 增量同步参数，只返回 id > since_id 的消息（默认0表示全量）.
+  ///
+  /// 返回：.
+  /// - 成功：返回用户发出的消息列表.
+  /// - 失败：400（参数错误）.
+  ///
+  /// [page] - 页码.
+  ///
+  /// [pageSize] - 每页数量.
+  ///
+  /// [sinceId] - 增量同步：只返回 id > since_id 的消息.
+  @GET('/api/messages/sent')
+  Future<MessageListResponse> getApiMessagesSent({
+    @Query('page') int? page = 1,
+    @Query('page_size') int? pageSize = 20,
+    @Query('since_id') int? sinceId = 0,
   });
 
   /// Get Favorites.

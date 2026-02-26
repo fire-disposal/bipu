@@ -26,12 +26,14 @@ class ImService extends ChangeNotifier {
   // 定时器
   Timer? _messageTimer;
   Timer? _contactsTimer;
+  bool _isLongPollingActive = false;
 
   // 状态
   List<dynamic> _messages = [];
   List<dynamic> _contacts = [];
   int _unreadCount = 0;
   int _previousMessageCount = 0;
+  int _lastMessageId = 0; // 用于增量同步
   bool _isAppInForeground = true;
   bool _isOnline = true;
 
@@ -95,6 +97,7 @@ class ImService extends ChangeNotifier {
     _startMessagePolling();
     _startContactsPolling();
     _fetchInitialData();
+    _startLongPolling(); // 启动长轮询
   }
 
   /// 停止轮询
@@ -104,6 +107,7 @@ class ImService extends ChangeNotifier {
     _contactsTimer?.cancel();
     _messageTimer = null;
     _contactsTimer = null;
+    _isLongPollingActive = false;
   }
 
   /// 获取初始数据
@@ -142,7 +146,7 @@ class ImService extends ChangeNotifier {
     _startMessagePolling();
   }
 
-  /// 获取消息列表
+  /// 获取消息列表（支持增量同步）
   Future<void> _fetchMessages() async {
     if (!_isOnline) {
       log('IM Service: Offline, skipping message fetch');
@@ -156,18 +160,29 @@ class ImService extends ChangeNotifier {
           direction: 'received',
           page: 1,
           pageSize: 50,
+          sinceId: _lastMessageId, // 增量同步
         ),
         operationName: 'FetchMessages',
       );
 
-      _messages = response.messages;
-      _unreadCount = _messages.where((m) => m.isRead == false).length;
+      if (response.messages.isNotEmpty) {
+        // 更新最后消息ID
+        _lastMessageId = response.messages
+            .map((m) => m.id)
+            .reduce((a, b) => a > b ? a : b);
 
-      // 检查新消息并转发到蓝牙设备
-      if (_messages.length > _previousMessageCount) {
-        final newMessages = _messages.sublist(_previousMessageCount);
-        _forwardNewMessagesToBluetooth(newMessages);
+        // 合并新消息到列表
+        _messages.insertAll(0, response.messages);
+
+        // 检查新消息并转发到蓝牙设备
+        _forwardNewMessagesToBluetooth(response.messages);
+
+        log(
+          'IM Service: Fetched ${response.messages.length} new messages, lastId=$_lastMessageId',
+        );
       }
+
+      _unreadCount = _messages.where((m) => m.isRead == false).length;
       _previousMessageCount = _messages.length;
 
       // 重置退避倍数
@@ -255,6 +270,65 @@ class ImService extends ChangeNotifier {
     }
   }
 
+  /// 启动长轮询（真正的 Long Polling）
+  void _startLongPolling() {
+    if (_isLongPollingActive) {
+      return;
+    }
+
+    _isLongPollingActive = true;
+    _performLongPolling();
+  }
+
+  /// 执行长轮询
+  Future<void> _performLongPolling() async {
+    while (_isLongPollingActive && _isOnline) {
+      try {
+        final apiClient = ApiClient.instance;
+        final response = await apiClient.execute(
+          () => apiClient.api.messages.getApiMessagesPoll(
+            lastMsgId: _lastMessageId,
+            timeout: 30,
+          ),
+          operationName: 'LongPollMessages',
+        );
+
+        if (!_isLongPollingActive) break;
+
+        if (response.messages.isNotEmpty) {
+          // 更新最后消息ID
+          _lastMessageId = response.messages
+              .map((m) => m.id)
+              .reduce((a, b) => a > b ? a : b);
+
+          // 合并新消息到列表
+          _messages.insertAll(0, response.messages);
+
+          // 检查新消息并转发到蓝牙设备
+          _forwardNewMessagesToBluetooth(response.messages);
+
+          _unreadCount = _messages.where((m) => m.isRead == false).length;
+
+          log(
+            'IM Service: Long polling received ${response.messages.length} new messages',
+          );
+          notifyListeners();
+        }
+      } on AuthException catch (e) {
+        log('IM Service: Auth error in long polling: ${e.message}');
+        _isLongPollingActive = false;
+        _stopPolling();
+      } on NetworkException catch (e) {
+        log('IM Service: Network error in long polling: ${e.message}');
+        // 网络错误时等待后重试
+        await Future.delayed(const Duration(seconds: 5));
+      } catch (e) {
+        log('IM Service: Error in long polling: $e');
+        await Future.delayed(const Duration(seconds: 5));
+      }
+    }
+  }
+
   /// 手动刷新数据
   Future<void> refresh() async {
     await Future.wait([_fetchContacts(), _fetchMessages()]);
@@ -266,6 +340,7 @@ class ImService extends ChangeNotifier {
     _contacts = [];
     _unreadCount = 0;
     _previousMessageCount = 0;
+    _lastMessageId = 0;
     notifyListeners();
   }
 

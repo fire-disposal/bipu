@@ -60,20 +60,44 @@ class MessageResponse(BaseModel):
 
 
 class MessageListResponse(BaseModel):
-    """消息列表响应"""
+    """消息列表响应（支持增量同步）"""
     messages: List[MessageResponse]
     total: int
     page: int
     page_size: int
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MessagePollRequest(BaseModel):
     """轮询消息请求"""
     last_msg_id: int = Field(default=0, ge=0, description="最后收到的消息ID")
     timeout: int = Field(default=30, ge=1, le=120, description="轮询超时时间（秒）")
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MessagePollResponse(BaseModel):
-    """轮询消息响应"""
+    """轮询消息响应（长轮询）"""
     messages: List[MessageResponse]
     has_more: bool = Field(default=False, description="是否有更多消息")
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MessageIncrementalSyncRequest(BaseModel):
+    """增量同步请求"""
+    since_id: int = Field(default=0, ge=0, description="最后收到的消息ID，只返回 id > since_id 的消息")
+    direction: str = Field(default="received", description="sent 或 received")
+    page_size: int = Field(default=20, ge=1, le=100, description="每页数量")
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MessageIncrementalSyncResponse(BaseModel):
+    """增量同步响应"""
+    messages: List[MessageResponse]
+    has_more: bool = Field(default=False, description="是否有更多消息")
+    last_id: int = Field(default=0, description="本次返回的最大消息ID，用于下次同步")
+    
+    model_config = ConfigDict(from_attributes=True)

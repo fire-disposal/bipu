@@ -401,7 +401,7 @@
           "messages"
         ],
         "summary": "Get Messages",
-        "description": "获取消息列表\n\n参数：\n- direction: sent（发件箱）或 received（收件箱）\n- page: 页码（从1开始）\n- page_size: 每页数量（1-100）\n\n返回：\n- 成功：返回消息列表\n- 失败：400（参数错误）",
+        "description": "获取消息列表（支持增量同步）\n\n参数：\n- direction: sent（发件箱）或 received（收件箱）\n- page: 页码（从1开始）\n- page_size: 每页数量（1-100）\n- since_id: 增量同步参数，只返回 id > since_id 的消息（默认0表示全量）\n\n返回：\n- 成功：返回消息列表\n- 失败：400（参数错误）",
         "operationId": "get_messages_api_messages__get",
         "security": [
           {
@@ -447,6 +447,19 @@
               "title": "Page Size"
             },
             "description": "每页数量"
+          },
+          {
+            "name": "since_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "增量同步：只返回 id > since_id 的消息",
+              "default": 0,
+              "title": "Since Id"
+            },
+            "description": "增量同步：只返回 id > since_id 的消息"
           }
         ],
         "responses": {
@@ -479,7 +492,7 @@
           "messages"
         ],
         "summary": "Poll Messages",
-        "description": "长轮询接口：\n如果数据库有比 last_msg_id 更新的消息，立即返回。\n如果没有，则异步等待直到有新消息或超时。\n\n参数：\n- last_msg_id: 最后收到的消息ID\n- timeout: 轮询超时时间（1-120秒）\n\n返回：\n- 成功：返回新消息列表和是否有更多消息的标志\n- 失败：400（参数错误）",
+        "description": "真正的长轮询接口（Long Polling）：\n\n工作流程：\n1. 如果数据库有比 last_msg_id 更新的消息，立即返回\n2. 如果没有，则异步等待直到有新消息或超时\n3. 每秒检查一次数据库，减少数据库查询压力\n\n参数：\n- last_msg_id: 最后收到的消息ID（增量同步）\n- timeout: 轮询超时时间（1-120秒）\n\n返回：\n- 成功：返回新消息列表和是否有更多消息的标志\n- 失败：400（参数错误）\n\n优点：\n- 实时性高：有新消息立即返回\n- 请求频率低：无新消息时连接挂起\n- 数据传输少：只返回新消息",
         "operationId": "poll_messages_api_messages_poll_get",
         "security": [
           {
@@ -522,6 +535,85 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MessagePollResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/messages/sent": {
+      "get": {
+        "tags": [
+          "messages"
+        ],
+        "summary": "Get Sent Messages",
+        "description": "获取用户发出的消息（发件箱）\n\n参数：\n- page: 页码（从1开始）\n- page_size: 每页数量（1-100）\n- since_id: 增量同步参数，只返回 id > since_id 的消息（默认0表示全量）\n\n返回：\n- 成功：返回用户发出的消息列表\n- 失败：400（参数错误）",
+        "operationId": "get_sent_messages_api_messages_sent_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "页码",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "页码"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "每页数量",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "每页数量"
+          },
+          {
+            "name": "since_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "增量同步：只返回 id > since_id 的消息",
+              "default": 0,
+              "title": "Since Id"
+            },
+            "description": "增量同步：只返回 id > since_id 的消息"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageListResponse"
                 }
               }
             }
@@ -4351,7 +4443,7 @@
           "page_size"
         ],
         "title": "MessageListResponse",
-        "description": "消息列表响应"
+        "description": "消息列表响应（支持增量同步）"
       },
       "MessagePollResponse": {
         "properties": {
@@ -4374,7 +4466,7 @@
           "messages"
         ],
         "title": "MessagePollResponse",
-        "description": "轮询消息响应"
+        "description": "轮询消息响应（长轮询）"
       },
       "MessageResponse": {
         "properties": {

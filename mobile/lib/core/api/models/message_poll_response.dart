@@ -8,7 +8,7 @@ import 'message_response.dart';
 
 part 'message_poll_response.g.dart';
 
-/// 轮询消息响应
+/// 轮询消息响应（长轮询）
 @JsonSerializable()
 class MessagePollResponse {
   const MessagePollResponse({

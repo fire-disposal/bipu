@@ -8,7 +8,7 @@ import 'message_response.dart';
 
 part 'message_list_response.g.dart';
 
-/// 消息列表响应
+/// 消息列表响应（支持增量同步）
 @JsonSerializable()
 class MessageListResponse {
   const MessageListResponse({

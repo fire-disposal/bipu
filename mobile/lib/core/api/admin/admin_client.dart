@@ -128,6 +128,7 @@ abstract class AdminClient {
   Future<void> postApiAdminServiceAccountsServiceNameTriggerPush({
     @Path('service_name') required String serviceName,
   });
+
   /// Admin Push Logs.
   ///
   /// 消息推送日志查看页面.

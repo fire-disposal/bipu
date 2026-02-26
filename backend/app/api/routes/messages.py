@@ -16,7 +16,8 @@ from app.models.user import User
 from app.models.message import Message
 from app.schemas.message import (
     MessageCreate, MessageResponse, MessageListResponse,
-    MessagePollRequest, MessagePollResponse
+    MessagePollRequest, MessagePollResponse,
+    MessageIncrementalSyncRequest, MessageIncrementalSyncResponse
 )
 from app.schemas.favorite import (
     FavoriteCreate, FavoriteResponse, FavoriteListResponse
@@ -106,15 +107,17 @@ async def get_messages(
     direction: str = Query("received", description="sent 或 received"),
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
+    since_id: int = Query(0, ge=0, description="增量同步：只返回 id > since_id 的消息"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """获取消息列表
+    """获取消息列表（支持增量同步）
 
     参数：
     - direction: sent（发件箱）或 received（收件箱）
     - page: 页码（从1开始）
     - page_size: 每页数量（1-100）
+    - since_id: 增量同步参数，只返回 id > since_id 的消息（默认0表示全量）
 
     返回：
     - 成功：返回消息列表
@@ -135,6 +138,10 @@ async def get_messages(
                 Message.receiver_bipupu_id == current_user.bipupu_id
             )
 
+        # 增量同步：只返回 id > since_id 的消息
+        if since_id > 0:
+            query = query.filter(Message.id > since_id)
+
         # 计算总数
         total = query.count()
 
@@ -144,12 +151,18 @@ async def get_messages(
             .limit(page_size) \
             .all()
 
-        return MessageListResponse(
+        response = MessageListResponse(
             messages=[MessageResponse.model_validate(msg) for msg in messages],
             total=total,
             page=page,
             page_size=page_size
         )
+        
+        logger.debug(
+            f"获取消息列表: direction={direction}, since_id={since_id}, "
+            f"count={len(messages)}, total={total}"
+        )
+        return response
 
     except HTTPException:
         raise
@@ -166,41 +179,117 @@ async def poll_messages(
     db: Session = Depends(get_db)
 ):
     """
-    长轮询接口：
-    如果数据库有比 last_msg_id 更新的消息，立即返回。
-    如果没有，则异步等待直到有新消息或超时。
-
+    真正的长轮询接口（Long Polling）：
+    
+    工作流程：
+    1. 如果数据库有比 last_msg_id 更新的消息，立即返回
+    2. 如果没有，则异步等待直到有新消息或超时
+    3. 每秒检查一次数据库，减少数据库查询压力
+    
     参数：
-    - last_msg_id: 最后收到的消息ID
+    - last_msg_id: 最后收到的消息ID（增量同步）
     - timeout: 轮询超时时间（1-120秒）
 
     返回：
     - 成功：返回新消息列表和是否有更多消息的标志
     - 失败：400（参数错误）
+    
+    优点：
+    - 实时性高：有新消息立即返回
+    - 请求频率低：无新消息时连接挂起
+    - 数据传输少：只返回新消息
     """
     try:
-        for _ in range(timeout):
+        # 检查间隔（秒）
+        check_interval = 1
+        elapsed = 0
+        
+        while elapsed < timeout:
             # 检查数据库是否有新消息
             new_messages = db.query(Message).filter(
                 Message.receiver_bipupu_id == current_user.bipupu_id,
                 Message.id > last_msg_id
-            ).order_by(Message.created_at.asc()).all()
+            ).order_by(Message.id.asc()).all()
 
             if new_messages:
-                return MessagePollResponse(
+                response = MessagePollResponse(
                     messages=[MessageResponse.model_validate(msg) for msg in new_messages],
-                    has_more=len(new_messages) >= 20  # 假设每批最多20条
+                    has_more=len(new_messages) >= 20
                 )
+                logger.info(
+                    f"长轮询返回新消息: user={current_user.bipupu_id}, "
+                    f"count={len(new_messages)}, elapsed={elapsed}s"
+                )
+                return response
 
-            # 如果没有新消息，挂起 1 秒再检查
-            await asyncio.sleep(1)
+            # 如果没有新消息，挂起指定时间再检查
+            await asyncio.sleep(check_interval)
+            elapsed += check_interval
 
         # 超时返回空列表
-        return MessagePollResponse(messages=[], has_more=False)
+        response = MessagePollResponse(messages=[], has_more=False)
+        logger.debug(f"长轮询超时: user={current_user.bipupu_id}, timeout={timeout}s")
+        return response
 
     except Exception as e:
         logger.error(f"轮询消息失败: {e}")
         raise HTTPException(status_code=500, detail="轮询消息失败")
+
+
+@router.get("/sent", response_model=MessageListResponse)
+async def get_sent_messages(
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
+    since_id: int = Query(0, ge=0, description="增量同步：只返回 id > since_id 的消息"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取用户发出的消息（发件箱）
+
+    参数：
+    - page: 页码（从1开始）
+    - page_size: 每页数量（1-100）
+    - since_id: 增量同步参数，只返回 id > since_id 的消息（默认0表示全量）
+
+    返回：
+    - 成功：返回用户发出的消息列表
+    - 失败：400（参数错误）
+    """
+    try:
+        # 获取当前用户发送的消息
+        query = db.query(Message).filter(
+            Message.sender_bipupu_id == current_user.bipupu_id
+        )
+
+        # 增量同步：只返回 id > since_id 的消息
+        if since_id > 0:
+            query = query.filter(Message.id > since_id)
+
+        # 计算总数
+        total = query.count()
+
+        # 分页查询
+        messages = query.order_by(Message.created_at.desc()) \
+            .offset((page - 1) * page_size) \
+            .limit(page_size) \
+            .all()
+
+        response = MessageListResponse(
+            messages=[MessageResponse.model_validate(msg) for msg in messages],
+            total=total,
+            page=page,
+            page_size=page_size
+        )
+        
+        logger.debug(
+            f"获取发件箱: since_id={since_id}, "
+            f"count={len(messages)}, total={total}"
+        )
+        return response
+
+    except Exception as e:
+        logger.error(f"获取发件箱失败: {e}")
+        raise HTTPException(status_code=500, detail="获取发件箱失败")
 
 
 @router.get("/favorites", response_model=FavoriteListResponse)
