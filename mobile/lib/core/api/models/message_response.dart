@@ -13,8 +13,8 @@ part 'message_response.g.dart';
 class MessageResponse {
   const MessageResponse({
     required this.id,
-    required this.senderId,
-    required this.receiverId,
+    required this.senderBipupuId,
+    required this.receiverBipupuId,
     required this.content,
     required this.messageType,
     required this.createdAt,
@@ -27,12 +27,12 @@ class MessageResponse {
   final int id;
 
   /// 发送者ID
-  @JsonKey(name: 'sender_id')
-  final String senderId;
+  @JsonKey(name: 'sender_bipupu_id')
+  final String senderBipupuId;
 
   /// 接收者ID
-  @JsonKey(name: 'receiver_id')
-  final String receiverId;
+  @JsonKey(name: 'receiver_bipupu_id')
+  final String receiverBipupuId;
   final String content;
   @JsonKey(name: 'message_type')
   final MessageType messageType;

@@ -56,6 +56,10 @@ abstract class MessagesClient {
   /// - 失败：400（参数错误）.
   ///
   /// [direction] - sent 或 received.
+  ///
+  /// [page] - 页码.
+  ///
+  /// [pageSize] - 每页数量.
   @GET('/api/messages/')
   Future<MessageListResponse> getApiMessages({
     @Query('direction') String? direction = 'received',

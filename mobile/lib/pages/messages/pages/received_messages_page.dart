@@ -65,14 +65,16 @@ class _ReceivedMessagesPageState extends State<ReceivedMessagesPage> {
   Future<void> _loadMessages() async {
     setState(() => _isLoading = true);
     try {
-      final response = await ApiClient.instance.api.messages.getApiMessages();
+      final response = await ApiClient.instance.api.messages.getApiMessages(
+        direction: 'received',
+      );
       final currentUser = _authService.currentUser;
       if (currentUser != null) {
         final myId = currentUser.bipupuId;
         final filtered = response.messages
             .where(
               (msg) =>
-                  msg.receiverId == myId &&
+                  msg.receiverBipupuId == myId &&
                   msg.messageType != MessageType.system,
             )
             .toList();
@@ -204,7 +206,9 @@ class _ReceivedMessagesPageState extends State<ReceivedMessagesPage> {
                                     context,
                                   ).colorScheme.primary.withValues(alpha: 0.2),
                                   child: Text(
-                                    msg.senderId.substring(0, 1).toUpperCase(),
+                                    msg.senderBipupuId
+                                        .substring(0, 1)
+                                        .toUpperCase(),
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: Theme.of(
@@ -243,7 +247,7 @@ class _ReceivedMessagesPageState extends State<ReceivedMessagesPage> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          'From: ${msg.senderId}',
+                                          'From: ${msg.senderBipupuId}',
                                           style: TextStyle(
                                             fontWeight: isRead
                                                 ? FontWeight.w500

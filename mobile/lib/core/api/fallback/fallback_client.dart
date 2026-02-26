@@ -156,4 +156,22 @@ abstract class FallbackClient {
   Future<void> postAdminServiceAccountsServiceNameTriggerPush({
     @Path('service_name') required String serviceName,
   });
+
+  /// Admin Push Logs.
+  ///
+  /// 消息推送日志查看页面.
+  @GET('/admin/push_logs')
+  Future<void> getAdminPushLogs({
+    @Query('status') String? status,
+    @Query('page') int? page = 1,
+    @Query('per_page') int? perPage = 50,
+  });
+
+  /// Get Push Log Detail.
+  ///
+  /// 获取推送日志详情（JSON格式）.
+  @GET('/admin/push_logs/{log_id}/detail')
+  Future<void> getAdminPushLogsLogIdDetail({
+    @Path('log_id') required int logId,
+  });
 }

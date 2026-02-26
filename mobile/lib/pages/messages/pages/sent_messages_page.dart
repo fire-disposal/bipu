@@ -65,14 +65,17 @@ class _SentMessagesPageState extends State<SentMessagesPage> {
   Future<void> _loadMessages() async {
     setState(() => _isLoading = true);
     try {
-      final response = await ApiClient.instance.api.messages.getApiMessages();
+      final response = await ApiClient.instance.api.messages.getApiMessages(
+        direction: 'sent',
+      );
       final currentUser = _authService.currentUser;
       if (currentUser != null) {
         final myId = currentUser.bipupuId;
         final filtered = response.messages
             .where(
               (msg) =>
-                  msg.senderId == myId && msg.messageType != MessageType.system,
+                  msg.senderBipupuId == myId &&
+                  msg.messageType != MessageType.system,
             )
             .toList();
         setState(() {
@@ -203,7 +206,7 @@ class _SentMessagesPageState extends State<SentMessagesPage> {
                                     context,
                                   ).colorScheme.primary.withValues(alpha: 0.2),
                                   child: Text(
-                                    msg.receiverId
+                                    msg.receiverBipupuId
                                         .substring(0, 1)
                                         .toUpperCase(),
                                     style: TextStyle(
@@ -244,7 +247,7 @@ class _SentMessagesPageState extends State<SentMessagesPage> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          'To: ${msg.receiverId}',
+                                          'To: ${msg.receiverBipupuId}',
                                           style: TextStyle(
                                             fontWeight: isRead
                                                 ? FontWeight.w500

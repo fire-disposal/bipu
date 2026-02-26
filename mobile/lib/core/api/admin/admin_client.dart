@@ -128,4 +128,21 @@ abstract class AdminClient {
   Future<void> postApiAdminServiceAccountsServiceNameTriggerPush({
     @Path('service_name') required String serviceName,
   });
+  /// Admin Push Logs.
+  ///
+  /// 消息推送日志查看页面.
+  @GET('/api/admin/push_logs')
+  Future<void> getApiAdminPushLogs({
+    @Query('status') String? status,
+    @Query('page') int? page = 1,
+    @Query('per_page') int? perPage = 50,
+  });
+
+  /// Get Push Log Detail.
+  ///
+  /// 获取推送日志详情（JSON格式）.
+  @GET('/api/admin/push_logs/{log_id}/detail')
+  Future<void> getApiAdminPushLogsLogIdDetail({
+    @Path('log_id') required int logId,
+  });
 }
