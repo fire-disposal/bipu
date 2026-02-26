@@ -11,7 +11,6 @@ UserPrivate _$UserPrivateFromJson(Map<String, dynamic> json) => UserPrivate(
   bipupuId: json['bipupu_id'] as String,
   createdAt: DateTime.parse(json['created_at'] as String),
   isActive: json['is_active'] as bool? ?? true,
-  avatarVersion: (json['avatar_version'] as num?)?.toInt() ?? 0,
   nickname: json['nickname'] as String?,
   avatarUrl: json['avatar_url'] as String?,
   birthday: json['birthday'] == null
@@ -52,7 +51,6 @@ Map<String, dynamic> _$UserPrivateToJson(UserPrivate instance) =>
       'birthplace': instance.birthplace,
       'last_active': instance.lastActive?.toIso8601String(),
       'updated_at': instance.updatedAt?.toIso8601String(),
-      'avatar_version': instance.avatarVersion,
     };
 
 const _$GenderEnumMap = {

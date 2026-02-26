@@ -80,7 +80,7 @@ async def register_user(
         db.refresh(user)
 
         logger.info(f"用户注册成功: username={user.username}, id={user.id}")
-        return user
+        return UserPrivate.model_validate(user)
 
     except ValidationException as e:
         raise HTTPException(status_code=400, detail=str(e))

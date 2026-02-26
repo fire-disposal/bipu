@@ -13,6 +13,7 @@ ApiInfoResponse _$ApiInfoResponseFromJson(Map<String, dynamic> json) =>
       project: json['project'] as String,
       docsUrl: json['docs_url'] as String,
       redocUrl: json['redoc_url'] as String,
+      adminUrl: json['admin_url'] as String,
     );
 
 Map<String, dynamic> _$ApiInfoResponseToJson(ApiInfoResponse instance) =>
@@ -22,4 +23,5 @@ Map<String, dynamic> _$ApiInfoResponseToJson(ApiInfoResponse instance) =>
       'project': instance.project,
       'docs_url': instance.docsUrl,
       'redoc_url': instance.redocUrl,
+      'admin_url': instance.adminUrl,
     };

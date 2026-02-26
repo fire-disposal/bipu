@@ -5027,12 +5027,6 @@
               }
             ],
             "title": "Updated At"
-          },
-          "avatar_version": {
-            "type": "integer",
-            "title": "Avatar Version",
-            "description": "头像版本号",
-            "default": 0
           }
         },
         "type": "object",

@@ -13,7 +13,8 @@ from app.schemas.service_account import (
     SubscriptionSettingsUpdate,
     SubscriptionSettingsResponse,
     UserSubscriptionResponse,
-    UserSubscriptionList
+    UserSubscriptionList,
+    PushTimeSource
 )
 from app.core.security import get_current_user
 from app.models.user import User
@@ -103,11 +104,10 @@ async def get_service_avatar(request: Request, name: str, db: Session = Depends(
         # 没有头像没有关系，无需处理默认头像配置
         raise HTTPException(status_code=404, detail="Avatar not found")
 
-    # 生成ETag - 使用版本号和时间戳
-    version = service.avatar_version or 0
+    # 生成ETag - 使用时间戳
     updated_at_timestamp = service.updated_at.timestamp() if service.updated_at else 0
-    etag_input = f"{version}:{updated_at_timestamp}".encode()
-    etag = StorageService.get_avatar_etag(service.avatar_data, etag_input.encode() if isinstance(etag_input, str) else etag_input)
+    etag_input = f"{updated_at_timestamp}".encode()
+    etag = StorageService.get_avatar_etag(service.avatar_data, etag_input)
 
     # 检查ETag匹配
     if request and request.headers.get("if-none-match") == etag:
@@ -186,10 +186,12 @@ async def get_user_subscriptions(
 
             if setting.push_time:
                 push_time_str = setting.push_time.strftime("%H:%M")
-                push_time_source = "subscription"
+                push_time_source = PushTimeSource.SUBSCRIPTION
             elif service.default_push_time:
                 push_time_str = service.default_push_time.strftime("%H:%M")
-                push_time_source = "service_default"
+                push_time_source = PushTimeSource.SERVICE_DEFAULT
+            else:
+                push_time_source = PushTimeSource.NONE
 
             subscription_response = UserSubscriptionResponse(
                 service=service,
@@ -200,7 +202,7 @@ async def get_user_subscriptions(
                     is_enabled=setting.is_enabled,
                     subscribed_at=setting.created_at,
                     updated_at=setting.updated_at,
-                    push_time_source="subscription" if push_time_str else "service_default"
+                    push_time_source=push_time_source
                 )
             )
             subscriptions.append(subscription_response)
@@ -253,14 +255,14 @@ async def get_subscription_settings(
 
     # 确定推送时间及来源
     push_time_str = None
-    push_time_source = "none"
+    push_time_source = PushTimeSource.NONE
 
     if result.push_time:
         push_time_str = result.push_time.strftime("%H:%M")
-        push_time_source = "subscription"
+        push_time_source = PushTimeSource.SUBSCRIPTION
     elif service.default_push_time:
         push_time_str = service.default_push_time.strftime("%H:%M")
-        push_time_source = "service_default"
+        push_time_source = PushTimeSource.SERVICE_DEFAULT
 
     return SubscriptionSettingsResponse(
         service_name=str(service.name),
@@ -361,14 +363,14 @@ async def update_subscription_settings(
 
         # 确定推送时间及来源
         push_time_str = None
-        push_time_source = "none"
+        push_time_source = PushTimeSource.NONE
 
         if updated_result and updated_result.push_time:
             push_time_str = updated_result.push_time.strftime("%H:%M")
-            push_time_source = "subscription"
+            push_time_source = PushTimeSource.SUBSCRIPTION
         elif service.default_push_time:
             push_time_str = service.default_push_time.strftime("%H:%M")
-            push_time_source = "service_default"
+            push_time_source = PushTimeSource.SERVICE_DEFAULT
 
         logger.info(f"用户 {current_user.bipupu_id} 更新了服务号 {name} 的订阅设置")
 

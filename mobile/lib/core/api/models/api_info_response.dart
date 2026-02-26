@@ -15,6 +15,7 @@ class ApiInfoResponse {
     required this.project,
     required this.docsUrl,
     required this.redocUrl,
+    required this.adminUrl,
   });
   
   factory ApiInfoResponse.fromJson(Map<String, Object?> json) => _$ApiInfoResponseFromJson(json);
@@ -35,6 +36,10 @@ class ApiInfoResponse {
   /// Redoc文档URL
   @JsonKey(name: 'redoc_url')
   final String redocUrl;
+
+  /// 管理后台URL
+  @JsonKey(name: 'admin_url')
+  final String adminUrl;
 
   Map<String, Object?> toJson() => _$ApiInfoResponseToJson(this);
 }

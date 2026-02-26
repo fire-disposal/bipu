@@ -67,7 +67,6 @@ async def upload_avatar(
 
         # 更新数据库
         current_user.avatar_data = avatar_data
-        current_user.increment_avatar_version()
 
         db.add(current_user)
         try:
@@ -83,7 +82,7 @@ async def upload_avatar(
         await RedisService.cache_user_data(user_id, profile_data)
 
         logger.info(f"用户头像上传成功: user_id={current_user.id}, bipupu_id={current_user.bipupu_id}")
-        return current_user
+        return UserPrivate.model_validate(current_user)
 
     except ValidationException:
         raise
@@ -98,7 +97,7 @@ async def get_current_user_info(
     current_user: User = Depends(get_current_active_user)
 ):
     """获取当前用户信息"""
-    return current_user
+    return UserPrivate.model_validate(current_user)
 
 
 @router.get("/", response_model=UserPrivate)
@@ -106,7 +105,7 @@ async def get_profile(
     current_user: User = Depends(get_current_active_user)
 ):
     """获取个人资料（兼容性接口）"""
-    return current_user
+    return UserPrivate.model_validate(current_user)
 
 
 @router.put("/", response_model=UserPrivate)
@@ -133,7 +132,7 @@ async def update_profile(
         await RedisService.cache_user_data(user_id, profile_data)
 
         logger.info(f"用户资料更新成功: user_id={current_user.id}")
-        return current_user
+        return UserPrivate.model_validate(current_user)
 
     except Exception as e:
         db.rollback()

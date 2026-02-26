@@ -14,7 +14,6 @@ class User(Base):
     username = Column(String(50), unique=True, index=True, nullable=False)
     nickname = Column(String(50), nullable=True)
     avatar_data = Column(LargeBinary, nullable=True)  # 存储图像二进制数据
-    avatar_version = Column(Integer, default=0)  # 头像版本号，用于缓存失效
     hashed_password = Column(String(255), nullable=False)
 
     # CosmicProfile字段直接作为数据库字段
@@ -57,10 +56,6 @@ class User(Base):
         UniqueConstraint('bipupu_id', name='unique_bipupu_id'),
         UniqueConstraint('username', name='unique_username'),
     )
-
-    def increment_avatar_version(self):
-        """增加头像版本号"""
-        self.avatar_version = (self.avatar_version or 0) + 1
 
     def update_last_active(self):
         """更新最后活跃时间"""

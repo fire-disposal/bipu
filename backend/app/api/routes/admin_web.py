@@ -1,50 +1,53 @@
 from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from datetime import datetime, time, timezone
+from datetime import datetime, time
 from fastapi.responses import RedirectResponse
 import logging
-
-logger = logging.getLogger(__name__)
-
+from app.models.service_account import ServiceAccount
+from fastapi import UploadFile, File
 from app.db.database import get_db
 from app.models.user import User
 from app.models.message import Message
 from app.models.poster import Poster
-from app.models.trusted_contact import TrustedContact
-from app.models.user_block import UserBlock
-from app.core.security import get_current_superuser_web, authenticate_user, create_access_token
-from app.services.message_service import MessageService
-from app.schemas.message import MessageCreate
+
+from app.core.security import (
+    get_current_superuser_web,
+    authenticate_user,
+    create_access_token,
+)
+
+logger = logging.getLogger(__name__)
+
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
+
 
 @router.get("/login")
 async def admin_login_page(request: Request):
     """管理后台登录页面"""
     return templates.TemplateResponse("login.html", {"request": request})
 
+
 @router.post("/login")
 async def admin_login(
     request: Request,
     username: str = Form(...),
     password: str = Form(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """处理管理后台登录"""
     user = authenticate_user(db, username, password)
     if not user:
-        return templates.TemplateResponse("login.html", {
-            "request": request,
-            "error": "用户名或密码错误"
-        })
+        return templates.TemplateResponse(
+            "login.html", {"request": request, "error": "用户名或密码错误"}
+        )
 
     if not user.is_superuser:
-        return templates.TemplateResponse("login.html", {
-            "request": request,
-            "error": "没有管理员权限"
-        })
+        return templates.TemplateResponse(
+            "login.html", {"request": request, "error": "没有管理员权限"}
+        )
 
     # 创建访问令牌
     access_token = create_access_token(data={"sub": user.id})
@@ -56,10 +59,11 @@ async def admin_login(
         value=f"Bearer {access_token}",
         httponly=True,
         max_age=1800,  # 30分钟
-        expires=1800
+        expires=1800,
     )
 
     return response
+
 
 @router.post("/logout")
 async def admin_logout():
@@ -68,11 +72,12 @@ async def admin_logout():
     response.delete_cookie(key="access_token")
     return response
 
+
 @router.get("/")
 async def admin_dashboard(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_superuser_web)
+    current_user: User = Depends(get_current_superuser_web),
 ):
     """管理后台仪表板"""
     from app.services.stats_service import StatsService
@@ -83,12 +88,16 @@ async def admin_dashboard(
     # 最近用户
     recent_users = db.query(User).order_by(User.created_at.desc()).limit(5).all()
 
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "stats": stats, # 注意: 模板中可能需要调整 data structure usage，改为 stats.users.total 形式
-        "recent_users": recent_users,
-        "current_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    })
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "stats": stats,  # 注意: 模板中可能需要调整 data structure usage，改为 stats.users.total 形式
+            "recent_users": recent_users,
+            "current_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        },
+    )
+
 
 @router.get("/users")
 async def admin_users(
@@ -96,45 +105,48 @@ async def admin_users(
     page: int = 1,
     per_page: int = 20,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_superuser_web)
+    current_user: User = Depends(get_current_superuser_web),
 ):
     """用户管理页面"""
     offset = (page - 1) * per_page
     users = db.query(User).offset(offset).limit(per_page).all()
     total = db.query(User).count()
 
-    return templates.TemplateResponse("users.html", {
-        "request": request,
-        "users": users,
-        "page": page,
-        "per_page": per_page,
-        "total": total,
-        "total_pages": (total + per_page - 1) // per_page
-    })
+    return templates.TemplateResponse(
+        "users.html",
+        {
+            "request": request,
+            "users": users,
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": (total + per_page - 1) // per_page,
+        },
+    )
+
 
 @router.get("/users/{user_id}")
 async def admin_user_detail(
     request: Request,
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_superuser_web)
+    current_user: User = Depends(get_current_superuser_web),
 ):
     """用户详情页面"""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    return templates.TemplateResponse("user_detail.html", {
-        "request": request,
-        "user": user
-    })
+    return templates.TemplateResponse(
+        "user_detail.html", {"request": request, "user": user}
+    )
 
 
 @router.post("/users/{user_id}/toggle")
 async def toggle_user_status(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_superuser_web)
+    current_user: User = Depends(get_current_superuser_web),
 ):
     """切换用户激活状态（启用/禁用）"""
     from app.services.user_service import UserService
@@ -142,12 +154,16 @@ async def toggle_user_status(
 
     try:
         user = UserService.toggle_user_status(db, user_id)
-        return {"message": f"用户状态已{'启用' if user.is_active else '禁用'}", "is_active": user.is_active}
+        return {
+            "message": f"用户状态已{'启用' if user.is_active else '禁用'}",
+            "is_active": user.is_active,
+        }
     except NotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"切换用户状态失败: {e}")
         raise HTTPException(status_code=500, detail="操作失败")
+
 
 @router.get("/messages")
 async def admin_messages(
@@ -155,37 +171,46 @@ async def admin_messages(
     page: int = 1,
     per_page: int = 20,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_superuser_web)
+    current_user: User = Depends(get_current_superuser_web),
 ):
     """消息管理页面"""
     offset = (page - 1) * per_page
-    messages = db.query(Message).order_by(Message.created_at.desc()).offset(offset).limit(per_page).all()
+    messages = (
+        db.query(Message)
+        .order_by(Message.created_at.desc())
+        .offset(offset)
+        .limit(per_page)
+        .all()
+    )
     total = db.query(Message).count()
 
-    return templates.TemplateResponse("messages.html", {
-        "request": request,
-        "messages": messages,
-        "page": page,
-        "per_page": per_page,
-        "total": total,
-        "total_pages": (total + per_page - 1) // per_page
-    })
+    return templates.TemplateResponse(
+        "messages.html",
+        {
+            "request": request,
+            "messages": messages,
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": (total + per_page - 1) // per_page,
+        },
+    )
 
-from app.models.service_account import ServiceAccount
-from fastapi import UploadFile, File
 
 @router.get("/posters")
 async def posters_page(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_superuser_web)
+    current_user: User = Depends(get_current_superuser_web),
 ):
     """海报管理页面"""
-    posters = db.query(Poster).order_by(Poster.display_order.asc(), Poster.id.asc()).all()
-    return templates.TemplateResponse("posters.html", {
-        "request": request,
-        "posters": posters
-    })
+    posters = (
+        db.query(Poster).order_by(Poster.display_order.asc(), Poster.id.asc()).all()
+    )
+    return templates.TemplateResponse(
+        "posters.html", {"request": request, "posters": posters}
+    )
+
 
 @router.get("/service_accounts")
 async def admin_services(
@@ -193,27 +218,31 @@ async def admin_services(
     page: int = 1,
     per_page: int = 20,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_superuser_web)
+    current_user: User = Depends(get_current_superuser_web),
 ):
     """服务号管理页面"""
     offset = (page - 1) * per_page
     services = db.query(ServiceAccount).offset(offset).limit(per_page).all()
     total = db.query(ServiceAccount).count()
 
-    return templates.TemplateResponse("service_accounts.html", {
-        "request": request,
-        "services": services,
-        "page": page,
-        "per_page": per_page,
-        "total": total,
-        "total_pages": (total + per_page - 1) // per_page
-    })
+    return templates.TemplateResponse(
+        "service_accounts.html",
+        {
+            "request": request,
+            "services": services,
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": (total + per_page - 1) // per_page,
+        },
+    )
+
 
 @router.post("/service_accounts/{service_id}/toggle")
 async def toggle_service_status(
     service_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_superuser_web)
+    current_user: User = Depends(get_current_superuser_web),
 ):
     """切换服务号激活状态"""
     service = db.query(ServiceAccount).filter(ServiceAccount.id == service_id).first()
@@ -230,12 +259,13 @@ async def toggle_service_status(
         logger.error(f"切换服务号状态失败: {e}")
         raise HTTPException(status_code=500, detail="操作失败")
 
+
 @router.post("/service_accounts/{service_id}/avatar")
 async def upload_service_avatar(
     service_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_superuser_web)
+    current_user: User = Depends(get_current_superuser_web),
 ):
     """上传服务号头像"""
     service = db.query(ServiceAccount).filter(ServiceAccount.id == service_id).first()
@@ -247,8 +277,10 @@ async def upload_service_avatar(
         # 使用StorageService处理头像压缩
 
         # 验证文件类型
-        if not file.content_type or not file.content_type.startswith('image/'):
-            raise HTTPException(status_code=400, detail="请上传图片文件（支持JPG、PNG等格式）")
+        if not file.content_type or not file.content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=400, detail="请上传图片文件（支持JPG、PNG等格式）"
+            )
 
         # 使用StorageService处理头像压缩
         try:
@@ -258,12 +290,13 @@ async def upload_service_avatar(
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
             logger.error(f"服务号头像处理失败: {e}")
-            raise HTTPException(status_code=500, detail="头像处理失败，请确保图片格式正确且尺寸合理")
+            raise HTTPException(
+                status_code=500, detail="头像处理失败，请确保图片格式正确且尺寸合理"
+            )
 
         # 更新数据库
         try:
             service.avatar_data = avatar_data
-            service.increment_avatar_version()  # 增加版本号，使缓存失效
             db.commit()
 
             return RedirectResponse(url="/admin/service_accounts", status_code=302)
@@ -277,13 +310,14 @@ async def upload_service_avatar(
         logger.error(f"服务号头像上传失败: {e}")
         raise HTTPException(status_code=500, detail=f"头像上传失败: {str(e)}")
 
+
 @router.post("/service_accounts/{service_id}/push-time")
 async def update_service_push_time(
     service_id: int,
     push_time: str = Form(...),
     description: str = Form(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_superuser_web)
+    current_user: User = Depends(get_current_superuser_web),
 ):
     """更新服务号推送时间和描述"""
     service = db.query(ServiceAccount).filter(ServiceAccount.id == service_id).first()
@@ -293,12 +327,14 @@ async def update_service_push_time(
     try:
         # 解析推送时间
         try:
-            hour, minute = map(int, push_time.split(':'))
+            hour, minute = map(int, push_time.split(":"))
             if not (0 <= hour <= 23 and 0 <= minute <= 59):
                 raise ValueError("时间格式无效")
             service.default_push_time = time(hour, minute)
         except (ValueError, AttributeError):
-            raise HTTPException(status_code=400, detail="时间格式无效，请使用 HH:MM 格式")
+            raise HTTPException(
+                status_code=400, detail="时间格式无效，请使用 HH:MM 格式"
+            )
 
         # 更新描述（如果提供）
         if description is not None:
@@ -314,25 +350,34 @@ async def update_service_push_time(
         logger.error(f"更新服务号推送时间失败: {e}")
         raise HTTPException(status_code=500, detail="操作失败")
 
+
 @router.post("/service_accounts/{service_name}/trigger-push")
 async def trigger_service_push(
     service_name: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_superuser_web)
+    current_user: User = Depends(get_current_superuser_web),
 ):
     """立即触发服务号推送任务（无视时间和用户限制）"""
     from app.models.service_account import ServiceAccount
     from app.services.service_accounts import broadcast_push
 
     # 检查服务号是否存在
-    service = db.query(ServiceAccount).filter(ServiceAccount.name == service_name).first()
+    service = (
+        db.query(ServiceAccount).filter(ServiceAccount.name == service_name).first()
+    )
     if not service:
-        return RedirectResponse(url=f"/admin/service_accounts?error=Service {service_name} not found", status_code=302)
+        return RedirectResponse(
+            url=f"/admin/service_accounts?error=Service {service_name} not found",
+            status_code=302,
+        )
 
     # 获取所有订阅者
     subscribers = service.subscribers
     if not subscribers:
-        return RedirectResponse(url=f"/admin/service_accounts?msg=No subscribers for {service_name}", status_code=302)
+        return RedirectResponse(
+            url=f"/admin/service_accounts?msg=No subscribers for {service_name}",
+            status_code=302,
+        )
 
     # 触发推送任务（内容由send_push自动生成）
     try:
@@ -346,6 +391,9 @@ async def trigger_service_push(
 
     except Exception as e:
         logger.error(f"触发推送任务失败: {e}")
-        return RedirectResponse(url=f"/admin/service_accounts?error=Failed to trigger push: {str(e)}", status_code=302)
+        return RedirectResponse(
+            url=f"/admin/service_accounts?error=Failed to trigger push: {str(e)}",
+            status_code=302,
+        )
 
     return RedirectResponse(url=f"/admin/service_accounts?msg={msg}", status_code=302)

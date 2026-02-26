@@ -84,10 +84,9 @@ async def get_user_avatar_by_bipupu_id(
     if not user or not user.avatar_data:
         raise HTTPException(status_code=404, detail="头像不存在")
 
-    # 生成ETag - 使用版本号和时间戳
-    version = user.avatar_version or 0
+    # 生成ETag - 使用时间戳
     updated_at_timestamp = user.updated_at.timestamp() if user.updated_at else 0
-    etag_input = f"{version}:{updated_at_timestamp}".encode()
+    etag_input = f"{updated_at_timestamp}".encode()
     etag = StorageService.get_avatar_etag(user.avatar_data, etag_input)
 
     # 检查ETag匹配

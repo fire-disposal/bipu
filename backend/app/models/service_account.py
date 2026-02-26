@@ -22,7 +22,6 @@ class ServiceAccount(Base):
     name = Column(String(50), unique=True, index=True, nullable=False) # 全局唯一服务名，如 cosmic.fortune
     description = Column(String(255), nullable=True)
     avatar_data = Column(LargeBinary, nullable=True)
-    avatar_version = Column(Integer, default=0)  # 头像版本号，用于缓存失效
     bot_logic = Column(JSON, nullable=True)  # 存储bot逻辑的配置
     is_active = Column(Boolean, default=True)
     default_push_time = Column(Time, nullable=True)  # 默认推送时间
@@ -37,10 +36,6 @@ class ServiceAccount(Base):
         secondary=subscription_table,
         back_populates="subscriptions"
     )
-
-    def increment_avatar_version(self):
-        """增加头像版本号，用于缓存失效"""
-        self.avatar_version = (self.avatar_version or 0) + 1
 
     @property
     def avatar_url(self):

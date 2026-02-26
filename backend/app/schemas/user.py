@@ -113,7 +113,6 @@ class UserPrivate(UserPublic):
 
     last_active: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    avatar_version: int = Field(default=0, description="头像版本号")
 
     class Config:
         from_attributes = True

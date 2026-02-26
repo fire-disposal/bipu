@@ -16,7 +16,6 @@ class UserPrivate {
     required this.bipupuId,
     required this.createdAt,
     this.isActive = true,
-    this.avatarVersion = 0,
     this.nickname,
     this.avatarUrl,
     this.birthday,
@@ -76,10 +75,6 @@ class UserPrivate {
   final DateTime? lastActive;
   @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
-
-  /// 头像版本号
-  @JsonKey(name: 'avatar_version')
-  final int avatarVersion;
 
   Map<String, Object?> toJson() => _$UserPrivateToJson(this);
 }

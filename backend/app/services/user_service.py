@@ -177,6 +177,30 @@ class UserService:
             raise
 
     @staticmethod
+    def toggle_user_status(db: Session, user_id: int) -> User:
+        """切换用户激活状态"""
+        try:
+            user = db.query(User).filter(User.id == user_id).first()
+            if not user:
+                from app.core.exceptions import NotFoundException
+                raise NotFoundException(f"用户不存在: user_id={user_id}")
+
+            user.is_active = not user.is_active
+            user.updated_at = datetime.now(timezone.utc)
+
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+            logger.info(f"用户状态切换成功: user_id={user_id}, is_active={user.is_active}")
+            return user
+
+        except Exception as e:
+            db.rollback()
+            logger.error(f"切换用户状态失败: {e}")
+            raise
+
+    @staticmethod
     def update_last_active(db: Session, user: User) -> None:
         """更新用户最后活跃时间"""
         try:
