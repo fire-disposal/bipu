@@ -5,9 +5,10 @@
 2. 一致：统一字段命名规范
 3. 验证：添加必要的验证约束
 4. 实用：优化数据结构，减少冗余
+5. 轮播友好：支持前端轮播展示，包含必要的排序和激活状态
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 from typing import Optional, List
 
@@ -29,25 +30,32 @@ class PosterUpdate(BaseModel):
 
 
 class PosterResponse(BaseModel):
-    """海报响应"""
+    """海报响应 - 用于前端轮播展示
+    
+    字段说明：
+    - id: 海报唯一标识
+    - title: 海报标题
+    - link_url: 点击跳转链接（可选）
+    - image_url: 海报图片URL（由业务层构建）
+    - display_order: 显示顺序（数字越小越靠前）
+    - is_active: 是否激活（业务层已过滤）
+    - created_at: 创建时间
+    - updated_at: 更新时间
+    
+    注意：
+    - 前端轮播接口只返回 is_active=True 的海报
+    - image_url 由业务层在构建响应时动态生成
+    """
     id: int
     title: str = Field(..., description="海报标题")
     link_url: Optional[str] = Field(None, description="点击跳转链接")
     image_url: Optional[str] = Field(None, description="海报图片URL")
-    display_order: int = Field(default=0, description="显示顺序")
+    display_order: int = Field(default=0, description="显示顺序，数字越小越靠前")
     is_active: bool = Field(default=True, description="是否激活")
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
-    
-    def model_dump(self, **kwargs):
-        """重写 model_dump 以动态生成 image_url"""
-        data = super().model_dump(**kwargs)
-        if self.id:
-            data['image_url'] = f"/api/posters/{self.id}/image"
-        return data
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PosterListResponse(BaseModel):

@@ -1,7 +1,7 @@
 """海报API路由 - 极简版本"""
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form, Request
 from sqlalchemy.orm import Session
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 from app.db.database import get_db
 from app.models.user import User
@@ -13,6 +13,26 @@ from app.core.logging import get_logger
 
 router = APIRouter()
 logger = get_logger(__name__)
+
+
+def _build_poster_response(poster) -> Dict[str, Any]:
+    """业务层构建海报响应 - 确保数据安全和一致性
+    
+    职责：
+    1. 将 SQLAlchemy 对象转换为字典
+    2. 动态生成 image_url
+    3. 确保返回的数据符合 PosterResponse schema
+    """
+    return {
+        'id': poster.id,
+        'title': poster.title,
+        'link_url': poster.link_url,
+        'image_url': f"/api/posters/{poster.id}/image" if poster.id else None,
+        'display_order': poster.display_order,
+        'is_active': poster.is_active,
+        'created_at': poster.created_at,
+        'updated_at': poster.updated_at
+    }
 
 
 @router.get("/", response_model=PosterListResponse)
@@ -27,7 +47,7 @@ async def get_posters(
     posters, total = PosterService.get_all_posters(db, skip, page_size)
 
     return {
-        "posters": [poster.model_dump() for poster in posters],
+        "posters": [_build_poster_response(poster) for poster in posters],
         "total": total,
         "page": page,
         "page_size": page_size
@@ -39,10 +59,16 @@ async def get_active_posters(
     limit: int = Query(10, ge=1, le=20, description="返回数量"),
     db: Session = Depends(get_db)
 ):
-    """获取激活的海报列表（前端轮播用）"""
+    """获取激活的海报列表（前端轮播用）
+    
+    业务逻辑：
+    1. 从数据库查询激活的海报（is_active=True）
+    2. 按 display_order 排序
+    3. 限制返回数量
+    4. 业务层构建响应，动态生成 image_url
+    """
     posters = PosterService.get_active_posters(db, limit)
-    # 显式调用 model_dump() 以确保 image_url 被正确生成
-    return [poster.model_dump() for poster in posters]
+    return [_build_poster_response(poster) for poster in posters]
 
 
 @router.get("/{poster_id}", response_model=PosterResponse)
@@ -51,11 +77,11 @@ async def get_poster(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_superuser_web)
 ):
-    """获取单个海报详情"""
+    """获取单个海报详情（管理用）"""
     poster = PosterService.get_poster(db, poster_id)
     if not poster:
         raise HTTPException(status_code=404, detail="海报不存在")
-    return poster.model_dump()
+    return _build_poster_response(poster)
 
 
 @router.get("/{poster_id}/image")
@@ -155,7 +181,7 @@ async def create_poster(
 
         # 创建海报
         poster = await PosterService.create_poster(db, poster_data, image_file)
-        return poster.model_dump()
+        return _build_poster_response(poster)
 
     except HTTPException:
         raise
@@ -177,7 +203,7 @@ async def update_poster(
     poster = PosterService.update_poster(db, poster_id, poster_data)
     if not poster:
         raise HTTPException(status_code=404, detail="海报不存在")
-    return poster.model_dump()
+    return _build_poster_response(poster)
 
 
 @router.put("/{poster_id}/image", response_model=PosterResponse)
@@ -199,7 +225,7 @@ async def update_poster_image(
         poster = await PosterService.update_poster_image(db, poster_id, image_file)
         if not poster:
             raise HTTPException(status_code=404, detail="海报不存在")
-        return poster.model_dump()
+        return _build_poster_response(poster)
 
     except HTTPException:
         raise

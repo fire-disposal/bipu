@@ -2137,7 +2137,7 @@
           "posters"
         ],
         "summary": "Get Active Posters",
-        "description": "获取激活的海报列表（前端轮播用）",
+        "description": "获取激活的海报列表（前端轮播用）\n\n业务逻辑：\n1. 从数据库查询激活的海报（is_active=True）\n2. 按 display_order 排序\n3. 限制返回数量\n4. 业务层构建响应，动态生成 image_url",
         "operationId": "get_active_posters_api_posters_active_get",
         "parameters": [
           {
@@ -2189,7 +2189,7 @@
           "posters"
         ],
         "summary": "Get Poster",
-        "description": "获取单个海报详情",
+        "description": "获取单个海报详情（管理用）",
         "operationId": "get_poster_api_posters__poster_id__get",
         "parameters": [
           {
@@ -4359,7 +4359,7 @@
           "display_order": {
             "type": "integer",
             "title": "Display Order",
-            "description": "显示顺序",
+            "description": "显示顺序，数字越小越靠前",
             "default": 0
           },
           "is_active": {
@@ -4387,7 +4387,7 @@
           "updated_at"
         ],
         "title": "PosterResponse",
-        "description": "海报响应"
+        "description": "海报响应 - 用于前端轮播展示\n\n字段说明：\n- id: 海报唯一标识\n- title: 海报标题\n- link_url: 点击跳转链接（可选）\n- image_url: 海报图片URL（由业务层构建）\n- display_order: 显示顺序（数字越小越靠前）\n- is_active: 是否激活（业务层已过滤）\n- created_at: 创建时间\n- updated_at: 更新时间\n\n注意：\n- 前端轮播接口只返回 is_active=True 的海报\n- image_url 由业务层在构建响应时动态生成"
       },
       "PosterUpdate": {
         "properties": {

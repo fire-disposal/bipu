@@ -58,6 +58,12 @@ abstract class PostersClient {
   ///
   /// 获取激活的海报列表（前端轮播用）.
   ///
+  /// 业务逻辑：.
+  /// 1. 从数据库查询激活的海报（is_active=True）.
+  /// 2. 按 display_order 排序.
+  /// 3. 限制返回数量.
+  /// 4. 业务层构建响应，动态生成 image_url.
+  ///
   /// [limit] - 返回数量.
   @GET('/api/posters/active')
   Future<List<PosterResponse>> getApiPostersActive({
@@ -66,7 +72,7 @@ abstract class PostersClient {
 
   /// Get Poster.
   ///
-  /// 获取单个海报详情.
+  /// 获取单个海报详情（管理用）.
   @GET('/api/posters/{poster_id}')
   Future<PosterResponse> getApiPostersPosterId({
     @Path('poster_id') required int posterId,

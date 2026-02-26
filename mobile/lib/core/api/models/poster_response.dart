@@ -6,7 +6,21 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'poster_response.g.dart';
 
-/// 海报响应
+/// 海报响应 - 用于前端轮播展示.
+///
+/// 字段说明：.
+/// - id: 海报唯一标识.
+/// - title: 海报标题.
+/// - link_url: 点击跳转链接（可选）.
+/// - image_url: 海报图片URL（由业务层构建）.
+/// - display_order: 显示顺序（数字越小越靠前）.
+/// - is_active: 是否激活（业务层已过滤）.
+/// - created_at: 创建时间.
+/// - updated_at: 更新时间.
+///
+/// 注意：.
+/// - 前端轮播接口只返回 is_active=True 的海报.
+/// - image_url 由业务层在构建响应时动态生成.
 @JsonSerializable()
 class PosterResponse {
   const PosterResponse({
@@ -35,7 +49,7 @@ class PosterResponse {
   @JsonKey(name: 'image_url')
   final String? imageUrl;
 
-  /// 显示顺序
+  /// 显示顺序，数字越小越靠前
   @JsonKey(name: 'display_order')
   final int displayOrder;
 

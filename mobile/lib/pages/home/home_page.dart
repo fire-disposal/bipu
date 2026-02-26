@@ -509,7 +509,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           width: double.infinity,
                           child: ElevatedButton(
                             onPressed: () {
-                              context.push('/bluetooth/scan');
+                              context.push('/profile/bluetooth/scan');
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Theme.of(

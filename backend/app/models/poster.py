@@ -2,6 +2,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, LargeBinary
 from sqlalchemy.sql import func
 from app.models.base import Base
+from typing import Optional, Dict, Any
 
 
 class Poster(Base):
@@ -30,3 +31,19 @@ class Poster(Base):
 
     def __repr__(self):
         return f"<Poster(id={self.id}, title='{self.title}', active={self.is_active})>"
+
+    def model_dump(self, **kwargs) -> Dict[str, Any]:
+        """将模型转换为字典 - 传统方案，兼容Pydantic v2
+        
+        返回包含所有字段的字典，image_url 动态生成
+        """
+        return {
+            'id': self.id,
+            'title': self.title,
+            'link_url': self.link_url,
+            'image_url': f"/api/posters/{self.id}/image" if self.id else None,
+            'display_order': self.display_order,
+            'is_active': self.is_active,
+            'created_at': self.created_at,
+            'updated_at': self.updated_at
+        }
