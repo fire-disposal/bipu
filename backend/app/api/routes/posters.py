@@ -133,6 +133,18 @@ async def create_poster(
                 detail=f"文件大小不能超过 {settings.MAX_FILE_SIZE // (1024*1024)}MB"
             )
 
+        # 验证 link_url 格式（如果提供）
+        if link_url and link_url.strip():
+            link_url = link_url.strip()
+            # 简单的URL验证：必须以http://或https://开头
+            if not (link_url.startswith('http://') or link_url.startswith('https://')):
+                raise HTTPException(
+                    status_code=400,
+                    detail="链接必须以 http:// 或 https:// 开头"
+                )
+        else:
+            link_url = None
+
         # 构建海报数据
         poster_data = PosterCreate(
             title=title,

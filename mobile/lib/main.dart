@@ -12,6 +12,8 @@ import 'pages/layout/main_layout.dart';
 import 'pages/pager/pager_page.dart';
 import 'pages/profile/profile_page.dart';
 import 'pages/profile/pages/security_page.dart';
+import 'pages/profile/pages/edit_profile_page.dart';
+import 'pages/profile/pages/language_page.dart';
 import 'pages/common/widgets/settings_dialog.dart';
 import 'pages/messages/messages_page.dart';
 import 'pages/messages/pages/message_detail_page.dart';
@@ -215,14 +217,8 @@ final GoRouter _router = GoRouter(
               },
             ),
             GoRoute(
-              path: 'edit',
-              builder: (context, state) {
-                // 显示编辑资料对话框
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  SettingsDialog.showSettingsDialog(context);
-                });
-                return const SizedBox.shrink();
-              },
+              path: 'edit_profile',
+              builder: (context, state) => const EditProfilePage(),
             ),
             GoRoute(
               path: 'security',
@@ -250,13 +246,7 @@ final GoRouter _router = GoRouter(
             ),
             GoRoute(
               path: 'language',
-              builder: (context, state) {
-                // 显示语言设置对话框
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  SettingsDialog.showLanguageDialog(context);
-                });
-                return const SizedBox.shrink();
-              },
+              builder: (context, state) => const LanguagePage(),
             ),
             GoRoute(
               path: 'settings',

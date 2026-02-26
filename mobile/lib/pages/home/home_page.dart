@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:bipupu/core/network/network.dart';
 import 'package:bipupu/core/network/api_exception.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -179,70 +180,185 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // 海报轮播 - 极简设计
+                // 海报轮播 - 现代简洁设计
                 if (_posters.isNotEmpty)
                   SizedBox(
-                    height: 180,
-                    child: PageView.builder(
-                      controller: _posterController,
-                      onPageChanged: (index) {
-                        setState(() => _currentPosterIndex = index);
-                      },
-                      itemCount: _posters.length,
-                      itemBuilder: (context, index) {
-                        final poster = _posters[index];
-                        return Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 8),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: Theme.of(context).colorScheme.surfaceVariant,
-                          ),
-                          child: Center(
-                            child: Text(
-                              poster.title ?? '海报',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                    height: 200,
+                    child: Stack(
+                      children: [
+                        PageView.builder(
+                          controller: _posterController,
+                          onPageChanged: (index) {
+                            setState(() => _currentPosterIndex = index);
+                          },
+                          itemCount: _posters.length,
+                          itemBuilder: (context, index) {
+                            final poster = _posters[index];
+                            return Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 8),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Theme.of(context).colorScheme.shadow
+                                        .withValues(alpha: 0.15),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
                               ),
-                              textAlign: TextAlign.center,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    // 背景渐变
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Theme.of(context)
+                                                .colorScheme
+                                                .primary
+                                                .withValues(alpha: 0.3),
+                                            Theme.of(context)
+                                                .colorScheme
+                                                .secondary
+                                                .withValues(alpha: 0.3),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                      ),
+                                    ),
+                                    // 深色遮罩
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            Colors.transparent,
+                                            Colors.black.withValues(alpha: 0.4),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    // 文本内容
+                                    Positioned(
+                                      bottom: 16,
+                                      left: 16,
+                                      right: 16,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            poster.title,
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          if (poster.linkUrl != null &&
+                                              poster.linkUrl!.isNotEmpty)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                top: 4,
+                                              ),
+                                              child: Text(
+                                                '点击查看详情',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.8),
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                    // 点击区域
+                                    if (poster.linkUrl != null &&
+                                        poster.linkUrl!.isNotEmpty)
+                                      Positioned.fill(
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            onTap: () {
+                                              // 可以在这里处理点击事件
+                                              debugPrint(
+                                                'Poster clicked: ${poster.linkUrl}',
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        // 指示器 - 右下角
+                        Positioned(
+                          bottom: 12,
+                          right: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: List.generate(
+                                _posters.length,
+                                (index) => Container(
+                                  width: 6,
+                                  height: 6,
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: _currentPosterIndex == index
+                                        ? Colors.white
+                                        : Colors.white.withValues(alpha: 0.5),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                        );
-                      },
-                    ),
-                  ),
-                if (_posters.isNotEmpty) const SizedBox(height: 12),
-                if (_posters.isNotEmpty)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      _posters.length,
-                      (index) => Container(
-                        width: 8,
-                        height: 8,
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _currentPosterIndex == index
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.outline,
                         ),
-                      ),
+                      ],
                     ),
                   ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
-                // Device Information Card
+                // Device Information Card - 紧凑设计
                 Card(
-                  elevation: 4,
+                  elevation: 2,
                   shadowColor: Theme.of(
                     context,
                   ).colorScheme.shadow.withValues(alpha: 0.1),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(20.0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -252,7 +368,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             Text(
                               '我的设备',
                               style: TextStyle(
-                                fontSize: 18,
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: Theme.of(context).colorScheme.onSurface,
                               ),
@@ -260,14 +376,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
-                                vertical: 4,
+                                vertical: 3,
                               ),
                               decoration: BoxDecoration(
                                 color: Colors.orange.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
                                   color: Colors.orange,
-                                  width: 1,
+                                  width: 0.5,
                                 ),
                               ),
                               child: Row(
@@ -275,14 +391,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 children: [
                                   Icon(
                                     Icons.bluetooth_disabled,
-                                    size: 16,
+                                    size: 14,
                                     color: Colors.orange,
                                   ),
-                                  const SizedBox(width: 4),
+                                  const SizedBox(width: 3),
                                   Text(
                                     '未连接',
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.w500,
                                       color: Colors.orange,
                                     ),
@@ -292,24 +408,24 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 12),
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(12),
+                              padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
                                 color: Theme.of(
                                   context,
                                 ).colorScheme.primary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(
                                 Icons.developer_board,
-                                size: 32,
+                                size: 24,
                                 color: Theme.of(context).colorScheme.primary,
                               ),
                             ),
-                            const SizedBox(width: 16),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -317,21 +433,21 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   Text(
                                     '设备控制',
                                     style: TextStyle(
-                                      fontSize: 16,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.bold,
                                       color: Theme.of(
                                         context,
                                       ).colorScheme.onSurface,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 2),
                                   Text(
                                     '连接蓝牙设备以启用控制功能',
                                     style: TextStyle(
                                       color: Theme.of(
                                         context,
                                       ).colorScheme.onSurfaceVariant,
-                                      fontSize: 13,
+                                      fontSize: 12,
                                     ),
                                   ),
                                 ],
@@ -339,34 +455,38 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 20),
-                        ElevatedButton(
-                          onPressed: () {
-                            context.push('/bluetooth/scan');
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.primary,
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size(double.infinity, 54),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 2,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.bluetooth_searching),
-                              const SizedBox(width: 8),
-                              Text(
-                                '连接设备',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              context.push('/bluetooth/scan');
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size(double.infinity, 44),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                            ],
+                              elevation: 1,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.bluetooth_searching, size: 18),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '连接设备',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],

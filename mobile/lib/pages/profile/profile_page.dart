@@ -4,13 +4,15 @@ import 'package:flutter/services.dart';
 import '../../../core/services/auth_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final user = AuthService().currentUser;
+    final authService = AuthService();
+    final user = authService.currentUser;
     final username = user?.nickname ?? user?.username ?? "未登录";
 
     final bipupuId = user?.bipupuId ?? '';
@@ -146,6 +148,17 @@ class ProfilePage extends StatelessWidget {
                         Divider(height: 1, indent: 56),
                         ListTile(
                           leading: Icon(
+                            Icons.person_outline,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          title: const Text('个人档案'),
+                          subtitle: const Text('编辑个人资料'),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => context.push('/profile/edit_profile'),
+                        ),
+                        Divider(height: 1, indent: 56),
+                        ListTile(
+                          leading: Icon(
                             Icons.security,
                             color: Theme.of(context).colorScheme.primary,
                           ),
@@ -276,35 +289,5 @@ void _showClearCacheDialog(BuildContext context) {
 }
 
 void _showLanguageSelector(BuildContext context) {
-  showModalBottomSheet(
-    context: context,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (context) {
-      return SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 16),
-            const Text(
-              '选择语言',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              title: const Text('中文'),
-              trailing: const Icon(Icons.check),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              title: const Text('English'),
-              onTap: () => Navigator.pop(context),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      );
-    },
-  );
+  context.push('/profile/language');
 }
