@@ -86,6 +86,7 @@ class ApiInfoResponse(BaseModel):
     project: str = Field(..., description="项目名称")
     docs_url: str = Field(..., description="文档URL")
     redoc_url: str = Field(..., description="Redoc文档URL")
+    admin_url: str = Field(..., description="管理后台URL")
 
 
 class ErrorResponse(BaseModel):
