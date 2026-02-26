@@ -73,6 +73,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  /// 构建完整的海报图片URL - 拼接baseUrl
+  String _buildPosterImageUrl(String imageUrl) {
+    // 如果已经是完整URL，直接返回
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+
+    // 获取baseUrl并拼接相对路径
+    final baseUrl = ApiClient.instance.dio.options.baseUrl;
+    return '$baseUrl$imageUrl';
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -216,7 +228,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                     if (poster.imageUrl != null &&
                                         poster.imageUrl!.isNotEmpty)
                                       CachedNetworkImage(
-                                        imageUrl: poster.imageUrl!,
+                                        imageUrl: _buildPosterImageUrl(
+                                          poster.imageUrl!,
+                                        ),
                                         fit: BoxFit.cover,
                                         placeholder: (context, url) =>
                                             Container(
