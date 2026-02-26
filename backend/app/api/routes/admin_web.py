@@ -474,7 +474,7 @@ async def get_push_log_detail(
         "max_retries": log.max_retries,
         "task_id": log.task_id,
         "task_name": log.task_name,
-        "metadata": log.metadata,
+        "extra_data": log.extra_data,
         "created_at": log.created_at.isoformat() if log.created_at else None,
         "started_at": log.started_at.isoformat() if log.started_at else None,
         "completed_at": log.completed_at.isoformat() if log.completed_at else None,
