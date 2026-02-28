@@ -22,9 +22,21 @@ class VoiceInteractionError {
   String toString() => 'VoiceInteractionError(code: $code, message: $message)';
 }
 
+/// 静默检测阶段
+enum SilenceStage {
+  /// 初始录音阶段
+  initialRecording,
+
+  /// 已播放提醒 TTS，等待用户继续输入
+  reminderPlayed,
+
+  /// 宽限期内，准备发送
+  gracePeriod,
+}
+
 /// 语音交互配置
 class VoiceInteractionConfig {
-  /// 静默检测超时（用户停止说话后自动结束录音）
+  /// 静默检测超时（用户停止说话后触发提醒 TTS）
   final Duration silenceTimeout;
 
   /// 全局录音超时（最长录音时间）
@@ -39,12 +51,16 @@ class VoiceInteractionConfig {
   /// 波形更新频率（单位：毫秒）
   final int waveformUpdateIntervalMs;
 
+  /// 提醒 TTS 后的等待时间（用户继续输入的宽限期）
+  final Duration reminderGracePeriod;
+
   const VoiceInteractionConfig({
-    this.silenceTimeout = const Duration(seconds: 2),
+    this.silenceTimeout = const Duration(seconds: 5), // 5 秒静默触发提醒
     this.globalTimeout = const Duration(seconds: 30),
     this.enableSilenceDetection = true,
     this.ttsPreparationDelayMs = 200,
     this.waveformUpdateIntervalMs = 100,
+    this.reminderGracePeriod = const Duration(seconds: 3), // 提醒后 3 秒无输入才发送
   });
 }
 
@@ -53,7 +69,7 @@ class VoiceInteractionConfig {
 /// 封装 ASR 和 TTS 的底层控制，提供高级 API 给 Cubit 使用
 /// 支持：
 /// 1. TTS 播放与 ASR 的互斥协调
-/// 2. 静默检测自动结束录音
+/// 2. 两阶段静默检测（提醒 TTS + 宽限期）
 /// 3. 手动结束按钮并行生效
 /// 4. 波形数据实时生成
 /// 5. 错误统一处理
@@ -69,10 +85,14 @@ class VoiceInteractionCoordinator {
   bool _isTtsPlaying = false;
   bool _isStopping = false;
 
+  // 静默检测阶段
+  SilenceStage _silenceStage = SilenceStage.initialRecording;
+
   // 超时定时器
   Timer? _silenceTimer;
   Timer? _globalTimeoutTimer;
   Timer? _waveformUpdateTimer;
+  Timer? _reminderGraceTimer; // 提醒 TTS 后的宽限期定时器
 
   // 最后转录时间戳（用于静默检测）
   DateTime? _lastTranscriptTime;
@@ -85,6 +105,9 @@ class VoiceInteractionCoordinator {
   final StreamController<String> _recordingEndedController =
       StreamController.broadcast();
   final StreamController<VoiceInteractionError> _errorController =
+      StreamController.broadcast();
+  // 新增：提醒 TTS 事件流
+  final StreamController<void> _reminderTtsController =
       StreamController.broadcast();
 
   // ASR 订阅
@@ -104,11 +127,17 @@ class VoiceInteractionCoordinator {
   /// 错误事件流
   Stream<VoiceInteractionError> get onError => _errorController.stream;
 
+  /// 提醒 TTS 事件流（用于通知 Cubit 播放提醒 TTS）
+  Stream<void> get onReminderTts => _reminderTtsController.stream;
+
   /// 是否正在录音
   bool get isRecording => _isRecording;
 
   /// 是否正在播放 TTS
   bool get isTtsPlaying => _isTtsPlaying;
+
+  /// 当前静默检测阶段
+  SilenceStage get silenceStage => _silenceStage;
 
   /// 创建语音交互协调器
   VoiceInteractionCoordinator({
@@ -142,7 +171,7 @@ class VoiceInteractionCoordinator {
       );
       _emitError(
         VoiceInteractionError(
-          message: '初始化失败: ${e.toString()}',
+          message: '初始化失败：${e.toString()}',
           code: 'INIT_FAILED',
           cause: e,
         ),
@@ -154,7 +183,7 @@ class VoiceInteractionCoordinator {
   /// 播放引导 TTS
   ///
   /// [text]: 要播放的文本
-  /// [sid]: 语音ID（0-默认）
+  /// [sid]: 语音 ID（0-默认）
   /// [speed]: 语速（1.0-正常）
   ///
   /// 注意：播放 TTS 期间会暂停 ASR 录音
@@ -174,11 +203,11 @@ class VoiceInteractionCoordinator {
 
       // 如果有录音在进行，先暂停
       if (_isRecording) {
-        logger.i('VoiceInteractionCoordinator: TTS播放前暂停录音');
+        logger.i('VoiceInteractionCoordinator: TTS 播放前暂停录音');
         await _pauseRecording();
       }
 
-      // 等待一小段时间确保UI更新
+      // 等待一小段时间确保 UI 更新
       await Future.delayed(
         Duration(milliseconds: _config.ttsPreparationDelayMs),
       );
@@ -193,7 +222,7 @@ class VoiceInteractionCoordinator {
         playbackTimeout: Duration(seconds: 10),
       );
 
-      logger.i('VoiceInteractionCoordinator.playGuidance: TTS播放完成');
+      logger.i('VoiceInteractionCoordinator.playGuidance: TTS 播放完成');
     } catch (e, stackTrace) {
       logger.e(
         'VoiceInteractionCoordinator.playGuidance: 播放失败',
@@ -202,7 +231,7 @@ class VoiceInteractionCoordinator {
       );
       _emitError(
         VoiceInteractionError(
-          message: 'TTS播放失败: ${e.toString()}',
+          message: 'TTS 播放失败：${e.toString()}',
           code: 'TTS_FAILED',
           cause: e,
         ),
@@ -212,10 +241,91 @@ class VoiceInteractionCoordinator {
 
       // 如果有录音需要恢复
       if (_isRecording) {
-        logger.i('VoiceInteractionCoordinator: TTS播放完成后恢复录音');
+        logger.i('VoiceInteractionCoordinator: TTS 播放完成后恢复录音');
         await _resumeRecording();
       }
     }
+  }
+
+  /// 播放提醒 TTS（静默检测触发）
+  Future<void> playReminderTts() async {
+    logger.i('VoiceInteractionCoordinator.playReminderTts: 开始播放提醒 TTS');
+
+    if (!_isInitialized) {
+      await initialize();
+    }
+
+    try {
+      // 先触发事件，通知 Cubit 更新 UI
+      _reminderTtsController.add(null);
+
+      _isTtsPlaying = true;
+      _silenceStage = SilenceStage.reminderPlayed;
+
+      // 暂停 ASR 录音
+      if (_isRecording) {
+        logger.i('VoiceInteractionCoordinator: 提醒 TTS 播放前暂停录音');
+        await _pauseRecording();
+      }
+
+      // 等待一小段时间确保 UI 更新
+      await Future.delayed(
+        Duration(milliseconds: _config.ttsPreparationDelayMs),
+      );
+
+      // 播放提醒 TTS
+      await _speechQueue.enqueueAndWait(
+        text: '说完了吗？说完的话我可就发送了！',
+        priority: SpeechPriority.high,
+        voiceId: 0,
+        speed: 1.0,
+        playbackTimeout: Duration(seconds: 10),
+      );
+
+      logger.i('VoiceInteractionCoordinator.playReminderTts: TTS 播放完成');
+
+      // TTS 播放完成后，启动宽限期定时器
+      _startGracePeriodTimer();
+    } catch (e, stackTrace) {
+      logger.e(
+        'VoiceInteractionCoordinator.playReminderTts: 播放失败',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      _emitError(
+        VoiceInteractionError(
+          message: '提醒 TTS 播放失败：${e.toString()}',
+          code: 'REMINDER_TTS_FAILED',
+          cause: e,
+        ),
+      );
+    } finally {
+      _isTtsPlaying = false;
+
+      // 恢复录音（如果有）
+      if (_isRecording) {
+        logger.i('VoiceInteractionCoordinator: 提醒 TTS 播放完成后恢复录音');
+        await _resumeRecording();
+      }
+    }
+  }
+
+  /// 启动宽限期定时器（提醒 TTS 后等待用户继续输入）
+  void _startGracePeriodTimer() {
+    _silenceTimer?.cancel();
+    _silenceTimer = null;
+
+    logger.i(
+      'VoiceInteractionCoordinator: 启动宽限期定时器 (${_config.reminderGracePeriod.inSeconds}秒)',
+    );
+
+    _reminderGraceTimer = Timer(_config.reminderGracePeriod, () {
+      if (_isRecording && _silenceStage == SilenceStage.reminderPlayed) {
+        logger.i('VoiceInteractionCoordinator: 宽限期结束，用户无输入，触发发送');
+        _silenceStage = SilenceStage.gracePeriod;
+        _stopRecordingOnSilence();
+      }
+    });
   }
 
   /// 开始录音
@@ -238,17 +348,18 @@ class VoiceInteractionCoordinator {
       _waveformProcessor.clear();
 
       // 初始化 ASR 引擎（如果尚未初始化）
-      logger.i('VoiceInteractionCoordinator: 初始化ASR引擎...');
+      logger.i('VoiceInteractionCoordinator: 初始化 ASR 引擎...');
       await _asrEngine.init();
 
       // 开始录音
-      logger.i('VoiceInteractionCoordinator: 启动ASR录音...');
+      logger.i('VoiceInteractionCoordinator: 启动 ASR 录音...');
       await _asrEngine.startRecording();
 
       _isRecording = true;
       _lastTranscriptTime = DateTime.now();
+      _silenceStage = SilenceStage.initialRecording;
 
-      logger.i('VoiceInteractionCoordinator: ASR录音已启动');
+      logger.i('VoiceInteractionCoordinator: ASR 录音已启动');
 
       // 设置订阅
       _setupSubscriptions();
@@ -266,7 +377,7 @@ class VoiceInteractionCoordinator {
       );
       _emitError(
         VoiceInteractionError(
-          message: '录音启动失败: ${e.toString()}',
+          message: '录音启动失败：${e.toString()}',
           code: 'RECORD_START_FAILED',
           cause: e,
         ),
@@ -305,9 +416,9 @@ class VoiceInteractionCoordinator {
       String finalTranscript = '';
       try {
         finalTranscript = await _asrEngine.stop();
-        logger.i('VoiceInteractionCoordinator: 最终转录文本: "$finalTranscript"');
+        logger.i('VoiceInteractionCoordinator: 最终转录文本："$finalTranscript"');
       } catch (e) {
-        logger.e('VoiceInteractionCoordinator: 停止ASR失败: $e');
+        logger.e('VoiceInteractionCoordinator: 停止 ASR 失败：$e');
       }
 
       // 清理资源
@@ -325,7 +436,7 @@ class VoiceInteractionCoordinator {
       );
       _emitError(
         VoiceInteractionError(
-          message: '录音停止失败: ${e.toString()}',
+          message: '录音停止失败：${e.toString()}',
           code: 'RECORD_STOP_FAILED',
           cause: e,
         ),
@@ -361,7 +472,7 @@ class VoiceInteractionCoordinator {
       );
       _emitError(
         VoiceInteractionError(
-          message: '成功提示TTS播放失败: ${e.toString()}',
+          message: '成功提示 TTS 播放失败：${e.toString()}',
           code: 'SUCCESS_TTS_FAILED',
           cause: e,
         ),
@@ -371,7 +482,7 @@ class VoiceInteractionCoordinator {
 
   /// 取消所有语音交互
   ///
-  /// 停止录音和TTS播放，清理所有资源
+  /// 停止录音和 TTS 播放，清理所有资源
   Future<void> cancelAll() async {
     logger.i('VoiceInteractionCoordinator.cancelAll: 取消所有语音交互');
 
@@ -380,7 +491,7 @@ class VoiceInteractionCoordinator {
       try {
         await _asrEngine.stop();
       } catch (e) {
-        logger.e('VoiceInteractionCoordinator.cancelAll: 停止ASR失败: $e');
+        logger.e('VoiceInteractionCoordinator.cancelAll: 停止 ASR 失败：$e');
       }
     }
 
@@ -388,7 +499,7 @@ class VoiceInteractionCoordinator {
     try {
       await _speechQueue.stop();
     } catch (e) {
-      logger.e('VoiceInteractionCoordinator.cancelAll: 停止台词队列失败: $e');
+      logger.e('VoiceInteractionCoordinator.cancelAll: 停止台词队列失败：$e');
     }
 
     // 清理所有资源
@@ -406,7 +517,13 @@ class VoiceInteractionCoordinator {
 
     // 订阅 ASR 结果
     _asrResultSubscription = _asrEngine.onResult.listen((transcript) {
-      logger.v('VoiceInteractionCoordinator: 收到转录: "$transcript"');
+      logger.v('VoiceInteractionCoordinator: 收到转录："$transcript"');
+
+      // TTS 播放期间忽略转录（防止录入 TTS 内容）
+      if (_isTtsPlaying) {
+        logger.v('VoiceInteractionCoordinator: TTS 播放期间，忽略转录');
+        return;
+      }
 
       // 更新最后转录时间（用于静默检测）
       _lastTranscriptTime = DateTime.now();
@@ -414,13 +531,19 @@ class VoiceInteractionCoordinator {
       // 转发转录结果
       _transcriptController.add(transcript);
 
-      // 如果是有效内容，重置静默检测
+      // 如果是有效内容，处理静默检测逻辑
       if (transcript.isNotEmpty && transcript != '检测到长时间静默，请说话...') {
-        _resetSilenceTimer();
+        logger.v('VoiceInteractionCoordinator: 检测到有效转录，重置静默计时');
 
-        // 如果有静默检测，检查是否应该自动结束
-        if (_config.enableSilenceDetection) {
-          _checkForSilence();
+        // 如果已播放提醒 TTS，用户继续输入则取消宽限期定时器，重置状态
+        if (_silenceStage == SilenceStage.reminderPlayed) {
+          logger.i('VoiceInteractionCoordinator: 提醒 TTS 后用户继续输入，取消宽限期');
+          _reminderGraceTimer?.cancel();
+          _reminderGraceTimer = null;
+          _silenceStage = SilenceStage.initialRecording;
+          _resetSilenceTimer();
+        } else if (_silenceStage == SilenceStage.initialRecording) {
+          _resetSilenceTimer();
         }
       }
     });
@@ -442,7 +565,7 @@ class VoiceInteractionCoordinator {
     if (!_isRecording) return;
 
     logger.i(
-      'VoiceInteractionCoordinator._stopRecordingOnSilence: 静默检测触发，停止录音',
+      'VoiceInteractionCoordinator._stopRecordingOnSilence: 静默检测触发，停止录音，阶段：$_silenceStage',
     );
 
     try {
@@ -450,9 +573,9 @@ class VoiceInteractionCoordinator {
       String finalTranscript = '';
       try {
         finalTranscript = await _asrEngine.stop();
-        logger.i('VoiceInteractionCoordinator: 最终转录文本: "$finalTranscript"');
+        logger.i('VoiceInteractionCoordinator: 最终转录文本："$finalTranscript"');
       } catch (e) {
-        logger.e('VoiceInteractionCoordinator: 停止ASR失败: $e');
+        logger.e('VoiceInteractionCoordinator: 停止 ASR 失败：$e');
       }
 
       // 清理资源
@@ -468,7 +591,7 @@ class VoiceInteractionCoordinator {
       );
       _emitError(
         VoiceInteractionError(
-          message: '静默检测停止失败: ${e.toString()}',
+          message: '静默检测停止失败：${e.toString()}',
           code: 'SILENCE_STOP_FAILED',
           cause: e,
         ),
@@ -495,27 +618,22 @@ class VoiceInteractionCoordinator {
   /// 重置静默检测定时器
   void _resetSilenceTimer() {
     _silenceTimer?.cancel();
+
+    logger.v(
+      'VoiceInteractionCoordinator: 重置静默计时器 (${_config.silenceTimeout.inSeconds}秒)',
+    );
+
     _silenceTimer = Timer(_config.silenceTimeout, () {
       if (_isRecording) {
-        logger.i('VoiceInteractionCoordinator: 检测到静默，自动停止录音');
-        _stopRecordingOnSilence();
+        if (_silenceStage == SilenceStage.initialRecording) {
+          // 第一阶段静默：触发提醒 TTS
+          logger.i('VoiceInteractionCoordinator: 检测到静默，触发提醒 TTS');
+          _silenceTimer = null;
+          playReminderTts();
+        }
+        // 如果是 reminderPlayed 阶段，由宽限期定时器处理
       }
     });
-  }
-
-  /// 检查是否需要静默检测
-  void _checkForSilence() {
-    if (!_config.enableSilenceDetection || _lastTranscriptTime == null) {
-      return;
-    }
-
-    final now = DateTime.now();
-    final silenceDuration = now.difference(_lastTranscriptTime!);
-
-    if (silenceDuration >= _config.silenceTimeout) {
-      logger.i('VoiceInteractionCoordinator: 静默检测触发，自动停止录音');
-      _stopRecordingOnSilence();
-    }
   }
 
   /// 启动波形更新定时器
@@ -545,8 +663,6 @@ class VoiceInteractionCoordinator {
     _silenceTimer?.cancel();
     _globalTimeoutTimer?.cancel();
 
-    // 暂停 ASR（如果支持暂停）
-    // 注意：当前 ASR 引擎可能不支持暂停，这里先记录
     logger.i('VoiceInteractionCoordinator: 录音暂停（逻辑暂停）');
   }
 
@@ -567,6 +683,9 @@ class VoiceInteractionCoordinator {
     _silenceTimer?.cancel();
     _silenceTimer = null;
 
+    _reminderGraceTimer?.cancel();
+    _reminderGraceTimer = null;
+
     _globalTimeoutTimer?.cancel();
     _globalTimeoutTimer = null;
   }
@@ -583,6 +702,7 @@ class VoiceInteractionCoordinator {
 
     _isRecording = false;
     _lastTranscriptTime = null;
+    _silenceStage = SilenceStage.initialRecording;
 
     // 取消订阅
     await _asrResultSubscription?.cancel();
@@ -622,7 +742,7 @@ class VoiceInteractionCoordinator {
     try {
       _errorController.add(error);
     } catch (e) {
-      logger.e('VoiceInteractionCoordinator: 发射错误事件时失败: $e');
+      logger.e('VoiceInteractionCoordinator: 发射错误事件时失败：$e');
     }
   }
 
@@ -637,6 +757,7 @@ class VoiceInteractionCoordinator {
     await _waveformController.close();
     await _recordingEndedController.close();
     await _errorController.close();
+    await _reminderTtsController.close();
 
     // 释放台词队列服务
     await _speechQueue.dispose();
@@ -644,6 +765,6 @@ class VoiceInteractionCoordinator {
     logger.i('VoiceInteractionCoordinator.dispose: 资源释放完成');
   }
 
-  /// 获取当前波形处理器实例（用于Cubit获取最终波形数据）
+  /// 获取当前波形处理器实例（用于 Cubit 获取最终波形数据）
   WaveformProcessor get waveformProcessor => _waveformProcessor;
 }

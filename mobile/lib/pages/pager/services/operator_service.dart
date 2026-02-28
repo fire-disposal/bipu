@@ -1,22 +1,21 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../models/operator_model.dart';
 import 'package:collection/collection.dart';
 
 /// 接线员管理服务
-/// 负责操作员人格的加载、解锁状态追踪和本地持久化
+/// 负责操作员人格的加载、解锁状态追踪和本地持久化（使用 Hive）
 class OperatorService {
-  static const String _unlockedOperatorsKey = 'pager_unlocked_operators';
-  static const String _operatorConversationCountKey =
-      'pager_operator_conversation_count_';
+  static const String _boxName = 'operator_unlocks';
+  static const String _firstLaunchKey = 'first_launch_completed';
 
-  late SharedPreferences _prefs;
+  late Box<dynamic> _box;
   bool _initialized = false;
 
   /// 所有可用的操作员
   late List<OperatorPersonality> _allOperators;
 
-  /// 已解锁的操作员ID集合
-  late Set<String> _unlockedOperatorIds;
+  /// 是否已完成首次启动
+  bool _firstLaunchCompleted = false;
 
   OperatorService() {
     _allOperators = List.from(OperatorFactory.defaultOperators);
@@ -26,34 +25,50 @@ class OperatorService {
   Future<void> init() async {
     if (_initialized) return;
 
-    _prefs = await SharedPreferences.getInstance();
+    // 初始化 Hive
+    await Hive.initFlutter();
+    _box = await Hive.openBox(_boxName);
+
+    // 加载解锁状态
     _loadUnlockedOperators();
+
+    // 检查是否首次启动
+    _firstLaunchCompleted = _box.get(_firstLaunchKey, defaultValue: false);
+
     _initialized = true;
   }
 
-  /// 从本地存储加载已解锁的操作员
+  /// 从 Hive 加载已解锁的操作员
   void _loadUnlockedOperators() {
-    final unlockedJson = _prefs.getStringList(_unlockedOperatorsKey) ?? [];
-    _unlockedOperatorIds = unlockedJson.toSet();
-
-    // 更新操作员的解锁状态
     for (var i = 0; i < _allOperators.length; i++) {
       final op = _allOperators[i];
-      if (_unlockedOperatorIds.contains(op.id)) {
-        final conversationCount =
-            _prefs.getInt('$_operatorConversationCountKey${op.id}') ?? 0;
+      final unlockData = _box.get('unlock_${op.id}');
+
+      if (unlockData != null && unlockData is Map) {
+        final isUnlocked = unlockData['unlocked'] ?? false;
+        final unlockedAtMillis = unlockData['unlocked_at'];
+        final conversationCount = unlockData['conversation_count'] ?? 0;
+
         _allOperators[i] = op.copyWith(
-          isUnlocked: true,
-          unlockedAt: DateTime.fromMillisecondsSinceEpoch(
-            _prefs.getInt(
-                  '${_operatorConversationCountKey}${op.id}_unlock_time',
-                ) ??
-                0,
-          ),
+          isUnlocked: isUnlocked,
+          unlockedAt: unlockedAtMillis != null
+              ? DateTime.fromMillisecondsSinceEpoch(unlockedAtMillis)
+              : null,
           conversationCount: conversationCount,
         );
       }
     }
+  }
+
+  /// 检查是否是首次启动
+  bool isFirstLaunch() {
+    return !_firstLaunchCompleted;
+  }
+
+  /// 标记首次启动已完成
+  Future<void> markFirstLaunchCompleted() async {
+    _firstLaunchCompleted = true;
+    await _box.put(_firstLaunchKey, true);
   }
 
   /// 解锁操作员
@@ -63,19 +78,12 @@ class OperatorService {
       return false;
     }
 
-    _unlockedOperatorIds.add(operatorId);
-
-    // 保存到本地存储
-    await _prefs.setStringList(
-      _unlockedOperatorsKey,
-      _unlockedOperatorIds.toList(),
-    );
-
-    // 保存解锁时间
-    await _prefs.setInt(
-      '${_operatorConversationCountKey}${operatorId}_unlock_time',
-      DateTime.now().millisecondsSinceEpoch,
-    );
+    // 保存到 Hive
+    await _box.put('unlock_$operatorId', {
+      'unlocked': true,
+      'unlocked_at': DateTime.now().millisecondsSinceEpoch,
+      'conversation_count': 0,
+    });
 
     // 更新内存中的操作员状态
     final index = _allOperators.indexWhere((op) => op.id == operatorId);
@@ -91,12 +99,13 @@ class OperatorService {
 
   /// 增加操作员的对话次数
   Future<void> incrementConversationCount(String operatorId) async {
-    final currentCount =
-        _prefs.getInt('$_operatorConversationCountKey$operatorId') ?? 0;
-    await _prefs.setInt(
-      '$_operatorConversationCountKey$operatorId',
-      currentCount + 1,
-    );
+    final unlockData = _box.get('unlock_$operatorId') ?? {};
+    final currentCount = unlockData['conversation_count'] ?? 0;
+
+    await _box.put('unlock_$operatorId', {
+      ...unlockData,
+      'conversation_count': currentCount + 1,
+    });
 
     // 更新内存中的操作员状态
     final index = _allOperators.indexWhere((op) => op.id == operatorId);
@@ -122,7 +131,7 @@ class OperatorService {
     return _allOperators.where((op) => !op.isUnlocked).toList();
   }
 
-  /// 根据ID获取操作员
+  /// 根据 ID 获取操作员
   OperatorPersonality? getOperatorById(String id) {
     return _allOperators.firstWhereOrNull((op) => op.id == id);
   }
@@ -133,54 +142,45 @@ class OperatorService {
 
     // 如果有已解锁的操作员，从已解锁中选
     if (unlockedOperators.isNotEmpty) {
-      final random = DateTime.now().microsecond % unlockedOperators.length;
+      final random =
+          DateTime.now().millisecondsSinceEpoch % unlockedOperators.length;
       return unlockedOperators[random];
     }
 
     // 否则随机选择任意操作员
-    final random = DateTime.now().microsecond % _allOperators.length;
+    final random = DateTime.now().millisecondsSinceEpoch % _allOperators.length;
     return _allOperators[random];
   }
 
   /// 检查操作员是否已解锁
   bool isOperatorUnlocked(String operatorId) {
-    return _unlockedOperatorIds.contains(operatorId);
+    final operator = getOperatorById(operatorId);
+    return operator?.isUnlocked ?? false;
   }
 
   /// 获取已解锁的操作员数量
   int getUnlockedCount() {
-    return _unlockedOperatorIds.length;
+    return _allOperators.where((op) => op.isUnlocked).length;
   }
 
   /// 清空所有解锁记录（用于测试）
   Future<void> clearAllUnlocks() async {
-    _unlockedOperatorIds.clear();
-    await _prefs.remove(_unlockedOperatorsKey);
+    await _box.clear();
+    _firstLaunchCompleted = false;
 
-    // 重置对话计数
-    for (final op in _allOperators) {
-      await _prefs.remove('$_operatorConversationCountKey${op.id}');
-      await _prefs.remove(
-        '${_operatorConversationCountKey}${op.id}_unlock_time',
+    // 重置所有操作员状态
+    for (var i = 0; i < _allOperators.length; i++) {
+      _allOperators[i] = _allOperators[i].copyWith(
+        isUnlocked: false,
+        unlockedAt: null,
+        conversationCount: 0,
       );
     }
-
-    // 重新加载
-    _loadUnlockedOperators();
   }
 
   /// 重置单个操作员的解锁状态
   Future<void> resetOperator(String operatorId) async {
-    _unlockedOperatorIds.remove(operatorId);
-    await _prefs.setStringList(
-      _unlockedOperatorsKey,
-      _unlockedOperatorIds.toList(),
-    );
-
-    await _prefs.remove('$_operatorConversationCountKey$operatorId');
-    await _prefs.remove(
-      '${_operatorConversationCountKey}${operatorId}_unlock_time',
-    );
+    await _box.delete('unlock_$operatorId');
 
     // 更新内存状态
     final index = _allOperators.indexWhere((op) => op.id == operatorId);
@@ -191,5 +191,15 @@ class OperatorService {
         conversationCount: 0,
       );
     }
+  }
+
+  /// 获取操作员解锁数据
+  Map<String, dynamic>? getOperatorUnlockData(String operatorId) {
+    return _box.get('unlock_$operatorId');
+  }
+
+  /// 释放资源
+  Future<void> dispose() async {
+    await _box.close();
   }
 }

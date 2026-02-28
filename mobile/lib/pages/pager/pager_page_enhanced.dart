@@ -36,11 +36,14 @@ class _PagerView extends StatelessWidget {
     final cubit = context.read<PagerCubit>();
 
     return BlocListener<PagerCubit, PagerState>(
-      // 仅监听解锁状态，触发全局弹窗
-      listenWhen: (prev, curr) => curr is OperatorUnlockedState,
+      // 监听解锁状态和错误状态，触发全局弹窗
+      listenWhen: (prev, curr) =>
+          curr is OperatorUnlockedState || curr is PagerErrorState,
       listener: (context, state) {
         if (state is OperatorUnlockedState) {
           _showUnlockDialog(context, state);
+        } else if (state is PagerErrorState) {
+          _showErrorDialog(context, state);
         }
       },
       child: Scaffold(
@@ -48,6 +51,14 @@ class _PagerView extends StatelessWidget {
           title: const Text('虚拟接线员'),
           elevation: 0,
           centerTitle: true,
+          actions: [
+            // 收藏页面入口按钮
+            IconButton(
+              icon: const Icon(Icons.collections_bookmark),
+              onPressed: () => _navigateToGallery(context),
+              tooltip: '接线员图鉴',
+            ),
+          ],
         ),
         body: BlocBuilder<PagerCubit, PagerState>(
           // 重要：当状态为解锁弹窗时，不重新构建 body，保持底层页面不变
@@ -139,6 +150,30 @@ class _PagerView extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// 弹出错误对话框
+  void _showErrorDialog(BuildContext context, PagerErrorState state) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        icon: const Icon(Icons.error_outline, color: Colors.red, size: 48),
+        title: const Text('拨号错误'),
+        content: Text(state.message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              // 返回拨号准备状态
+              context.read<PagerCubit>().initializeDialingPrep();
+            },
+            child: const Text('确定'),
+          ),
+        ],
       ),
     );
   }
