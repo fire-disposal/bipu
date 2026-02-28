@@ -139,8 +139,6 @@ class _OperatorDisplayWidgetState extends State<OperatorDisplayWidget>
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return ScaleTransition(
       scale: _scaleAnimation,
       child: FadeTransition(

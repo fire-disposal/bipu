@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:bipupu/core/network/network.dart';
 import 'package:bipupu/core/network/api_exception.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:go_router/go_router.dart';
 
 class FavoritesPage extends StatefulWidget {
   const FavoritesPage({super.key});
@@ -65,7 +64,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final hasNextPage = _currentPage * _pageSize < _totalFavorites;
 
     return Scaffold(

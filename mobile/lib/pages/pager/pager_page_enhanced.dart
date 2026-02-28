@@ -18,8 +18,6 @@ class PagerPageEnhanced extends StatefulWidget {
 }
 
 class _PagerPageEnhancedState extends State<PagerPageEnhanced> {
-  final OperatorService _operatorService = OperatorService();
-
   @override
   Widget build(BuildContext context) {
     return BlocProvider<PagerCubit>(

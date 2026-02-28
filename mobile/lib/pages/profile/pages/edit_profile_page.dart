@@ -70,8 +70,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    final user = _authService.currentUser;
-
     Future<void> pickAndCropImage() async {
       try {
         final ImagePicker picker = ImagePicker();
@@ -109,10 +107,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
         // 上传头像
         setState(() => _isUploadingAvatar = true);
         try {
-          final updatedUser = await _apiClient.api.userProfile
+          final response = await _apiClient.api.userProfile
               .postApiProfileAvatar(file: File(croppedFile.path));
 
-          setState(() => _avatarUrl = updatedUser.avatarUrl);
+          setState(() => _avatarUrl = response.avatarUrl);
           // 更新当前用户信息
           _authService.fetchCurrentUser();
 
@@ -175,9 +173,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               : _baziController.text.trim(),
         );
 
-        final updatedUser = await _apiClient.api.userProfile.putApiProfile(
-          body: updateData,
-        );
+        await _apiClient.api.userProfile.putApiProfile(body: updateData);
 
         // 更新当前用户信息
         _authService.fetchCurrentUser();

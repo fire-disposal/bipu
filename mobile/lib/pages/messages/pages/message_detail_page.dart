@@ -27,6 +27,13 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
   bool _isLoadingContact = false;
   bool _isLoadingBlock = false;
 
+  Color get _onSurfaceColor => Theme.of(context).colorScheme.onSurface;
+  Color get _cardColor =>
+      Theme.of(context).cardTheme.color ?? Colors.transparent;
+  Color get _primaryColor => Theme.of(context).colorScheme.primary;
+  Color get _dividerColor => Theme.of(context).dividerColor;
+  Color get _iconColor => Theme.of(context).iconTheme.color ?? Colors.black;
+
   @override
   void initState() {
     super.initState();
@@ -218,12 +225,7 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
         : senderContact?.info?.avatarUrl;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('message_detail_title'.tr()),
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-      ),
+      appBar: AppBar(title: Text('message_detail_title'.tr()), elevation: 0),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,10 +234,10 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: _cardColor,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Theme.of(context).shadowColor,
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -254,7 +256,9 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                         },
                         child: CircleAvatar(
                           radius: 32,
-                          backgroundColor: Colors.grey[200],
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
                           backgroundImage: avatarUrl != null
                               ? NetworkImage(avatarUrl)
                               : null,
@@ -265,9 +269,10 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                                             .substring(0, 1)
                                             .toUpperCase()
                                       : '?',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
+                                    color: _onSurfaceColor,
                                   ),
                                 )
                               : null,
@@ -280,9 +285,10 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                           children: [
                             Text(
                               displayName,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
+                                color: _onSurfaceColor,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -290,7 +296,9 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                               msg.senderBipupuId,
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey[600],
+                                color: Theme.of(
+                                  context,
+                                ).textTheme.bodySmall?.color,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -300,7 +308,9 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                               ).format(msg.createdAt),
                               style: TextStyle(
                                 fontSize: 11,
-                                color: Colors.grey[500],
+                                color: Theme.of(
+                                  context,
+                                ).textTheme.labelSmall?.color,
                               ),
                             ),
                           ],
@@ -308,9 +318,10 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                       ),
                       if (!isSender && !isServiceAccount)
                         IconButton(
-                          icon: const Icon(Icons.person_add_outlined),
+                          icon: Icon(Icons.person_add_outlined),
                           onPressed: _isLoadingContact ? null : _addContact,
                           tooltip: 'add_contact_button'.tr(),
+                          color: _iconColor,
                         ),
                     ],
                   ),
@@ -334,8 +345,10 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                             waveformData: msg.waveform!,
                             width: double.infinity,
                             height: 120,
-                            waveColor: Colors.blue,
-                            backgroundColor: Colors.grey[50]!,
+                            waveColor: _primaryColor,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
                             showGrid: true,
                             showLabels: true,
                           ),
@@ -349,13 +362,19 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      border: Border.all(color: Colors.grey[200]!),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
+                      border: Border.all(color: _dividerColor),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       msg.content,
-                      style: const TextStyle(fontSize: 16, height: 1.5),
+                      style: TextStyle(
+                        fontSize: 16,
+                        height: 1.5,
+                        color: _onSurfaceColor,
+                      ),
                     ),
                   ),
 
@@ -397,8 +416,12 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                           icon: const Icon(Icons.block),
                           label: Text('block_user_button'.tr()),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red[50],
-                            foregroundColor: Colors.red,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.errorContainer,
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.onErrorContainer,
                           ),
                         ),
                     ],

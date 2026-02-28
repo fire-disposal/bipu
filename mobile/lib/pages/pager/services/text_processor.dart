@@ -108,7 +108,6 @@ class TextProcessor {
     final emojis = <String>{};
 
     for (int i = 0; i < text.length; i++) {
-      final codeUnit = text.codeUnitAt(i);
       final codePoint = _getCodePoint(text, i);
 
       // 检查各个表情符号范围

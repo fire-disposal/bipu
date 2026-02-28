@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:ui' as ui;
-import 'dart:typed_data';
 import '../../../core/utils/logger.dart';
 
 /// 波形可视化组件

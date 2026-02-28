@@ -21,9 +21,6 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
   BluetoothAdapterState _adapterState = BluetoothAdapterState.unknown;
   BluetoothDevice? _connectingDevice;
 
-  static const String _pagerServiceUUID =
-      '6e400001-b5a3-f393-e0a9-e50e24dcca9e'; // Nordic UART Service
-
   late StreamSubscription<List<ScanResult>> _scanResultsSubscription;
   late StreamSubscription<bool> _isScanningSubscription;
   late StreamSubscription<BluetoothAdapterState> _adapterStateSubscription;
