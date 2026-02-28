@@ -3,14 +3,14 @@ name: flutter用户端Apk Release
 on:
   push:
     tags:
-      - 'v*'
-      - '[0-9]+.[0-9]+.[0-9]+*' # 增加对 0.0.1 这种非 v 开头格式的兼容
+      - "v*"
+      - "[0-9]+.[0-9]+.[0-9]+*"
   workflow_dispatch:
     inputs:
       version_name:
-        description: 'Manual Version Name (e.g., v1.0.0)'
+        description: "Manual Version Name (e.g., v1.0.0)"
         required: false
-        default: 'manual-build'
+        default: "manual-build"
 
 permissions:
   contents: write
@@ -18,97 +18,126 @@ permissions:
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
-    
+
     steps:
+      # ========= 0️⃣ Checkout =========
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 获取所有历史，有助于生成 release notes
+          fetch-depth: 0 # 必须设置为 0 才能获取完整的 git log
 
+      # ========= 1️⃣ 准备模型目录 =========
+      - name: Prepare model directories
+        run: |
+          mkdir -p flutter_user/assets/models/asr
+          mkdir -p flutter_user/assets/models/tts
+
+      # ========= 2️⃣ 下载模型（固定从 v1.0.0 下载） =========
+      - name: Download ASR / TTS models
+        run: |
+          # 优化：固定版本为 v1.0.0，不随当前 Tag 变化
+          FIXED_MODEL_VERSION="v1.0.0"
+
+          curl -L -o asr.7z \
+            "https://github.com/${{ github.repository }}/releases/download/${FIXED_MODEL_VERSION}/asr.7z"
+
+          curl -L -o tts.7z \
+            "https://github.com/${{ github.repository }}/releases/download/${FIXED_MODEL_VERSION}/tts.7z"
+
+      # ========= 3️⃣ SHA256 校验 =========
+      - name: Verify model checksums
+        run: |
+          echo "be74a6387e96f79463fc8d415be0d00f542693add08c3458c58f583583a56351  asr.7z" | sha256sum -c -
+          echo "ed9c6ba1c7b75e8eafde0df3a886c684eba67b3dad448e2f937d74eea611b863  tts.7z" | sha256sum -c -
+
+      # ========= 4️⃣ 解压模型 =========
+      - name: Extract models
+        run: |
+          sudo apt-get update && sudo apt-get install -y p7zip-full
+          7z x asr.7z -oflutter_user/assets/models/asr -y
+          7z x tts.7z -oflutter_user/assets/models/tts -y
+
+      # ========= 5️⃣ Java / Flutter 环境 =========
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: '17'
-          cache: 'gradle'
+          distribution: zulu
+          java-version: "17"
+          cache: gradle
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: stable
           cache: true
 
-      - name: Get dependencies
-        working-directory: ./flutter_user
-        run: flutter pub get
-
+      # ========= 6️⃣ Flutter 构建 =========
       - name: Build APK
-        working-directory: ./flutter_user
-        run: flutter build apk --split-per-abi
+        working-directory: flutter_user
+        run: |
+          flutter pub get
+          flutter build apk --split-per-abi
 
+      # ========= 7️⃣ APK 重命名 & 产物准备 =========
       - name: Prepare Artifacts
         id: prepare
         shell: bash
         run: |
-          # 逻辑优化：统一处理版本号
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             VERSION="${{ github.event.inputs.version_name }}"
           else
-            # 去掉 ref/tags/ 前缀
             VERSION="${GITHUB_REF#refs/tags/}"
           fi
-          
-          APK_DIR="flutter_user/build/app/outputs/flutter-apk"
-          
-          # 为每个ABI版本的APK添加版本号后缀
-          ARM32_SRC="$APK_DIR/app-armeabi-v7a-release.apk"
-          ARM64_SRC="$APK_DIR/app-arm64-v8a-release.apk"
-          X64_SRC="$APK_DIR/app-x86_64-release.apk"
-          
-          ARM32_DEST="$APK_DIR/flutter_user_${VERSION}_armeabi-v7a.apk"
-          ARM64_DEST="$APK_DIR/flutter_user_${VERSION}_arm64-v8a.apk"
-          X64_DEST="$APK_DIR/flutter_user_${VERSION}_x86_64.apk"
-          
-          # 检查并重命名所有APK文件
-          if [ -f "$ARM32_SRC" ]; then
-            mv "$ARM32_SRC" "$ARM32_DEST"
-            echo "arm32_apk=$ARM32_DEST" >> $GITHUB_OUTPUT
-          else
-            echo "Error: ARM32 APK not found at $ARM32_SRC"
-            exit 1
-          fi
-          
-          if [ -f "$ARM64_SRC" ]; then
-            mv "$ARM64_SRC" "$ARM64_DEST"
-            echo "arm64_apk=$ARM64_DEST" >> $GITHUB_OUTPUT
-          else
-            echo "Error: ARM64 APK not found at $ARM64_SRC"
-            exit 1
-          fi
-          
-          if [ -f "$X64_SRC" ]; then
-            mv "$X64_SRC" "$X64_DEST"
-            echo "x64_apk=$X64_DEST" >> $GITHUB_OUTPUT
-          else
-            echo "Error: X64 APK not found at $X64_SRC"
-            exit 1
-          fi
-          
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+          APK_DIR="flutter_user/build/app/outputs/flutter-apk"
+
+          # 重命名并保存路径到 OUTPUT
+          mv "$APK_DIR/app-armeabi-v7a-release.apk" "$APK_DIR/flutter_user_${VERSION}_armeabi-v7a.apk"
+          mv "$APK_DIR/app-arm64-v8a-release.apk" "$APK_DIR/flutter_user_${VERSION}_arm64-v8a.apk"
+          mv "$APK_DIR/app-x86_64-release.apk" "$APK_DIR/flutter_user_${VERSION}_x86_64.apk"
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "arm32_apk=$APK_DIR/flutter_user_${VERSION}_armeabi-v7a.apk" >> "$GITHUB_OUTPUT"
+          echo "arm64_apk=$APK_DIR/flutter_user_${VERSION}_arm64-v8a.apk" >> "$GITHUB_OUTPUT"
+          echo "x64_apk=$APK_DIR/flutter_user_${VERSION}_x86_64.apk" >> "$GITHUB_OUTPUT"
+
+      # ========= 8️⃣ 动态生成 Release Body =========
+      - name: Generate release body
+        shell: bash
+        run: |
+          VERSION="${{ steps.prepare.outputs.version }}"
+
+          # 自动获取最近最多 5 次提交消息
+          # 如果提交不足 5 次，git log 会自动展示全部已有的提交
+          RECENT_COMMITS=$(git log -5 --pretty=format:"- %s (%h)")
+
+          cat <<EOF > release.md
+          ## 🚀 Release ${VERSION}
+
+          📦 **构建说明：**
+          - 本 Release 由 GitHub Actions 自动构建
+          - 对应代码状态：Tag \`${VERSION}\`
+          - 模型资源：固定引用自 \`v1.0.0\` 版本
+
+          <details>
+          <summary>📝 最近提交记录（用于代码定位）</summary>
+
+          ${RECENT_COMMITS}
+
+          </details>
+          EOF
+
+      # ========= 9️⃣ 发布 Release =========
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.prepare.outputs.version }}
-          name: "Release ${{ steps.prepare.outputs.version }}"
+          name: Release ${{ steps.prepare.outputs.version }}
+          body_path: release.md
           files: |
             ${{ steps.prepare.outputs.arm32_apk }}
             ${{ steps.prepare.outputs.arm64_apk }}
             ${{ steps.prepare.outputs.x64_apk }}
-          generate_release_notes: true
-          # 只有手动触发才是草稿
-          draft: ${{ github.event_name == 'workflow_dispatch' }}
-          # 如果是正式 tag，直接发布
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
