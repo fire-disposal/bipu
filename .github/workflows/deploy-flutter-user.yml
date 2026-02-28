@@ -35,12 +35,9 @@ jobs:
       # ========= 2️⃣ 下载模型（固定从 v1.0.0 下载） =========
       - name: Download ASR / TTS models
         run: |
-          # 优化：固定版本为 v1.0.0，不随当前 Tag 变化
           FIXED_MODEL_VERSION="v1.0.0"
-
           curl -L -o asr.7z \
             "https://github.com/${{ github.repository }}/releases/download/${FIXED_MODEL_VERSION}/asr.7z"
-
           curl -L -o tts.7z \
             "https://github.com/${{ github.repository }}/releases/download/${FIXED_MODEL_VERSION}/tts.7z"
 
@@ -57,26 +54,38 @@ jobs:
           7z x asr.7z -omobile/assets/models/asr -y
           7z x tts.7z -omobile/assets/models/tts -y
 
-      # ========= 5️⃣ Java / Flutter 环境 =========
+      # ========= 5️⃣ 环境配置 & 缓存 =========
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: zulu
           java-version: "17"
-          cache: gradle
+          cache: gradle # 自动缓存 Gradle 依赖
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          cache: true
+          cache: true # 自动缓存 Flutter SDK
+
+      - name: Cache Pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('mobile/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
 
       # ========= 6️⃣ Flutter 构建 =========
       - name: Build APK
         working-directory: mobile
+        env:
+          # 增加 JVM 内存以应对大模型打包，防止 11 分钟后的 OOM
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m"
         run: |
           flutter pub get
-          flutter build apk --split-per-abi
+          # 使用 --no-pub 确保不再进行冗余检查，加速构建
+          flutter build apk --split-per-abi --no-pub
 
       # ========= 7️⃣ APK 重命名 & 产物准备 =========
       - name: Prepare Artifacts
@@ -106,9 +115,6 @@ jobs:
         shell: bash
         run: |
           VERSION="${{ steps.prepare.outputs.version }}"
-
-          # 自动获取最近最多 5 次提交消息
-          # 如果提交不足 5 次，git log 会自动展示全部已有的提交
           RECENT_COMMITS=$(git log -5 --pretty=format:"- %s (%h)")
 
           cat <<EOF > release.md
@@ -117,10 +123,10 @@ jobs:
           📦 **构建说明：**
           - 本 Release 由 GitHub Actions 自动构建
           - 对应代码状态：Tag \`${VERSION}\`
-          - 模型资源：固定引用自 \`v1.0.0\` 版本
+          - 模型资源：固定引用自 \`v1.0.0\` 版本（ASR / TTS ONNX）
 
           <details>
-          <summary>📝 最近提交记录（用于代码定位）</summary>
+          <summary>📝 最近提交记录</summary>
 
           ${RECENT_COMMITS}
 
