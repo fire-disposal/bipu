@@ -26,19 +26,20 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('拨号员图鉴'),
         elevation: 0,
         centerTitle: true,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
       ),
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
             // 统计信息卡片
-            SliverToBoxAdapter(child: _buildStatsCard()),
+            SliverToBoxAdapter(child: _buildStatsCard(colorScheme, theme)),
 
             // 操作员网格
             SliverPadding(
@@ -52,7 +53,7 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                 ),
                 delegate: SliverChildBuilderDelegate((context, index) {
                   final operator = _allOperators[index];
-                  return _buildOperatorCard(operator);
+                  return _buildOperatorCard(operator, colorScheme, theme);
                 }, childCount: _allOperators.length),
               ),
             ),
@@ -65,7 +66,7 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
   }
 
   /// 构建统计信息卡片
-  Widget _buildStatsCard() {
+  Widget _buildStatsCard(ColorScheme colorScheme, ThemeData theme) {
     final unlockedCount = widget.operatorService.getUnlockedCount();
     final totalCount = _allOperators.length;
     final progressPercent = (unlockedCount / totalCount * 100).toStringAsFixed(
@@ -77,10 +78,13 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.blue.shade50, Colors.purple.shade50],
+            colors: [
+              colorScheme.primaryContainer,
+              colorScheme.tertiaryContainer,
+            ],
           ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.blue.shade200),
+          border: Border.all(color: colorScheme.primary),
         ),
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -93,32 +97,29 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                   children: [
                     Text(
                       '集合进度',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onPrimaryContainer,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       '$unlockedCount / $totalCount',
-                      style: const TextStyle(
-                        fontSize: 28,
+                      style: theme.textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Colors.blue,
+                        color: colorScheme.primary,
                       ),
                     ),
                   ],
                 ),
                 CircleAvatar(
                   radius: 40,
-                  backgroundColor: Colors.blue.shade100,
+                  backgroundColor: colorScheme.surface,
                   child: Text(
                     '$progressPercent%',
-                    style: TextStyle(
-                      fontSize: 18,
+                    style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.blue.shade600,
+                      color: colorScheme.primary,
                     ),
                   ),
                 ),
@@ -130,8 +131,8 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
               child: LinearProgressIndicator(
                 value: unlockedCount / totalCount,
                 minHeight: 8,
-                backgroundColor: Colors.grey.shade300,
-                valueColor: AlwaysStoppedAnimation(Colors.blue.shade400),
+                backgroundColor: colorScheme.surface,
+                valueColor: AlwaysStoppedAnimation(colorScheme.primary),
               ),
             ),
           ],
@@ -141,21 +142,27 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
   }
 
   /// 构建操作员卡片
-  Widget _buildOperatorCard(OperatorPersonality operator) {
+  Widget _buildOperatorCard(
+    OperatorPersonality operator,
+    ColorScheme colorScheme,
+    ThemeData theme,
+  ) {
     return GestureDetector(
-      onTap: operator.isUnlocked ? () => _showOperatorDetail(operator) : null,
+      onTap: operator.isUnlocked
+          ? () => _showOperatorDetail(operator, colorScheme, theme)
+          : null,
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: operator.isUnlocked
-                ? Colors.blue.shade200
-                : Colors.grey.shade300,
+                ? colorScheme.primary
+                : colorScheme.outline,
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: (operator.isUnlocked ? Colors.blue : Colors.grey)
+              color: (operator.isUnlocked ? colorScheme.primary : Colors.black)
                   .withOpacity(0.1),
               blurRadius: 12,
               offset: const Offset(0, 4),
@@ -165,21 +172,25 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: operator.isUnlocked
-              ? _buildUnlockedCard(operator)
-              : _buildLockedCard(operator),
+              ? _buildUnlockedCard(operator, colorScheme, theme)
+              : _buildLockedCard(operator, colorScheme, theme),
         ),
       ),
     );
   }
 
   /// 已解锁的卡片
-  Widget _buildUnlockedCard(OperatorPersonality operator) {
+  Widget _buildUnlockedCard(
+    OperatorPersonality operator,
+    ColorScheme colorScheme,
+    ThemeData theme,
+  ) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Colors.blue.shade50, Colors.white],
+          colors: [colorScheme.primaryContainer, colorScheme.surface],
         ),
       ),
       child: Column(
@@ -193,7 +204,10 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Colors.blue.shade100, Colors.purple.shade100],
+                  colors: [
+                    colorScheme.primaryContainer,
+                    colorScheme.tertiaryContainer,
+                  ],
                 ),
               ),
               child: Stack(
@@ -205,13 +219,21 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                             operator.portraitUrl,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) =>
-                                _buildPortraitPlaceholder(operator),
+                                _buildPortraitPlaceholder(
+                                  operator,
+                                  colorScheme,
+                                  theme,
+                                ),
                           )
                         : Image.asset(
                             operator.portraitUrl,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) =>
-                                _buildPortraitPlaceholder(operator),
+                                _buildPortraitPlaceholder(
+                                  operator,
+                                  colorScheme,
+                                  theme,
+                                ),
                           ),
                   ),
 
@@ -222,10 +244,10 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                     child: Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.green.shade400,
+                        color: colorScheme.secondary,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.green.withOpacity(0.5),
+                            color: colorScheme.secondary.withOpacity(0.5),
                             blurRadius: 8,
                           ),
                         ],
@@ -254,16 +276,17 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                 children: [
                   Text(
                     operator.name,
-                    style: const TextStyle(
-                      fontSize: 14,
+                    style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: colorScheme.onSurface,
                     ),
                     textAlign: TextAlign.center,
                   ),
                   Text(
                     operator.description,
-                    style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -274,14 +297,13 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade100,
+                      color: colorScheme.primaryContainer,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       '已对话 ${operator.conversationCount} 次',
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: Colors.blue.shade700,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onPrimaryContainer,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -296,13 +318,20 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
   }
 
   /// 未解锁的卡片（黑影风格）
-  Widget _buildLockedCard(OperatorPersonality operator) {
+  Widget _buildLockedCard(
+    OperatorPersonality operator,
+    ColorScheme colorScheme,
+    ThemeData theme,
+  ) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Colors.grey.shade800, Colors.grey.shade900],
+          colors: [
+            colorScheme.surfaceContainerHigh,
+            colorScheme.surfaceContainerHighest,
+          ],
         ),
       ),
       child: Column(
@@ -321,7 +350,7 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                     decoration: BoxDecoration(
                       shape: BoxShape.rectangle,
                       borderRadius: BorderRadius.circular(12),
-                      color: Colors.black38,
+                      color: colorScheme.onSurface.withOpacity(0.38),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.5),
@@ -357,9 +386,9 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                   top: 8,
                   right: 8,
                   child: Container(
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.grey,
+                      color: colorScheme.outline,
                     ),
                     padding: const EdgeInsets.all(6),
                     child: const Icon(
@@ -386,7 +415,7 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                     height: 14,
                     width: 60,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade700,
+                      color: colorScheme.onSurface.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -394,15 +423,14 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                     height: 10,
                     width: 80,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade700,
+                      color: colorScheme.onSurface.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
                   Text(
                     '点击拨号解锁',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey.shade400,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -416,17 +444,27 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
   }
 
   /// 立绘占位符
-  Widget _buildPortraitPlaceholder(OperatorPersonality operator) {
+  Widget _buildPortraitPlaceholder(
+    OperatorPersonality operator,
+    ColorScheme colorScheme,
+    ThemeData theme,
+  ) {
     return Container(
-      color: Colors.grey.shade200,
+      color: colorScheme.surfaceContainerHighest,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.person_outline, size: 48, color: Colors.grey.shade400),
+          Icon(
+            Icons.person_outline,
+            size: 48,
+            color: colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(height: 8),
           Text(
             operator.name,
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -434,7 +472,11 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
   }
 
   /// 显示操作员详细信息
-  void _showOperatorDetail(OperatorPersonality operator) {
+  void _showOperatorDetail(
+    OperatorPersonality operator,
+    ColorScheme colorScheme,
+    ThemeData theme,
+  ) {
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -466,13 +508,21 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                             operator.portraitUrl,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) =>
-                                _buildPortraitPlaceholder(operator),
+                                _buildPortraitPlaceholder(
+                                  operator,
+                                  colorScheme,
+                                  theme,
+                                ),
                           )
                         : Image.asset(
                             operator.portraitUrl,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) =>
-                                _buildPortraitPlaceholder(operator),
+                                _buildPortraitPlaceholder(
+                                  operator,
+                                  colorScheme,
+                                  theme,
+                                ),
                           ),
                   ),
                 ),
@@ -481,9 +531,9 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                 // 名字
                 Text(
                   operator.name,
-                  style: const TextStyle(
-                    fontSize: 20,
+                  style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -491,7 +541,9 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                 // 描述
                 Text(
                   operator.description,
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
@@ -500,9 +552,9 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.shade200),
+                    border: Border.all(color: colorScheme.primary),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -511,17 +563,15 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                         children: [
                           Text(
                             '${operator.conversationCount}',
-                            style: const TextStyle(
-                              fontSize: 18,
+                            style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
-                              color: Colors.blue,
+                              color: colorScheme.primary,
                             ),
                           ),
                           Text(
                             '次对话',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.blue.shade600,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: colorScheme.onPrimaryContainer,
                             ),
                           ),
                         ],
@@ -532,16 +582,15 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                             operator.unlockedAt != null
                                 ? _formatDate(operator.unlockedAt!)
                                 : '-',
-                            style: const TextStyle(
-                              fontSize: 14,
+                            style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
+                              color: colorScheme.onSurface,
                             ),
                           ),
                           Text(
                             '解锁日期',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: colorScheme.onPrimaryContainer,
                             ),
                           ),
                         ],
@@ -552,16 +601,9 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                 const SizedBox(height: 20),
 
                 // 关闭按钮
-                ElevatedButton(
+                FilledButton(
                   onPressed: Navigator.of(context).pop,
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48),
-                    backgroundColor: Colors.blue.shade400,
-                  ),
-                  child: const Text(
-                    '关闭',
-                    style: TextStyle(color: Colors.white),
-                  ),
+                  child: const Text('关闭'),
                 ),
               ],
             ),

@@ -71,6 +71,7 @@ class InCallState extends PagerState {
   final TextProcessingResult? textProcessingResult; // 文本处理结果
   final bool hasEmojiDetected; // 是否检测到表情符号
   final bool showEmojiWarning; // 是否显示表情符号警告
+  final List<String> operatorSpeechHistory; // 接线员台词历史记录
 
   const InCallState({
     required this.targetId,
@@ -85,6 +86,7 @@ class InCallState extends PagerState {
     this.textProcessingResult,
     this.hasEmojiDetected = false,
     this.showEmojiWarning = false,
+    this.operatorSpeechHistory = const [], // 初始化空列表
   });
 
   InCallState copyWith({
@@ -100,6 +102,7 @@ class InCallState extends PagerState {
     TextProcessingResult? textProcessingResult,
     bool? hasEmojiDetected,
     bool? showEmojiWarning,
+    List<String>? operatorSpeechHistory,
   }) {
     return InCallState(
       targetId: targetId ?? this.targetId,
@@ -114,6 +117,8 @@ class InCallState extends PagerState {
       textProcessingResult: textProcessingResult ?? this.textProcessingResult,
       hasEmojiDetected: hasEmojiDetected ?? this.hasEmojiDetected,
       showEmojiWarning: showEmojiWarning ?? this.showEmojiWarning,
+      operatorSpeechHistory:
+          operatorSpeechHistory ?? this.operatorSpeechHistory,
     );
   }
 
@@ -131,6 +136,7 @@ class InCallState extends PagerState {
     textProcessingResult,
     hasEmojiDetected,
     showEmojiWarning,
+    operatorSpeechHistory,
   ];
 }
 

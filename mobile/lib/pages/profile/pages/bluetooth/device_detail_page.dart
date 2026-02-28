@@ -80,7 +80,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '可以发送消息和控制命令',
+                              '可以发送文本消息',
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Theme.of(
@@ -171,9 +171,9 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
 
               const SizedBox(height: 24),
 
-              // 控制命令区域
+              // 消息发送区域
               Text(
-                '控制命令',
+                '消息发送',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -194,7 +194,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                     label: '同步时间',
                     color: Colors.blue,
                     onPressed: () {
-                      _bluetoothService.syncTime();
+                      _bluetoothService.sendTimeSync();
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('时间同步命令已发送！'),

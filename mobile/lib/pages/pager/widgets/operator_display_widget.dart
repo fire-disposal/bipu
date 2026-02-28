@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 /// 虚拟接线员立绘显示组件
-/// 支持从网络URL或Asset路径加载立绘资源
+/// 支持从网络 URL 或 Asset 路径加载立绘资源
 class OperatorDisplayWidget extends StatefulWidget {
-  final String imageUrl; // 立绘URL或Asset路径
+  final String imageUrl; // 立绘 URL 或 Asset 路径
   final bool isAnimating; // 是否播放动画
   final double scale; // 缩放比例
   final Duration animationDuration; // 动画时长
@@ -73,7 +73,7 @@ class _OperatorDisplayWidgetState extends State<OperatorDisplayWidget>
 
   /// 构建立绘图像
   Widget _buildOperatorImage() {
-    // 判断是否为网络URL
+    // 判断是否为网络 URL
     if (widget.imageUrl.startsWith('http')) {
       return CachedNetworkImage(
         imageUrl: widget.imageUrl,
@@ -82,7 +82,7 @@ class _OperatorDisplayWidgetState extends State<OperatorDisplayWidget>
         errorWidget: (context, url, error) => _buildErrorWidget(),
       );
     } else {
-      // Asset路径
+      // Asset 路径
       return Image.asset(
         widget.imageUrl,
         fit: BoxFit.contain,
@@ -93,32 +93,43 @@ class _OperatorDisplayWidgetState extends State<OperatorDisplayWidget>
 
   /// 占位符
   Widget _buildPlaceholder() {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
       ),
-      child: const Center(child: CircularProgressIndicator()),
+      child: Center(
+        child: CircularProgressIndicator(color: colorScheme.primary),
+      ),
     );
   }
 
   /// 错误显示
   Widget _buildErrorWidget() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: colorScheme.outline),
       ),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.person_outline, size: 64, color: Colors.grey.shade400),
+            Icon(
+              Icons.person_outline,
+              size: 64,
+              color: colorScheme.onSurfaceVariant,
+            ),
             const SizedBox(height: 8),
             Text(
               '接线员',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -128,6 +139,8 @@ class _OperatorDisplayWidgetState extends State<OperatorDisplayWidget>
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return ScaleTransition(
       scale: _scaleAnimation,
       child: FadeTransition(
@@ -173,6 +186,9 @@ class OperatorCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -181,9 +197,12 @@ class OperatorCardWidget extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Colors.blue.shade50, Colors.purple.shade50],
+            colors: [
+              colorScheme.primaryContainer,
+              colorScheme.tertiaryContainer,
+            ],
           ),
-          border: Border.all(color: Colors.blue.shade200, width: 1),
+          border: Border.all(color: colorScheme.primary, width: 1),
         ),
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -201,7 +220,10 @@ class OperatorCardWidget extends StatelessWidget {
             // 接线员信息
             Text(
               operatorName,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
             ),
             const SizedBox(height: 4),
 
@@ -209,7 +231,7 @@ class OperatorCardWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.green.shade100,
+                color: colorScheme.secondaryContainer,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -219,16 +241,15 @@ class OperatorCardWidget extends StatelessWidget {
                     width: 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: Colors.green.shade600,
+                      color: colorScheme.secondary,
                       shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: 6),
                   Text(
                     statusText,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.green.shade700,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSecondaryContainer,
                       fontWeight: FontWeight.w500,
                     ),
                   ),

@@ -29,6 +29,10 @@ class ASREngine {
       StreamController.broadcast();
   Stream<double> get onVolume => _volumeController.stream;
 
+  final StreamController<Uint8List> _audioController =
+      StreamController.broadcast();
+  Stream<Uint8List> get onAudio => _audioController.stream;
+
   bool get isInitialized => _isInitialized;
 
   // 计数器变量
@@ -196,6 +200,9 @@ class ASREngine {
       (data) {
         try {
           logger.v('🎵 ASREngine: 收到音频数据，大小: ${data.length} 字节');
+
+          // 将音频数据发送给订阅者（用于波形处理）
+          _audioController.add(data);
 
           final floatSamples = _convertBytesToFloat(data);
           logger.v('   🔢 转换后样本数: ${floatSamples.length}');

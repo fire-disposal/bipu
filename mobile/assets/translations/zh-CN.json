@@ -72,7 +72,6 @@
    "speaker_id": "说话人ID (0-{})",
    "speed": "速度",
     "generate_and_play": "生成并播放",
-    "welcome_back": "欢迎回来",
     "connection_communication_discovery": "连接 · 沟通 · 发现",
     "my_device": "我的设备",
     "not_connected": "未连接",

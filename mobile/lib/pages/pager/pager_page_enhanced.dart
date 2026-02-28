@@ -8,8 +8,8 @@ import 'pages/finalize_page.dart';
 import 'pages/operator_gallery_page_new.dart';
 import 'services/operator_service.dart';
 
-/// 增强版拨号页面 - 包含所有新功能
-/// 使用状态机管理三个状态的转换，支持操作员人格系统、文本编辑和解锁机制
+/// 增强版拨号页面
+/// 采用状态机模式，通过 PagerCubit 驱动 UI 切换
 class PagerPageEnhanced extends StatefulWidget {
   const PagerPageEnhanced({super.key});
 
@@ -18,280 +18,235 @@ class PagerPageEnhanced extends StatefulWidget {
 }
 
 class _PagerPageEnhancedState extends State<PagerPageEnhanced> {
-  late PagerCubit _pagerCubit;
-  late OperatorService _operatorService;
-
-  @override
-  void initState() {
-    super.initState();
-    _operatorService = OperatorService();
-    _pagerCubit = PagerCubit();
-    _pagerCubit.initializeDialingPrep();
-  }
-
-  @override
-  void dispose() {
-    _pagerCubit.close();
-    super.dispose();
-  }
-
-  /// 显示操作员图鉴
-  void _showOperatorGallery() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) =>
-            OperatorGalleryPageNew(operatorService: _operatorService),
-      ),
-    );
-  }
-
-  /// 显示解锁提示对话框
-  void _showUnlockDialog(OperatorUnlockedState state) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade50, Colors.purple.shade50],
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 庆祝图标
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.yellow.shade100,
-                ),
-                child: const Icon(
-                  Icons.card_giftcard,
-                  size: 48,
-                  color: Colors.amber,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // 标题
-              Text(
-                state.unlockMessage,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-
-              // 操作员信息
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade200),
-                ),
-                child: Column(
-                  children: [
-                    // 小立绘
-                    Container(
-                      width: 60,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        color: Colors.grey.shade100,
-                      ),
-                      child: state.operator.portraitUrl.startsWith('http')
-                          ? Image.network(
-                              state.operator.portraitUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  const Icon(Icons.person, size: 30),
-                            )
-                          : Image.asset(
-                              state.operator.portraitUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  const Icon(Icons.person, size: 30),
-                            ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      state.operator.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      state.operator.description,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // 按钮
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: Navigator.of(context).pop,
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
-                        backgroundColor: Colors.grey.shade200,
-                      ),
-                      child: Text(
-                        '继续拨号',
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        _showOperatorGallery();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
-                        backgroundColor: Colors.blue.shade400,
-                      ),
-                      child: const Text(
-                        '查看图鉴',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  final OperatorService _operatorService = OperatorService();
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider<PagerCubit>(
-      create: (context) => _pagerCubit,
-      child: BlocListener<PagerCubit, PagerState>(
-        bloc: _pagerCubit,
-        listener: (context, state) {
-          // 监听操作员解锁事件
-          if (state is OperatorUnlockedState) {
-            _showUnlockDialog(state);
-          }
-        },
-        child: Scaffold(
-          appBar: AppBar(
-            title: const Text('虚拟接线员'),
-            elevation: 0,
-            centerTitle: true,
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black87,
-            actions: [
-              // 操作员展示入口
-              BlocBuilder<PagerCubit, PagerState>(
-                bloc: _pagerCubit,
-                builder: (context, state) {
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Tooltip(
-                      message: '拨号员展示',
-                      child: IconButton(
-                        icon: const Icon(Icons.collections),
-                        onPressed: _showOperatorGallery,
+      // 这里的 create 确保 Cubit 生命周期与 Widget 绑定
+      create: (context) => PagerCubit()..initializeDialingPrep(),
+      child: const _PagerView(),
+    );
+  }
+}
+
+class _PagerView extends StatelessWidget {
+  const _PagerView();
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<PagerCubit>();
+
+    return BlocListener<PagerCubit, PagerState>(
+      // 仅监听解锁状态，触发全局弹窗
+      listenWhen: (prev, curr) => curr is OperatorUnlockedState,
+      listener: (context, state) {
+        if (state is OperatorUnlockedState) {
+          _showUnlockDialog(context, state);
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('虚拟接线员'),
+          elevation: 0,
+          centerTitle: true,
+        ),
+        body: BlocBuilder<PagerCubit, PagerState>(
+          // 重要：当状态为解锁弹窗时，不重新构建 body，保持底层页面不变
+          buildWhen: (prev, curr) => curr is! OperatorUnlockedState,
+          builder: (context, state) {
+            return AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: _buildBody(context, state, cubit),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  /// 根据状态分发子页面
+  Widget _buildBody(BuildContext context, PagerState state, PagerCubit cubit) {
+    if (state is DialingPrepState) {
+      return DialingPrepPageMinimal(key: const ValueKey('prep'), cubit: cubit);
+    }
+    if (state is InCallState) {
+      return InCallPage(key: const ValueKey('in_call'), cubit: cubit);
+    }
+    if (state is FinalizeState) {
+      return FinalizePage(key: const ValueKey('finalize'), cubit: cubit);
+    }
+    if (state is PagerErrorState) {
+      return _ErrorDisplay(state: state, onRetry: cubit.initializeDialingPrep);
+    }
+
+    return const Center(child: CircularProgressIndicator.adaptive());
+  }
+
+  /// 弹出解锁成功对话框
+  void _showUnlockDialog(BuildContext context, OperatorUnlockedState state) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 顶部奖励图标
+                _buildAwardHeader(colorScheme),
+                const SizedBox(height: 20),
+
+                Text(
+                  state.unlockMessage,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // 操作员名片展示
+                _buildOperatorCard(colorScheme, state.operator),
+                const SizedBox(height: 24),
+
+                // 交互按钮
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        child: const Text('继续拨号'),
                       ),
                     ),
-                  );
-                },
-              ),
-            ],
-          ),
-          body: BlocBuilder<PagerCubit, PagerState>(
-            bloc: _pagerCubit,
-            builder: (context, state) {
-              // 根据状态显示不同的页面
-              if (state is DialingPrepState) {
-                return DialingPrepPageMinimal(cubit: _pagerCubit);
-              } else if (state is InCallState) {
-                return InCallPage(cubit: _pagerCubit);
-              } else if (state is FinalizeState) {
-                return FinalizePage(cubit: _pagerCubit);
-              } else if (state is PagerErrorState) {
-                return _buildErrorPage(state);
-              } else if (state is OperatorUnlockedState) {
-                // 解锁状态由 BlocListener 处理
-                return const SizedBox.shrink();
-              } else {
-                return const Center(child: CircularProgressIndicator());
-              }
-            },
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () {
+                          Navigator.pop(dialogContext);
+                          _navigateToGallery(context);
+                        },
+                        child: const Text('查看图鉴'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  /// 构建错误页面
-  Widget _buildErrorPage(PagerErrorState state) {
+  Widget _buildAwardHeader(ColorScheme colorScheme) {
+    return Container(
+      width: 72,
+      height: 72,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: colorScheme.tertiaryContainer,
+      ),
+      child: Icon(Icons.stars_rounded, size: 40, color: colorScheme.tertiary),
+    );
+  }
+
+  Widget _buildOperatorCard(ColorScheme colorScheme, dynamic op) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          _buildPortrait(op.portraitUrl),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  op.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  op.description,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPortrait(String url) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        width: 50,
+        height: 65,
+        child: url.startsWith('http')
+            ? Image.network(url, fit: BoxFit.cover)
+            : Image.asset(url, fit: BoxFit.cover),
+      ),
+    );
+  }
+
+  void _navigateToGallery(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            OperatorGalleryPageNew(operatorService: OperatorService()),
+      ),
+    );
+  }
+}
+
+/// 抽离的错误展示组件
+class _ErrorDisplay extends StatelessWidget {
+  final PagerErrorState state;
+  final VoidCallback onRetry;
+
+  const _ErrorDisplay({required this.state, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red.shade600),
+            Icon(Icons.cloud_off_rounded, size: 64, color: colorScheme.error),
             const SizedBox(height: 16),
-            Text(
-              '出错了',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.red.shade600,
-              ),
-            ),
+            Text('服务请求失败', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
-            Text(
-              state.message,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-            ),
+            Text(state.message, textAlign: TextAlign.center),
             const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {
-                _pagerCubit.initializeDialingPrep();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.shade400,
-              ),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                child: Text('重试', style: TextStyle(color: Colors.white)),
-              ),
+            FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('重试一次'),
             ),
           ],
         ),
@@ -300,19 +255,9 @@ class _PagerPageEnhancedState extends State<PagerPageEnhanced> {
   }
 }
 
-/// 原始 PagerPage 保留（向后兼容）
-/// 可以逐步迁移到新的 PagerPageEnhanced
-class PagerPage extends StatefulWidget {
+// 兼容旧类名
+class PagerPage extends StatelessWidget {
   const PagerPage({super.key});
-
   @override
-  State<PagerPage> createState() => _PagerPageState();
-}
-
-class _PagerPageState extends State<PagerPage> {
-  @override
-  Widget build(BuildContext context) {
-    // 使用新的增强页面
-    return const PagerPageEnhanced();
-  }
+  Widget build(BuildContext context) => const PagerPageEnhanced();
 }

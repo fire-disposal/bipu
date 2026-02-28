@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:bipupu/core/network/network.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:bipupu/core/services/bluetooth_device_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -12,6 +15,10 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
+  final BluetoothDeviceService _bluetoothService = BluetoothDeviceService();
+  BluetoothConnectionState _connectionState =
+      BluetoothConnectionState.disconnected;
+
   late AnimationController _titleAnimationController;
   late Animation<double> _titleFadeAnimation;
   late Animation<Offset> _titleSlideAnimation;
@@ -24,46 +31,49 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    // 标题动画控制器
     _titleAnimationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
 
-    // 淡入动画
     _titleFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _titleAnimationController, curve: Curves.easeOut),
     );
 
-    // 滑动动画
     _titleSlideAnimation =
-        Tween<Offset>(begin: const Offset(0, -0.3), end: Offset.zero).animate(
+        Tween<Offset>(begin: const Offset(0, -0.2), end: Offset.zero).animate(
           CurvedAnimation(
             parent: _titleAnimationController,
             curve: Curves.easeOutCubic,
           ),
         );
 
-    // 开始动画
     _titleAnimationController.forward();
-
-    // 初始化海报控制器
     _posterController = PageController();
-
-    // 加载海报
     _loadPosters();
+    _setupBluetoothListener();
   }
 
   Future<void> _loadPosters() async {
     try {
       final response = await ApiClient.instance.api.posters
           .getApiPostersActive();
-      setState(() {
-        _posters = response;
-      });
-    } on ApiException catch (e) {
-      debugPrint('Error loading posters: ${e.message}');
+      if (mounted) {
+        setState(() => _posters = response);
+      }
+    } catch (e) {
+      debugPrint('Error loading posters: $e');
     }
+  }
+
+  void _setupBluetoothListener() {
+    _bluetoothService.connectionState.addListener(() {
+      if (mounted) {
+        setState(
+          () => _connectionState = _bluetoothService.connectionState.value,
+        );
+      }
+    });
   }
 
   @override
@@ -73,528 +83,339 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  /// 构建完整的海报图片URL - 拼接baseUrl
-  String _buildPosterImageUrl(String imageUrl) {
-    // 如果已经是完整URL，直接返回
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      return imageUrl;
-    }
+  // --- 逻辑辅助方法 ---
+  bool get _isConnected =>
+      _connectionState == BluetoothConnectionState.connected;
 
-    // 获取baseUrl并拼接相对路径
+  String _buildPosterImageUrl(String imageUrl) {
+    if (imageUrl.startsWith('http')) return imageUrl;
     final baseUrl = ApiClient.instance.dio.options.baseUrl;
     return '$baseUrl$imageUrl';
   }
 
+  // --- UI 构建方法 ---
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final topPadding = MediaQuery.of(context).padding.top;
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // 顶部标题区域 - 简化为纯色背景
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
-            decoration: BoxDecoration(
-              color: isDarkMode
-                  ? Theme.of(context).colorScheme.surface
-                  : Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.05),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
+    return Scaffold(
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. 顶部标题区
+            _buildTopHeader(context, topPadding, isDarkMode),
+
+            // 2. 主内容区 (统一 Padding)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Column(
+                children: [
+                  const SizedBox(height: 16),
+
+                  // 海报轮播 (AspectRatio 解决抖动)
+                  _buildPosterSection(context, isDarkMode),
+
+                  const SizedBox(height: 16),
+
+                  // 蓝牙设备卡片
+                  _buildDeviceCard(context),
+
+                  const SizedBox(height: 16),
+
+                  // 快捷操作网格
+                  _buildQuickActionsGrid(context),
+
+                  // 底部安全间距
+                  SizedBox(height: MediaQuery.of(context).padding.bottom + 20),
+                ],
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 欢迎文本
-                SlideTransition(
-                  position: _titleSlideAnimation,
-                  child: FadeTransition(
-                    opacity: _titleFadeAnimation,
-                    child: Text(
-                      'welcome_back'.tr(),
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.7),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopHeader(
+    BuildContext context,
+    double topPadding,
+    bool isDarkMode,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, topPadding + 20, 20, 24),
+      decoration: BoxDecoration(
+        color: isDarkMode
+            ? colorScheme.surface
+            : colorScheme.primary.withValues(alpha: 0.05),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SlideTransition(
+            position: _titleSlideAnimation,
+            child: FadeTransition(
+              opacity: _titleFadeAnimation,
+              child: ShaderMask(
+                shaderCallback: (bounds) => LinearGradient(
+                  colors: [colorScheme.primary, colorScheme.secondary],
+                ).createShader(bounds),
+                child: const Text(
+                  'Bipupu',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 8),
-                // 主标题 - 只在字体上应用渐变
-                SlideTransition(
-                  position: _titleSlideAnimation,
-                  child: FadeTransition(
-                    opacity: _titleFadeAnimation,
-                    child: ShaderMask(
-                      shaderCallback: (bounds) => LinearGradient(
-                        colors: isDarkMode
-                            ? [
-                                Theme.of(context).colorScheme.primary,
-                                Theme.of(
-                                  context,
-                                ).colorScheme.primary.withValues(alpha: 0.8),
-                                Theme.of(
-                                  context,
-                                ).colorScheme.secondary.withValues(alpha: 0.9),
-                              ]
-                            : [
-                                Theme.of(context).colorScheme.primary,
-                                Theme.of(
-                                  context,
-                                ).colorScheme.primary.withValues(alpha: 0.9),
-                                Theme.of(context).colorScheme.secondary,
-                              ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ).createShader(bounds),
-                      child: Text(
-                        'Bipupu',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white, // ShaderMask 需要白色基础色
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                // 副标题
-                SlideTransition(
-                  position: _titleSlideAnimation,
-                  child: FadeTransition(
-                    opacity: _titleFadeAnimation,
-                    child: Text(
-                      'connection_communication_discovery'.tr(),
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-
-          // 主要内容区域
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 海报轮播 - 现代简洁设计
-                if (_posters.isNotEmpty)
-                  SizedBox(
-                    height: 200,
-                    child: Stack(
-                      children: [
-                        PageView.builder(
-                          controller: _posterController,
-                          onPageChanged: (index) {
-                            setState(() => _currentPosterIndex = index);
-                          },
-                          itemCount: _posters.length,
-                          itemBuilder: (context, index) {
-                            final poster = _posters[index];
-                            return Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 8),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Theme.of(context).colorScheme.shadow
-                                        .withValues(alpha: 0.15),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
-                                child: Stack(
-                                  fit: StackFit.expand,
-                                  children: [
-                                    // 海报图片
-                                    if (poster.imageUrl != null &&
-                                        poster.imageUrl!.isNotEmpty)
-                                      CachedNetworkImage(
-                                        imageUrl: _buildPosterImageUrl(
-                                          poster.imageUrl!,
-                                        ),
-                                        fit: BoxFit.cover,
-                                        placeholder: (context, url) =>
-                                            Container(
-                                              decoration: BoxDecoration(
-                                                gradient: LinearGradient(
-                                                  colors: [
-                                                    Theme.of(context)
-                                                        .colorScheme
-                                                        .primary
-                                                        .withValues(alpha: 0.3),
-                                                    Theme.of(context)
-                                                        .colorScheme
-                                                        .secondary
-                                                        .withValues(alpha: 0.3),
-                                                  ],
-                                                  begin: Alignment.topLeft,
-                                                  end: Alignment.bottomRight,
-                                                ),
-                                              ),
-                                              child: const SizedBox.expand(),
-                                            ),
-                                        errorWidget: (context, url, error) =>
-                                            Container(
-                                              decoration: BoxDecoration(
-                                                gradient: LinearGradient(
-                                                  colors: [
-                                                    Theme.of(context)
-                                                        .colorScheme
-                                                        .primary
-                                                        .withValues(alpha: 0.3),
-                                                    Theme.of(context)
-                                                        .colorScheme
-                                                        .secondary
-                                                        .withValues(alpha: 0.3),
-                                                  ],
-                                                  begin: Alignment.topLeft,
-                                                  end: Alignment.bottomRight,
-                                                ),
-                                              ),
-                                              child: const SizedBox.expand(),
-                                            ),
-                                      )
-                                    else
-                                      // 背景渐变（无图片时）
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              Theme.of(context)
-                                                  .colorScheme
-                                                  .primary
-                                                  .withValues(alpha: 0.3),
-                                              Theme.of(context)
-                                                  .colorScheme
-                                                  .secondary
-                                                  .withValues(alpha: 0.3),
-                                            ],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          ),
-                                        ),
-                                        child: const SizedBox.expand(),
-                                      ),
-                                    // 深色遮罩
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                          colors: [
-                                            Colors.transparent,
-                                            Colors.black.withValues(alpha: 0.4),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    // 文本内容
-                                    Positioned(
-                                      bottom: 16,
-                                      left: 16,
-                                      right: 16,
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            poster.title,
-                                            style: const TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          if (poster.linkUrl != null &&
-                                              poster.linkUrl!.isNotEmpty)
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                top: 4,
-                                              ),
-                                              child: Text(
-                                                'click_for_details'.tr(),
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.white
-                                                      .withValues(alpha: 0.8),
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                    // 点击区域
-                                    if (poster.linkUrl != null &&
-                                        poster.linkUrl!.isNotEmpty)
-                                      Positioned.fill(
-                                        child: Material(
-                                          color: Colors.transparent,
-                                          child: InkWell(
-                                            onTap: () {
-                                              // 可以在这里处理点击事件
-                                              debugPrint(
-                                                'Poster clicked: ${poster.linkUrl}',
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                        // 指示器 - 右下角
-                        Positioned(
-                          bottom: 12,
-                          right: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: List.generate(
-                                _posters.length,
-                                (index) => Container(
-                                  width: 6,
-                                  height: 6,
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: _currentPosterIndex == index
-                                        ? Colors.white
-                                        : Colors.white.withValues(alpha: 0.5),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 24),
-
-                // Device Information Card - 紧凑设计
-                Card(
-                  elevation: 2,
-                  shadowColor: Theme.of(
-                    context,
-                  ).colorScheme.shadow.withValues(alpha: 0.1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'my_device'.tr(),
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: Colors.orange,
-                                  width: 0.5,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.bluetooth_disabled,
-                                    size: 14,
-                                    color: Colors.orange,
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Text(
-                                    'not_connected'.tr(),
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.orange,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.primary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(
-                                Icons.developer_board,
-                                size: 24,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'device_control'.tr(),
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'connect_bluetooth_to_enable'.tr(),
-                                    style: TextStyle(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              context.push('/profile/bluetooth/scan');
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.primary,
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size(double.infinity, 44),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              elevation: 1,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.bluetooth_searching, size: 18),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'connect_device'.tr(),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 1.4,
-                  children: [
-                    _buildQuickActionCard(
-                      context,
-                      'friends'.tr(),
-                      Icons.people_alt_rounded,
-                      Colors.blue.shade600,
-                      () => context.push('/home/contacts'),
-                    ),
-                    _buildQuickActionCard(
-                      context,
-                      'voice_test_title'.tr(),
-                      Icons.mic,
-                      const Color.fromARGB(255, 73, 255, 97),
-                      () => context.push('/home/voice_test'),
-                    ),
-                  ],
-                ),
-
-                // 添加底部间距，避免内容贴底
-                const SizedBox(height: 20),
-              ],
-            ),
+          const SizedBox(height: 4),
+          Text(
+            'connection_communication_discovery'.tr(),
+            style: TextStyle(fontSize: 14, color: colorScheme.onSurfaceVariant),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildQuickActionCard(
+  Widget _buildPosterSection(BuildContext context, bool isDarkMode) {
+    return AspectRatio(
+      aspectRatio: 1.8, // 约 16:9，固定比例防止加载时下方内容跳动
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: Theme.of(
+            context,
+          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: _posters.isEmpty
+              ? const Center(
+                  child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+                )
+              : Stack(
+                  children: [
+                    PageView.builder(
+                      controller: _posterController,
+                      itemCount: _posters.length,
+                      onPageChanged: (i) =>
+                          setState(() => _currentPosterIndex = i),
+                      itemBuilder: (context, index) =>
+                          _buildPosterItem(_posters[index]),
+                    ),
+                    _buildPosterIndicator(),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPosterItem(dynamic poster) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        CachedNetworkImage(
+          imageUrl: _buildPosterImageUrl(poster.imageUrl ?? ''),
+          fit: BoxFit.cover,
+          placeholder: (context, url) => Container(color: Colors.black12),
+          errorWidget: (context, url, error) => const Icon(Icons.broken_image),
+        ),
+        // 文字遮罩渐变
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.transparent, Colors.black.withValues(alpha: 0.6)],
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 12,
+          left: 16,
+          right: 50,
+          child: Text(
+            poster.title ?? '',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPosterIndicator() {
+    return Positioned(
+      bottom: 12,
+      right: 12,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.black26,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: List.generate(_posters.length, (index) {
+            return Container(
+              width: 6,
+              height: 6,
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _currentPosterIndex == index
+                    ? Colors.white
+                    : Colors.white54,
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeviceCard(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final statusColor = _isConnected ? Colors.green : Colors.orange;
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: statusColor.withValues(alpha: 0.1),
+                  child: Icon(
+                    _isConnected
+                        ? Icons.bluetooth_connected
+                        : Icons.bluetooth_disabled,
+                    color: statusColor,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _isConnected
+                            ? 'device_connected'.tr()
+                            : 'my_device'.tr(),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        _isConnected
+                            ? 'send_messages_to_device'.tr()
+                            : 'connect_bluetooth_to_enable'.tr(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _isConnected ? 'connected'.tr() : 'not_connected'.tr(),
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => _handleDeviceButtonPressed(context),
+              icon: Icon(
+                _isConnected ? Icons.send : Icons.bluetooth_searching,
+                size: 18,
+              ),
+              label: Text(
+                _isConnected ? 'transmit'.tr() : 'connect_device'.tr(),
+              ),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48),
+                backgroundColor: _isConnected
+                    ? Colors.green
+                    : colorScheme.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionsGrid(BuildContext context) {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      childAspectRatio: 1.5,
+      children: [
+        _buildActionCard(
+          context,
+          'friends'.tr(),
+          Icons.people_alt_rounded,
+          Colors.blue,
+          () => context.push('/home/contacts'),
+        ),
+        _buildActionCard(
+          context,
+          'voice_test_title'.tr(),
+          Icons.mic,
+          const Color(0xFF49FF61),
+          () => context.push('/home/voice_test'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionCard(
     BuildContext context,
     String title,
     IconData icon,
@@ -602,23 +423,39 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     VoidCallback onTap,
   ) {
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: Theme.of(
+            context,
+          ).colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
+      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 32, color: color),
-              const SizedBox(height: 8),
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-            ],
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 32, color: color),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  void _handleDeviceButtonPressed(BuildContext context) {
+    if (_isConnected) {
+      context.push('/home/bluetooth_message_test');
+    } else {
+      context.push('/profile/bluetooth/scan');
+    }
   }
 }

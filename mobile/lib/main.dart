@@ -40,6 +40,7 @@ import 'pages/profile/pages/bluetooth/bluetooth_scan_page.dart';
 import 'pages/profile/pages/bluetooth/device_detail_page.dart';
 import 'pages/home/pages/quick_actions/voice_test_page.dart';
 import 'pages/home/home_page.dart';
+import 'pages/home/pages/bluetooth_message_test.dart';
 
 Future<void> main() async {
   // Catch errors
@@ -218,6 +219,10 @@ final GoRouter _router = GoRouter(
         GoRoute(
           path: '/home/voice_test',
           builder: (context, state) => const VoiceTestPage(),
+        ),
+        GoRoute(
+          path: '/home/bluetooth_message_test',
+          builder: (context, state) => const BluetoothMessageTestPage(),
         ),
         GoRoute(
           path: '/discover',

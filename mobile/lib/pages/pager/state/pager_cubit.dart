@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/network/api_client.dart';
@@ -23,6 +24,7 @@ class PagerCubit extends Cubit<PagerState> {
   bool _isStoppingAsr = false;
   StreamSubscription<String>? _asrResultSubscription;
   StreamSubscription<double>? _asrVolumeSubscription;
+  StreamSubscription<Uint8List>? _asrAudioSubscription;
 
   // 波形处理
   final WaveformProcessor _waveformProcessor = WaveformProcessor();
@@ -110,13 +112,17 @@ class PagerCubit extends Cubit<PagerState> {
 
       final guidanceText = '您好，请说出您要传达的消息';
 
-      // 更新状态：TTS 播放中，暂停 ASR
+      // 更新状态：TTS 播放中，暂停 ASR，并立即将台词添加到历史记录
       final currentState = state as InCallState;
       emit(
         currentState.copyWith(
           currentTtsText: guidanceText,
           isTtsPlaying: true,
           isAsrActive: false,
+          operatorSpeechHistory: [
+            ...currentState.operatorSpeechHistory,
+            guidanceText,
+          ],
         ),
       );
 
@@ -124,7 +130,13 @@ class PagerCubit extends Cubit<PagerState> {
       await _voiceService.speak(guidanceText, sid: 0, speed: 1.0);
 
       // TTS 播放完成，恢复 ASR 录音
-      emit(currentState.copyWith(isTtsPlaying: false, isAsrActive: true));
+      emit(
+        currentState.copyWith(
+          isTtsPlaying: false,
+          isAsrActive: true,
+          currentTtsText: '', // 清空当前台词，表示播放完成
+        ),
+      );
     } catch (e) {
       logger.e('Failed to play guidance TTS: $e');
     }
@@ -198,6 +210,13 @@ class PagerCubit extends Cubit<PagerState> {
         _waveformProcessor.addVolumeData(volume);
       });
 
+      // 监听原始音频数据用于波形包络生成
+      _asrAudioSubscription = _asrEngine.onAudio.listen((audioData) {
+        // 将Uint8List转换为List<int>并添加到波形处理器
+        final pcmData = audioData.buffer.asUint8List().toList();
+        _waveformProcessor.addPcmData(pcmData);
+      });
+
       // 设置超时，如果用户长时间不说话，自动结束
       _setupAsrTimeout();
     } catch (e) {
@@ -254,8 +273,10 @@ class PagerCubit extends Cubit<PagerState> {
       // 取消订阅
       await _asrResultSubscription?.cancel();
       await _asrVolumeSubscription?.cancel();
+      await _asrAudioSubscription?.cancel();
       _asrResultSubscription = null;
       _asrVolumeSubscription = null;
+      _asrAudioSubscription = null;
 
       _currentMessageContent = transcript;
 
@@ -486,8 +507,10 @@ class PagerCubit extends Cubit<PagerState> {
       }
       await _asrResultSubscription?.cancel();
       await _asrVolumeSubscription?.cancel();
+      await _asrAudioSubscription?.cancel();
       _asrResultSubscription = null;
       _asrVolumeSubscription = null;
+      _asrAudioSubscription = null;
       await _voiceService.stop();
 
       // 清理波形处理器
@@ -529,8 +552,10 @@ class PagerCubit extends Cubit<PagerState> {
     }
     await _asrResultSubscription?.cancel();
     await _asrVolumeSubscription?.cancel();
+    await _asrAudioSubscription?.cancel();
     _asrResultSubscription = null;
     _asrVolumeSubscription = null;
+    _asrAudioSubscription = null;
     _waveformProcessor.clear();
     _voiceService.dispose();
     _isStoppingAsr = false;

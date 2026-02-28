@@ -17,6 +17,7 @@ class ImService extends ChangeNotifier {
   final BluetoothDeviceService _bluetoothService = BluetoothDeviceService();
   final Connectivity _connectivity = Connectivity();
   StreamSubscription<dynamic>? _connectivitySub;
+  StreamSubscription<BluetoothConnectionState>? _bluetoothConnectionSub;
 
   // 轮询配置
   static const Duration _foregroundMessageInterval = Duration(seconds: 15);
@@ -33,7 +34,7 @@ class ImService extends ChangeNotifier {
   List<dynamic> _messages = [];
   List<dynamic> _contacts = [];
   int _unreadCount = 0;
-  int _previousMessageCount = 0;
+
   int _lastMessageId = 0; // 用于增量同步
   bool _isAppInForeground = true;
   bool _isOnline = true;
@@ -49,17 +50,30 @@ class ImService extends ChangeNotifier {
     log('IM Service: Initializing');
 
     // 监听网络连接状态
-    _connectivity.checkConnectivity().then((c) {
-      _isOnline = c != ConnectivityResult.none;
+    _connectivity.checkConnectivity().then((results) {
+      _isOnline =
+          results.isNotEmpty && results.first != ConnectivityResult.none;
     });
-    _connectivitySub = _connectivity.onConnectivityChanged.listen((c) {
-      _isOnline = c != ConnectivityResult.none;
+    _connectivitySub = _connectivity.onConnectivityChanged.listen((results) {
+      _isOnline =
+          results.isNotEmpty && results.first != ConnectivityResult.none;
       if (_isOnline) {
         // 网络恢复，重置退避倍数
         _backoffMultiplier = 1;
         _applyPollingInterval();
       }
     });
+
+    // 监听蓝牙连接状态变化
+    _bluetoothConnectionSub = _bluetoothService.onConnectionStateChanged.listen(
+      (state) {
+        if (state == BluetoothConnectionState.connected) {
+          log('IM Service: Bluetooth connected, sending initial time sync');
+          // 连接成功时发送时间同步
+          _sendInitialTimeSync();
+        }
+      },
+    );
 
     // 监听 Token 过期事件
     TokenManager.tokenExpired.addListener(_onTokenExpired);
@@ -185,7 +199,6 @@ class ImService extends ChangeNotifier {
       }
 
       _unreadCount = _messages.where((m) => m.isRead == false).length;
-      _previousMessageCount = _messages.length;
 
       // 重置退避倍数
       _backoffMultiplier = 1;
@@ -237,14 +250,25 @@ class ImService extends ChangeNotifier {
       return;
     }
 
-    // 转发到蓝牙设备
+    // 转发到蓝牙设备 - 使用新的统合协议
     if (_bluetoothService.connectionState.value ==
         BluetoothConnectionState.connected) {
+      bool hasSentTimeSync = false;
+
       for (final message in newMessages) {
         try {
           final formattedMessage = _formatMessageForBluetooth(message);
           _bluetoothService.sendTextMessage(formattedMessage);
-          log('IM Service: Forwarded message to Bluetooth device');
+          log(
+            'IM Service: Forwarded message to Bluetooth device using unified protocol',
+          );
+
+          // 只在第一条消息后发送时间同步，避免重复发送
+          if (!hasSentTimeSync) {
+            _bluetoothService.sendTimeSync();
+            log('IM Service: Sent time sync after first message');
+            hasSentTimeSync = true;
+          }
         } catch (e) {
           log('IM Service: Failed to forward message to Bluetooth: $e');
         }
@@ -316,7 +340,20 @@ class ImService extends ChangeNotifier {
     }
   }
 
-  /// 格式化消息用于蓝牙转发
+  /// 发送初始时间同步
+  Future<void> _sendInitialTimeSync() async {
+    try {
+      if (_bluetoothService.connectionState.value ==
+          BluetoothConnectionState.connected) {
+        await _bluetoothService.sendTimeSync();
+        log('IM Service: Initial time sync sent after Bluetooth connection');
+      }
+    } catch (e) {
+      log('IM Service: Failed to send initial time sync: $e');
+    }
+  }
+
+  /// 格式化消息用于蓝牙转发 - 使用新的统合协议格式
   String _formatMessageForBluetooth(dynamic message) {
     try {
       // 查找发送者联系人
@@ -332,7 +369,10 @@ class ImService extends ChangeNotifier {
       final senderName =
           senderContact?.name ?? message.senderBipupuId ?? 'Unknown';
       final content = message.content ?? '';
-      return 'From $senderName: $content';
+
+      // 使用新的格式：发送者 + 内容
+      // 注意：每条消息都通过统合协议发送，自带时间戳
+      return '$senderName: $content';
     } catch (e) {
       log('IM Service: Error formatting message: $e');
       return 'New message';
@@ -401,6 +441,17 @@ class ImService extends ChangeNotifier {
   /// 手动刷新数据
   Future<void> refresh() async {
     await Future.wait([_fetchContacts(), _fetchMessages()]);
+
+    // 刷新后发送时间同步，确保蓝牙设备时间准确
+    if (_bluetoothService.connectionState.value ==
+        BluetoothConnectionState.connected) {
+      try {
+        await _bluetoothService.sendTimeSync();
+        log('IM Service: Sent time sync after manual refresh');
+      } catch (e) {
+        log('IM Service: Failed to send time sync: $e');
+      }
+    }
   }
 
   /// 清除本地缓存
@@ -408,7 +459,6 @@ class ImService extends ChangeNotifier {
     _messages = [];
     _contacts = [];
     _unreadCount = 0;
-    _previousMessageCount = 0;
     _lastMessageId = 0;
     notifyListeners();
   }
@@ -433,6 +483,30 @@ class ImService extends ChangeNotifier {
     log('IM Service: Message notifications ${show ? 'enabled' : 'disabled'}');
   }
 
+  /// 发送文本消息到蓝牙设备
+  Future<void> sendTextMessageToBluetooth(String message) async {
+    if (_bluetoothService.connectionState.value ==
+        BluetoothConnectionState.connected) {
+      try {
+        await _bluetoothService.sendTextMessage(message);
+        log('IM Service: Sent text message to Bluetooth: $message');
+      } catch (e) {
+        log('IM Service: Failed to send text message to Bluetooth: $e');
+      }
+    }
+  }
+
+  /// 获取蓝牙协议信息
+  Map<String, dynamic> getBluetoothProtocolInfo() {
+    return {
+      'isConnected': _bluetoothService.isConnected,
+      'maxTextLength': _bluetoothService.maxTextLength,
+      'protocolHeader': '0xB0',
+      'supportsTimeSync': true,
+      'unifiedProtocol': true,
+    };
+  }
+
   /// 获取消息通知状态
   bool get showMessageNotifications => _showMessageNotifications;
 
@@ -441,6 +515,7 @@ class ImService extends ChangeNotifier {
     TokenManager.tokenExpired.removeListener(_onTokenExpired);
     _stopPolling();
     _connectivitySub?.cancel();
+    _bluetoothConnectionSub?.cancel();
     super.dispose();
   }
 }

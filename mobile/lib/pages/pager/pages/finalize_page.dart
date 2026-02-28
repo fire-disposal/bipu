@@ -5,7 +5,7 @@ import '../state/pager_cubit.dart';
 import '../widgets/waveform_animation_widget.dart';
 
 /// 发送与结束页面 (State 3)
-/// 显示"发送"按钮，发送消息后播放成功TTS，显示"挂断"按钮
+/// 显示"发送"按钮，发送消息后播放成功 TTS，显示"挂断"按钮
 class FinalizePage extends StatefulWidget {
   final PagerCubit cubit;
 
@@ -18,6 +18,9 @@ class FinalizePage extends StatefulWidget {
 class _FinalizePageState extends State<FinalizePage> {
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+
     return BlocBuilder<PagerCubit, PagerState>(
       bloc: widget.cubit,
       builder: (context, state) {
@@ -28,20 +31,22 @@ class _FinalizePageState extends State<FinalizePage> {
         return Stack(
           children: [
             // 背景
-            _buildBackground(),
+            _buildBackground(colorScheme),
 
             // 主内容
             SafeArea(
               child: Column(
                 children: [
                   // 顶部信息栏
-                  _buildTopBar(state),
+                  _buildTopBar(state, colorScheme, theme),
 
                   // 中间内容区
-                  Expanded(child: _buildCenterContent(state)),
+                  Expanded(
+                    child: _buildCenterContent(state, colorScheme, theme),
+                  ),
 
                   // 底部按钮区
-                  _buildBottomButtons(state),
+                  _buildBottomButtons(state, colorScheme, theme),
                 ],
               ),
             ),
@@ -52,20 +57,27 @@ class _FinalizePageState extends State<FinalizePage> {
   }
 
   /// 构建背景
-  Widget _buildBackground() {
+  Widget _buildBackground(ColorScheme colorScheme) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Colors.green.shade50, Colors.teal.shade50],
+          colors: [
+            colorScheme.secondaryContainer,
+            colorScheme.tertiaryContainer,
+          ],
         ),
       ),
     );
   }
 
   /// 构建顶部信息栏
-  Widget _buildTopBar(FinalizeState state) {
+  Widget _buildTopBar(
+    FinalizeState state,
+    ColorScheme colorScheme,
+    ThemeData theme,
+  ) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -74,14 +86,19 @@ class _FinalizePageState extends State<FinalizePage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 '消息准备',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
-                '目标ID: ${state.targetId}',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                '目标 ID: ${state.targetId}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -89,22 +106,21 @@ class _FinalizePageState extends State<FinalizePage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.green.shade100,
+                color: colorScheme.secondaryContainer,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
                   Icon(
                     Icons.check_circle,
-                    color: Colors.green.shade600,
+                    color: colorScheme.onSecondaryContainer,
                     size: 16,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     '已发送',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.green.shade700,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSecondaryContainer,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -117,21 +133,27 @@ class _FinalizePageState extends State<FinalizePage> {
   }
 
   /// 构建中间内容区
-  Widget _buildCenterContent(FinalizeState state) {
+  Widget _buildCenterContent(
+    FinalizeState state,
+    ColorScheme colorScheme,
+    ThemeData theme,
+  ) {
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Column(
           children: [
             // 消息内容显示
-            _buildMessageDisplay(state),
+            _buildMessageDisplay(state, colorScheme, theme),
             const SizedBox(height: 24),
 
             // 发送状态
-            if (!state.sendSuccess) _buildPreSendStatus(state),
+            if (!state.sendSuccess)
+              _buildPreSendStatus(state, colorScheme, theme),
 
             // 发送成功状态
-            if (state.sendSuccess) _buildPostSendStatus(state),
+            if (state.sendSuccess)
+              _buildPostSendStatus(state, colorScheme, theme),
 
             const SizedBox(height: 24),
 
@@ -140,20 +162,22 @@ class _FinalizePageState extends State<FinalizePage> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.red.shade100,
+                  color: colorScheme.errorContainer,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.red.shade300),
+                  border: Border.all(color: colorScheme.error),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.error_outline, color: Colors.red.shade600),
+                    Icon(
+                      Icons.error_outline,
+                      color: colorScheme.onErrorContainer,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         state.sendErrorMessage!,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.red.shade700,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onErrorContainer,
                         ),
                       ),
                     ),
@@ -169,17 +193,21 @@ class _FinalizePageState extends State<FinalizePage> {
   }
 
   /// 构建消息显示
-  Widget _buildMessageDisplay(FinalizeState state) {
+  Widget _buildMessageDisplay(
+    FinalizeState state,
+    ColorScheme colorScheme,
+    ThemeData theme,
+  ) {
     if (state.isEditing) {
-      return _buildMessageEditingArea(state);
+      return _buildMessageEditingArea(state, colorScheme, theme);
     }
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: colorScheme.outlineVariant),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -196,9 +224,8 @@ class _FinalizePageState extends State<FinalizePage> {
             children: [
               Text(
                 '消息内容',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -212,20 +239,23 @@ class _FinalizePageState extends State<FinalizePage> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
+                      color: colorScheme.primaryContainer,
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.blue.shade200),
+                      border: Border.all(color: colorScheme.primary),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.edit, size: 12, color: Colors.blue.shade600),
+                        Icon(
+                          Icons.edit,
+                          size: 12,
+                          color: colorScheme.onPrimaryContainer,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           '编辑',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.blue.shade600,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: colorScheme.onPrimaryContainer,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -239,18 +269,22 @@ class _FinalizePageState extends State<FinalizePage> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.grey.shade50,
+              color: colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               state.messageContent,
-              style: const TextStyle(fontSize: 14, height: 1.6),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurface,
+              ),
             ),
           ),
           const SizedBox(height: 12),
           Text(
-            '字数: ${state.messageContent.length}',
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+            '字数：${state.messageContent.length}',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
           ),
 
           // 表情符号警告
@@ -259,20 +293,23 @@ class _FinalizePageState extends State<FinalizePage> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.orange.shade50,
+                color: colorScheme.tertiaryContainer,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.shade200),
+                border: Border.all(color: colorScheme.tertiary),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.warning_rounded, size: 16, color: Colors.orange),
+                  Icon(
+                    Icons.warning_rounded,
+                    size: 16,
+                    color: colorScheme.tertiary,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       '检测到${state.textProcessingResult!.detectedEmojis.length}个表情符号，已自动移除',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.orange.shade700,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onTertiaryContainer,
                       ),
                     ),
                   ),
@@ -286,13 +323,17 @@ class _FinalizePageState extends State<FinalizePage> {
   }
 
   /// 构建消息编辑区域
-  Widget _buildMessageEditingArea(FinalizeState state) {
+  Widget _buildMessageEditingArea(
+    FinalizeState state,
+    ColorScheme colorScheme,
+    ThemeData theme,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
+        color: colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue.shade200),
+        border: Border.all(color: colorScheme.primary),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -302,15 +343,18 @@ class _FinalizePageState extends State<FinalizePage> {
             children: [
               Text(
                 '编辑消息',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.blue.shade700,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onPrimaryContainer,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               GestureDetector(
                 onTap: () => widget.cubit.cancelEditingMessage(),
-                child: Icon(Icons.close, size: 18, color: Colors.blue.shade600),
+                child: Icon(
+                  Icons.close,
+                  size: 18,
+                  color: colorScheme.onPrimaryContainer,
+                ),
               ),
             ],
           ),
@@ -326,7 +370,7 @@ class _FinalizePageState extends State<FinalizePage> {
                 borderRadius: BorderRadius.circular(8),
               ),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: colorScheme.surface,
             ),
           ),
           const SizedBox(height: 12),
@@ -334,8 +378,10 @@ class _FinalizePageState extends State<FinalizePage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '字数: ${state.messageContent.length}',
-                style: TextStyle(fontSize: 11, color: Colors.blue.shade600),
+                '字数：${state.messageContent.length}',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onPrimaryContainer,
+                ),
               ),
               Row(
                 children: [
@@ -347,15 +393,14 @@ class _FinalizePageState extends State<FinalizePage> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: colorScheme.surface,
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: Colors.blue.shade200),
+                        border: Border.all(color: colorScheme.primary),
                       ),
                       child: Text(
                         '取消',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.blue.shade600,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.primary,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -370,14 +415,13 @@ class _FinalizePageState extends State<FinalizePage> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade600,
+                        color: colorScheme.primary,
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Text(
+                      child: Text(
                         '确认',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onPrimary,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -394,20 +438,23 @@ class _FinalizePageState extends State<FinalizePage> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.orange.shade50,
+                color: colorScheme.surface,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.shade200),
+                border: Border.all(color: colorScheme.tertiary),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.emoji_emotions, size: 16, color: Colors.orange),
+                  Icon(
+                    Icons.emoji_emotions,
+                    size: 16,
+                    color: colorScheme.tertiary,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       '检测到表情符号，将被自动移除',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.orange.shade700,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -421,32 +468,41 @@ class _FinalizePageState extends State<FinalizePage> {
   }
 
   /// 构建发送前状态
-  Widget _buildPreSendStatus(FinalizeState state) {
+  Widget _buildPreSendStatus(
+    FinalizeState state,
+    ColorScheme colorScheme,
+    ThemeData theme,
+  ) {
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.blue.shade50,
+            color: colorScheme.primaryContainer,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.blue.shade200),
+            border: Border.all(color: colorScheme.primary),
           ),
           child: Column(
             children: [
-              Icon(Icons.info_outline, color: Colors.blue.shade600, size: 32),
+              Icon(
+                Icons.info_outline,
+                color: colorScheme.onPrimaryContainer,
+                size: 32,
+              ),
               const SizedBox(height: 12),
               Text(
                 '消息已准备就绪',
-                style: TextStyle(
-                  fontSize: 14,
+                style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: Colors.blue.shade700,
+                  color: colorScheme.onPrimaryContainer,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 '点击下方"发送"按钮确认发送',
-                style: TextStyle(fontSize: 12, color: Colors.blue.shade600),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onPrimaryContainer,
+                ),
               ),
             ],
           ),
@@ -456,33 +512,42 @@ class _FinalizePageState extends State<FinalizePage> {
   }
 
   /// 构建发送后状态
-  Widget _buildPostSendStatus(FinalizeState state) {
+  Widget _buildPostSendStatus(
+    FinalizeState state,
+    ColorScheme colorScheme,
+    ThemeData theme,
+  ) {
     return Column(
       children: [
         // 成功动画
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.green.shade50,
+            color: colorScheme.secondaryContainer,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.green.shade200),
+            border: Border.all(color: colorScheme.secondary),
           ),
           child: Column(
             children: [
-              Icon(Icons.check_circle, color: Colors.green.shade600, size: 48),
+              Icon(
+                Icons.check_circle,
+                color: colorScheme.onSecondaryContainer,
+                size: 48,
+              ),
               const SizedBox(height: 16),
               Text(
                 '消息已发送',
-                style: TextStyle(
-                  fontSize: 16,
+                style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Colors.green.shade700,
+                  color: colorScheme.onSecondaryContainer,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 '接线员已收到您的消息',
-                style: TextStyle(fontSize: 12, color: Colors.green.shade600),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSecondaryContainer,
+                ),
               ),
             ],
           ),
@@ -490,28 +555,31 @@ class _FinalizePageState extends State<FinalizePage> {
 
         const SizedBox(height: 24),
 
-        // TTS播放状态
-        if (state.isPlayingSuccessTts)
-          Column(
-            children: [
-              WaveformAnimationWidget(
-                isActive: true,
-                waveColor: Colors.green,
-                height: 80,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '播放成功提示音...',
-                style: TextStyle(fontSize: 12, color: Colors.green.shade600),
-              ),
-            ],
+        // TTS 播放状态
+        if (state.isPlayingSuccessTts) ...[
+          WaveformAnimationWidget(
+            isActive: true,
+            waveColor: colorScheme.secondary,
+            height: 80,
           ),
+          const SizedBox(height: 12),
+          Text(
+            '播放成功提示音...',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSecondaryContainer,
+            ),
+          ),
+        ],
       ],
     );
   }
 
   /// 构建底部按钮区
-  Widget _buildBottomButtons(FinalizeState state) {
+  Widget _buildBottomButtons(
+    FinalizeState state,
+    ColorScheme colorScheme,
+    ThemeData theme,
+  ) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -525,12 +593,10 @@ class _FinalizePageState extends State<FinalizePage> {
                 height: 56,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  gradient: LinearGradient(
-                    colors: [Colors.green.shade400, Colors.green.shade600],
-                  ),
+                  color: colorScheme.primary,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.green.withOpacity(0.3),
+                      color: colorScheme.primary.withOpacity(0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -546,17 +612,20 @@ class _FinalizePageState extends State<FinalizePage> {
                             strokeWidth: 2,
                           ),
                         )
-                      : const Row(
+                      : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.send, color: Colors.white, size: 20),
-                            SizedBox(width: 8),
+                            Icon(
+                              Icons.send,
+                              color: colorScheme.onPrimary,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
                             Text(
                               '发送',
-                              style: TextStyle(
-                                fontSize: 16,
+                              style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                color: colorScheme.onPrimary,
                               ),
                             ),
                           ],
@@ -574,20 +643,23 @@ class _FinalizePageState extends State<FinalizePage> {
                 height: 56,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  color: Colors.red.shade100,
-                  border: Border.all(color: Colors.red.shade300),
+                  color: colorScheme.errorContainer,
+                  border: Border.all(color: colorScheme.error),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.call_end, color: Colors.red.shade600, size: 20),
+                    Icon(
+                      Icons.call_end,
+                      color: colorScheme.onErrorContainer,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       '挂断',
-                      style: TextStyle(
-                        fontSize: 16,
+                      style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Colors.red.shade600,
+                        color: colorScheme.onErrorContainer,
                       ),
                     ),
                   ],
@@ -604,16 +676,15 @@ class _FinalizePageState extends State<FinalizePage> {
               height: 48,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
-                color: Colors.grey.shade100,
-                border: Border.all(color: Colors.grey.shade300),
+                color: colorScheme.surfaceContainerHighest,
+                border: Border.all(color: colorScheme.outline),
               ),
               child: Center(
                 child: Text(
                   '返回',
-                  style: TextStyle(
-                    fontSize: 14,
+                  style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade600,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
