@@ -1,4 +1,4 @@
-package com.bipupu.user.flutter_user
+package com.bipupu.user.mobile
 
 import io.flutter.embedding.android.FlutterActivity
 
