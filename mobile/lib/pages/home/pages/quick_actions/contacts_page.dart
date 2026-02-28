@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/network/network.dart';
+import '../../../../core/network/api_client.dart';
 
 class ContactsPage extends StatefulWidget {
   const ContactsPage({super.key});
@@ -14,6 +15,7 @@ class _ContactsPageState extends State<ContactsPage> {
   final TextEditingController _searchController = TextEditingController();
   List<dynamic> _contacts = [];
   List<dynamic> _searchResults = [];
+  Map<String, dynamic> _userCache = {}; // 缓存用户信息（包含头像）
   bool _isLoading = false;
   bool _isSearching = false;
   String? _error;
@@ -28,6 +30,54 @@ class _ContactsPageState extends State<ContactsPage> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  /// 获取用户信息（带缓存）
+  Future<dynamic> _getUserInfo(String bipupuId) async {
+    if (_userCache.containsKey(bipupuId)) {
+      return _userCache[bipupuId];
+    }
+
+    try {
+      final user = await ApiClient.instance.api.users.getApiUsersUsersBipupuId(
+        bipupuId: bipupuId,
+      );
+      _userCache[bipupuId] = user;
+      return user;
+    } on ApiException catch (e) {
+      debugPrint('Failed to load user $bipupuId: ${e.message}');
+      _userCache[bipupuId] = null;
+      return null;
+    }
+  }
+
+  /// 构建用户头像
+  Widget _buildUserAvatar(dynamic user, {double radius = 20}) {
+    final avatarUrl = user?.avatarUrl;
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      final fullUrl = avatarUrl.startsWith('http')
+          ? avatarUrl
+          : '${ApiClient.instance.dio.options.baseUrl}$avatarUrl';
+
+      return CircleAvatar(
+        radius: radius,
+        backgroundImage: NetworkImage(fullUrl),
+        onBackgroundImageError: (exception, stackTrace) {
+          debugPrint('Failed to load avatar: $exception');
+        },
+      );
+    }
+
+    // 默认头像：显示用户名首字母
+    final displayName = user?.nickname ?? user?.username ?? '?';
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: Colors.grey.withValues(alpha: 0.3),
+      child: Text(
+        displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+    );
   }
 
   Future<void> _loadContacts() async {
@@ -228,12 +278,7 @@ class _ContactsPageState extends State<ContactsPage> {
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ListTile(
-              leading: CircleAvatar(
-                child: Text(
-                  user.nickname?.substring(0, 1) ??
-                      user.username.substring(0, 1).toUpperCase(),
-                ),
-              ),
+              leading: _buildUserAvatar(user),
               title: Text(user.nickname ?? user.username),
               subtitle: Text('ID: ${user.bipupuId}'),
               trailing: isContact
@@ -307,29 +352,42 @@ class _ContactsPageState extends State<ContactsPage> {
       itemCount: _contacts.length,
       itemBuilder: (context, index) {
         final contact = _contacts[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: ListTile(
-            leading: CircleAvatar(
-              child: Text(
-                contact.contactNickname?.substring(0, 1) ??
-                    contact.contactUsername.substring(0, 1).toUpperCase(),
+
+        return FutureBuilder<dynamic>(
+          future: _getUserInfo(contact.contactId),
+          builder: (context, snapshot) {
+            final user = snapshot.data;
+
+            return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: ListTile(
+                leading: snapshot.connectionState == ConnectionState.waiting
+                    ? CircleAvatar(
+                        radius: 20,
+                        backgroundColor: Colors.grey.withValues(alpha: 0.2),
+                        child: const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : _buildUserAvatar(user),
+                title: Text(
+                  contact.alias ??
+                      contact.contactNickname ??
+                      contact.contactUsername,
+                ),
+                subtitle: Text('ID: ${contact.contactId}'),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: () => _removeContact(contact.contactId),
+                ),
+                onTap: () {
+                  context.push('/user/detail/${contact.contactId}');
+                },
               ),
-            ),
-            title: Text(
-              contact.alias ??
-                  contact.contactNickname ??
-                  contact.contactUsername,
-            ),
-            subtitle: Text('ID: ${contact.contactId}'),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => _removeContact(contact.contactId),
-            ),
-            onTap: () {
-              context.push('/user/detail/${contact.contactId}');
-            },
-          ),
+            );
+          },
         );
       },
     );

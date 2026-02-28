@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:flutter/widgets.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../network/network.dart';
 import 'bluetooth_device_service.dart';
 import 'auth_service.dart';
@@ -40,14 +41,99 @@ class ImService extends ChangeNotifier {
   bool _isOnline = true;
   bool _showMessageNotifications = true; // 控制是否显示消息通知
 
+  // Hive 存储
+  static const String _imSettingsBoxName = 'im_settings_box';
+  static const String _lastMessageIdKey = 'last_message_id';
+  static const String _readMessageIdsKey = 'read_message_ids';
+  Box? _imSettingsBox;
+
   // Getters
   List<dynamic> get messages => List.unmodifiable(_messages);
   List<dynamic> get contacts => List.unmodifiable(_contacts);
   int get unreadCount => _unreadCount;
 
+  /// 获取已读消息 ID 集合
+  Set<int> getReadMessageIds() {
+    final readIds =
+        _imSettingsBox?.get(_readMessageIdsKey, defaultValue: <int>[]) ?? [];
+    if (readIds is List<int>) {
+      return readIds.toSet();
+    }
+    // 处理 Hive 可能返回 List<dynamic> 的情况
+    return (readIds as List).cast<int>().toSet();
+  }
+
+  /// 检查消息是否已读
+  bool isMessageRead(int messageId) {
+    final readIds = getReadMessageIds();
+    return readIds.contains(messageId);
+  }
+
+  /// 标记消息为已读
+  Future<void> markMessageAsRead(int messageId) async {
+    final readIds = getReadMessageIds();
+    if (!readIds.contains(messageId)) {
+      readIds.add(messageId);
+      // Hive 存储为 List<int> 而不是 Set
+      await _imSettingsBox?.put(_readMessageIdsKey, readIds.toList());
+      // 重新计算未读数量
+      _unreadCount = _messages.where((m) => !readIds.contains(m.id)).length;
+      notifyListeners();
+    }
+  }
+
+  /// 标记消息为未读
+  Future<void> markMessageAsUnread(int messageId) async {
+    final readIds = getReadMessageIds();
+    if (readIds.contains(messageId)) {
+      readIds.remove(messageId);
+      // Hive 存储为 List<int>
+      await _imSettingsBox?.put(_readMessageIdsKey, readIds.toList());
+      // 重新计算未读数量
+      _unreadCount = _messages.where((m) => !readIds.contains(m.id)).length;
+      notifyListeners();
+    }
+  }
+
+  /// 批量标记消息为已读
+  Future<void> markMessagesAsRead(Iterable<int> messageIds) async {
+    final readIds = getReadMessageIds();
+    bool changed = false;
+    for (final id in messageIds) {
+      if (!readIds.contains(id)) {
+        readIds.add(id);
+        changed = true;
+      }
+    }
+    if (changed) {
+      // Hive 存储为 List<int>
+      await _imSettingsBox?.put(_readMessageIdsKey, readIds.toList());
+      _unreadCount = _messages.where((m) => !readIds.contains(m.id)).length;
+      notifyListeners();
+    }
+  }
+
+  /// 清除所有已读标记
+  Future<void> clearAllReadStatus() async {
+    await _imSettingsBox?.delete(_readMessageIdsKey);
+    _unreadCount = _messages.length;
+    notifyListeners();
+  }
+
   /// 初始化服务
   Future<void> initialize() async {
     log('IM Service: Initializing');
+
+    // 1. 打开 Hive Box (确保 main.dart 已经运行了 Hive.initFlutter)
+    try {
+      _imSettingsBox = await Hive.openBox(_imSettingsBoxName);
+      // 2. 从本地恢复上一次的消息 ID
+      _lastMessageId = _imSettingsBox!.get(_lastMessageIdKey, defaultValue: 0);
+      log('IM Service: Recovered lastMessageId from local: $_lastMessageId');
+    } catch (e) {
+      log('IM Service: Failed to open Hive box: $e');
+      _lastMessageId = 0;
+    }
 
     // 监听网络连接状态
     _connectivity.checkConnectivity().then((results) {
@@ -129,9 +215,19 @@ class ImService extends ChangeNotifier {
   /// 获取初始数据
   Future<void> _fetchInitialData() async {
     try {
-      await Future.wait([_fetchContacts(), _fetchMessages()]);
+      // 启动时的第一次拉取不弹通知，只更新 ID
+      await Future.wait([_fetchContacts(), _fetchMessages(silent: true)]);
     } catch (e) {
       log('IM Service: Failed to fetch initial data: $e');
+    }
+  }
+
+  /// 更新并持久化最后消息 ID
+  void _updateLastMessageId(int newId) {
+    if (newId > _lastMessageId) {
+      _lastMessageId = newId;
+      // 同步写入 Hive 确保不丢失
+      _imSettingsBox?.put(_lastMessageIdKey, _lastMessageId);
     }
   }
 
@@ -163,7 +259,7 @@ class ImService extends ChangeNotifier {
   }
 
   /// 获取消息列表（支持增量同步）
-  Future<void> _fetchMessages() async {
+  Future<void> _fetchMessages({bool silent = false}) async {
     if (!_isOnline) {
       log('IM Service: Offline, skipping message fetch');
       return;
@@ -182,23 +278,27 @@ class ImService extends ChangeNotifier {
       );
 
       if (response.messages.isNotEmpty) {
-        // 更新最后消息ID
-        _lastMessageId = response.messages
+        // 更新最后消息 ID
+        final latestId = response.messages
             .map((m) => m.id)
             .reduce((a, b) => a > b ? a : b);
+        _updateLastMessageId(latestId);
 
         // 合并新消息到列表
         _messages.insertAll(0, response.messages);
 
-        // 检查新消息并转发到蓝牙设备
-        _forwardNewMessagesToBluetooth(response.messages);
+        // 检查新消息并转发到蓝牙设备（静默模式不触发）
+        if (!silent) {
+          _forwardNewMessagesToBluetooth(response.messages);
+        }
 
         log(
           'IM Service: Fetched ${response.messages.length} new messages, lastId=$_lastMessageId',
         );
       }
 
-      _unreadCount = _messages.where((m) => m.isRead == false).length;
+      // 使用本地持久化的已读状态计算未读数量
+      _updateUnreadCount();
 
       // 重置退避倍数
       _backoffMultiplier = 1;
@@ -216,6 +316,12 @@ class ImService extends ChangeNotifier {
     } catch (e) {
       log('IM Service: Error fetching messages: $e');
     }
+  }
+
+  /// 更新未读消息数量
+  void _updateUnreadCount() {
+    final readIds = getReadMessageIds();
+    _unreadCount = _messages.where((m) => !readIds.contains(m.id)).length;
   }
 
   /// 获取联系人列表
@@ -405,10 +511,11 @@ class ImService extends ChangeNotifier {
         if (!_isLongPollingActive) break;
 
         if (response.messages.isNotEmpty) {
-          // 更新最后消息ID
-          _lastMessageId = response.messages
+          // 更新最后消息 ID
+          final latestId = response.messages
               .map((m) => m.id)
               .reduce((a, b) => a > b ? a : b);
+          _updateLastMessageId(latestId);
 
           // 合并新消息到列表
           _messages.insertAll(0, response.messages);
@@ -460,6 +567,9 @@ class ImService extends ChangeNotifier {
     _contacts = [];
     _unreadCount = 0;
     _lastMessageId = 0;
+    // 清除 Hive 中存储的 lastMessageId 和已读状态
+    _imSettingsBox?.delete(_lastMessageIdKey);
+    _imSettingsBox?.delete(_readMessageIdsKey);
     notifyListeners();
   }
 
@@ -516,6 +626,8 @@ class ImService extends ChangeNotifier {
     _stopPolling();
     _connectivitySub?.cancel();
     _bluetoothConnectionSub?.cancel();
+    // 关闭 Hive box
+    _imSettingsBox?.close();
     super.dispose();
   }
 }

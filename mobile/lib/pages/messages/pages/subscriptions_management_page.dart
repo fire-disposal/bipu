@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:bipupu/core/network/network.dart';
 import 'package:bipupu/core/network/api_exception.dart';
 import 'package:easy_localization/easy_localization.dart';
+import '../../../core/network/api_client.dart';
 
 class SubscriptionsManagementPage extends StatefulWidget {
   const SubscriptionsManagementPage({super.key});
@@ -188,8 +189,13 @@ class _SubscriptionsManagementPageState
 
   Widget _buildServiceAvatar(ServiceAccountResponse service) {
     if (service.avatarUrl != null && service.avatarUrl!.isNotEmpty) {
+      // 拼接完整的头像 URL（avatar_url 可能是相对路径）
+      final avatarUrl = service.avatarUrl!.startsWith('http')
+          ? service.avatarUrl!
+          : '${ApiClient.instance.dio.options.baseUrl}${service.avatarUrl}';
+
       return CircleAvatar(
-        backgroundImage: NetworkImage(service.avatarUrl!),
+        backgroundImage: NetworkImage(avatarUrl),
         onBackgroundImageError: (exception, stackTrace) {
           debugPrint('Failed to load avatar: $exception');
         },

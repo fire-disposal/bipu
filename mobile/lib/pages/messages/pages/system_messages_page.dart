@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:bipupu/core/network/network.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/services/im_service.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/api/models/service_account_response.dart';
 
 class SystemMessagesPage extends StatefulWidget {
   const SystemMessagesPage({super.key});
@@ -12,51 +14,68 @@ class SystemMessagesPage extends StatefulWidget {
 }
 
 class _SystemMessagesPageState extends State<SystemMessagesPage> {
+  final ImService _imService = ImService();
   List<MessageResponse> _messages = [];
+  Map<String, ServiceAccountResponse?> _serviceCache = {};
   bool _isLoading = false;
-  late SharedPreferences _prefs;
-  final Set<int> _readMessageIds = {};
 
   @override
   void initState() {
     super.initState();
-    _initPrefs();
     _loadMessages();
   }
 
-  Future<void> _initPrefs() async {
-    _prefs = await SharedPreferences.getInstance();
-    _loadReadStatus();
-  }
+  /// 获取服务号信息（带缓存）
+  Future<ServiceAccountResponse?> _getServiceAccount(String serviceName) async {
+    // 先从缓存获取
+    if (_serviceCache.containsKey(serviceName)) {
+      return _serviceCache[serviceName];
+    }
 
-  void _loadReadStatus() {
-    final readIds = _prefs.getStringList('read_message_ids') ?? [];
-    setState(() {
-      _readMessageIds.clear();
-      _readMessageIds.addAll(readIds.map((id) => int.parse(id)));
-    });
-  }
-
-  Future<void> _markAsRead(int messageId) async {
-    if (!_readMessageIds.contains(messageId)) {
-      _readMessageIds.add(messageId);
-      await _prefs.setStringList(
-        'read_message_ids',
-        _readMessageIds.map((id) => id.toString()).toList(),
-      );
-      setState(() {});
+    try {
+      final service = await ApiClient.instance.api.serviceAccounts
+          .getApiServiceAccountsName(name: serviceName);
+      _serviceCache[serviceName] = service;
+      return service;
+    } on ApiException catch (e) {
+      debugPrint('Failed to load service account $serviceName: ${e.message}');
+      _serviceCache[serviceName] = null;
+      return null;
     }
   }
 
-  Future<void> _markAsUnread(int messageId) async {
-    if (_readMessageIds.contains(messageId)) {
-      _readMessageIds.remove(messageId);
-      await _prefs.setStringList(
-        'read_message_ids',
-        _readMessageIds.map((id) => id.toString()).toList(),
+  /// 构建服务号头像
+  Widget _buildServiceAvatar(ServiceAccountResponse service) {
+    if (service.avatarUrl != null && service.avatarUrl!.isNotEmpty) {
+      final avatarUrl = service.avatarUrl!.startsWith('http')
+          ? service.avatarUrl!
+          : '${ApiClient.instance.dio.options.baseUrl}${service.avatarUrl}';
+
+      return CircleAvatar(
+        radius: 24,
+        backgroundImage: NetworkImage(avatarUrl),
+        onBackgroundImageError: (exception, stackTrace) {
+          debugPrint('Failed to load avatar: $exception');
+        },
       );
-      setState(() {});
     }
+    return CircleAvatar(
+      radius: 24,
+      backgroundColor: Colors.orange.withValues(alpha: 0.2),
+      child: Text(
+        service.name.isNotEmpty ? service.name[0].toUpperCase() : '?',
+        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+      ),
+    );
+  }
+
+  /// 默认系统图标
+  Widget _buildDefaultSystemIcon() {
+    return CircleAvatar(
+      radius: 24,
+      backgroundColor: Colors.orange.withValues(alpha: 0.2),
+      child: Icon(Icons.notifications, color: Colors.orange, size: 24),
+    );
   }
 
   Future<void> _loadMessages() async {
@@ -69,6 +88,13 @@ class _SystemMessagesPageState extends State<SystemMessagesPage> {
       setState(() {
         _messages = filtered;
       });
+
+      // 预加载服务号信息
+      for (final msg in _messages) {
+        if (!_serviceCache.containsKey(msg.senderBipupuId)) {
+          _getServiceAccount(msg.senderBipupuId);
+        }
+      }
     } on ApiException catch (e) {
       debugPrint('Error loading messages: ${e.message}');
     } finally {
@@ -126,151 +152,173 @@ class _SystemMessagesPageState extends State<SystemMessagesPage> {
                 separatorBuilder: (context, index) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
                   final msg = messages[index];
-                  final isRead = _readMessageIds.contains(msg.id);
+                  final isRead = _imService.isMessageRead(msg.id);
 
-                  return Card(
-                    elevation: 1,
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: InkWell(
-                      onTap: () async {
-                        await _markAsRead(msg.id);
-                        if (mounted) {
-                          context.push('/messages/detail', extra: msg);
-                        }
-                      },
-                      onLongPress: () {
-                        showModalBottomSheet(
-                          context: context,
-                          builder: (context) => Wrap(
-                            children: [
-                              ListTile(
-                                leading: Icon(
-                                  isRead ? Icons.mail : Icons.mail_outline,
-                                ),
-                                title: Text(
-                                  isRead
-                                      ? 'mark_unread'.tr()
-                                      : 'mark_read'.tr(),
-                                ),
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  if (isRead) {
-                                    _markAsUnread(msg.id);
-                                  } else {
-                                    _markAsRead(msg.id);
-                                  }
-                                },
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Stack(
-                              children: [
-                                CircleAvatar(
-                                  radius: 24,
-                                  backgroundColor: Colors.orange.withValues(
-                                    alpha: 0.2,
-                                  ),
-                                  child: Icon(
-                                    Icons.notifications,
-                                    color: Colors.orange,
-                                  ),
-                                ),
-                                if (!isRead)
-                                  Positioned(
-                                    right: 0,
-                                    top: 0,
-                                    child: Container(
-                                      width: 14,
-                                      height: 14,
-                                      decoration: BoxDecoration(
-                                        color: Colors.red,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: Colors.white,
-                                          width: 2,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                  return FutureBuilder<ServiceAccountResponse?>(
+                    future: _getServiceAccount(msg.senderBipupuId),
+                    builder: (context, snapshot) {
+                      final service = snapshot.data;
+                      final displayName = service?.name ?? msg.senderBipupuId;
+
+                      return Card(
+                        elevation: 1,
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: InkWell(
+                          onTap: () async {
+                            await _imService.markMessageAsRead(msg.id);
+                            if (mounted) {
+                              context.push('/messages/detail', extra: msg);
+                            }
+                          },
+                          onLongPress: () {
+                            showModalBottomSheet(
+                              context: context,
+                              builder: (context) => Wrap(
                                 children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          'System',
-                                          style: TextStyle(
-                                            fontWeight: isRead
-                                                ? FontWeight.w500
-                                                : FontWeight.bold,
-                                            fontSize: 14,
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.onSurface,
+                                  ListTile(
+                                    leading: Icon(
+                                      isRead ? Icons.mail : Icons.mail_outline,
+                                    ),
+                                    title: Text(
+                                      isRead
+                                          ? 'mark_unread'.tr()
+                                          : 'mark_read'.tr(),
+                                    ),
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      if (isRead) {
+                                        _imService.markMessageAsUnread(msg.id);
+                                      } else {
+                                        _imService.markMessageAsRead(msg.id);
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Stack(
+                                  children: [
+                                    if (service != null)
+                                      _buildServiceAvatar(service)
+                                    else if (snapshot.connectionState ==
+                                        ConnectionState.waiting)
+                                      CircleAvatar(
+                                        radius: 24,
+                                        backgroundColor: Colors.grey.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                        child: const SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
                                           ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      )
+                                    else
+                                      _buildDefaultSystemIcon(),
+                                    if (!isRead)
+                                      Positioned(
+                                        right: 0,
+                                        top: 0,
+                                        child: Container(
+                                          width: 14,
+                                          height: 14,
+                                          decoration: BoxDecoration(
+                                            color: Colors.red,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors.white,
+                                              width: 2,
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
+                                  ],
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              displayName,
+                                              style: TextStyle(
+                                                fontWeight: isRead
+                                                    ? FontWeight.w500
+                                                    : FontWeight.bold,
+                                                fontSize: 14,
+                                                color: service != null
+                                                    ? Theme.of(
+                                                        context,
+                                                      ).colorScheme.onSurface
+                                                    : Theme.of(context)
+                                                          .colorScheme
+                                                          .onSurfaceVariant,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            DateFormat(
+                                              'MM-dd HH:mm',
+                                            ).format(msg.createdAt),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
                                       Text(
-                                        DateFormat(
-                                          'MM-dd HH:mm',
-                                        ).format(msg.createdAt),
+                                        msg.content,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
-                                          fontSize: 12,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
+                                          color: isRead
+                                              ? Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurfaceVariant
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurface,
+                                          fontSize: 13,
+                                          height: 1.4,
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    msg.content,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: isRead
-                                          ? Theme.of(
-                                              context,
-                                            ).colorScheme.onSurfaceVariant
-                                          : Theme.of(
-                                              context,
-                                            ).colorScheme.onSurface,
-                                      fontSize: 13,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   );
                 },
               ),

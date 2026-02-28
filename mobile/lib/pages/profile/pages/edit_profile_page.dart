@@ -228,7 +228,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         ? CachedNetworkImageProvider(
                             _avatarUrl!.startsWith('http')
                                 ? _avatarUrl!
-                                : 'https://api.205716.xyz$_avatarUrl',
+                                : '${ApiClient.instance.dio.options.baseUrl}$_avatarUrl',
                           )
                         : null,
                     child: _avatarUrl == null

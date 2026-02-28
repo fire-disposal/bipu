@@ -5,6 +5,7 @@ import '../../../core/services/auth_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
+import '../../../core/network/api_client.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -46,7 +47,7 @@ class ProfilePage extends StatelessWidget {
                         ? CachedNetworkImageProvider(
                             user!.avatarUrl!.startsWith('http')
                                 ? user.avatarUrl!
-                                : 'https://api.205716.xyz${user.avatarUrl}',
+                                : '${ApiClient.instance.dio.options.baseUrl}${user.avatarUrl}',
                           )
                         : null,
                     child: user?.avatarUrl == null

@@ -220,9 +220,21 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
         msg.senderBipupuId;
 
     // 根据是否为服务号选择不同的头像加载方式
-    final avatarUrl = isServiceAccount
-        ? '/api/service_accounts/${msg.senderBipupuId}/avatar'
-        : senderContact?.info?.avatarUrl;
+    String? avatarUrl;
+    if (isServiceAccount) {
+      // 服务号头像使用特殊接口
+      avatarUrl = '/api/service_accounts/${msg.senderBipupuId}/avatar';
+    } else {
+      // 普通用户头像从联系人信息获取
+      avatarUrl = senderContact?.info?.avatarUrl;
+    }
+
+    // 拼接完整的头像 URL（avatar_url 可能是相对路径）
+    final fullAvatarUrl = avatarUrl != null && avatarUrl.isNotEmpty
+        ? (avatarUrl.startsWith('http')
+              ? avatarUrl
+              : '${ApiClient.instance.dio.options.baseUrl}$avatarUrl')
+        : null;
 
     return Scaffold(
       appBar: AppBar(title: Text('message_detail_title'.tr()), elevation: 0),
@@ -259,10 +271,10 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                           backgroundColor: Theme.of(
                             context,
                           ).colorScheme.surfaceContainerHighest,
-                          backgroundImage: avatarUrl != null
-                              ? NetworkImage(avatarUrl)
+                          backgroundImage: fullAvatarUrl != null
+                              ? NetworkImage(fullAvatarUrl)
                               : null,
-                          child: avatarUrl == null
+                          child: fullAvatarUrl == null
                               ? Text(
                                   displayName.isNotEmpty
                                       ? displayName

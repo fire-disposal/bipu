@@ -19,9 +19,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   BluetoothConnectionState _connectionState =
       BluetoothConnectionState.disconnected;
 
+  // 进场动画控制器
   late AnimationController _titleAnimationController;
   late Animation<double> _titleFadeAnimation;
   late Animation<Offset> _titleSlideAnimation;
+
+  // 渐变循环动画控制器 (新增)
+  late AnimationController _gradientController;
 
   late PageController _posterController;
   int _currentPosterIndex = 0;
@@ -31,6 +35,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
+    // 1. 进场动画 (800ms)
     _titleAnimationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -48,19 +53,32 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
         );
 
+    // 2. 渐变循环动画 (10s 周期，与登录页一致)
+    _gradientController = AnimationController(
+      duration: const Duration(seconds: 10),
+      vsync: this,
+    )..repeat(reverse: true);
+
     _titleAnimationController.forward();
     _posterController = PageController();
     _loadPosters();
     _setupBluetoothListener();
   }
 
+  @override
+  void dispose() {
+    _titleAnimationController.dispose();
+    _gradientController.dispose(); // 记得释放
+    _posterController.dispose();
+    super.dispose();
+  }
+
+  // --- 逻辑辅助方法 ---
   Future<void> _loadPosters() async {
     try {
       final response = await ApiClient.instance.api.posters
           .getApiPostersActive();
-      if (mounted) {
-        setState(() => _posters = response);
-      }
+      if (mounted) setState(() => _posters = response);
     } catch (e) {
       debugPrint('Error loading posters: $e');
     }
@@ -76,14 +94,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     });
   }
 
-  @override
-  void dispose() {
-    _titleAnimationController.dispose();
-    _posterController.dispose();
-    super.dispose();
-  }
-
-  // --- 逻辑辅助方法 ---
   bool get _isConnected =>
       _connectionState == BluetoothConnectionState.connected;
 
@@ -105,30 +115,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. 顶部标题区
             _buildTopHeader(context, topPadding, isDarkMode),
-
-            // 2. 主内容区 (统一 Padding)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
                 children: [
                   const SizedBox(height: 16),
-
-                  // 海报轮播 (AspectRatio 解决抖动)
                   _buildPosterSection(context, isDarkMode),
-
                   const SizedBox(height: 16),
-
-                  // 蓝牙设备卡片
                   _buildDeviceCard(context),
-
                   const SizedBox(height: 16),
-
-                  // 快捷操作网格
                   _buildQuickActionsGrid(context),
-
-                  // 底部安全间距
                   SizedBox(height: MediaQuery.of(context).padding.bottom + 20),
                 ],
               ),
@@ -150,28 +147,46 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       decoration: BoxDecoration(
         color: isDarkMode
             ? colorScheme.surface
-            : colorScheme.primary.withValues(alpha: 0.05),
+            : colorScheme.primary.withOpacity(0.05),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 组合动画：进场位移 + 进场淡入 + 持续颜色渐变
           SlideTransition(
             position: _titleSlideAnimation,
             child: FadeTransition(
               opacity: _titleFadeAnimation,
-              child: ShaderMask(
-                shaderCallback: (bounds) => LinearGradient(
-                  colors: [colorScheme.primary, colorScheme.secondary],
-                ).createShader(bounds),
-                child: const Text(
-                  'Bipupu',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+              child: AnimatedBuilder(
+                animation: _gradientController,
+                builder: (context, child) {
+                  // 计算平滑的偏移量
+                  final lerp = Curves.easeInOutSine.transform(
+                    _gradientController.value,
+                  );
+                  return ShaderMask(
+                    shaderCallback: (bounds) => LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      // 使用同样的深蓝-亮蓝-深蓝组合
+                      stops: [lerp - 0.3, lerp, lerp + 0.3],
+                      colors: const [
+                        Color(0xFF0072FF),
+                        Color(0xFF00C6FF),
+                        Color(0xFF0072FF),
+                      ],  
+                    ).createShader(bounds),
+                    child: const Text(
+                      'Bipupu',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900, // 加重字重让渐变更明显
+                        color: Colors.white,
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),
@@ -185,15 +200,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  // ... 保持 _buildPosterSection, _buildDeviceCard, _buildQuickActionsGrid 等方法不变 ...
+  // 为了简洁，此处省略未修改的辅助 UI 构建代码，它们与你提供的原代码完全一致
+
   Widget _buildPosterSection(BuildContext context, bool isDarkMode) {
     return AspectRatio(
-      aspectRatio: 1.8, // 约 16:9，固定比例防止加载时下方内容跳动
+      aspectRatio: 1.8,
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           color: Theme.of(
             context,
-          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+          ).colorScheme.surfaceContainerHighest.withOpacity(0.4),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
@@ -229,13 +247,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           placeholder: (context, url) => Container(color: Colors.black12),
           errorWidget: (context, url, error) => const Icon(Icons.broken_image),
         ),
-        // 文字遮罩渐变
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Colors.transparent, Colors.black.withValues(alpha: 0.6)],
+              colors: [Colors.transparent, Colors.black.withOpacity(0.6)],
             ),
           ),
         ),
@@ -290,14 +307,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Widget _buildDeviceCard(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final statusColor = _isConnected ? Colors.green : Colors.orange;
-
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
+        side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -306,7 +320,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: statusColor.withValues(alpha: 0.1),
+                  backgroundColor: statusColor.withOpacity(0.1),
                   child: Icon(
                     _isConnected
                         ? Icons.bluetooth_connected
@@ -346,7 +360,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
+                    color: statusColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -429,9 +443,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: Theme.of(
-            context,
-          ).colorScheme.outlineVariant.withValues(alpha: 0.4),
+          color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.4),
         ),
       ),
       child: InkWell(

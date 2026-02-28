@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:bipupu/core/network/network.dart';
+import 'package:bipupu/core/network/api_client.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 class UserDetailPage extends StatefulWidget {
@@ -15,6 +16,35 @@ class _UserDetailPageState extends State<UserDetailPage> {
   dynamic _user;
   bool _isLoading = true;
   String? _error;
+
+  /// 构建用户头像
+  Widget _buildUserAvatar({double radius = 40}) {
+    final avatarUrl = _user?.avatarUrl;
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      final fullUrl = avatarUrl.startsWith('http')
+          ? avatarUrl
+          : '${ApiClient.instance.dio.options.baseUrl}$avatarUrl';
+
+      return CircleAvatar(
+        radius: radius,
+        backgroundImage: NetworkImage(fullUrl),
+        onBackgroundImageError: (exception, stackTrace) {
+          debugPrint('Failed to load avatar: $exception');
+        },
+      );
+    }
+
+    // 默认头像：显示用户名首字母
+    final displayName = _user?.nickname ?? _user?.username ?? '?';
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: Colors.grey.withValues(alpha: 0.3),
+      child: Text(
+        displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -81,13 +111,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            CircleAvatar(
-              radius: 40,
-              child: Text(
-                _user!.nickname?.substring(0, 1) ??
-                    _user!.username.substring(0, 1),
-              ),
-            ),
+            _buildUserAvatar(),
             const SizedBox(height: 16),
             Text('Bipupu ID: ${_user!.bipupuId}'),
             const SizedBox(height: 16),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:bipupu/core/network/network.dart';
+import 'package:bipupu/core/network/api_client.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 class UserSearchPage extends StatefulWidget {
@@ -14,6 +15,35 @@ class _UserSearchPageState extends State<UserSearchPage> {
   dynamic _result;
   bool _isLoading = false;
   String? _error;
+
+  /// 构建用户头像
+  Widget _buildUserAvatar(dynamic user, {double radius = 24}) {
+    final avatarUrl = user?.avatarUrl;
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      final fullUrl = avatarUrl.startsWith('http')
+          ? avatarUrl
+          : '${ApiClient.instance.dio.options.baseUrl}$avatarUrl';
+
+      return CircleAvatar(
+        radius: radius,
+        backgroundImage: NetworkImage(fullUrl),
+        onBackgroundImageError: (exception, stackTrace) {
+          debugPrint('Failed to load avatar: $exception');
+        },
+      );
+    }
+
+    // 默认头像：显示用户名首字母
+    final displayName = user?.nickname ?? user?.username ?? '?';
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: Colors.grey.withValues(alpha: 0.3),
+      child: Text(
+        displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+    );
+  }
 
   Future<void> _search() async {
     final query = _searchController.text.trim();
@@ -89,12 +119,7 @@ class _UserSearchPageState extends State<UserSearchPage> {
             if (_result != null)
               Card(
                 child: ListTile(
-                  leading: CircleAvatar(
-                    child: Text(
-                      _result!.nickname?.substring(0, 1) ??
-                          _result!.username.substring(0, 1),
-                    ),
-                  ),
+                  leading: _buildUserAvatar(_result),
                   title: Text(_result!.nickname ?? _result!.username),
                   subtitle: Text('ID: ${_result!.bipupuId}'),
                   trailing: ElevatedButton(

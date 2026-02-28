@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../core/state/app_state_management.dart';
 import '../../core/animations/animation_system.dart';
 import '../../core/services/im_service.dart';
@@ -48,14 +49,14 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
         index: 0,
         icon: Icons.home_outlined,
         activeIcon: Icons.home_rounded,
-        label: '首页',
+        label: 'home_tab'.tr(),
         route: '/home',
       ),
       NavItem(
         index: 1,
         icon: Icons.mic_outlined,
         activeIcon: Icons.mic_rounded,
-        label: '对讲',
+        label: 'pager_tab'.tr(),
         route: '/pager',
         isSpecial: true,
       ),
@@ -63,7 +64,7 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
         index: 2,
         icon: Icons.chat_bubble_outline,
         activeIcon: Icons.chat_bubble_rounded,
-        label: '消息',
+        label: 'messages_tab'.tr(),
         route: '/messages',
         badge: _imService.unreadCount,
       ),
@@ -71,7 +72,7 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
         index: 3,
         icon: Icons.person_outline,
         activeIcon: Icons.person_rounded,
-        label: '我的',
+        label: 'profile_tab'.tr(),
         route: '/profile',
       ),
     ];
@@ -405,7 +406,9 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
                     ? FontWeight.w600
                     : FontWeight.w500,
               ),
-              child: Text(widget.isPagerListening ? '录音中' : item.label),
+              child: Text(
+                widget.isPagerListening ? 'recording'.tr() : item.label,
+              ),
             ),
           ],
         ),

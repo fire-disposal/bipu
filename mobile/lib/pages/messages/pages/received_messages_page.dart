@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:bipupu/core/network/network.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/im_service.dart';
 
 class ReceivedMessagesPage extends StatefulWidget {
   const ReceivedMessagesPage({super.key});
@@ -14,51 +14,27 @@ class ReceivedMessagesPage extends StatefulWidget {
 
 class _ReceivedMessagesPageState extends State<ReceivedMessagesPage> {
   final AuthService _authService = AuthService();
-  late SharedPreferences _prefs;
-  final Set<int> _readMessageIds = {};
+  final ImService _imService = ImService();
   List<MessageResponse> _messages = [];
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _initPrefs();
     _loadMessages();
+    // 监听 ImService 变化以更新已读状态
+    _imService.addListener(_onImServiceChanged);
   }
 
-  Future<void> _initPrefs() async {
-    _prefs = await SharedPreferences.getInstance();
-    _loadReadStatus();
+  @override
+  void dispose() {
+    _imService.removeListener(_onImServiceChanged);
+    super.dispose();
   }
 
-  void _loadReadStatus() {
-    final readIds = _prefs.getStringList('read_message_ids') ?? [];
-    setState(() {
-      _readMessageIds.clear();
-      _readMessageIds.addAll(readIds.map((id) => int.parse(id)));
-    });
-  }
-
-  Future<void> _markAsRead(int messageId) async {
-    if (!_readMessageIds.contains(messageId)) {
-      _readMessageIds.add(messageId);
-      await _prefs.setStringList(
-        'read_message_ids',
-        _readMessageIds.map((id) => id.toString()).toList(),
-      );
-      setState(() {});
-    }
-  }
-
-  Future<void> _markAsUnread(int messageId) async {
-    if (_readMessageIds.contains(messageId)) {
-      _readMessageIds.remove(messageId);
-      await _prefs.setStringList(
-        'read_message_ids',
-        _readMessageIds.map((id) => id.toString()).toList(),
-      );
-      setState(() {});
-    }
+  void _onImServiceChanged() {
+    // ImService 的已读状态变化时刷新 UI
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadMessages() async {
@@ -84,6 +60,14 @@ class _ReceivedMessagesPageState extends State<ReceivedMessagesPage> {
 
   void _refresh() {
     _loadMessages();
+  }
+
+  Future<void> _markAsRead(int messageId) async {
+    await _imService.markMessageAsRead(messageId);
+  }
+
+  Future<void> _markAsUnread(int messageId) async {
+    await _imService.markMessageAsUnread(messageId);
   }
 
   @override
@@ -140,7 +124,7 @@ class _ReceivedMessagesPageState extends State<ReceivedMessagesPage> {
                 separatorBuilder: (context, index) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
                   final msg = messages[index];
-                  final isRead = _readMessageIds.contains(msg.id);
+                  final isRead = _imService.isMessageRead(msg.id);
 
                   return Card(
                     elevation: 1,
