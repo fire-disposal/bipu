@@ -38,6 +38,8 @@ class UnifiedBluetoothProtocol {
   static const int MESSAGE_TYPE_TIME_SYNC = 0x01; // 时间同步（数据可以为空）
   static const int MESSAGE_TYPE_TEXT = 0x02; // 文本消息
   static const int MESSAGE_TYPE_ACKNOWLEDGEMENT = 0x03; // 确认响应
+  static const int MESSAGE_TYPE_BINDING_INFO = 0x04; // 绑定信息交换
+  static const int MESSAGE_TYPE_UNBIND_COMMAND = 0x05; // 解绑命令
 
   /// 最大数据长度 (受限于蓝牙MTU，通常为20-244字节)
   /// 我们设置为240字节，为协议头和校验和留出空间
@@ -426,6 +428,10 @@ class UnifiedBluetoothProtocol {
         return 'Text Message';
       case MESSAGE_TYPE_ACKNOWLEDGEMENT:
         return 'Acknowledgement';
+      case MESSAGE_TYPE_BINDING_INFO:
+        return 'Binding Info';
+      case MESSAGE_TYPE_UNBIND_COMMAND:
+        return 'Unbind Command';
       default:
         return 'Unknown ($messageType)';
     }
@@ -475,6 +481,8 @@ class UnifiedBluetoothProtocol {
         {'id': MESSAGE_TYPE_TIME_SYNC, 'name': 'Time Sync'},
         {'id': MESSAGE_TYPE_TEXT, 'name': 'Text Message'},
         {'id': MESSAGE_TYPE_ACKNOWLEDGEMENT, 'name': 'Acknowledgement'},
+        {'id': MESSAGE_TYPE_BINDING_INFO, 'name': 'Binding Info'},
+        {'id': MESSAGE_TYPE_UNBIND_COMMAND, 'name': 'Unbind Command'},
       ],
     };
   }
@@ -539,6 +547,6 @@ class UnifiedBluetoothProtocol {
   /// 检查消息类型是否有效
   bool _isValidMessageType(int messageType) {
     return messageType >= MESSAGE_TYPE_TIME_SYNC &&
-        messageType <= MESSAGE_TYPE_ACKNOWLEDGEMENT;
+        messageType <= MESSAGE_TYPE_UNBIND_COMMAND;
   }
 }

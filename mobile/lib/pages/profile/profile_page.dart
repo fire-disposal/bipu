@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/services.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/bluetooth_device_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -192,6 +193,17 @@ class ProfilePage extends StatelessWidget {
                         ),
                         Divider(height: 1, indent: 56),
                         ListTile(
+                          leading: Icon(
+                            Icons.link_off,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          title: Text('clear_binding'.tr()),
+                          subtitle: Text('clear_bluetooth_binding'.tr()),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => _showClearBindingDialog(context),
+                        ),
+                        Divider(height: 1, indent: 56),
+                        ListTile(
                           leading: Icon(Icons.logout, color: Colors.red),
                           title: Text(
                             'logout'.tr(),
@@ -301,4 +313,53 @@ void _showClearCacheDialog(BuildContext context) {
 
 void _showLanguageSelector(BuildContext context) {
   context.push('/profile/language');
+}
+
+void _showClearBindingDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text('clear_binding'.tr()),
+      content: Text('confirm_clear_binding'.tr()),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('cancel'.tr()),
+        ),
+        TextButton(
+          onPressed: () async {
+            Navigator.pop(context);
+            try {
+              final bluetoothService = BluetoothDeviceService();
+
+              // 清除绑定信息
+              await bluetoothService.clearBinding();
+
+              // 显示成功消息
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('binding_cleared'.tr()),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'clear_binding_failed'.tr(args: [e.toString()]),
+                    ),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
+            }
+          },
+          child: Text('clear'.tr(), style: const TextStyle(color: Colors.red)),
+        ),
+      ],
+    ),
+  );
 }

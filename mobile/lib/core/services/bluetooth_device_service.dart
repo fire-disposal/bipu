@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'unified_bluetooth_protocol.dart';
 
 /// 蓝牙设备服务 - 增强版
@@ -16,7 +19,10 @@ class BluetoothDeviceService {
   static final BluetoothDeviceService _instance =
       BluetoothDeviceService._internal();
   factory BluetoothDeviceService() => _instance;
-  BluetoothDeviceService._internal();
+  BluetoothDeviceService._internal() {
+    // 异步初始化绑定信息
+    _initBindingInfo();
+  }
 
   // ========== 协议服务 ==========
   final UnifiedBluetoothProtocol _protocol = UnifiedBluetoothProtocol();
@@ -26,6 +32,11 @@ class BluetoothDeviceService {
   BluetoothCharacteristic? _nusTxCharacteristic;
   String? _lastConnectedDeviceId;
   DateTime? _lastConnectionTime;
+
+  // ========== 绑定状态 ==========
+  static const String _bindingPrefsKey = 'bluetooth_binding_info';
+  final ValueNotifier<bool> isBound = ValueNotifier(false);
+  final ValueNotifier<String?> boundDeviceName = ValueNotifier(null);
 
   // ========== 订阅管理 ==========
   final _subscriptions = <StreamSubscription<dynamic>>[];
@@ -69,7 +80,7 @@ class BluetoothDeviceService {
 
   // ========== 公共方法 ==========
 
-  /// 连接到蓝牙设备（增强版）
+  /// 连接到蓝牙设备（增强版，包含绑定逻辑）
   Future<void> connect(BluetoothDevice device) async {
     if (_isDisposing) {
       throw StateError('服务正在关闭，无法连接');
@@ -86,6 +97,9 @@ class BluetoothDeviceService {
       }
       return;
     }
+
+    // 检查绑定状态：如果连接的是新设备，自动解绑旧设备
+    await _checkAndUpdateBinding(device);
 
     // 清理现有连接
     await _cleanupExistingConnection();
@@ -451,11 +465,18 @@ class BluetoothDeviceService {
       case UnifiedBluetoothProtocol.MESSAGE_TYPE_TIME_SYNC:
         _handleTimeSync(packet);
         break;
+
       case UnifiedBluetoothProtocol.MESSAGE_TYPE_TEXT:
         _handleTextMessage(packet);
         break;
+
       case UnifiedBluetoothProtocol.MESSAGE_TYPE_ACKNOWLEDGEMENT:
         _handleAcknowledgement(packet);
+        break;
+
+      case UnifiedBluetoothProtocol.MESSAGE_TYPE_BINDING_INFO:
+      case UnifiedBluetoothProtocol.MESSAGE_TYPE_UNBIND_COMMAND:
+        _handleBindingPacket(packet);
         break;
     }
   }
@@ -589,6 +610,201 @@ class BluetoothDeviceService {
     signalStrength.value = 0;
     isReconnecting.value = false;
     _receivedPacket.value = null;
+  }
+
+  /// 异步初始化绑定信息
+  Future<void> _initBindingInfo() async {
+    await _loadBindingInfo();
+  }
+
+  /// 加载绑定信息
+  Future<void> _loadBindingInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    final boundId = prefs.getString(_bindingPrefsKey);
+    final boundName = prefs.getString('${_bindingPrefsKey}_name');
+
+    if (boundId != null) {
+      isBound.value = true;
+      boundDeviceName.value = boundName;
+
+      if (kDebugMode) {
+        print('加载绑定信息: $boundName ($boundId)');
+      }
+    }
+  }
+
+  /// 检查并更新绑定状态
+  Future<void> _checkAndUpdateBinding(BluetoothDevice newDevice) async {
+    final prefs = await SharedPreferences.getInstance();
+    final boundId = prefs.getString(_bindingPrefsKey);
+
+    // 如果已经有绑定的设备，且不是当前要连接的设备
+    if (boundId != null && boundId != newDevice.remoteId.toString()) {
+      // 发送解绑命令到旧设备（如果可能）
+      // 注意：这里只是清除本地绑定，实际设备端需要物理按键解绑
+      if (kDebugMode) {
+        print('检测到新设备连接，清除旧绑定: $boundId');
+      }
+    }
+
+    // 保存新绑定
+    final deviceName = newDevice.platformName;
+    final safeDeviceName = deviceName != null && deviceName.isNotEmpty
+        ? deviceName
+        : '未知设备';
+    await prefs.setString(_bindingPrefsKey, newDevice.remoteId.toString());
+    await prefs.setString('${_bindingPrefsKey}_name', safeDeviceName);
+
+    isBound.value = true;
+    boundDeviceName.value = safeDeviceName;
+
+    if (kDebugMode) {
+      print('设备绑定成功: $safeDeviceName (${newDevice.remoteId})');
+    }
+  }
+
+  /// 获取绑定信息
+  Future<Map<String, dynamic>> getBindingInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    final boundId = prefs.getString(_bindingPrefsKey);
+    final boundName = prefs.getString('${_bindingPrefsKey}_name');
+
+    return {
+      'isBound': boundId != null,
+      'boundDeviceId': boundId,
+      'boundDeviceName': boundName,
+      'boundDevice': boundName != null ? '$boundName ($boundId)' : null,
+    };
+  }
+
+  /// 清除绑定（本地解绑）
+  Future<void> clearBinding() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_bindingPrefsKey);
+    await prefs.remove('${_bindingPrefsKey}_name');
+
+    isBound.value = false;
+    boundDeviceName.value = null;
+
+    if (kDebugMode) {
+      print('本地绑定已清除');
+    }
+  }
+
+  /// 发送解绑命令到设备
+  Future<bool> sendUnbindCommand() async {
+    if (!isConnected || _nusTxCharacteristic == null) {
+      if (kDebugMode) {
+        print('设备未连接，无法发送解绑命令');
+      }
+      return false;
+    }
+
+    try {
+      // 创建解绑命令数据包
+      final packet = _protocol.createPacket(
+        messageType: UnifiedBluetoothProtocol.MESSAGE_TYPE_UNBIND_COMMAND,
+        data: Uint8List(0), // 空数据，命令本身已表明意图
+      );
+
+      // 发送解绑命令
+      await _nusTxCharacteristic!.write(packet, withoutResponse: true);
+
+      if (kDebugMode) {
+        print('解绑命令已发送到设备');
+      }
+
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('发送解绑命令失败: $e');
+      }
+      return false;
+    }
+  }
+
+  /// 发送绑定信息到设备
+  Future<bool> sendBindingInfo(String appId, String userName) async {
+    if (!isConnected || _nusTxCharacteristic == null) {
+      if (kDebugMode) {
+        print('设备未连接，无法发送绑定信息');
+      }
+      return false;
+    }
+
+    try {
+      // 创建绑定信息JSON
+      final bindingInfo = {
+        'appId': appId,
+        'userName': userName,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'platform': 'flutter',
+      };
+
+      final jsonString = jsonEncode(bindingInfo);
+      final data = utf8.encode(jsonString);
+
+      // 创建绑定信息数据包
+      final packet = _protocol.createPacket(
+        messageType: UnifiedBluetoothProtocol.MESSAGE_TYPE_BINDING_INFO,
+        data: Uint8List.fromList(data),
+      );
+
+      // 发送绑定信息
+      await _nusTxCharacteristic!.write(packet, withoutResponse: true);
+
+      if (kDebugMode) {
+        print('绑定信息已发送到设备: $jsonString');
+      }
+
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('发送绑定信息失败: $e');
+      }
+      return false;
+    }
+  }
+
+  /// 处理接收到的绑定相关数据包
+  void _handleBindingPacket(Map<String, dynamic> packet) {
+    final messageType = packet['messageType'];
+
+    switch (messageType) {
+      case UnifiedBluetoothProtocol.MESSAGE_TYPE_BINDING_INFO:
+        if (packet['data'] != null && packet['data'].isNotEmpty) {
+          try {
+            final jsonString = utf8.decode(
+              packet['data'],
+              allowMalformed: true,
+            );
+            final bindingInfo = jsonDecode(jsonString);
+
+            if (kDebugMode) {
+              print('收到设备绑定信息: $bindingInfo');
+            }
+
+            // 可以在这里处理设备发来的绑定信息
+            // 例如：显示设备信息、更新UI等
+          } catch (e) {
+            if (kDebugMode) {
+              print('解析绑定信息失败: $e');
+            }
+          }
+        }
+        break;
+
+      case UnifiedBluetoothProtocol.MESSAGE_TYPE_UNBIND_COMMAND:
+        if (kDebugMode) {
+          print('收到设备解绑命令');
+        }
+
+        // 设备请求解绑，清除本地绑定
+        clearBinding();
+
+        // 可以在这里添加UI通知等
+        break;
+    }
   }
 
   /// 销毁服务
