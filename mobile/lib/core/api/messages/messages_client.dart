@@ -42,56 +42,83 @@ abstract class MessagesClient {
     @Body() required MessageCreate body,
   });
 
-  /// Get Messages.
+  /// Get Received Messages.
   ///
-  /// 获取消息列表（支持增量同步）.
+  /// 获取用户的收件箱（接收的消息）.
   ///
   /// 参数：.
-  /// - direction: sent（发件箱）或 received（收件箱）.
   /// - page: 页码（从1开始）.
-  /// - page_size: 每页数量（1-100）.
+  /// - page_size: 每页数量（1-100，默认20）.
   /// - since_id: 增量同步参数，只返回 id > since_id 的消息（默认0表示全量）.
   ///
   /// 返回：.
-  /// - 成功：返回消息列表.
-  /// - 失败：400（参数错误）.
-  ///
-  /// [direction] - sent 或 received.
+  /// - messages: 消息列表.
+  /// - total: 总数.
+  /// - page: 当前页码.
+  /// - page_size: 每页数量.
   ///
   /// [page] - 页码.
   ///
   /// [pageSize] - 每页数量.
   ///
-  /// [sinceId] - 增量同步：只返回 id > since_id 的消息.
-  @GET('/api/messages/')
-  Future<MessageListResponse> getApiMessages({
-    @Query('direction') String? direction = 'received',
+  /// [sinceId] - 增量同步ID.
+  @GET('/api/messages/inbox')
+  Future<MessageListResponse> getApiMessagesInbox({
     @Query('page') int? page = 1,
     @Query('page_size') int? pageSize = 20,
     @Query('since_id') int? sinceId = 0,
   });
 
-  /// Poll Messages.
+  /// Get Sent Messages.
   ///
-  /// 真正的长轮询接口（Long Polling）：.
-  ///
-  /// 工作流程：.
-  /// 1. 如果数据库有比 last_msg_id 更新的消息，立即返回.
-  /// 2. 如果没有，则异步等待直到有新消息或超时.
-  /// 3. 每秒检查一次数据库，减少数据库查询压力.
+  /// 获取用户的发件箱（发送的消息）.
   ///
   /// 参数：.
-  /// - last_msg_id: 最后收到的消息ID（增量同步）.
-  /// - timeout: 轮询超时时间（1-120秒）.
+  /// - page: 页码（从1开始）.
+  /// - page_size: 每页数量（1-100，默认20）.
+  /// - since_id: 增量同步参数，只返回 id > since_id 的消息（默认0表示全量）.
   ///
   /// 返回：.
-  /// - 成功：返回新消息列表和是否有更多消息的标志.
-  /// - 失败：400（参数错误）.
+  /// - messages: 消息列表.
+  /// - total: 总数.
+  /// - page: 当前页码.
+  /// - page_size: 每页数量.
+  ///
+  /// 注：后端已经按 sender_bipupu_id 过滤，前端无需再次过滤.
+  ///
+  /// [page] - 页码.
+  ///
+  /// [pageSize] - 每页数量.
+  ///
+  /// [sinceId] - 增量同步ID.
+  @GET('/api/messages/sent')
+  Future<MessageListResponse> getApiMessagesSent({
+    @Query('page') int? page = 1,
+    @Query('page_size') int? pageSize = 20,
+    @Query('since_id') int? sinceId = 0,
+  });
+
+  /// Long Poll Messages.
+  ///
+  /// 长轮询接口：获取新消息.
+  ///
+  /// 工作流程：.
+  /// 1. 如果有比 last_msg_id 更新的消息，立即返回.
+  /// 2. 否则每秒检查一次，直到超时.
+  /// 3. 实现实时消息推送，同时避免频繁轮询.
+  ///
+  /// 参数：.
+  /// - last_msg_id: 最后收到的消息ID（从0开始表示获取所有新消息）.
+  /// - timeout: 轮询超时时间（1-120秒，默认30秒）.
+  ///
+  /// 返回：.
+  /// - messages: 新消息列表.
+  /// - has_more: 是否有更多消息（返回数量≥20时为true）.
   ///
   /// 优点：.
-  /// - 实时性高：有新消息立即返回.
-  /// - 请求频率低：无新消息时连接挂起.
-  /// - 数据传输少：只返回新消息.
+  /// - 实时性：有新消息立即返回，不需要等待超时.
+  /// - 流量少：只返回新消息，不重复传输.
+  /// - 负载低：无新消息时连接挂起，不进行数据库查询.
   ///
   /// [lastMsgId] - 最后收到的消息ID.
   ///
@@ -102,29 +129,34 @@ abstract class MessagesClient {
     @Query('timeout') int? timeout = 30,
   });
 
-  /// Get Sent Messages.
+  /// Mark Single Message Read.
   ///
-  /// 获取用户发出的消息（发件箱）.
+  /// 标记单条消息为已读.
   ///
   /// 参数：.
-  /// - page: 页码（从1开始）.
-  /// - page_size: 每页数量（1-100）.
-  /// - since_id: 增量同步参数，只返回 id > since_id 的消息（默认0表示全量）.
+  /// - message_id: 消息ID.
   ///
   /// 返回：.
-  /// - 成功：返回用户发出的消息列表.
-  /// - 失败：400（参数错误）.
+  /// - status: 操作状态.
+  /// - message_id: 消息ID.
+  @POST('/api/messages/{message_id}/read')
+  Future<void> postApiMessagesMessageIdRead({
+    @Path('message_id') required int messageId,
+  });
+
+  /// Mark Messages Read Batch.
   ///
-  /// [page] - 页码.
+  /// 批量标记消息为已读.
   ///
-  /// [pageSize] - 每页数量.
+  /// 参数：.
+  /// - message_ids: 消息ID列表.
   ///
-  /// [sinceId] - 增量同步：只返回 id > since_id 的消息.
-  @GET('/api/messages/sent')
-  Future<MessageListResponse> getApiMessagesSent({
-    @Query('page') int? page = 1,
-    @Query('page_size') int? pageSize = 20,
-    @Query('since_id') int? sinceId = 0,
+  /// 返回：.
+  /// - status: 操作状态.
+  /// - count: 处理的消息数量.
+  @POST('/api/messages/read-batch')
+  Future<void> postApiMessagesReadBatch({
+    @Body() required List<int> body,
   });
 
   /// Get Favorites.
@@ -136,8 +168,10 @@ abstract class MessagesClient {
   /// - page_size: 每页数量（1-100）.
   ///
   /// 返回：.
-  /// - 成功：返回收藏消息列表.
-  /// - 失败：400（参数错误）.
+  /// - favorites: 收藏消息列表.
+  /// - total: 总数.
+  /// - page: 当前页码.
+  /// - page_size: 每页数量.
   @GET('/api/messages/favorites')
   Future<FavoriteListResponse> getApiMessagesFavorites({
     @Query('page') int? page = 1,

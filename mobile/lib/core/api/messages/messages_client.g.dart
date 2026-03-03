@@ -48,15 +48,13 @@ class _MessagesClient implements MessagesClient {
   }
 
   @override
-  Future<MessageListResponse> getApiMessages({
-    String? direction = 'received',
+  Future<MessageListResponse> getApiMessagesInbox({
     int? page = 1,
     int? pageSize = 20,
     int? sinceId = 0,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{
-      r'direction': direction,
       r'page': page,
       r'page_size': pageSize,
       r'since_id': sinceId,
@@ -68,7 +66,43 @@ class _MessagesClient implements MessagesClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/api/messages/',
+            '/api/messages/inbox',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, Object?>>(_options);
+    late MessageListResponse _value;
+    try {
+      _value = MessageListResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<MessageListResponse> getApiMessagesSent({
+    int? page = 1,
+    int? pageSize = 20,
+    int? sinceId = 0,
+  }) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{
+      r'page': page,
+      r'page_size': pageSize,
+      r'since_id': sinceId,
+    };
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<MessageListResponse>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/api/messages/sent',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -120,39 +154,41 @@ class _MessagesClient implements MessagesClient {
   }
 
   @override
-  Future<MessageListResponse> getApiMessagesSent({
-    int? page = 1,
-    int? pageSize = 20,
-    int? sinceId = 0,
-  }) async {
+  Future<void> postApiMessagesMessageIdRead({required int messageId}) async {
     final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{
-      r'page': page,
-      r'page_size': pageSize,
-      r'since_id': sinceId,
-    };
-    queryParameters.removeWhere((k, v) => v == null);
+    final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<MessageListResponse>(
-      Options(method: 'GET', headers: _headers, extra: _extra)
+    final _options = _setStreamType<void>(
+      Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/api/messages/sent',
+            '/api/messages/${messageId}/read',
             queryParameters: queryParameters,
             data: _data,
           )
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
-    final _result = await _dio.fetch<Map<String, Object?>>(_options);
-    late MessageListResponse _value;
-    try {
-      _value = MessageListResponse.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options, response: _result);
-      rethrow;
-    }
-    return _value;
+    await _dio.fetch<void>(_options);
+  }
+
+  @override
+  Future<void> postApiMessagesReadBatch({required List<int> body}) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = body;
+    final _options = _setStreamType<void>(
+      Options(method: 'POST', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/api/messages/read-batch',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    await _dio.fetch<void>(_options);
   }
 
   @override

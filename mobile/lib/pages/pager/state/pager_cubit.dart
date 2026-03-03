@@ -2,9 +2,8 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/services/im_service.dart';
 import '../../../core/utils/logger.dart';
-import '../../../core/api/models/message_create.dart';
-import '../../../core/api/models/message_type.dart';
 import '../services/waveform_processor.dart';
 import '../services/text_processor.dart';
 import '../services/operator_service.dart';
@@ -16,6 +15,7 @@ import 'pager_state_machine.dart';
 /// 管理三个状态的转换和业务流程
 class PagerCubit extends Cubit<PagerState> {
   final ApiClient _apiClient;
+  final ImService _imService;
   final PagerAssistant _voiceAssistant;
   final OperatorService _operatorService;
   final WaveformProcessor _waveformProcessor = WaveformProcessor();
@@ -26,9 +26,11 @@ class PagerCubit extends Cubit<PagerState> {
 
   PagerCubit({
     ApiClient? apiClient,
+    ImService? imService,
     PagerAssistant? voiceAssistant,
     OperatorService? operatorService,
   }) : _apiClient = apiClient ?? ApiClient.instance,
+       _imService = imService ?? ImService(),
        _voiceAssistant = voiceAssistant ?? PagerAssistant(),
        _operatorService = operatorService ?? OperatorService(),
        super(const PagerInitialState());
@@ -263,38 +265,41 @@ class PagerCubit extends Cubit<PagerState> {
         'Sending message with waveform: ${_currentWaveformData.length} points',
       );
 
-      // 调用 API 发送消息
-      await _apiClient.execute(
-        () => _apiClient.api.messages.postApiMessages(
-          body: MessageCreate(
-            receiverId: finalizeState.targetId,
-            content: finalizeState.messageContent,
-            messageType: MessageType.voice,
-            waveform: _currentWaveformData.isEmpty
-                ? null
-                : _currentWaveformData,
-          ),
-        ),
-        operationName: 'SendMessage',
+      // 使用新的统一接口发送消息
+      final result = await _imService.sendMessage(
+        receiverId: finalizeState.targetId,
+        content: finalizeState.messageContent,
+        messageType: 'VOICE',
+        waveform: _currentWaveformData.isEmpty ? null : _currentWaveformData,
       );
 
-      // 更新状态：发送成功
-      emit(finalizeState.copyWith(isSending: false, sendSuccess: true));
+      if (result != null) {
+        // 更新状态：发送成功
+        emit(finalizeState.copyWith(isSending: false, sendSuccess: true));
 
-      // 播放成功提示
-      emit(finalizeState.copyWith(isPlayingSuccessTts: true));
-      await _voiceAssistant.respond('消息已发送，感谢您的使用');
-      emit(finalizeState.copyWith(isPlayingSuccessTts: false));
+        // 播放成功提示
+        emit(finalizeState.copyWith(isPlayingSuccessTts: true));
+        await _voiceAssistant.respond('消息已发送，感谢您的使用');
+        emit(finalizeState.copyWith(isPlayingSuccessTts: false));
 
-      // 增加接线员对话次数
-      if (finalizeState.operator != null) {
-        await _operatorService.incrementConversationCount(
-          finalizeState.operator!.id,
+        // 增加接线员对话次数
+        if (finalizeState.operator != null) {
+          await _operatorService.incrementConversationCount(
+            finalizeState.operator!.id,
+          );
+        }
+
+        // 显示挂断按钮
+        emit(finalizeState.copyWith(showHangupButton: true));
+      } else {
+        // 发送失败
+        emit(
+          finalizeState.copyWith(
+            isSending: false,
+            sendErrorMessage: result.errorMessage ?? '发送失败',
+          ),
         );
       }
-
-      // 显示挂断按钮
-      emit(finalizeState.copyWith(showHangupButton: true));
     } catch (e) {
       logger.e('Failed to send message: $e');
       if (state is FinalizeState) {

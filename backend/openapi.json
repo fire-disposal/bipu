@@ -358,20 +358,15 @@
         "summary": "Send Message",
         "description": "发送消息\n\n支持：\n- 用户间传讯（receiver_id 为用户的 bipupu_id）\n- 向服务号发送消息（receiver_id 为服务号 ID）\n\n参数：\n- receiver_id: 接收者ID\n- content: 消息内容（1-5000字符）\n- message_type: 消息类型（NORMAL, VOICE, SYSTEM）\n- pattern: 扩展模式数据（可选）\n- waveform: 音频波形数据（可选，0-255整数数组，最多128个点）\n\n返回：\n- 成功：返回创建的消息\n- 失败：400（参数错误）或404（接收者不存在）",
         "operationId": "send_message_api_messages__post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/MessageCreate"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "201": {
@@ -394,33 +389,28 @@
               }
             }
           }
-        }
-      },
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/messages/inbox": {
       "get": {
         "tags": [
           "messages"
         ],
-        "summary": "Get Messages",
-        "description": "获取消息列表（支持增量同步）\n\n参数：\n- direction: sent（发件箱）或 received（收件箱）\n- page: 页码（从1开始）\n- page_size: 每页数量（1-100）\n- since_id: 增量同步参数，只返回 id > since_id 的消息（默认0表示全量）\n\n返回：\n- 成功：返回消息列表\n- 失败：400（参数错误）",
-        "operationId": "get_messages_api_messages__get",
+        "summary": "Get Received Messages",
+        "description": "获取用户的收件箱（接收的消息）\n\n参数：\n- page: 页码（从1开始）\n- page_size: 每页数量（1-100，默认20）\n- since_id: 增量同步参数，只返回 id > since_id 的消息（默认0表示全量）\n\n返回：\n- messages: 消息列表\n- total: 总数\n- page: 当前页码\n- page_size: 每页数量",
+        "operationId": "get_received_messages_api_messages_inbox_get",
         "security": [
           {
             "HTTPBearer": []
           }
         ],
         "parameters": [
-          {
-            "name": "direction",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "description": "sent 或 received",
-              "default": "received",
-              "title": "Direction"
-            },
-            "description": "sent 或 received"
-          },
           {
             "name": "page",
             "in": "query",
@@ -455,11 +445,90 @@
             "schema": {
               "type": "integer",
               "minimum": 0,
-              "description": "增量同步：只返回 id > since_id 的消息",
+              "description": "增量同步ID",
               "default": 0,
               "title": "Since Id"
             },
-            "description": "增量同步：只返回 id > since_id 的消息"
+            "description": "增量同步ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/messages/sent": {
+      "get": {
+        "tags": [
+          "messages"
+        ],
+        "summary": "Get Sent Messages",
+        "description": "获取用户的发件箱（发送的消息）\n\n参数：\n- page: 页码（从1开始）\n- page_size: 每页数量（1-100，默认20）\n- since_id: 增量同步参数，只返回 id > since_id 的消息（默认0表示全量）\n\n返回：\n- messages: 消息列表\n- total: 总数\n- page: 当前页码\n- page_size: 每页数量\n\n注：后端已经按 sender_bipupu_id 过滤，前端无需再次过滤",
+        "operationId": "get_sent_messages_api_messages_sent_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "页码",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "页码"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "每页数量",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "每页数量"
+          },
+          {
+            "name": "since_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "增量同步ID",
+              "default": 0,
+              "title": "Since Id"
+            },
+            "description": "增量同步ID"
           }
         ],
         "responses": {
@@ -491,9 +560,9 @@
         "tags": [
           "messages"
         ],
-        "summary": "Poll Messages",
-        "description": "真正的长轮询接口（Long Polling）：\n\n工作流程：\n1. 如果数据库有比 last_msg_id 更新的消息，立即返回\n2. 如果没有，则异步等待直到有新消息或超时\n3. 每秒检查一次数据库，减少数据库查询压力\n\n参数：\n- last_msg_id: 最后收到的消息ID（增量同步）\n- timeout: 轮询超时时间（1-120秒）\n\n返回：\n- 成功：返回新消息列表和是否有更多消息的标志\n- 失败：400（参数错误）\n\n优点：\n- 实时性高：有新消息立即返回\n- 请求频率低：无新消息时连接挂起\n- 数据传输少：只返回新消息",
-        "operationId": "poll_messages_api_messages_poll_get",
+        "summary": "Long Poll Messages",
+        "description": "长轮询接口：获取新消息\n\n工作流程：\n1. 如果有比 last_msg_id 更新的消息，立即返回\n2. 否则每秒检查一次，直到超时\n3. 实现实时消息推送，同时避免频繁轮询\n\n参数：\n- last_msg_id: 最后收到的消息ID（从0开始表示获取所有新消息）\n- timeout: 轮询超时时间（1-120秒，默认30秒）\n\n返回：\n- messages: 新消息列表\n- has_more: 是否有更多消息（返回数量≥20时为true）\n\n优点：\n- 实时性：有新消息立即返回，不需要等待超时\n- 流量少：只返回新消息，不重复传输\n- 负载低：无新消息时连接挂起，不进行数据库查询",
+        "operationId": "long_poll_messages_api_messages_poll_get",
         "security": [
           {
             "HTTPBearer": []
@@ -552,14 +621,14 @@
         }
       }
     },
-    "/api/messages/sent": {
-      "get": {
+    "/api/messages/{message_id}/read": {
+      "post": {
         "tags": [
           "messages"
         ],
-        "summary": "Get Sent Messages",
-        "description": "获取用户发出的消息（发件箱）\n\n参数：\n- page: 页码（从1开始）\n- page_size: 每页数量（1-100）\n- since_id: 增量同步参数，只返回 id > since_id 的消息（默认0表示全量）\n\n返回：\n- 成功：返回用户发出的消息列表\n- 失败：400（参数错误）",
-        "operationId": "get_sent_messages_api_messages_sent_get",
+        "summary": "Mark Single Message Read",
+        "description": "标记单条消息为已读\n\n参数：\n- message_id: 消息ID\n\n返回：\n- status: 操作状态\n- message_id: 消息ID",
+        "operationId": "mark_single_message_read_api_messages__message_id__read_post",
         "security": [
           {
             "HTTPBearer": []
@@ -567,44 +636,13 @@
         ],
         "parameters": [
           {
-            "name": "page",
-            "in": "query",
-            "required": false,
+            "name": "message_id",
+            "in": "path",
+            "required": true,
             "schema": {
               "type": "integer",
-              "minimum": 1,
-              "description": "页码",
-              "default": 1,
-              "title": "Page"
-            },
-            "description": "页码"
-          },
-          {
-            "name": "page_size",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 100,
-              "minimum": 1,
-              "description": "每页数量",
-              "default": 20,
-              "title": "Page Size"
-            },
-            "description": "每页数量"
-          },
-          {
-            "name": "since_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "description": "增量同步：只返回 id > since_id 的消息",
-              "default": 0,
-              "title": "Since Id"
-            },
-            "description": "增量同步：只返回 id > since_id 的消息"
+              "title": "Message Id"
+            }
           }
         ],
         "responses": {
@@ -612,9 +650,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageListResponse"
-                }
+                "schema": {}
               }
             }
           },
@@ -631,13 +667,62 @@
         }
       }
     },
+    "/api/messages/read-batch": {
+      "post": {
+        "tags": [
+          "messages"
+        ],
+        "summary": "Mark Messages Read Batch",
+        "description": "批量标记消息为已读\n\n参数：\n- message_ids: 消息ID列表\n\n返回：\n- status: 操作状态\n- count: 处理的消息数量",
+        "operationId": "mark_messages_read_batch_api_messages_read_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array",
+                "title": "Message Ids"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/messages/favorites": {
       "get": {
         "tags": [
           "messages"
         ],
         "summary": "Get Favorites",
-        "description": "获取收藏消息列表\n\n参数：\n- page: 页码（从1开始）\n- page_size: 每页数量（1-100）\n\n返回：\n- 成功：返回收藏消息列表\n- 失败：400（参数错误）",
+        "description": "获取收藏消息列表\n\n参数：\n- page: 页码（从1开始）\n- page_size: 每页数量（1-100）\n\n返回：\n- favorites: 收藏消息列表\n- total: 总数\n- page: 当前页码\n- page_size: 每页数量",
         "operationId": "get_favorites_api_messages_favorites_get",
         "security": [
           {
@@ -4361,7 +4446,7 @@
             "maxLength": 100,
             "minLength": 1,
             "title": "Receiver Id",
-            "description": "接收者ID"
+            "description": "接收者ID（用户的bipupu_id或服务号ID）"
           },
           "content": {
             "type": "string",
@@ -4372,7 +4457,7 @@
           },
           "message_type": {
             "$ref": "#/components/schemas/MessageType",
-            "description": "消息类型",
+            "description": "消息类型（NORMAL, VOICE, SYSTEM）",
             "default": "NORMAL"
           },
           "pattern": {
@@ -4394,15 +4479,14 @@
                 "items": {
                   "type": "integer"
                 },
-                "type": "array",
-                "maxItems": 128
+                "type": "array"
               },
               {
                 "type": "null"
               }
             ],
             "title": "Waveform",
-            "description": "音频波形数据"
+            "description": "音频波形数据（0-255整数数组，最多128个点）"
           }
         },
         "type": "object",
@@ -4411,7 +4495,20 @@
           "content"
         ],
         "title": "MessageCreate",
-        "description": "创建消息请求"
+        "description": "创建消息请求\n\n支持：\n- 用户间传讯（receiver_id 为用户的 bipupu_id）\n- 向服务号发送消息（receiver_id 为服务号 ID）",
+        "example": {
+          "content": "你好，这是一条测试消息",
+          "message_type": "NORMAL",
+          "receiver_id": "user123",
+          "waveform": [
+            0,
+            10,
+            20,
+            30,
+            40,
+            50
+          ]
+        }
       },
       "MessageListResponse": {
         "properties": {
@@ -4420,19 +4517,26 @@
               "$ref": "#/components/schemas/MessageResponse"
             },
             "type": "array",
-            "title": "Messages"
+            "title": "Messages",
+            "description": "消息列表"
           },
           "total": {
             "type": "integer",
-            "title": "Total"
+            "minimum": 0.0,
+            "title": "Total",
+            "description": "总消息数"
           },
           "page": {
             "type": "integer",
-            "title": "Page"
+            "minimum": 1.0,
+            "title": "Page",
+            "description": "当前页码"
           },
           "page_size": {
             "type": "integer",
-            "title": "Page Size"
+            "minimum": 1.0,
+            "title": "Page Size",
+            "description": "每页数量"
           }
         },
         "type": "object",
@@ -4443,7 +4547,13 @@
           "page_size"
         ],
         "title": "MessageListResponse",
-        "description": "消息列表响应（支持增量同步）"
+        "description": "消息列表响应",
+        "example": {
+          "messages": [],
+          "page": 1,
+          "page_size": 20,
+          "total": 100
+        }
       },
       "MessagePollResponse": {
         "properties": {
@@ -4452,12 +4562,13 @@
               "$ref": "#/components/schemas/MessageResponse"
             },
             "type": "array",
-            "title": "Messages"
+            "title": "Messages",
+            "description": "新消息列表"
           },
           "has_more": {
             "type": "boolean",
             "title": "Has More",
-            "description": "是否有更多消息",
+            "description": "是否有更多消息未返回（超过限制）",
             "default": false
           }
         },
@@ -4466,30 +4577,43 @@
           "messages"
         ],
         "title": "MessagePollResponse",
-        "description": "轮询消息响应（长轮询）"
+        "description": "轮询消息响应\n\n包含自上次轮询后收到的新消息",
+        "example": {
+          "has_more": false,
+          "messages": []
+        }
       },
       "MessageResponse": {
         "properties": {
           "id": {
             "type": "integer",
-            "title": "Id"
+            "title": "Id",
+            "description": "消息ID"
           },
           "sender_bipupu_id": {
             "type": "string",
             "title": "Sender Bipupu Id",
-            "description": "发送者ID"
+            "description": "发送者的bipupu_id"
           },
           "receiver_bipupu_id": {
             "type": "string",
             "title": "Receiver Bipupu Id",
-            "description": "接收者ID"
+            "description": "接收者的bipupu_id"
           },
           "content": {
             "type": "string",
-            "title": "Content"
+            "title": "Content",
+            "description": "消息内容"
           },
           "message_type": {
-            "$ref": "#/components/schemas/MessageType"
+            "$ref": "#/components/schemas/MessageType",
+            "description": "消息类型"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "消息创建时间"
           },
           "pattern": {
             "anyOf": [
@@ -4501,7 +4625,8 @@
                 "type": "null"
               }
             ],
-            "title": "Pattern"
+            "title": "Pattern",
+            "description": "扩展模式数据"
           },
           "waveform": {
             "anyOf": [
@@ -4515,12 +4640,8 @@
                 "type": "null"
               }
             ],
-            "title": "Waveform"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
+            "title": "Waveform",
+            "description": "音频波形数据"
           }
         },
         "type": "object",
@@ -4533,7 +4654,15 @@
           "created_at"
         ],
         "title": "MessageResponse",
-        "description": "消息响应"
+        "description": "消息响应",
+        "example": {
+          "content": "你好",
+          "created_at": "2024-01-01T12:00:00Z",
+          "id": 1,
+          "message_type": "NORMAL",
+          "receiver_bipupu_id": "user456",
+          "sender_bipupu_id": "user123"
+        }
       },
       "MessageType": {
         "type": "string",

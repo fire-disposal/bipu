@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:bipupu/core/network/network.dart';
 import 'package:easy_localization/easy_localization.dart';
+import '../../../core/services/im_service.dart';
 
 class FavoritesPage extends StatefulWidget {
   const FavoritesPage({super.key});
@@ -10,7 +11,8 @@ class FavoritesPage extends StatefulWidget {
 }
 
 class _FavoritesPageState extends State<FavoritesPage> {
-  List<FavoriteResponse> _favorites = [];
+  final ImService _imService = ImService();
+  List<dynamic> _favorites = [];
   bool _loading = false;
   int _currentPage = 1;
   int _totalFavorites = 0;
@@ -25,12 +27,15 @@ class _FavoritesPageState extends State<FavoritesPage> {
   Future<void> _loadFavorites({int page = 1}) async {
     setState(() => _loading = true);
     try {
-      final resp = await ApiClient.instance.api.messages
-          .getApiMessagesFavorites(page: page, pageSize: _pageSize);
+      // 使用新的统一接口
+      final resp = await _imService.getFavorites(
+        page: page,
+        pageSize: _pageSize,
+      );
       setState(() {
-        _favorites = resp.favorites;
+        _favorites = List<dynamic>.from(resp['favorites'] ?? []);
         _currentPage = page;
-        _totalFavorites = resp.total;
+        _totalFavorites = resp['total'] ?? 0;
       });
     } on ApiException catch (e) {
       debugPrint('Load favorites error: ${e.message}');
@@ -47,9 +52,8 @@ class _FavoritesPageState extends State<FavoritesPage> {
   Future<void> _removeFavorite(FavoriteResponse fav) async {
     try {
       setState(() => _favorites.removeWhere((f) => f.id == fav.id));
-      await ApiClient.instance.api.messages.deleteApiMessagesMessageIdFavorite(
-        messageId: fav.messageId,
-      );
+      // 使用新的统一接口
+      await _imService.removeFavorite(fav.messageId);
       if (mounted) {
         ScaffoldMessenger.of(
           context,

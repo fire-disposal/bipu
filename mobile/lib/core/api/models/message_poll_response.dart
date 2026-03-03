@@ -8,7 +8,9 @@ import 'message_response.dart';
 
 part 'message_poll_response.g.dart';
 
-/// 轮询消息响应（长轮询）
+/// 轮询消息响应.
+///
+/// 包含自上次轮询后收到的新消息.
 @JsonSerializable()
 class MessagePollResponse {
   const MessagePollResponse({
@@ -18,9 +20,10 @@ class MessagePollResponse {
   
   factory MessagePollResponse.fromJson(Map<String, Object?> json) => _$MessagePollResponseFromJson(json);
   
+  /// 新消息列表
   final List<MessageResponse> messages;
 
-  /// 是否有更多消息
+  /// 是否有更多消息未返回（超过限制）
   @JsonKey(name: 'has_more')
   final bool hasMore;
 

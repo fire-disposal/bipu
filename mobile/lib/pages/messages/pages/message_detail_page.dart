@@ -4,7 +4,6 @@ import '../../../../core/services/im_service.dart';
 import '../../../../core/services/auth_service.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/api/models/message_response.dart';
-import '../../../../core/api/models/favorite_create.dart';
 import '../../../../core/api/models/contact_create.dart';
 import '../../../../core/api/models/block_user_request.dart';
 import '../../../../core/network/api_client.dart';
@@ -54,18 +53,12 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
   Future<void> _checkFavoriteStatus() async {
     // 检查消息是否已收藏
     try {
-      final apiClient = ApiClient.instance;
-      final response = await apiClient.execute(
-        () => apiClient.api.messages.getApiMessagesFavorites(
-          page: 1,
-          pageSize: 100,
-        ),
-        operationName: 'GetFavorites',
-      );
+      // 使用新的统一接口
+      final response = await _imService.getFavorites(page: 1, pageSize: 100);
 
       if (mounted) {
         setState(() {
-          _isFavorited = response.favorites.any(
+          _isFavorited = (response['favorites'] as List).any(
             (fav) => fav.messageId == widget.message.id,
           );
         });
@@ -80,16 +73,9 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
 
     setState(() => _isLoadingFavorite = true);
     try {
-      final apiClient = ApiClient.instance;
-
       if (_isFavorited) {
         // 取消收藏
-        await apiClient.execute(
-          () => apiClient.api.messages.deleteApiMessagesMessageIdFavorite(
-            messageId: widget.message.id,
-          ),
-          operationName: 'RemoveFavorite',
-        );
+        await _imService.removeFavorite(widget.message.id);
         if (mounted) {
           setState(() => _isFavorited = false);
           ScaffoldMessenger.of(
@@ -98,13 +84,7 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
         }
       } else {
         // 添加收藏
-        await apiClient.execute(
-          () => apiClient.api.messages.postApiMessagesMessageIdFavorite(
-            messageId: widget.message.id,
-            body: FavoriteCreate(note: ''),
-          ),
-          operationName: 'AddFavorite',
-        );
+        await _imService.addFavorite(widget.message.id, note: '');
         if (mounted) {
           setState(() => _isFavorited = true);
           ScaffoldMessenger.of(
@@ -209,15 +189,8 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
     final isSender = msg.senderBipupuId == currentUser?.bipupuId;
     final isServiceAccount = !_isNumeric(msg.senderBipupuId);
 
-    final senderContact = _imService.contacts.firstWhere(
-      (contact) => contact.bipupuId == msg.senderBipupuId,
-      orElse: () => null,
-    );
-    final displayName =
-        senderContact?.remark ??
-        senderContact?.info?.nickname ??
-        senderContact?.info?.username ??
-        msg.senderBipupuId;
+    // TODO: 从联系人缓存获取发送者信息，暂时使用消息中的 ID
+    final displayName = msg.senderBipupuId;
 
     // 根据是否为服务号选择不同的头像加载方式
     String? avatarUrl;
@@ -225,8 +198,8 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
       // 服务号头像使用特殊接口
       avatarUrl = '/api/service_accounts/${msg.senderBipupuId}/avatar';
     } else {
-      // 普通用户头像从联系人信息获取
-      avatarUrl = senderContact?.info?.avatarUrl;
+      // 普通用户头像使用默认占位符
+      avatarUrl = null;
     }
 
     // 拼接完整的头像 URL（avatar_url 可能是相对路径）

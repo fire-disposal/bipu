@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/services/im_service.dart';
 import '../../../../core/services/auth_service.dart';
-import '../../../../core/api/models/message_response.dart';
-import '../../../../core/api/models/message_create.dart';
-import '../../../../core/api/models/message_type.dart';
-import '../../../../core/api/models/favorite_create.dart';
-import '../../../../core/network/api_client.dart';
+import '../../../../core/network/network.dart';
 import '../../../../pages/pager/widgets/waveform_visualization_widget.dart';
 
 import 'package:easy_localization/easy_localization.dart';
@@ -50,18 +46,18 @@ class _MessageConversationPageState extends State<MessageConversationPage> {
 
     _textController.clear();
     try {
-      final apiClient = ApiClient.instance;
-      await apiClient.execute(
-        () => apiClient.api.messages.postApiMessages(
-          body: MessageCreate(
-            receiverId: widget.peerId,
-            content: text,
-            messageType: MessageType.normal,
-          ),
-        ),
-        operationName: 'SendMessage',
+      // 使用新的统一接口
+      await _imService.sendMessage(
+        receiverId: widget.peerId,
+        content: text,
+        messageType: 'NORMAL',
       );
-      _imService.refresh(); // Trigger immediate fetch
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('sent_success'.tr())));
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -73,14 +69,8 @@ class _MessageConversationPageState extends State<MessageConversationPage> {
 
   Future<void> _addToFavorite(MessageResponse msg) async {
     try {
-      final apiClient = ApiClient.instance;
-      await apiClient.execute(
-        () => apiClient.api.messages.postApiMessagesMessageIdFavorite(
-          messageId: msg.id,
-          body: FavoriteCreate(note: ''),
-        ),
-        operationName: 'AddFavorite',
-      );
+      // 使用新的统一接口
+      await _imService.addFavorite(msg.id, note: '');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -97,16 +87,21 @@ class _MessageConversationPageState extends State<MessageConversationPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Filter messages for this conversation
-    final allMessages = _imService.messages;
-    final conversation = allMessages
-        .where(
-          (m) => m.senderId == widget.peerId || m.receiverId == widget.peerId,
-        )
-        .toList();
-
+    // 使用新的对话历史接口
     final currentUser = _authService.currentUser;
     final myId = currentUser?.bipupuId ?? '';
+
+    // 从 ImService 获取所有消息并过滤
+    final allReceivedMessages = _imService.receivedMessages;
+    final allSentMessages = _imService.sentMessages;
+    final conversation = [
+      ...allReceivedMessages.where((m) => m.senderBipupuId == widget.peerId),
+      ...allSentMessages.where((m) => m.receiverBipupuId == widget.peerId),
+    ];
+    // 按时间排序
+    conversation.sort(
+      (a, b) => (b.createdAt as DateTime).compareTo(a.createdAt as DateTime),
+    );
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.peerId)),

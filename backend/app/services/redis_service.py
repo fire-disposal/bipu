@@ -239,3 +239,56 @@ class RedisService:
         except Exception as e:
             logger.error(f"Failed to check token blacklist: {e}")
             return False
+
+    @staticmethod
+    async def delete_keys_by_pattern(pattern: str) -> int:
+        """按模式删除多个key（使用SCAN迭代，避免阻塞）
+        
+        用途: 缓存失效时按pattern删除多个相关key
+        示例: delete_keys_by_pattern("user:123:messages:*")
+        """
+        try:
+            redis = await get_redis()
+            deleted_count = 0
+            cursor = 0
+            
+            while True:
+                cursor, keys = await redis.scan(cursor, match=pattern, count=100)
+                if keys:
+                    deleted_count += await redis.delete(*keys)
+                if cursor == 0:
+                    break
+            
+            if deleted_count > 0:
+                logger.debug(f"Deleted {deleted_count} keys matching pattern {pattern}")
+            return deleted_count
+        except Exception as e:
+            logger.error(f"Failed to delete keys by pattern {pattern}: {e}")
+            return 0
+
+    @staticmethod
+    async def set_cache_json(key: str, obj: Any, expire: int = 3600) -> bool:
+        """设置缓存（JSON序列化）- 用于消息列表等复杂对象"""
+        try:
+            redis = await get_redis()
+            serialized = json.dumps(obj, default=str)
+            await redis.setex(key, expire, serialized)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to set JSON cache {key}: {e}")
+            return False
+
+    @staticmethod
+    async def get_cache_json(key: str) -> Optional[Any]:
+        """获取缓存（JSON反序列化）"""
+        try:
+            redis = await get_redis()
+            value = await redis.get(key)
+            if value:
+                if isinstance(value, bytes):
+                    value = value.decode('utf-8')
+                return json.loads(value)
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get JSON cache {key}: {e}")
+            return None

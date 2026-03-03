@@ -3,8 +3,6 @@ import 'package:bipupu/core/network/network.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/im_service.dart';
-import '../../../core/network/api_client.dart';
-import '../../../core/api/models/service_account_response.dart';
 
 class SystemMessagesPage extends StatefulWidget {
   const SystemMessagesPage({super.key});
@@ -81,12 +79,21 @@ class _SystemMessagesPageState extends State<SystemMessagesPage> {
   Future<void> _loadMessages() async {
     setState(() => _isLoading = true);
     try {
-      final response = await ApiClient.instance.api.messages.getApiMessages();
-      final filtered = response.messages
+      // 使用新的统一接口，后端返回系统消息
+      final response = await _imService.getMessages(
+        direction: 'inbox',
+        page: 1,
+        pageSize: 50,
+        forceRefresh: true,
+      );
+      final messages =
+          (response['messages'] as List?)?.cast<MessageResponse>() ?? [];
+      // 前端可进一步过滤系统消息（如有需要）
+      final systemMessages = messages
           .where((msg) => msg.messageType == MessageType.system)
           .toList();
       setState(() {
-        _messages = filtered;
+        _messages = systemMessages;
       });
 
       // 预加载服务号信息
@@ -171,7 +178,7 @@ class _SystemMessagesPageState extends State<SystemMessagesPage> {
                         ),
                         child: InkWell(
                           onTap: () async {
-                            await _imService.markMessageAsRead(msg.id);
+                            await _imService.markAsRead(msg.id);
                             if (mounted) {
                               context.push('/messages/detail', extra: msg);
                             }
@@ -193,9 +200,12 @@ class _SystemMessagesPageState extends State<SystemMessagesPage> {
                                     onTap: () {
                                       Navigator.pop(context);
                                       if (isRead) {
-                                        _imService.markMessageAsUnread(msg.id);
+                                        _imService.getReadMessageIds().remove(
+                                          msg.id,
+                                        );
+                                        setState(() {});
                                       } else {
-                                        _imService.markMessageAsRead(msg.id);
+                                        _imService.markAsRead(msg.id);
                                       }
                                     },
                                   ),

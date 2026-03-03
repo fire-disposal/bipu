@@ -63,7 +63,7 @@ Future<void> main() async {
   await AuthService().initialize();
 
   // Initialize IM Service
-  await ImService().initialize();
+  await ImService().init();
 
   await EasyLocalization.ensureInitialized();
 

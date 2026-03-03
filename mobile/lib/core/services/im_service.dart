@@ -2,14 +2,11 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/widgets.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../network/network.dart';
 import 'bluetooth_device_service.dart';
-import 'auth_service.dart';
-import 'toast_service.dart';
 
-/// 统一的 IM 服务 - 处理消息和联系人的获取、轮询和转发
+/// 统一的 IM 服务 - 优化重写版本（单长轮询）
 class ImService extends ChangeNotifier {
   static final ImService _instance = ImService._internal();
   factory ImService() => _instance;
@@ -18,616 +15,498 @@ class ImService extends ChangeNotifier {
   final BluetoothDeviceService _bluetoothService = BluetoothDeviceService();
   final Connectivity _connectivity = Connectivity();
   StreamSubscription<dynamic>? _connectivitySub;
-  StreamSubscription<BluetoothConnectionState>? _bluetoothConnectionSub;
 
-  // 轮询配置
-  static const Duration _foregroundMessageInterval = Duration(seconds: 15);
-  static const Duration _backgroundMessageInterval = Duration(minutes: 5);
-  Duration _currentMessageInterval = _foregroundMessageInterval;
-  int _backoffMultiplier = 1;
-
-  // 定时器
-  Timer? _messageTimer;
-  Timer? _contactsTimer;
+  Timer? _longPollTimer;
   bool _isLongPollingActive = false;
 
-  // 状态
-  List<dynamic> _messages = [];
-  List<dynamic> _contacts = [];
+  List<dynamic> _receivedMessages = [];
+  List<dynamic> _sentMessages = [];
   int _unreadCount = 0;
 
-  int _lastMessageId = 0; // 用于增量同步
-  bool _isAppInForeground = true;
+  int _lastReceivedMessageId = 0;
+  int _lastSentMessageId = 0;
   bool _isOnline = true;
-  bool _showMessageNotifications = true; // 控制是否显示消息通知
 
-  // Hive 存储
   static const String _imSettingsBoxName = 'im_settings_box';
-  static const String _lastMessageIdKey = 'last_message_id';
+  static const String _lastReceivedMsgIdKey = 'last_received_msg_id';
   static const String _readMessageIdsKey = 'read_message_ids';
+
   Box? _imSettingsBox;
 
-  // Getters
-  List<dynamic> get messages => List.unmodifiable(_messages);
-  List<dynamic> get contacts => List.unmodifiable(_contacts);
+  List<dynamic> get receivedMessages => List.unmodifiable(_receivedMessages);
+  List<dynamic> get sentMessages => List.unmodifiable(_sentMessages);
   int get unreadCount => _unreadCount;
 
-  /// 获取已读消息 ID 集合
+  /// 获取所有已读消息ID集合
   Set<int> getReadMessageIds() {
-    final readIds =
-        _imSettingsBox?.get(_readMessageIdsKey, defaultValue: <int>[]) ?? [];
-    if (readIds is List<int>) {
-      return readIds.toSet();
+    try {
+      final readIds =
+          _imSettingsBox?.get(_readMessageIdsKey, defaultValue: <int>[]) ?? [];
+      if (readIds is List<int>) {
+        return readIds.toSet();
+      }
+      return (readIds as List).cast<int>().toSet();
+    } catch (e) {
+      log('获取已读消息ID失败: $e');
+      return {};
     }
-    // 处理 Hive 可能返回 List<dynamic> 的情况
-    return (readIds as List).cast<int>().toSet();
   }
 
   /// 检查消息是否已读
   bool isMessageRead(int messageId) {
-    final readIds = getReadMessageIds();
-    return readIds.contains(messageId);
+    return getReadMessageIds().contains(messageId);
   }
 
-  /// 标记消息为已读
-  Future<void> markMessageAsRead(int messageId) async {
-    final readIds = getReadMessageIds();
-    if (!readIds.contains(messageId)) {
-      readIds.add(messageId);
-      // Hive 存储为 List<int> 而不是 Set
-      await _imSettingsBox?.put(_readMessageIdsKey, readIds.toList());
-      // 重新计算未读数量
-      _unreadCount = _messages.where((m) => !readIds.contains(m.id)).length;
-      notifyListeners();
-    }
-  }
-
-  /// 标记消息为未读
-  Future<void> markMessageAsUnread(int messageId) async {
-    final readIds = getReadMessageIds();
-    if (readIds.contains(messageId)) {
-      readIds.remove(messageId);
-      // Hive 存储为 List<int>
-      await _imSettingsBox?.put(_readMessageIdsKey, readIds.toList());
-      // 重新计算未读数量
-      _unreadCount = _messages.where((m) => !readIds.contains(m.id)).length;
-      notifyListeners();
+  /// 标记单条消息为已读
+  Future<void> markAsRead(int messageId) async {
+    try {
+      final readIds = getReadMessageIds();
+      if (!readIds.contains(messageId)) {
+        readIds.add(messageId);
+        await _imSettingsBox?.put(_readMessageIdsKey, readIds.toList());
+        _updateUnreadCount();
+        notifyListeners();
+      }
+    } catch (e) {
+      log('标记消息为已读失败: $e');
     }
   }
 
   /// 批量标记消息为已读
-  Future<void> markMessagesAsRead(Iterable<int> messageIds) async {
-    final readIds = getReadMessageIds();
-    bool changed = false;
-    for (final id in messageIds) {
-      if (!readIds.contains(id)) {
-        readIds.add(id);
-        changed = true;
+  Future<void> markAsReadBatch(List<int> messageIds) async {
+    try {
+      final readIds = getReadMessageIds();
+      bool hasChanges = false;
+
+      for (final id in messageIds) {
+        if (!readIds.contains(id)) {
+          readIds.add(id);
+          hasChanges = true;
+        }
       }
-    }
-    if (changed) {
-      // Hive 存储为 List<int>
-      await _imSettingsBox?.put(_readMessageIdsKey, readIds.toList());
-      _unreadCount = _messages.where((m) => !readIds.contains(m.id)).length;
-      notifyListeners();
+
+      if (hasChanges) {
+        await _imSettingsBox?.put(_readMessageIdsKey, readIds.toList());
+        _updateUnreadCount();
+        notifyListeners();
+      }
+    } catch (e) {
+      log('批量标记消息为已读失败: $e');
     }
   }
 
-  /// 清除所有已读标记
-  Future<void> clearAllReadStatus() async {
-    await _imSettingsBox?.delete(_readMessageIdsKey);
-    _unreadCount = _messages.length;
-    notifyListeners();
-  }
-
-  /// 初始化服务
-  Future<void> initialize() async {
-    log('IM Service: Initializing');
-
-    // 1. 打开 Hive Box (确保 main.dart 已经运行了 Hive.initFlutter)
+  Future<void> init() async {
     try {
       _imSettingsBox = await Hive.openBox(_imSettingsBoxName);
-      // 2. 从本地恢复上一次的消息 ID
-      _lastMessageId = _imSettingsBox!.get(_lastMessageIdKey, defaultValue: 0);
-      log('IM Service: Recovered lastMessageId from local: $_lastMessageId');
+      _lastReceivedMessageId =
+          _imSettingsBox?.get(_lastReceivedMsgIdKey, defaultValue: 0) ?? 0;
+      _setupConnectivityListener();
+      log('IM Service 初始化完成');
     } catch (e) {
-      log('IM Service: Failed to open Hive box: $e');
-      _lastMessageId = 0;
+      log('IM Service 初始化失败: $e');
     }
-
-    // 监听网络连接状态
-    _connectivity.checkConnectivity().then((results) {
-      _isOnline =
-          results.isNotEmpty && results.first != ConnectivityResult.none;
-    });
-    _connectivitySub = _connectivity.onConnectivityChanged.listen((results) {
-      _isOnline =
-          results.isNotEmpty && results.first != ConnectivityResult.none;
-      if (_isOnline) {
-        // 网络恢复，重置退避倍数
-        _backoffMultiplier = 1;
-        _applyPollingInterval();
-      }
-    });
-
-    // 监听蓝牙连接状态变化
-    _bluetoothConnectionSub = _bluetoothService.onConnectionStateChanged.listen(
-      (state) {
-        if (state == BluetoothConnectionState.connected) {
-          log('IM Service: Bluetooth connected, sending initial time sync');
-          // 连接成功时发送时间同步
-          _sendInitialTimeSync();
-        }
-      },
-    );
-
-    // 监听 Token 过期事件
-    TokenManager.tokenExpired.addListener(_onTokenExpired);
-
-    // 启动轮询
-    _startPolling();
-
-    log('IM Service: Initialized');
   }
 
-  /// Token 过期处理
-  void _onTokenExpired() {
-    if (TokenManager.tokenExpired.value) {
-      log('IM Service: Token expired, stopping polling');
-      _stopPolling();
-      _messages = [];
-      _contacts = [];
-      _unreadCount = 0;
-      notifyListeners();
-    }
+  void _setupConnectivityListener() {
+    _connectivitySub?.cancel();
+    _connectivitySub = _connectivity.onConnectivityChanged.listen((results) {
+      final isOnlineNow = results != ConnectivityResult.none;
+
+      _isOnline = isOnlineNow;
+      log('网络状态: ${_isOnline ? "在线" : "离线"}');
+
+      if (_isOnline) {
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    });
+  }
+
+  @override
+  Future<void> dispose() async {
+    await _connectivitySub?.cancel();
+    stopPolling();
+    await _imSettingsBox?.close();
+    super.dispose();
   }
 
   /// 启动轮询
-  void _startPolling() {
-    if (_messageTimer != null && _messageTimer!.isActive) {
+  Future<void> startPolling() async {
+    if (!_isOnline || _isLongPollingActive) {
       return;
     }
 
-    // 检查认证状态，未登录不启动轮询
-    final authService = AuthService();
-    if (authService.authState.value != AuthStatus.authenticated) {
-      log('IM Service: Not authenticated, skipping polling');
-      return;
+    try {
+      await _fetchInitialMessages();
+      _isLongPollingActive = true;
+      _performLongPolling();
+      log('消息轮询已启动');
+    } catch (e) {
+      log('启动轮询失败: $e');
     }
-
-    log('IM Service: Starting polling');
-    _startMessagePolling();
-    _startContactsPolling();
-    _fetchInitialData();
-    _startLongPolling(); // 启动长轮询
   }
 
   /// 停止轮询
-  void _stopPolling() {
-    log('IM Service: Stopping polling');
-    _messageTimer?.cancel();
-    _contactsTimer?.cancel();
-    _messageTimer = null;
-    _contactsTimer = null;
+  void stopPolling() {
     _isLongPollingActive = false;
+    _longPollTimer?.cancel();
+    _longPollTimer = null;
+    log('消息轮询已停止');
   }
 
-  /// 获取初始数据
-  Future<void> _fetchInitialData() async {
+  /// 获取初始消息
+  Future<void> _fetchInitialMessages() async {
     try {
-      // 启动时的第一次拉取不弹通知，只更新 ID
-      await Future.wait([_fetchContacts(), _fetchMessages(silent: true)]);
+      final apiClient = ApiClient.instance;
+
+      final inboxResponse = await apiClient.execute(
+        () => apiClient.api.messages.getApiMessagesInbox(
+          page: 1,
+          pageSize: 50,
+          sinceId: 0,
+        ),
+        operationName: 'FetchInitialMessages',
+      );
+
+      if (inboxResponse.messages.isNotEmpty) {
+        _receivedMessages = List.from(inboxResponse.messages);
+        final maxId =
+            inboxResponse.messages
+                    .map((m) => m.id)
+                    .reduce((a, b) => a > b ? a : b)
+                as int;
+        _updateLastReceivedMessageId(maxId);
+        _updateUnreadCount();
+      }
+
+      notifyListeners();
     } catch (e) {
-      log('IM Service: Failed to fetch initial data: $e');
+      log('获取初始消息失败: $e');
     }
   }
 
-  /// 更新并持久化最后消息 ID
-  void _updateLastMessageId(int newId) {
-    if (newId > _lastMessageId) {
-      _lastMessageId = newId;
-      // 同步写入 Hive 确保不丢失
-      _imSettingsBox?.put(_lastMessageIdKey, _lastMessageId);
-    }
-  }
+  /// 长轮询
+  void _performLongPolling() {
+    _longPollTimer?.cancel();
+    _longPollTimer = Timer.periodic(const Duration(milliseconds: 500), (
+      timer,
+    ) async {
+      if (!_isLongPollingActive || !_isOnline) {
+        timer.cancel();
+        _longPollTimer = null;
+        return;
+      }
 
-  /// 启动消息轮询
-  void _startMessagePolling() {
-    _messageTimer?.cancel();
-    _messageTimer = Timer.periodic(
-      _currentMessageInterval * _backoffMultiplier,
-      (timer) {
-        _fetchMessages();
-      },
-    );
-  }
+      try {
+        final apiClient = ApiClient.instance;
 
-  /// 启动联系人轮询
-  void _startContactsPolling() {
-    _contactsTimer?.cancel();
-    _contactsTimer = Timer.periodic(const Duration(minutes: 10), (timer) {
-      _fetchContacts();
+        final pollResponse = await apiClient.execute(
+          () => apiClient.api.messages.getApiMessagesPoll(
+            lastMsgId: _lastReceivedMessageId,
+            timeout: 30,
+          ),
+          operationName: 'LongPoll',
+        );
+
+        if (pollResponse.messages.isNotEmpty) {
+          _receivedMessages.insertAll(0, pollResponse.messages);
+
+          final maxId =
+              pollResponse.messages
+                      .map((m) => m.id)
+                      .reduce((a, b) => a > b ? a : b)
+                  as int;
+          _updateLastReceivedMessageId(maxId);
+          _updateUnreadCount();
+          notifyListeners();
+        }
+      } catch (e) {
+        log('长轮询出错: $e');
+      }
     });
   }
 
-  /// 应用轮询间隔
-  void _applyPollingInterval() {
-    _currentMessageInterval = _isAppInForeground
-        ? _foregroundMessageInterval
-        : _backgroundMessageInterval;
-    _startMessagePolling();
-  }
-
-  /// 获取消息列表（支持增量同步）
-  Future<void> _fetchMessages({bool silent = false}) async {
-    if (!_isOnline) {
-      log('IM Service: Offline, skipping message fetch');
-      return;
-    }
-
+  /// 统一的消息获取接口
+  Future<Map<String, dynamic>> getMessages({
+    required String direction,
+    int page = 1,
+    int pageSize = 20,
+    bool forceRefresh = false,
+  }) async {
     try {
       final apiClient = ApiClient.instance;
-      final response = await apiClient.execute(
-        () => apiClient.api.messages.getApiMessages(
-          direction: 'received',
-          page: 1,
-          pageSize: 50,
-          sinceId: _lastMessageId, // 增量同步
-        ),
-        operationName: 'FetchMessages',
-      );
 
-      if (response.messages.isNotEmpty) {
-        // 更新最后消息 ID
-        final latestId = response.messages
-            .map((m) => m.id)
-            .reduce((a, b) => a > b ? a : b);
-        _updateLastMessageId(latestId);
-
-        // 合并新消息到列表
-        _messages.insertAll(0, response.messages);
-
-        // 检查新消息并转发到蓝牙设备（静默模式不触发）
-        if (!silent) {
-          _forwardNewMessagesToBluetooth(response.messages);
-        }
-
-        log(
-          'IM Service: Fetched ${response.messages.length} new messages, lastId=$_lastMessageId',
-        );
-      }
-
-      // 使用本地持久化的已读状态计算未读数量
-      _updateUnreadCount();
-
-      // 重置退避倍数
-      _backoffMultiplier = 1;
-      notifyListeners();
-    } on AuthException catch (e) {
-      log('IM Service: Auth error fetching messages: ${e.message}');
-      _stopPolling();
-    } on NetworkException catch (e) {
-      log('IM Service: Network error fetching messages: ${e.message}');
-      // 应用指数退避
-      if (_backoffMultiplier < 8) {
-        _backoffMultiplier *= 2;
-        _startMessagePolling();
-      }
-    } catch (e) {
-      log('IM Service: Error fetching messages: $e');
-    }
-  }
-
-  /// 更新未读消息数量
-  void _updateUnreadCount() {
-    final readIds = getReadMessageIds();
-    _unreadCount = _messages.where((m) => !readIds.contains(m.id)).length;
-  }
-
-  /// 获取联系人列表
-  Future<void> _fetchContacts() async {
-    if (!_isOnline) {
-      log('IM Service: Offline, skipping contacts fetch');
-      return;
-    }
-
-    try {
-      final apiClient = ApiClient.instance;
-      final response = await apiClient.execute(
-        () => apiClient.api.contacts.getApiContacts(page: 1, pageSize: 100),
-        operationName: 'FetchContacts',
-      );
-
-      _contacts = response.contacts;
-      notifyListeners();
-    } on AuthException catch (e) {
-      log('IM Service: Auth error fetching contacts: ${e.message}');
-      _stopPolling();
-    } on NetworkException catch (e) {
-      log('IM Service: Network error fetching contacts: ${e.message}');
-    } catch (e) {
-      log('IM Service: Error fetching contacts: $e');
-    }
-  }
-
-  /// 转发新消息到蓝牙设备并显示通知
-  void _forwardNewMessagesToBluetooth(List<dynamic> newMessages) {
-    if (newMessages.isEmpty) {
-      return;
-    }
-
-    // 转发到蓝牙设备 - 使用新的统合协议
-    if (_bluetoothService.connectionState.value ==
-        BluetoothConnectionState.connected) {
-      bool hasSentTimeSync = false;
-
-      for (final message in newMessages) {
-        try {
-          final formattedMessage = _formatMessageForBluetooth(message);
-          _bluetoothService.sendTextMessage(formattedMessage);
-          log(
-            'IM Service: Forwarded message to Bluetooth device using unified protocol',
-          );
-
-          // 只在第一条消息后发送时间同步，避免重复发送
-          if (!hasSentTimeSync) {
-            _bluetoothService.sendTimeSync();
-            log('IM Service: Sent time sync after first message');
-            hasSentTimeSync = true;
-          }
-        } catch (e) {
-          log('IM Service: Failed to forward message to Bluetooth: $e');
-        }
-      }
-    }
-
-    // 显示消息通知
-    _displayMessageNotifications(newMessages);
-  }
-
-  /// 显示消息通知
-  void _displayMessageNotifications(List<dynamic> newMessages) {
-    if (!_showMessageNotifications || newMessages.isEmpty) {
-      return;
-    }
-
-    try {
-      final toastService = ToastService();
-
-      if (newMessages.length == 1) {
-        final message = newMessages.first;
-        final senderName = _getSenderName(message);
-        final content = _getMessagePreview(message);
-        final notificationText = '$senderName: $content';
-
-        toastService.showMessage(
-          notificationText,
-          duration: const Duration(seconds: 4),
-        );
-      } else {
-        // 多条消息时显示统计
-        toastService.showMessage(
-          '收到 ${newMessages.length} 条新消息',
-          duration: const Duration(seconds: 4),
-        );
-      }
-
-      log(
-        'IM Service: Showed message notification for ${newMessages.length} message(s)',
-      );
-    } catch (e) {
-      log('IM Service: Error showing message notification: $e');
-    }
-  }
-
-  /// 获取发送者名称
-  String _getSenderName(dynamic message) {
-    try {
-      final senderContact = _contacts.firstWhere(
-        (contact) => contact.bipupuId == message.senderBipupuId,
-        orElse: () => null,
-      );
-      return senderContact?.name ?? message.senderBipupuId ?? 'Unknown';
-    } catch (_) {
-      return message.senderBipupuId ?? 'Unknown';
-    }
-  }
-
-  /// 获取消息预览
-  String _getMessagePreview(dynamic message) {
-    try {
-      final content = message.content ?? '';
-      if (content.length > 30) {
-        return '${content.substring(0, 30)}...';
-      }
-      return content;
-    } catch (_) {
-      return 'New message';
-    }
-  }
-
-  /// 发送初始时间同步
-  Future<void> _sendInitialTimeSync() async {
-    try {
-      if (_bluetoothService.connectionState.value ==
-          BluetoothConnectionState.connected) {
-        await _bluetoothService.sendTimeSync();
-        log('IM Service: Initial time sync sent after Bluetooth connection');
-      }
-    } catch (e) {
-      log('IM Service: Failed to send initial time sync: $e');
-    }
-  }
-
-  /// 格式化消息用于蓝牙转发 - 使用新的统合协议格式
-  String _formatMessageForBluetooth(dynamic message) {
-    try {
-      // 查找发送者联系人
-      dynamic senderContact;
-      try {
-        senderContact = _contacts.firstWhere(
-          (contact) => contact.bipupuId == message.senderBipupuId,
-        );
-      } catch (_) {
-        senderContact = null;
-      }
-
-      final senderName =
-          senderContact?.name ?? message.senderBipupuId ?? 'Unknown';
-      final content = message.content ?? '';
-
-      // 使用新的格式：发送者 + 内容
-      // 注意：每条消息都通过统合协议发送，自带时间戳
-      return '$senderName: $content';
-    } catch (e) {
-      log('IM Service: Error formatting message: $e');
-      return 'New message';
-    }
-  }
-
-  /// 启动长轮询（真正的 Long Polling）
-  void _startLongPolling() {
-    if (_isLongPollingActive) {
-      return;
-    }
-
-    _isLongPollingActive = true;
-    _performLongPolling();
-  }
-
-  /// 执行长轮询
-  Future<void> _performLongPolling() async {
-    while (_isLongPollingActive && _isOnline) {
-      try {
-        final apiClient = ApiClient.instance;
+      if (direction == 'sent') {
         final response = await apiClient.execute(
-          () => apiClient.api.messages.getApiMessagesPoll(
-            lastMsgId: _lastMessageId,
-            timeout: 30,
+          () => apiClient.api.messages.getApiMessagesSent(
+            page: page,
+            pageSize: pageSize,
+            sinceId: forceRefresh ? 0 : _lastSentMessageId,
           ),
-          operationName: 'LongPollMessages',
+          operationName: 'GetSentMessages',
         );
 
-        if (!_isLongPollingActive) break;
-
-        if (response.messages.isNotEmpty) {
-          // 更新最后消息 ID
-          final latestId = response.messages
-              .map((m) => m.id)
-              .reduce((a, b) => a > b ? a : b);
-          _updateLastMessageId(latestId);
-
-          // 合并新消息到列表
-          _messages.insertAll(0, response.messages);
-
-          // 检查新消息并转发到蓝牙设备
-          _forwardNewMessagesToBluetooth(response.messages);
-
-          _unreadCount = _messages.where((m) => m.isRead == false).length;
-
-          log(
-            'IM Service: Long polling received ${response.messages.length} new messages',
-          );
+        if (page == 1) {
+          _sentMessages = List.from(response.messages);
+          if (response.messages.isNotEmpty) {
+            final maxId =
+                response.messages
+                        .map((m) => m.id)
+                        .reduce((a, b) => a > b ? a : b)
+                    as int;
+            _updateLastSentMessageId(maxId);
+          }
           notifyListeners();
         }
-      } on AuthException catch (e) {
-        log('IM Service: Auth error in long polling: ${e.message}');
-        _isLongPollingActive = false;
-        _stopPolling();
-      } on NetworkException catch (e) {
-        log('IM Service: Network error in long polling: ${e.message}');
-        // 网络错误时等待后重试
-        await Future.delayed(const Duration(seconds: 5));
-      } catch (e) {
-        log('IM Service: Error in long polling: $e');
-        await Future.delayed(const Duration(seconds: 5));
+
+        return {
+          'messages': response.messages,
+          'total': response.total,
+          'page': response.page,
+          'page_size': response.pageSize,
+        };
+      } else {
+        final response = await apiClient.execute(
+          () => apiClient.api.messages.getApiMessagesInbox(
+            page: page,
+            pageSize: pageSize,
+            sinceId: forceRefresh ? 0 : _lastReceivedMessageId,
+          ),
+          operationName: 'GetReceivedMessages',
+        );
+
+        if (page == 1) {
+          _receivedMessages = List.from(response.messages);
+          if (response.messages.isNotEmpty) {
+            final maxId =
+                response.messages
+                        .map((m) => m.id)
+                        .reduce((a, b) => a > b ? a : b)
+                    as int;
+            _updateLastReceivedMessageId(maxId);
+          }
+          _updateUnreadCount();
+          notifyListeners();
+        }
+
+        return {
+          'messages': response.messages,
+          'total': response.total,
+          'page': response.page,
+          'page_size': response.pageSize,
+        };
       }
+    } catch (e) {
+      log('获取消息失败: $e');
+      rethrow;
     }
   }
 
-  /// 手动刷新数据
-  Future<void> refresh() async {
-    await Future.wait([_fetchContacts(), _fetchMessages()]);
+  /// 获取特定用户的对话历史
+  Future<List<dynamic>> getConversation(String peerId, {int page = 1}) async {
+    try {
+      final apiClient = ApiClient.instance;
 
-    // 刷新后发送时间同步，确保蓝牙设备时间准确
-    if (_bluetoothService.connectionState.value ==
-        BluetoothConnectionState.connected) {
-      try {
-        await _bluetoothService.sendTimeSync();
-        log('IM Service: Sent time sync after manual refresh');
-      } catch (e) {
-        log('IM Service: Failed to send time sync: $e');
-      }
+      final inboxResponse = await apiClient.execute(
+        () => apiClient.api.messages.getApiMessagesInbox(
+          page: page,
+          pageSize: 50,
+        ),
+        operationName: 'GetConversation',
+      );
+
+      final conversation = inboxResponse.messages
+          .where(
+            (m) => m.senderBipupuId == peerId || m.receiverBipupuId == peerId,
+          )
+          .toList();
+
+      return conversation;
+    } catch (e) {
+      log('获取对话历史失败: $e');
+      rethrow;
     }
   }
 
-  /// 清除本地缓存
-  void clearLocalCache() {
-    _messages = [];
-    _contacts = [];
-    _unreadCount = 0;
-    _lastMessageId = 0;
-    // 清除 Hive 中存储的 lastMessageId 和已读状态
-    _imSettingsBox?.delete(_lastMessageIdKey);
-    _imSettingsBox?.delete(_readMessageIdsKey);
-    notifyListeners();
-  }
+  /// 发送消息
+  Future<dynamic> sendMessage({
+    required String receiverId,
+    required String content,
+    String messageType = 'NORMAL',
+    Map<String, dynamic>? pattern,
+    List<int>? waveform,
+  }) async {
+    try {
+      final apiClient = ApiClient.instance;
 
-  /// 应用生命周期变化
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    final wasForeground = _isAppInForeground;
-    _isAppInForeground = state == AppLifecycleState.resumed;
+      // 构建消息创建对象
+      final Map<String, dynamic> messageData = {
+        'receiver_bipupu_id': receiverId,
+        'content': content,
+        'message_type': messageType,
+      };
+      if (pattern != null) messageData['pattern'] = pattern;
+      if (waveform != null) messageData['waveform'] = waveform;
 
-    if (wasForeground != _isAppInForeground) {
-      log('IM Service: App lifecycle changed, foreground=$_isAppInForeground');
-      if (_isAppInForeground) {
-        _backoffMultiplier = 1;
-      }
-      _applyPollingInterval();
+      final response = await apiClient.execute(
+        () => apiClient.api.messages.postApiMessages(
+          body: messageData as dynamic,
+        ),
+        operationName: 'SendMessage',
+      );
+
+      _sentMessages.insert(0, response);
+      notifyListeners();
+
+      return response;
+    } catch (e) {
+      log('发送消息失败: $e');
+      rethrow;
     }
   }
 
-  /// 设置是否显示消息通知
-  void setShowMessageNotifications(bool show) {
-    _showMessageNotifications = show;
-    log('IM Service: Message notifications ${show ? 'enabled' : 'disabled'}');
-  }
+  /// 标记消息为已读（通过 API）
+  Future<void> markMessageAsRead(int messageId) async {
+    try {
+      final apiClient = ApiClient.instance;
 
-  /// 发送文本消息到蓝牙设备
-  Future<void> sendTextMessageToBluetooth(String message) async {
-    if (_bluetoothService.connectionState.value ==
-        BluetoothConnectionState.connected) {
-      try {
-        await _bluetoothService.sendTextMessage(message);
-        log('IM Service: Sent text message to Bluetooth: $message');
-      } catch (e) {
-        log('IM Service: Failed to send text message to Bluetooth: $e');
-      }
+      await apiClient.execute(
+        () => apiClient.api.messages.postApiMessagesMessageIdRead(
+          messageId: messageId,
+        ),
+        operationName: 'MarkMessageRead',
+      );
+
+      await markAsRead(messageId);
+    } catch (e) {
+      log('标记消息为已读失败: $e');
+      rethrow;
     }
   }
 
-  /// 获取蓝牙协议信息
-  Map<String, dynamic> getBluetoothProtocolInfo() {
-    return {
-      'isConnected': _bluetoothService.isConnected,
-      'maxTextLength': _bluetoothService.maxTextLength,
-      'protocolHeader': '0xB0',
-      'supportsTimeSync': true,
-      'unifiedProtocol': true,
-    };
+  /// 批量标记消息为已读（通过 API）
+  Future<void> markMessagesReadBatch(List<int> messageIds) async {
+    try {
+      final apiClient = ApiClient.instance;
+
+      await apiClient.execute(
+        () => apiClient.api.messages.postApiMessagesReadBatch(body: messageIds),
+        operationName: 'MarkMessagesReadBatch',
+      );
+
+      await markAsReadBatch(messageIds);
+    } catch (e) {
+      log('批量标记消息为已读失败: $e');
+      rethrow;
+    }
   }
 
-  /// 获取消息通知状态
-  bool get showMessageNotifications => _showMessageNotifications;
+  /// 收藏消息
+  Future<dynamic> addFavorite(int messageId, {String? note}) async {
+    try {
+      final apiClient = ApiClient.instance;
 
-  @override
-  void dispose() {
-    TokenManager.tokenExpired.removeListener(_onTokenExpired);
-    _stopPolling();
-    _connectivitySub?.cancel();
-    _bluetoothConnectionSub?.cancel();
-    // 关闭 Hive box
-    _imSettingsBox?.close();
-    super.dispose();
+      final favoriteData = {'note': note ?? ''};
+
+      final response = await apiClient.execute(
+        () => apiClient.api.messages.postApiMessagesMessageIdFavorite(
+          messageId: messageId,
+          body: favoriteData as dynamic,
+        ),
+        operationName: 'AddFavorite',
+      );
+
+      return response;
+    } catch (e) {
+      log('收藏消息失败: $e');
+      rethrow;
+    }
+  }
+
+  /// 取消收藏消息
+  Future<void> removeFavorite(int messageId) async {
+    try {
+      final apiClient = ApiClient.instance;
+
+      await apiClient.execute(
+        () => apiClient.api.messages.deleteApiMessagesMessageIdFavorite(
+          messageId: messageId,
+        ),
+        operationName: 'RemoveFavorite',
+      );
+    } catch (e) {
+      log('取消收藏失败: $e');
+      rethrow;
+    }
+  }
+
+  /// 获取收藏列表
+  Future<Map<String, dynamic>> getFavorites({
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final apiClient = ApiClient.instance;
+
+      final response = await apiClient.execute(
+        () => apiClient.api.messages.getApiMessagesFavorites(
+          page: page,
+          pageSize: pageSize,
+        ),
+        operationName: 'GetFavorites',
+      );
+
+      return {
+        'favorites': response.favorites,
+        'total': response.total,
+        'page': response.page,
+        'page_size': response.pageSize,
+      };
+    } catch (e) {
+      log('获取收藏列表失败: $e');
+      rethrow;
+    }
+  }
+
+  /// 删除消息
+  Future<void> deleteMessage(int messageId) async {
+    try {
+      final apiClient = ApiClient.instance;
+
+      await apiClient.execute(
+        () => apiClient.api.messages.deleteApiMessagesMessageId(
+          messageId: messageId,
+        ),
+        operationName: 'DeleteMessage',
+      );
+
+      _receivedMessages.removeWhere((m) => m.id == messageId);
+      _sentMessages.removeWhere((m) => m.id == messageId);
+      notifyListeners();
+    } catch (e) {
+      log('删除消息失败: $e');
+      rethrow;
+    }
+  }
+
+  void _updateUnreadCount() {
+    final readIds = getReadMessageIds();
+    _unreadCount = _receivedMessages
+        .where((m) => !readIds.contains(m.id as int))
+        .length;
+  }
+
+  void _updateLastReceivedMessageId(int newId) {
+    if (newId > _lastReceivedMessageId) {
+      _lastReceivedMessageId = newId;
+      _imSettingsBox?.put(_lastReceivedMsgIdKey, _lastReceivedMessageId);
+    }
+  }
+
+  void _updateLastSentMessageId(int newId) {
+    if (newId > _lastSentMessageId) {
+      _lastSentMessageId = newId;
+    }
   }
 }

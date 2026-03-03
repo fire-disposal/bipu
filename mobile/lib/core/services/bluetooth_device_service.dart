@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -649,7 +648,7 @@ class BluetoothDeviceService {
 
     // 保存新绑定
     final deviceName = newDevice.platformName;
-    final safeDeviceName = deviceName != null && deviceName.isNotEmpty
+    final safeDeviceName = deviceName.isNotEmpty
         ? deviceName
         : '未知设备';
     await prefs.setString(_bindingPrefsKey, newDevice.remoteId.toString());

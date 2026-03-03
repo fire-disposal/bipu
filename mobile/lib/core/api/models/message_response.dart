@@ -24,22 +24,33 @@ class MessageResponse {
   
   factory MessageResponse.fromJson(Map<String, Object?> json) => _$MessageResponseFromJson(json);
   
+  /// 消息ID
   final int id;
 
-  /// 发送者ID
+  /// 发送者的bipupu_id
   @JsonKey(name: 'sender_bipupu_id')
   final String senderBipupuId;
 
-  /// 接收者ID
+  /// 接收者的bipupu_id
   @JsonKey(name: 'receiver_bipupu_id')
   final String receiverBipupuId;
+
+  /// 消息内容
   final String content;
+
+  /// 消息类型
   @JsonKey(name: 'message_type')
   final MessageType messageType;
-  final dynamic pattern;
-  final List<int>? waveform;
+
+  /// 消息创建时间
   @JsonKey(name: 'created_at')
   final DateTime createdAt;
+
+  /// 扩展模式数据
+  final dynamic pattern;
+
+  /// 音频波形数据
+  final List<int>? waveform;
 
   Map<String, Object?> toJson() => _$MessageResponseToJson(this);
 }

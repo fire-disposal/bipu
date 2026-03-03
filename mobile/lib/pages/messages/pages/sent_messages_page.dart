@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:bipupu/core/network/network.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/im_service.dart';
 
 class SentMessagesPage extends StatefulWidget {
   const SentMessagesPage({super.key});
@@ -14,63 +14,48 @@ class SentMessagesPage extends StatefulWidget {
 
 class _SentMessagesPageState extends State<SentMessagesPage> {
   final AuthService _authService = AuthService();
+  final ImService _imService = ImService();
   List<MessageResponse> _messages = [];
   bool _isLoading = false;
-  late SharedPreferences _prefs;
-  final Set<int> _readMessageIds = {};
 
   @override
   void initState() {
     super.initState();
-    _initPrefs();
     _loadMessages();
+    // 监听 ImService 变化以更新已读状态
+    _imService.addListener(_onImServiceChanged);
   }
 
-  Future<void> _initPrefs() async {
-    _prefs = await SharedPreferences.getInstance();
-    _loadReadStatus();
+  @override
+  void dispose() {
+    _imService.removeListener(_onImServiceChanged);
+    super.dispose();
   }
 
-  void _loadReadStatus() {
-    final readIds = _prefs.getStringList('read_message_ids') ?? [];
-    setState(() {
-      _readMessageIds.clear();
-      _readMessageIds.addAll(readIds.map((id) => int.parse(id)));
-    });
+  void _onImServiceChanged() {
+    // ImService 的已读状态变化时刷新 UI
+    if (mounted) setState(() {});
   }
 
   Future<void> _markAsRead(int messageId) async {
-    if (!_readMessageIds.contains(messageId)) {
-      _readMessageIds.add(messageId);
-      await _prefs.setStringList(
-        'read_message_ids',
-        _readMessageIds.map((id) => id.toString()).toList(),
-      );
-      setState(() {});
-    }
+    await _imService.markAsRead(messageId);
   }
 
-  Future<void> _markAsUnread(int messageId) async {
-    if (_readMessageIds.contains(messageId)) {
-      _readMessageIds.remove(messageId);
-      await _prefs.setStringList(
-        'read_message_ids',
-        _readMessageIds.map((id) => id.toString()).toList(),
-      );
-      setState(() {});
-    }
-  }
-
-  /// 获取发件箱消息（使用新的独立 API）
+  /// 获取发件箱消息（使用后端专属接口）
   Future<void> _loadMessages() async {
     setState(() => _isLoading = true);
     try {
-      final response = await ApiClient.instance.api.messages.getApiMessagesSent(
+      // 后端专属发件箱接口，无需前端过滤
+      final response = await _imService.getMessages(
+        direction: 'sent',
         page: 1,
         pageSize: 50,
+        forceRefresh: true,
       );
+      final messages =
+          (response['messages'] as List?)?.cast<MessageResponse>() ?? [];
       setState(() {
-        _messages = response.messages;
+        _messages = messages;
       });
     } on ApiException catch (e) {
       debugPrint('Error loading sent messages: ${e.message}');
@@ -137,7 +122,7 @@ class _SentMessagesPageState extends State<SentMessagesPage> {
                 separatorBuilder: (context, index) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
                   final msg = messages[index];
-                  final isRead = _readMessageIds.contains(msg.id);
+                  final isRead = _imService.isMessageRead(msg.id);
 
                   return Card(
                     elevation: 1,
@@ -172,7 +157,10 @@ class _SentMessagesPageState extends State<SentMessagesPage> {
                                 onTap: () {
                                   Navigator.pop(context);
                                   if (isRead) {
-                                    _markAsUnread(msg.id);
+                                    _imService.getReadMessageIds().remove(
+                                      msg.id,
+                                    );
+                                    setState(() {});
                                   } else {
                                     _markAsRead(msg.id);
                                   }

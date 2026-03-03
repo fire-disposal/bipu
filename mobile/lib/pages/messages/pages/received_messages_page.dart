@@ -40,16 +40,18 @@ class _ReceivedMessagesPageState extends State<ReceivedMessagesPage> {
   Future<void> _loadMessages() async {
     setState(() => _isLoading = true);
     try {
-      final response = await ApiClient.instance.api.messages.getApiMessages(
-        direction: 'received',
+      // 使用新的统一接口
+      final response = await _imService.getMessages(
+        direction: 'inbox', // 收件箱
         page: 1,
         pageSize: 50,
+        forceRefresh: true,
       );
-      final filtered = response.messages
-          .where((msg) => msg.messageType != MessageType.system)
-          .toList();
+      // 后端已经过滤，这里直接使用（如果需要再过滤可保留）
+      final messages =
+          (response['messages'] as List?)?.cast<MessageResponse>() ?? [];
       setState(() {
-        _messages = filtered;
+        _messages = messages;
       });
     } on ApiException catch (e) {
       debugPrint('Error loading messages: ${e.message}');
@@ -63,11 +65,7 @@ class _ReceivedMessagesPageState extends State<ReceivedMessagesPage> {
   }
 
   Future<void> _markAsRead(int messageId) async {
-    await _imService.markMessageAsRead(messageId);
-  }
-
-  Future<void> _markAsUnread(int messageId) async {
-    await _imService.markMessageAsUnread(messageId);
+    await _imService.markAsRead(messageId);
   }
 
   @override
@@ -159,7 +157,10 @@ class _ReceivedMessagesPageState extends State<ReceivedMessagesPage> {
                                 onTap: () {
                                   Navigator.pop(context);
                                   if (isRead) {
-                                    _markAsUnread(msg.id);
+                                    _imService.getReadMessageIds().remove(
+                                      msg.id,
+                                    );
+                                    setState(() {});
                                   } else {
                                     _markAsRead(msg.id);
                                   }

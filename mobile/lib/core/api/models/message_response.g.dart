@@ -27,9 +27,9 @@ Map<String, dynamic> _$MessageResponseToJson(MessageResponse instance) =>
       'receiver_bipupu_id': instance.receiverBipupuId,
       'content': instance.content,
       'message_type': _$MessageTypeEnumMap[instance.messageType]!,
+      'created_at': instance.createdAt.toIso8601String(),
       'pattern': instance.pattern,
       'waveform': instance.waveform,
-      'created_at': instance.createdAt.toIso8601String(),
     };
 
 const _$MessageTypeEnumMap = {
