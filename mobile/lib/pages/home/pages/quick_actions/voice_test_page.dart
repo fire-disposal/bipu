@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import '../../../../core/voice/voice_service_unified.dart' as unified;
 import '../../../../core/voice/asr_engine.dart';
-import '../../../../core/voice/voice_service.dart';
 import '../../../../core/utils/logger.dart';
 
 class VoiceTestPage extends StatefulWidget {
@@ -15,7 +15,7 @@ class _VoiceTestPageState extends State<VoiceTestPage> {
   final TextEditingController _textController = TextEditingController();
   final TextEditingController _sidController = TextEditingController(text: '0');
   final ASREngine _asrEngine = ASREngine();
-  final VoiceService _voiceService = VoiceService();
+  final unified.VoiceService _voiceService = unified.VoiceService();
 
   String _asrResult = "";
   String _asrStatus = "ASR Ready";

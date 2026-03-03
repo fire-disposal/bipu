@@ -54,8 +54,9 @@ class _UserLoginPageState extends State<UserLoginPage>
       await AuthService().login(username, password);
       if (mounted) context.go('/');
     } on AuthException catch (e) {
-      if (mounted)
+      if (mounted) {
         SnackBarManager.showError('Authentication failed: ${e.message}');
+      }
     } on ValidationException catch (e) {
       String errorMessage =
           e.errors?.entries.map((entry) => entry.value.toString()).join(', ') ??
@@ -66,8 +67,9 @@ class _UserLoginPageState extends State<UserLoginPage>
     } on ServerException catch (e) {
       if (mounted) SnackBarManager.showServerError(e.message);
     } on ParseException catch (e) {
-      if (mounted)
+      if (mounted) {
         SnackBarManager.showError('Data parsing error: ${e.message}');
+      }
     } on ApiException catch (e) {
       if (mounted) SnackBarManager.showError('API error: ${e.message}');
     } catch (e) {

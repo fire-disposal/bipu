@@ -61,64 +61,35 @@ class DialingPrepState extends PagerState {
 class InCallState extends PagerState {
   final String targetId;
   final String operatorImageUrl; // 虚拟接线员立绘URL或Asset路径
-  final String currentTtsText; // 当前播放的TTS文本
-  final bool isTtsPlaying;
-  final bool isAsrActive; // ASR是否正在录音
   final String asrTranscript; // 实时转写文本
   final List<double> waveformData; // 声纹动效数据 (0-1范围)
   final bool isSilenceDetected; // 是否检测到静默
   final OperatorPersonality? operator; // 当前接线员人格
-  final TextProcessingResult? textProcessingResult; // 文本处理结果
-  final bool hasEmojiDetected; // 是否检测到表情符号
-  final bool showEmojiWarning; // 是否显示表情符号警告
-  final List<String> operatorSpeechHistory; // 接线员台词历史记录
 
   const InCallState({
     required this.targetId,
     this.operatorImageUrl = '',
-    this.currentTtsText = '',
-    this.isTtsPlaying = false,
-    this.isAsrActive = false,
     this.asrTranscript = '',
     this.waveformData = const [],
     this.isSilenceDetected = false,
     this.operator,
-    this.textProcessingResult,
-    this.hasEmojiDetected = false,
-    this.showEmojiWarning = false,
-    this.operatorSpeechHistory = const [], // 初始化空列表
   });
 
   InCallState copyWith({
     String? targetId,
     String? operatorImageUrl,
-    String? currentTtsText,
-    bool? isTtsPlaying,
-    bool? isAsrActive,
     String? asrTranscript,
     List<double>? waveformData,
     bool? isSilenceDetected,
     OperatorPersonality? operator,
-    TextProcessingResult? textProcessingResult,
-    bool? hasEmojiDetected,
-    bool? showEmojiWarning,
-    List<String>? operatorSpeechHistory,
   }) {
     return InCallState(
       targetId: targetId ?? this.targetId,
       operatorImageUrl: operatorImageUrl ?? this.operatorImageUrl,
-      currentTtsText: currentTtsText ?? this.currentTtsText,
-      isTtsPlaying: isTtsPlaying ?? this.isTtsPlaying,
-      isAsrActive: isAsrActive ?? this.isAsrActive,
       asrTranscript: asrTranscript ?? this.asrTranscript,
       waveformData: waveformData ?? this.waveformData,
       isSilenceDetected: isSilenceDetected ?? this.isSilenceDetected,
       operator: operator ?? this.operator,
-      textProcessingResult: textProcessingResult ?? this.textProcessingResult,
-      hasEmojiDetected: hasEmojiDetected ?? this.hasEmojiDetected,
-      showEmojiWarning: showEmojiWarning ?? this.showEmojiWarning,
-      operatorSpeechHistory:
-          operatorSpeechHistory ?? this.operatorSpeechHistory,
     );
   }
 
@@ -126,17 +97,10 @@ class InCallState extends PagerState {
   List<Object?> get props => [
     targetId,
     operatorImageUrl,
-    currentTtsText,
-    isTtsPlaying,
-    isAsrActive,
     asrTranscript,
     waveformData,
     isSilenceDetected,
     operator,
-    textProcessingResult,
-    hasEmojiDetected,
-    showEmojiWarning,
-    operatorSpeechHistory,
   ];
 }
 

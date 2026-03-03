@@ -65,7 +65,21 @@ class _PagerView extends StatelessWidget {
           buildWhen: (prev, curr) => curr is! OperatorUnlockedState,
           builder: (context, state) {
             return AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 400),
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+                      CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeOutCubic,
+                      ),
+                    ),
+                    child: child,
+                  ),
+                );
+              },
               child: _buildBody(context, state, cubit),
             );
           },

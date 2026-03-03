@@ -272,7 +272,7 @@ class _BluetoothMessageTestPageState extends State<BluetoothMessageTestPage> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _isConnected && !_isSending
                               ? theme.colorScheme.primary
-                              : theme.colorScheme.surfaceVariant,
+                              : theme.colorScheme.surfaceContainerHighest,
                           foregroundColor: _isConnected && !_isSending
                               ? theme.colorScheme.onPrimary
                               : theme.colorScheme.onSurfaceVariant,

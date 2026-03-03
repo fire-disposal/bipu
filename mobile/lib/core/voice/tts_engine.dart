@@ -63,8 +63,9 @@ class TTSEngine {
         throw Exception('ModelManager failed to prepare $key');
       }
       final extractedKey = key.split('/').last.split('.').first;
-      if (_verboseLogging)
+      if (_verboseLogging) {
         logger.i('Extracted key: $extractedKey from $key, path: $p');
+      }
       paths[extractedKey] = p;
     }
     return paths;
@@ -127,8 +128,9 @@ class TTSEngine {
     }
 
     try {
-      if (_verboseLogging)
+      if (_verboseLogging) {
         logger.i('Generating TTS for text: "$text", sid: $sid, speed: $speed');
+      }
       return _tts!.generate(text: text, sid: sid, speed: speed);
     } catch (e, stackTrace) {
       logger.e('Error generating TTS: $e\n$stackTrace');

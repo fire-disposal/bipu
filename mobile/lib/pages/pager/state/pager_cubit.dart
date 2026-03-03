@@ -9,32 +9,27 @@ import '../services/waveform_processor.dart';
 import '../services/text_processor.dart';
 import '../services/operator_service.dart';
 import '../models/operator_model.dart';
-import '../coordination/voice_interaction_coordinator.dart';
+import '../pager_assistant.dart';
 import 'pager_state_machine.dart';
 
 /// 拨号页面业务逻辑 Cubit
 /// 管理三个状态的转换和业务流程
 class PagerCubit extends Cubit<PagerState> {
   final ApiClient _apiClient;
-  final VoiceInteractionCoordinator _voiceCoordinator;
+  final PagerAssistant _voiceAssistant;
   final OperatorService _operatorService;
   final WaveformProcessor _waveformProcessor = WaveformProcessor();
 
   // 状态管理
   List<int> _currentWaveformData = [];
-
-  // 协调器事件订阅
-  StreamSubscription<String>? _transcriptSubscription;
-  StreamSubscription<List<double>>? _waveformSubscription;
-  StreamSubscription<void>? _recordingEndedSubscription;
-  StreamSubscription<void>? _reminderTtsSubscription;
+  StreamSubscription<double>? _volumeSubscription;
 
   PagerCubit({
     ApiClient? apiClient,
-    VoiceInteractionCoordinator? voiceCoordinator,
+    PagerAssistant? voiceAssistant,
     OperatorService? operatorService,
   }) : _apiClient = apiClient ?? ApiClient.instance,
-       _voiceCoordinator = voiceCoordinator ?? VoiceInteractionCoordinator(),
+       _voiceAssistant = voiceAssistant ?? PagerAssistant(),
        _operatorService = operatorService ?? OperatorService(),
        super(const PagerInitialState());
 
@@ -44,8 +39,8 @@ class PagerCubit extends Cubit<PagerState> {
       // 初始化 OperatorService
       await _operatorService.init();
 
-      // 初始化语音协调器
-      await _voiceCoordinator.initialize();
+      // 初始化语音助手
+      await _voiceAssistant.init();
 
       // 随机选择一个接线员
       final currentOperator = _operatorService.getRandomOperator();
@@ -79,139 +74,6 @@ class PagerCubit extends Cubit<PagerState> {
         ),
       );
     }
-  }
-
-  /// 设置语音协调器订阅
-  void _setupVoiceCoordinatorSubscriptions() {
-    // 清理旧的订阅
-    _transcriptSubscription?.cancel();
-    _waveformSubscription?.cancel();
-    _recordingEndedSubscription?.cancel();
-    _reminderTtsSubscription?.cancel();
-
-    // 订阅转录结果
-    _transcriptSubscription = _voiceCoordinator.onTranscript.listen((
-      transcript,
-    ) {
-      if (state is InCallState) {
-        final currentState = state as InCallState;
-        emit(currentState.copyWith(asrTranscript: transcript));
-      }
-    });
-
-    // 订阅波形数据
-    _waveformSubscription = _voiceCoordinator.onWaveform.listen((waveform) {
-      if (state is InCallState) {
-        final currentState = state as InCallState;
-        emit(currentState.copyWith(waveformData: waveform));
-      }
-    });
-
-    // 订阅录音结束事件（传递最终转录文本）
-    _recordingEndedSubscription = _voiceCoordinator.onRecordingEnded.listen((
-      finalTranscript,
-    ) {
-      _handleRecordingCompleted(finalTranscript);
-    });
-
-    // 订阅提醒 TTS 事件（静默检测触发）
-    _reminderTtsSubscription = _voiceCoordinator.onReminderTts.listen((_) {
-      _handleReminderTts();
-    });
-  }
-
-  /// 处理提醒 TTS 播放
-  Future<void> _handleReminderTts() async {
-    logger.i('PagerCubit: 静默检测触发，播放提醒 TTS');
-
-    if (state is! InCallState) {
-      logger.w('PagerCubit: 不在通话状态，忽略提醒 TTS');
-      return;
-    }
-
-    final inCallState = state as InCallState;
-    // 使用接线员的动态台词
-    final reminderText =
-        inCallState.operator?.dialogues.getRandomPhrase() ?? '说完了吗？说完的话我可就发送了！';
-
-    // 更新状态：显示提醒 TTS
-    // 注意：TTS 播放由 VoiceInteractionCoordinator 内部处理
-    // Cubit 只需要更新 UI 状态，显示当前正在播放的台词
-    emit(
-      inCallState.copyWith(
-        currentTtsText: reminderText,
-        isTtsPlaying: true,
-        operatorSpeechHistory: [
-          ...inCallState.operatorSpeechHistory,
-          reminderText,
-        ],
-      ),
-    );
-
-    // 等待一小段时间让 UI 更新
-    await Future.delayed(const Duration(milliseconds: 300));
-
-    // TTS 播放完成后，清除 currentTtsText（但不清除历史记录）
-    // 注意：这里不等待实际播放完成，因为播放由协调器管理
-    // 宽限期结束后会自动触发录音结束和状态转换
-    emit(inCallState.copyWith(currentTtsText: '', isTtsPlaying: false));
-  }
-
-  /// 处理录音完成
-  Future<void> _handleRecordingCompleted(String finalTranscript) async {
-    logger.i('PagerCubit: 录音完成，转换到最终状态，转录文本："$finalTranscript"');
-
-    // 清理订阅
-    await _cleanupSubscriptions();
-
-    // 转换到 Finalize 状态
-    if (state is InCallState) {
-      final inCallState = state as InCallState;
-      final operator = inCallState.operator;
-
-      // 检查是否是首次解锁接线员
-      bool isNewlyUnlocked = false;
-      if (operator != null && !operator.isUnlocked) {
-        // 解锁接线员
-        await _operatorService.unlockOperator(operator.id);
-        isNewlyUnlocked = true;
-        logger.i('PagerCubit: 首次完成对话，解锁接线员 - ${operator.name}');
-      }
-
-      emit(
-        FinalizeState(
-          targetId: inCallState.targetId,
-          messageContent: finalTranscript.isNotEmpty
-              ? finalTranscript
-              : '请编辑您的消息...',
-          operator: operator,
-          isNewlyUnlocked: isNewlyUnlocked,
-        ),
-      );
-
-      // 如果是首次解锁，触发解锁状态通知
-      if (isNewlyUnlocked && operator != null) {
-        emit(
-          OperatorUnlockedState(
-            operator: operator,
-            unlockMessage: '恭喜！您已解锁新接线员：${operator.name}',
-          ),
-        );
-      }
-    }
-  }
-
-  /// 清理订阅
-  Future<void> _cleanupSubscriptions() async {
-    await _transcriptSubscription?.cancel();
-    await _waveformSubscription?.cancel();
-    await _recordingEndedSubscription?.cancel();
-    await _reminderTtsSubscription?.cancel();
-
-    _transcriptSubscription = null;
-    _waveformSubscription = null;
-    _recordingEndedSubscription = null;
-    _reminderTtsSubscription = null;
   }
 
   /// 开始拨号 - 转换到通话中状态
@@ -273,81 +135,109 @@ class PagerCubit extends Cubit<PagerState> {
 
       final inCallState = state as InCallState;
 
-      // 播放引导台词 - 使用接线员的动态台词
-      logger.i('PagerCubit: 开始播放引导 TTS');
-      final guidanceText = currentOperator.dialogues.getGreeting();
+      // 播放问候语（使用 PagerAssistant 的新API）
+      logger.i('PagerCubit: 开始播放问候语');
+      await _voiceAssistant.greet();
 
-      // 更新状态：TTS 播放中
-      emit(
-        inCallState.copyWith(currentTtsText: guidanceText, isTtsPlaying: true),
-      );
+      // 播放提示
+      await _voiceAssistant.promptForMessage();
 
-      // 播放引导 TTS - 使用接线员的音色配置
-      await _voiceCoordinator.playGuidance(
-        guidanceText,
-        sid: currentOperator.ttsId,
-        speed: currentOperator.ttsSpeed,
-      );
-
-      // TTS 播放完成，将台词添加到历史记录，并清除 currentTtsText
-      emit(
-        inCallState.copyWith(
-          currentTtsText: '',
-          isTtsPlaying: false,
-          operatorSpeechHistory: [
-            ...inCallState.operatorSpeechHistory,
-            guidanceText,
-          ],
-        ),
-      );
-
-      // 给用户一点时间阅读和准备
-      logger.i('PagerCubit: TTS 播放完成，等待用户准备');
       await Future.delayed(const Duration(seconds: 1));
 
-      logger.i('PagerCubit: 准备启动 ASR 语音转写');
+      logger.i('PagerCubit: 准备启动语音识别');
 
-      // 设置转录监听
-      _setupVoiceCoordinatorSubscriptions();
-
-      // 启动录音
-      await _voiceCoordinator.startRecording();
+      // 开始录音识别
+      await _startRecordingPhase(inCallState);
     } catch (e) {
       logger.e('Failed to start dialing: $e');
       emit(PagerErrorState(message: '拨号失败：$e'));
     }
   }
 
+  /// 开始录音识别阶段
+  Future<void> _startRecordingPhase(InCallState inCallState) async {
+    try {
+      final userText = await _voiceAssistant.recordAndRecognize(
+        maxDuration: Duration(seconds: 30),
+        silenceTimeout: Duration(seconds: 5),
+        onVolumeChanged: (volume) {
+          _waveformProcessor.addVolumeData(volume);
+          if (state is InCallState) {
+            final current = state as InCallState;
+            final waveform = _waveformProcessor.getWaveformFromVolume();
+            emit(current.copyWith(waveformData: waveform));
+          }
+        },
+        onInterimResult: (interim) {
+          if (state is InCallState) {
+            final current = state as InCallState;
+            emit(current.copyWith(asrTranscript: interim));
+          }
+        },
+      );
+
+      if (userText.isEmpty) {
+        await _voiceAssistant.respond('未检测到输入，请重试');
+        await _startRecordingPhase(inCallState);
+        return;
+      }
+
+      if (state is! InCallState) return;
+      final current = state as InCallState;
+
+      // 用户输入识别完成，显示在UI中
+      emit(current.copyWith(asrTranscript: userText, isSilenceDetected: true));
+
+      // 播放确认提示
+      await _voiceAssistant.respond('我听到了：$userText，请确认');
+
+      // 等待用户确认
+      final confirmText = await _voiceAssistant.recordAndRecognize(
+        maxDuration: Duration(seconds: 10),
+        silenceTimeout: Duration(seconds: 2),
+      );
+
+      // 简单的命令识别：包含"确认"、"是"等为确认
+      final isConfirmed =
+          confirmText.contains('确认') ||
+          confirmText.contains('是') ||
+          confirmText.contains('好') ||
+          confirmText.contains('对');
+
+      if (isConfirmed) {
+        // 确认成功，转到最终编辑状态
+        await _voiceAssistant.playSuccess('已确认');
+
+        emit(
+          FinalizeState(
+            targetId: current.targetId,
+            messageContent: userText,
+            operator: current.operator,
+          ),
+        );
+      } else {
+        // 用户否认，返回重新录音
+        await _voiceAssistant.respond('已取消，请重新说一遍');
+        await _startRecordingPhase(current);
+      }
+    } catch (e, stackTrace) {
+      logger.e('_startRecordingPhase failed', error: e, stackTrace: stackTrace);
+      if (state is InCallState) {
+        final current = state as InCallState;
+        emit(current.copyWith(asrTranscript: '识别失败，请重试'));
+      }
+    }
+  }
+
   /// 手动结束 ASR 录音（用户点击结束按钮）
-  /// 与静默检测并行生效，用户可随时点击结束按钮
   Future<void> finishAsrRecording() async {
     if (state is! InCallState) return;
 
     final currentState = state as InCallState;
-
     logger.i('PagerCubit: 用户手动结束录音');
 
-    // 更新状态：显示结束录音的视觉反馈
     emit(currentState.copyWith(isSilenceDetected: true));
-
-    // 等待一小段时间让用户看到状态变化
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    // 通过协调器停止录音并获取最终转录文本
-    final finalTranscript = await _voiceCoordinator.stopRecording();
-
-    // 清理订阅（协调器的录音结束事件也会触发，但这里直接处理）
-    await _cleanupSubscriptions();
-
-    // 转换到 Finalize 状态
-    emit(
-      FinalizeState(
-        targetId: currentState.targetId,
-        messageContent: finalTranscript.isNotEmpty
-            ? finalTranscript
-            : '请编辑您的消息...',
-      ),
-    );
+    await _voiceAssistant.stopRecording();
   }
 
   /// 发送消息
@@ -368,12 +258,6 @@ class PagerCubit extends Cubit<PagerState> {
 
       // 获取最终的波形数据
       _currentWaveformData = _waveformProcessor.finalize();
-
-      // 验证波形数据
-      if (!WaveformValidator.isValid(_currentWaveformData)) {
-        logger.w('Waveform data is invalid, sending without waveform');
-        _currentWaveformData = [];
-      }
 
       logger.i(
         'Sending message with waveform: ${_currentWaveformData.length} points',
@@ -397,16 +281,9 @@ class PagerCubit extends Cubit<PagerState> {
       // 更新状态：发送成功
       emit(finalizeState.copyWith(isSending: false, sendSuccess: true));
 
-      // 获取接线员信息，播放成功 TTS（使用动态台词）
+      // 播放成功提示
       emit(finalizeState.copyWith(isPlayingSuccessTts: true));
-      final successText =
-          finalizeState.operator?.dialogues.getSuccessMessage() ??
-          '消息已发送，感谢您的使用';
-      await _voiceCoordinator.playSuccessTts(
-        successText,
-        sid: finalizeState.operator?.ttsId ?? 0,
-        speed: finalizeState.operator?.ttsSpeed ?? 1.0,
-      );
+      await _voiceAssistant.respond('消息已发送，感谢您的使用');
       emit(finalizeState.copyWith(isPlayingSuccessTts: false));
 
       // 增加接线员对话次数
@@ -486,11 +363,8 @@ class PagerCubit extends Cubit<PagerState> {
     logger.i('PagerCubit: 挂断通话');
 
     try {
-      // 使用协调器取消所有语音交互
-      await _voiceCoordinator.cancelAll();
-
-      // 清理本地订阅
-      await _cleanupSubscriptions();
+      // 停止录音和清理资源
+      await _voiceAssistant.stopRecording();
 
       // 清理波形处理器
       _waveformProcessor.clear();
@@ -503,21 +377,13 @@ class PagerCubit extends Cubit<PagerState> {
     }
   }
 
-  /// 取消当前操作
-  /// 取消拨号 - 返回拨号准备状态
+  /// 取消拨号
   Future<void> cancelDialing() async {
     logger.i('PagerCubit: 取消拨号');
 
     try {
-      // 使用协调器取消所有语音交互
-      await _voiceCoordinator.cancelAll();
-
-      // 清理本地订阅
-      await _cleanupSubscriptions();
-
-      // 清理波形处理器
+      await _voiceAssistant.stopRecording();
       _waveformProcessor.clear();
-
       emit(const DialingPrepState());
     } catch (e) {
       logger.e('Failed to cancel dialing: $e');
@@ -527,18 +393,14 @@ class PagerCubit extends Cubit<PagerState> {
 
   @override
   Future<void> close() async {
-    // 使用协调器取消所有语音交互
-    await _voiceCoordinator.cancelAll();
-
-    // 清理本地订阅
-    await _cleanupSubscriptions();
-
-    // 清理波形处理器
-    _waveformProcessor.clear();
-
-    // 释放协调器资源
-    await _voiceCoordinator.dispose();
-
+    try {
+      await _voiceAssistant.stopRecording();
+      _waveformProcessor.clear();
+      _volumeSubscription?.cancel();
+      _voiceAssistant.dispose();
+    } catch (e) {
+      logger.e('Error closing PagerCubit', error: e);
+    }
     return super.close();
   }
 }

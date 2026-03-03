@@ -216,7 +216,7 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                         ? Image.network(
                             operator.portraitUrl,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
+                            errorBuilder: (_, _, _) =>
                                 _buildPortraitPlaceholder(
                                   operator,
                                   colorScheme,
@@ -226,7 +226,7 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                         : Image.asset(
                             operator.portraitUrl,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
+                            errorBuilder: (_, _, _) =>
                                 _buildPortraitPlaceholder(
                                   operator,
                                   colorScheme,
@@ -505,7 +505,7 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                         ? Image.network(
                             operator.portraitUrl,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
+                            errorBuilder: (_, _, _) =>
                                 _buildPortraitPlaceholder(
                                   operator,
                                   colorScheme,
@@ -515,7 +515,7 @@ class _OperatorGalleryPageNewState extends State<OperatorGalleryPageNew> {
                         : Image.asset(
                             operator.portraitUrl,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
+                            errorBuilder: (_, _, _) =>
                                 _buildPortraitPlaceholder(
                                   operator,
                                   colorScheme,

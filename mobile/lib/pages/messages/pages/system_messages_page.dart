@@ -16,7 +16,7 @@ class SystemMessagesPage extends StatefulWidget {
 class _SystemMessagesPageState extends State<SystemMessagesPage> {
   final ImService _imService = ImService();
   List<MessageResponse> _messages = [];
-  Map<String, ServiceAccountResponse?> _serviceCache = {};
+  final Map<String, ServiceAccountResponse?> _serviceCache = {};
   bool _isLoading = false;
 
   @override

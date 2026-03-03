@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 import 'model_manager.dart';
 import 'voice_config.dart';
+import '../utils/logger.dart';
 
 class ASREngine {
   ASREngine();
@@ -35,6 +36,7 @@ class ASREngine {
   bool _isStopping = false;
   bool _isDisposing = false;
   bool _isRecording = false;
+  bool _isPaused = false;
 
   int _volumeCounter = 0;
 
@@ -45,6 +47,7 @@ class ASREngine {
   bool get isInitialized => _isInitialized;
   bool get isRecording => _isRecording;
   bool get isStopping => _isStopping;
+  bool get isPaused => _isPaused;
 
   Future<void> init() async {
     if (_isInitialized) return;
@@ -126,8 +129,60 @@ class ASREngine {
 
       await _recorder.start();
       _isRecording = true;
+      _isPaused = false;
     } catch (e) {
       _cleanupOnStartFailure();
+      rethrow;
+    }
+  }
+
+  /// 暂停录音（用于TTS播放期间）
+  Future<void> pause() async {
+    if (!_isRecording || _isPaused) return;
+
+    logger.i('ASREngine.pause: 暂停录音');
+    _isPaused = true;
+
+    try {
+      // 取消录音流订阅
+      await _recorderSub?.cancel();
+      _recorderSub = null;
+
+      // 停止录音器
+      await _recorder.stop();
+
+      logger.i('ASREngine.pause: 录音已暂停');
+    } catch (e, stackTrace) {
+      logger.e('ASREngine.pause: 暂停失败', error: e, stackTrace: stackTrace);
+      _isPaused = false;
+      rethrow;
+    }
+  }
+
+  /// 恢复录音（TTS播放完成后）
+  Future<void> resume() async {
+    if (!_isRecording || !_isPaused) return;
+
+    logger.i('ASREngine.resume: 恢复录音');
+
+    try {
+      // 重新初始化录音器
+      await _recorder.initialize();
+
+      // 重新订阅音频流
+      _recorderSub = _recorder.audioStream.listen(
+        _handleAudioData,
+        cancelOnError: true,
+      );
+
+      // 开始录音
+      await _recorder.start();
+      _isPaused = false;
+
+      logger.i('ASREngine.resume: 录音已恢复');
+    } catch (e, stackTrace) {
+      logger.e('ASREngine.resume: 恢复失败', error: e, stackTrace: stackTrace);
+      _isPaused = true;
       rethrow;
     }
   }
@@ -197,6 +252,7 @@ class ASREngine {
     } finally {
       _isRecording = false;
       _isStopping = false;
+      _isPaused = false;
       _stopLock.complete();
     }
 

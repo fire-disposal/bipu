@@ -15,7 +15,7 @@ class _ContactsPageState extends State<ContactsPage> {
   final TextEditingController _searchController = TextEditingController();
   List<dynamic> _contacts = [];
   List<dynamic> _searchResults = [];
-  Map<String, dynamic> _userCache = {}; // 缓存用户信息（包含头像）
+  final Map<String, dynamic> _userCache = {}; // 缓存用户信息（包含头像）
   bool _isLoading = false;
   bool _isSearching = false;
   String? _error;

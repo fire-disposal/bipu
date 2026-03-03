@@ -194,9 +194,9 @@ class _DialingPrepPageMinimalState extends State<DialingPrepPageMinimal>
           bool isFunc = label == 'clear' || label == 'backspace';
           return InkWell(
             onTap: () {
-              if (label == 'clear')
+              if (label == 'clear') {
                 _handleClear();
-              else if (label == 'backspace')
+              } else if (label == 'backspace')
                 _handleBackspace();
               else
                 _handleNumpadInput(label);
@@ -225,18 +225,20 @@ class _DialingPrepPageMinimalState extends State<DialingPrepPageMinimal>
   }
 
   Widget _getLabelWidget(String label, ColorScheme colorScheme) {
-    if (label == 'backspace')
+    if (label == 'backspace') {
       return Icon(
         Icons.backspace_outlined,
         size: 20,
         color: colorScheme.onSurfaceVariant,
       );
-    if (label == 'clear')
+    }
+    if (label == 'clear') {
       return Icon(
         Icons.delete_sweep_outlined,
         size: 22,
         color: colorScheme.error.withOpacity(0.7),
       );
+    }
     return Text(
       label,
       style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w500),

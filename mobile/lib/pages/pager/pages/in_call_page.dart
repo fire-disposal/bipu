@@ -104,11 +104,11 @@ class _InCallPageState extends State<InCallPage> {
               borderRadius: BorderRadius.circular(20),
               child: OperatorDisplayWidget(
                 imageUrl: state.operatorImageUrl,
-                isAnimating: state.isTtsPlaying,
+                isAnimating: state.waveformData.isNotEmpty,
               ),
             ),
           ),
-          if (state.isTtsPlaying)
+          if (state.waveformData.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: WaveformAnimationWidget(
@@ -128,10 +128,7 @@ class _InCallPageState extends State<InCallPage> {
     ColorScheme colorScheme,
     ThemeData theme,
   ) {
-    final history = [
-      ...state.operatorSpeechHistory,
-      if (state.currentTtsText.isNotEmpty) state.currentTtsText,
-    ];
+    final history = [...[]];
 
     return ShaderMask(
       shaderCallback: (rect) => const LinearGradient(
@@ -147,7 +144,7 @@ class _InCallPageState extends State<InCallPage> {
         itemCount: history.length,
         itemBuilder: (context, index) {
           final text = history.reversed.toList()[index];
-          final isCurrent = text == state.currentTtsText;
+          final isCurrent = false; // 已简化
           return _buildMiniBubble(
             text,
             colorScheme,
@@ -264,11 +261,11 @@ class _InCallPageState extends State<InCallPage> {
                 duration: const Duration(milliseconds: 300),
                 height: 64,
                 decoration: BoxDecoration(
-                  color: state.isAsrActive
+                  color: state.asrTranscript.isNotEmpty
                       ? colorScheme.primary
                       : colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(24),
-                  boxShadow: state.isAsrActive
+                  boxShadow: state.asrTranscript.isNotEmpty
                       ? [
                           BoxShadow(
                             color: colorScheme.primary.withOpacity(0.4),
@@ -282,16 +279,18 @@ class _InCallPageState extends State<InCallPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        state.isAsrActive ? Icons.graphic_eq : Icons.mic,
-                        color: state.isAsrActive
+                        state.asrTranscript.isNotEmpty
+                            ? Icons.graphic_eq
+                            : Icons.mic,
+                        color: state.asrTranscript.isNotEmpty
                             ? colorScheme.onPrimary
                             : colorScheme.onSurfaceVariant,
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        state.isAsrActive ? "正在聆听" : "等待响应",
+                        state.asrTranscript.isNotEmpty ? "正在聆听" : "等待响应",
                         style: theme.textTheme.titleMedium?.copyWith(
-                          color: state.isAsrActive
+                          color: state.asrTranscript.isNotEmpty
                               ? colorScheme.onPrimary
                               : colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.bold,
