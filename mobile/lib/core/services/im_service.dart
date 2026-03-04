@@ -8,6 +8,7 @@ import '../network/network.dart';
 
 import '../config/app_config.dart';
 import 'auth_service.dart';
+import '../api/models/favorite_create.dart';
 
 /// 统一的 IM 服务 - 优化重写版本（单长轮询）
 class ImService extends ChangeNotifier {
@@ -598,12 +599,12 @@ class ImService extends ChangeNotifier {
     try {
       final apiClient = ApiClient.instance;
 
-      final favoriteData = {'note': note ?? ''};
+      final favoriteData = FavoriteCreate(note: note ?? '');
 
       final response = await apiClient.execute(
         () => apiClient.api.messages.postApiMessagesMessageIdFavorite(
           messageId: messageId,
-          body: favoriteData as dynamic,
+          body: favoriteData,
         ),
         operationName: 'AddFavorite',
       );

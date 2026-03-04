@@ -198,8 +198,8 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
       // 服务号头像使用特殊接口
       avatarUrl = '/api/service_accounts/${msg.senderBipupuId}/avatar';
     } else {
-      // 普通用户头像使用默认占位符
-      avatarUrl = null;
+      // 普通用户头像使用用户接口
+      avatarUrl = '/api/users/users/${msg.senderBipupuId}/avatar';
     }
 
     // 拼接完整的头像 URL（avatar_url 可能是相对路径）
@@ -247,20 +247,24 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                           backgroundImage: fullAvatarUrl != null
                               ? NetworkImage(fullAvatarUrl)
                               : null,
-                          child: fullAvatarUrl == null
-                              ? Text(
-                                  displayName.isNotEmpty
-                                      ? displayName
-                                            .substring(0, 1)
-                                            .toUpperCase()
-                                      : '?',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: _onSurfaceColor,
-                                  ),
-                                )
+                          onBackgroundImageError: fullAvatarUrl != null
+                              ? (exception, stackTrace) {
+                                  // 头像加载失败时，showChild 会自动显示首字母
+                                  debugPrint(
+                                    '头像加载失败: $fullAvatarUrl, 错误: $exception',
+                                  );
+                                }
                               : null,
+                          child: Text(
+                            displayName.isNotEmpty
+                                ? displayName.substring(0, 1).toUpperCase()
+                                : '?',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: _onSurfaceColor,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
