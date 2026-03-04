@@ -116,38 +116,49 @@ class WaveformPainter extends CustomPainter {
   void _drawWaveform(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = waveColor
-      ..strokeWidth = 2.0
       ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
+      ..style = PaintingStyle.fill; // 使用填充样式以提高可见性
+
+    // 归一化输入数据到 0.0 - 1.0 范围，兼容 0-255 或任意缩放数据
+    final samples = waveformData
+        .map((e) => e.isFinite ? e.abs() : 0.0)
+        .toList();
+    double maxVal = 1.0;
+    if (samples.isNotEmpty) {
+      maxVal = samples.reduce((a, b) => a > b ? a : b);
+      if (maxVal <= 0) maxVal = 1.0;
+    }
 
     final centerY = size.height / 2;
-    final barWidth = size.width / (waveformData.length + 1);
+    final count = samples.isEmpty ? 0 : samples.length;
+    final segmentWidth = count > 0 ? (size.width / (count + 1)) : size.width;
+    final minBarWidth = math.min(6.0, segmentWidth * 0.6);
 
     // 如果没有数据，绘制默认动画
-    if (waveformData.isEmpty) {
+    if (count == 0) {
       _drawDefaultWaveform(canvas, size, paint, centerY);
       return;
     }
+    // 绘制每个声纹柱（归一化后）
+    for (int i = 0; i < samples.length; i++) {
+      final x = (i + 1) * segmentWidth;
+      final norm = (samples[i] / maxVal).clamp(0.0, 1.0);
+      final baseHeight = norm * size.height * 0.8;
 
-    // 绘制每个声纹柱
-    for (int i = 0; i < waveformData.length; i++) {
-      final x = (i + 1) * barWidth;
-      final baseHeight = waveformData[i] * size.height * 0.8;
-
-      // 添加动画效果
+      // 添加动画效果（微幅振荡）
       final animatedHeight =
           baseHeight *
-          (0.5 + 0.5 * math.sin(animationValue * 2 * math.pi + i * 0.3));
+          (0.6 + 0.4 * math.sin(animationValue * 2 * math.pi + i * 0.25));
 
-      // 绘制柱子
+      final barW = math.max(1.0, segmentWidth * 0.6);
       final rect = Rect.fromCenter(
         center: Offset(x, centerY),
-        width: barWidth * 0.6,
+        width: barW,
         height: animatedHeight,
       );
 
       canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, Radius.circular(barWidth * 0.3)),
+        RRect.fromRectAndRadius(rect, Radius.circular(barW * 0.25)),
         paint,
       );
     }
@@ -169,7 +180,7 @@ class WaveformPainter extends CustomPainter {
       // 创建波形效果
       final phase = animationValue * 2 * math.pi;
       final baseHeight = size.height * 0.3;
-      final amplitude = size.height * 0.2;
+      final amplitude = size.height * 0.22;
 
       final height =
           baseHeight +
@@ -177,12 +188,12 @@ class WaveformPainter extends CustomPainter {
 
       final rect = Rect.fromCenter(
         center: Offset(x, centerY),
-        width: barWidth * 0.6,
+        width: math.max(2.0, barWidth * 0.5),
         height: height.abs(),
       );
 
       canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, Radius.circular(barWidth * 0.3)),
+        RRect.fromRectAndRadius(rect, Radius.circular(barWidth * 0.25)),
         paint,
       );
     }
