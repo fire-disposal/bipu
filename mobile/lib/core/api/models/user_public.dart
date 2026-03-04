@@ -12,10 +12,10 @@ class UserPublic {
   const UserPublic({
     required this.username,
     required this.bipupuId,
-    required this.createdAt,
     this.isActive = true,
     this.nickname,
     this.avatarUrl,
+    this.createdAt,
   });
   
   factory UserPublic.fromJson(Map<String, Object?> json) => _$UserPublicFromJson(json);
@@ -32,8 +32,10 @@ class UserPublic {
   /// 是否活跃
   @JsonKey(name: 'is_active')
   final bool isActive;
+
+  /// 创建时间
   @JsonKey(name: 'created_at')
-  final DateTime createdAt;
+  final DateTime? createdAt;
 
   Map<String, Object?> toJson() => _$UserPublicToJson(this);
 }

@@ -93,7 +93,7 @@ class UserPublic(BaseModel):
     nickname: Optional[str] = None
     avatar_url: Optional[str] = Field(None, description="头像URL")
     is_active: bool = Field(default=True, description="是否活跃")
-    created_at: datetime
+    created_at: Optional[datetime] = Field(None, description="创建时间")
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -28,6 +28,8 @@ abstract class ServiceAccountsClient {
   /// 返回：.
   /// - items: 服务号列表.
   /// - total: 活跃服务号总数.
+  /// - page: 当前页码.
+  /// - page_size: 每页数量.
   ///
   /// 注意：只返回 is_active=True 的服务号.
   @GET('/api/service_accounts/')
@@ -80,6 +82,8 @@ abstract class ServiceAccountsClient {
   /// 返回：.
   /// - subscriptions: 订阅的服务号列表，包含服务信息和订阅设置.
   /// - total: 订阅的服务号总数.
+  /// - page: 当前页码.
+  /// - page_size: 每页数量.
   ///
   /// 包含信息：.
   /// - 服务号基本信息（名称、描述、头像等）.

@@ -5345,9 +5345,17 @@
             "default": true
           },
           "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At",
+            "description": "创建时间"
           },
           "birthday": {
             "anyOf": [
@@ -5473,8 +5481,7 @@
         "type": "object",
         "required": [
           "username",
-          "bipupu_id",
-          "created_at"
+          "bipupu_id"
         ],
         "title": "UserPrivate",
         "description": "用户私有信息（对用户自己可见）"
@@ -5519,16 +5526,23 @@
             "default": true
           },
           "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At",
+            "description": "创建时间"
           }
         },
         "type": "object",
         "required": [
           "username",
-          "bipupu_id",
-          "created_at"
+          "bipupu_id"
         ],
         "title": "UserPublic",
         "description": "用户公开信息（对外API响应）"
