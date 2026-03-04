@@ -3,14 +3,19 @@ import 'dart:developer';
 import 'package:flutter/widgets.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:dio/dio.dart';
 import '../network/network.dart';
+
+import '../config/app_config.dart';
 import 'auth_service.dart';
 
 /// 统一的 IM 服务 - 优化重写版本（单长轮询）
 class ImService extends ChangeNotifier {
   static final ImService _instance = ImService._internal();
   factory ImService() => _instance;
-  ImService._internal();
+  ImService._internal() {
+    _initializeLongPollDio();
+  }
 
   final Connectivity _connectivity = Connectivity();
   StreamSubscription<dynamic>? _connectivitySub;
@@ -18,6 +23,11 @@ class ImService extends ChangeNotifier {
 
   Timer? _longPollTimer;
   bool _isLongPollingActive = false;
+
+  // 专用的长轮询 Dio 实例和 RestClient
+  late Dio _longPollDio;
+  late RestClient _longPollRestClient;
+  bool _isLongPollDioInitialized = false;
 
   List<dynamic> _receivedMessages = [];
   List<dynamic> _sentMessages = [];
@@ -112,6 +122,80 @@ class ImService extends ChangeNotifier {
     }
   }
 
+  /// 初始化专用的长轮询 Dio 实例
+  void _initializeLongPollDio() {
+    // 创建基础配置
+    final baseOptions = BaseOptions(
+      baseUrl: AppConfig.apiBaseUrl,
+      connectTimeout: Duration(seconds: 35), // 比服务器超时多5秒
+      receiveTimeout: Duration(seconds: 35), // 比服务器超时多5秒
+      sendTimeout: Duration(seconds: 35),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      validateStatus: (status) {
+        // 长轮询需要接受超时状态和正常状态
+        return status == null ||
+            (status >= 200 && status < 300) ||
+            status == 408; // Request Timeout
+      },
+    );
+
+    _longPollDio = Dio(baseOptions);
+
+    // 添加必要的拦截器
+    _longPollDio.interceptors.addAll([
+      _createLongPollInterceptor(),
+      if (AppConfig.enableApiLogging) _createLongPollLogInterceptor(),
+    ]);
+
+    // 创建专用的 RestClient
+    _longPollRestClient = RestClient(_longPollDio);
+    _isLongPollDioInitialized = true;
+  }
+
+  /// 创建长轮询专用的日志拦截器
+  LogInterceptor _createLongPollLogInterceptor() {
+    return LogInterceptor(
+      request: true,
+      requestHeader: true,
+      requestBody: true,
+      responseHeader: true,
+      responseBody: true,
+      error: true,
+      logPrint: (message) {
+        log('🌐 LONGPOLL: $message');
+      },
+    );
+  }
+
+  /// 创建长轮询请求拦截器
+  Interceptor _createLongPollInterceptor() {
+    return InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        // 手动添加认证 Token
+        try {
+          final token = await TokenManager.getAccessToken();
+          if (token != null && token.isNotEmpty) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+        } catch (e) {
+          log('长轮询请求拦截器添加 Token 失败: $e');
+        }
+        handler.next(options);
+      },
+      onError: (error, handler) async {
+        // 处理 401 错误
+        if (error.response?.statusCode == 401) {
+          log('长轮询遇到 401 错误，停止轮询');
+          stopPolling();
+        }
+        handler.next(error);
+      },
+    );
+  }
+
   void _setupAuthListener() {
     _authService.authState.addListener(() {
       final status = _authService.authState.value;
@@ -144,7 +228,7 @@ class ImService extends ChangeNotifier {
   @override
   Future<void> dispose() async {
     await _connectivitySub?.cancel();
-    stopPolling();
+    _cleanupLongPollResources();
     await _imSettingsBox?.close();
     _authService.authState.removeListener(() {}); // 无法移除匿名函数，但这不重要，因为服务通常是单例
     super.dispose();
@@ -159,6 +243,11 @@ class ImService extends ChangeNotifier {
     }
 
     try {
+      // 确保长轮询资源已初始化
+      if (!_isLongPollDioInitialized) {
+        _initializeLongPollDio();
+      }
+
       await _fetchInitialMessages();
       _isLongPollingActive = true;
       _performLongPolling();
@@ -170,9 +259,7 @@ class ImService extends ChangeNotifier {
 
   /// 停止轮询
   void stopPolling() {
-    _isLongPollingActive = false;
-    _longPollTimer?.cancel();
-    _longPollTimer = null;
+    _cleanupLongPollResources();
     log('消息轮询已停止');
   }
 
@@ -218,15 +305,11 @@ class ImService extends ChangeNotifier {
       }
 
       try {
-        final apiClient = ApiClient.instance;
+        // 使用专用的长轮询客户端
+        // 拦截器会自动添加认证 Token，无需手动调用 _updateLongPollAuthToken()
 
-        final pollResponse = await apiClient.execute(
-          () => apiClient.api.messages.getApiMessagesPoll(
-            lastMsgId: _lastReceivedMessageId,
-            timeout: 30,
-          ),
-          operationName: 'LongPoll',
-        );
+        final pollResponse = await _longPollRestClient.messages
+            .getApiMessagesPoll(lastMsgId: _lastReceivedMessageId, timeout: 30);
 
         if (pollResponse.messages.isNotEmpty) {
           _receivedMessages.insertAll(0, pollResponse.messages);
@@ -240,18 +323,49 @@ class ImService extends ChangeNotifier {
         }
       } catch (e) {
         log('长轮询出错: $e');
-        if (e is AuthException ||
+        if (e is DioException) {
+          // 处理 Dio 异常
+          if (e.response?.statusCode == 401 ||
+              e.type == DioExceptionType.badResponse &&
+                  e.response?.statusCode == 401) {
+            log('长轮询检测到未授权，停止轮询');
+            stopPolling();
+          } else if (e.type == DioExceptionType.connectionTimeout ||
+              e.type == DioExceptionType.receiveTimeout ||
+              e.type == DioExceptionType.sendTimeout) {
+            // 长轮询超时是正常的，不要记录为错误
+            log('长轮询超时（正常）');
+          } else if (e.type == DioExceptionType.connectionError) {
+            log('长轮询连接错误，等待重试');
+            await Future.delayed(const Duration(seconds: 2));
+          } else {
+            log('长轮询其他错误，等待重试');
+            await Future.delayed(const Duration(seconds: 2));
+          }
+        } else if (e is AuthException ||
             e.toString().contains('401') ||
             e.toString().contains('Unauthorized')) {
           log('长轮询检测到未授权，停止轮询');
           stopPolling();
-          // 可选：触发登出逻辑，但通常 ApiInterceptor 会处理
         } else {
           // 遇到错误稍微等待一下再重试，避免死循环刷屏
-          await Future.delayed(const Duration(seconds: 5));
+          await Future.delayed(const Duration(seconds: 2));
         }
       }
     });
+  }
+
+  /// 清理长轮询资源
+  void _cleanupLongPollResources() {
+    _longPollTimer?.cancel();
+    _longPollTimer = null;
+    _isLongPollingActive = false;
+    try {
+      _longPollDio.close();
+      _isLongPollDioInitialized = false;
+    } catch (e) {
+      log('关闭长轮询 Dio 实例失败: $e');
+    }
   }
 
   /// 统一的消息获取接口
