@@ -81,7 +81,7 @@ class _LanguagePageState extends State<LanguagePage> {
             Text(
               'language_changed_immediately'.tr(),
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurface.withOpacity(0.6),
+                color: colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           ],
@@ -90,3 +90,4 @@ class _LanguagePageState extends State<LanguagePage> {
     );
   }
 }
+

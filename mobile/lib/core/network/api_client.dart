@@ -4,6 +4,7 @@ import 'package:logger/logger.dart';
 import '../api/rest_client.dart';
 import 'api_interceptor.dart';
 import 'api_exception.dart';
+import '../config/app_config.dart';
 
 /// API 客户端 - 围绕生成的 RestClient 的封装
 /// 提供统一的网络请求接口，处理 Token、错误处理和日志输出
@@ -26,10 +27,10 @@ class ApiClient {
   void _initializeDio() {
     _dio = Dio(
       BaseOptions(
-        baseUrl: _getBaseUrl(),
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 15),
-        sendTimeout: const Duration(seconds: 15),
+        baseUrl: AppConfig.apiBaseUrl,
+        connectTimeout: AppConfig.requestTimeout,
+        receiveTimeout: AppConfig.requestTimeout,
+        sendTimeout: AppConfig.requestTimeout,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -43,7 +44,7 @@ class ApiClient {
     // 添加拦截器
     _dio.interceptors.addAll([
       ApiInterceptor(),
-      if (kDebugMode) _createLogInterceptor(),
+      if (kDebugMode && AppConfig.enableApiLogging) _createLogInterceptor(),
     ]);
   }
 
@@ -60,16 +61,6 @@ class ApiClient {
         _logger.d('🌐 DIO: $message');
       },
     );
-  }
-
-  /// 获取基础 URL
-  String _getBaseUrl() {
-    const baseUrl = String.fromEnvironment(
-      'API_BASE_URL',
-      defaultValue: 'https://api.205716.xyz',
-      // defaultValue: 'http://localhost:8000',
-    );
-    return baseUrl;
   }
 
   /// 获取 Dio 实例

@@ -648,9 +648,7 @@ class BluetoothDeviceService {
 
     // 保存新绑定
     final deviceName = newDevice.platformName;
-    final safeDeviceName = deviceName.isNotEmpty
-        ? deviceName
-        : '未知设备';
+    final safeDeviceName = deviceName.isNotEmpty ? deviceName : '未知设备';
     await prefs.setString(_bindingPrefsKey, newDevice.remoteId.toString());
     await prefs.setString('${_bindingPrefsKey}_name', safeDeviceName);
 

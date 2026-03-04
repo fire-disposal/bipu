@@ -3,8 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/snackbar_manager.dart';
-import '../../core/network/network.dart';
-import '../../core/network/api_exception.dart';
+
+import '../../core/utils/error_message_mapper.dart';
 
 class UserLoginPage extends StatefulWidget {
   const UserLoginPage({super.key});
@@ -18,6 +18,8 @@ class _UserLoginPageState extends State<UserLoginPage>
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  String? _errorMessage;
+  bool _showPassword = false;
 
   late AnimationController _animationController;
 
@@ -44,39 +46,52 @@ class _UserLoginPageState extends State<UserLoginPage>
     final username = _usernameController.text.trim();
     final password = _passwordController.text;
 
-    if (username.isEmpty || password.isEmpty) {
-      SnackBarManager.showInputWarning('Please enter username and password');
+    // 验证输入
+    if (username.isEmpty) {
+      _showError('enter_username'.tr());
       return;
     }
+    if (password.isEmpty) {
+      _showError('enter_password'.tr());
+      return;
+    }
+
+    // 清除之前的错误消息
+    _clearError();
 
     setState(() => _isLoading = true);
     try {
       await AuthService().login(username, password);
-      if (mounted) context.go('/');
-    } on AuthException catch (e) {
       if (mounted) {
-        SnackBarManager.showError('Authentication failed: ${e.message}');
+        // 登录成功，跳转到首页
+        context.go('/');
       }
-    } on ValidationException catch (e) {
-      String errorMessage =
-          e.errors?.entries.map((entry) => entry.value.toString()).join(', ') ??
-          e.message;
-      if (mounted) SnackBarManager.showError(errorMessage);
-    } on NetworkException catch (e) {
-      if (mounted) SnackBarManager.showNetworkError(e.message);
-    } on ServerException catch (e) {
-      if (mounted) SnackBarManager.showServerError(e.message);
-    } on ParseException catch (e) {
-      if (mounted) {
-        SnackBarManager.showError('Data parsing error: ${e.message}');
-      }
-    } on ApiException catch (e) {
-      if (mounted) SnackBarManager.showError('API error: ${e.message}');
     } catch (e) {
-      if (mounted) SnackBarManager.showError('Login failed: $e');
+      if (mounted) {
+        final errorMessage = ErrorMessageMapper.getMessage(
+          e,
+          isUserFacing: true,
+        );
+        _showError(errorMessage);
+        ErrorMessageMapper.logException(e, 'Login');
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showError(String message) {
+    setState(() => _errorMessage = message);
+    // 同时显示 Snackbar
+    SnackBarManager.showError(message);
+  }
+
+  void _clearError() {
+    setState(() => _errorMessage = null);
+  }
+
+  void _togglePasswordVisibility() {
+    setState(() => _showPassword = !_showPassword);
   }
 
   @override
@@ -112,29 +127,73 @@ class _UserLoginPageState extends State<UserLoginPage>
                     ),
                     const SizedBox(height: 48),
 
-                    // 4. 输入框组
+                    // 4. 错误消息显示
+                    if (_errorMessage != null)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 24),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.red.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: Colors.red,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _errorMessage!,
+                                style: const TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: _clearError,
+                              child: const Icon(
+                                Icons.close,
+                                color: Colors.red,
+                                size: 18,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // 5. 输入框组
                     _buildInputField(
                       controller: _usernameController,
-                      label: 'Username',
+                      label: 'username'.tr(),
                       icon: Icons.person_outline_rounded,
                     ),
                     const SizedBox(height: 16),
                     _buildInputField(
                       controller: _passwordController,
-                      label: 'Password',
+                      label: 'password'.tr(),
                       icon: Icons.lock_outline_rounded,
                       isPassword: true,
                     ),
                     const SizedBox(height: 32),
 
-                    // 5. 登录按钮
+                    // 6. 登录按钮
                     _buildLoginButton(),
 
                     const SizedBox(height: 20),
                     TextButton(
-                      onPressed: () => context.push('/register'),
+                      onPressed: _isLoading
+                          ? null
+                          : () => context.push('/register'),
                       child: Text(
-                        'Don\'t have an account? Register',
+                        'no_account_register'.tr(),
                         style: TextStyle(
                           color: Theme.of(
                             context,
@@ -226,6 +285,8 @@ class _UserLoginPageState extends State<UserLoginPage>
     required IconData icon,
     bool isPassword = false,
   }) {
+    final bool isPasswordField = isPassword;
+
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface.withOpacity(0.7),
@@ -233,10 +294,20 @@ class _UserLoginPageState extends State<UserLoginPage>
       ),
       child: TextField(
         controller: controller,
-        obscureText: isPassword,
+        obscureText: isPasswordField && !_showPassword,
+        enabled: !_isLoading,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon),
+          suffixIcon: isPasswordField
+              ? IconButton(
+                  icon: Icon(
+                    _showPassword ? Icons.visibility : Icons.visibility_off,
+                    size: 20,
+                  ),
+                  onPressed: _togglePasswordVisibility,
+                )
+              : null,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
@@ -284,9 +355,9 @@ class _UserLoginPageState extends State<UserLoginPage>
                   strokeWidth: 2.5,
                 ),
               )
-            : const Text(
-                'Login',
-                style: TextStyle(
+            : Text(
+                'login_button'.tr(),
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,

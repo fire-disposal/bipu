@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-import redis.asyncio as redis
+import redis.asyncio as redis  # 这个导入是正确的
 from app.core.config import settings
 from app.core.logging import get_logger
 
@@ -45,13 +45,14 @@ async def get_redis():
     global redis_client
     if redis_client is None:
         try:
-            redis_client = redis.from_url(
+            # 创建Redis连接 - 使用正确的异步方式
+            redis_client = redis.Redis.from_url(
                 settings.REDIS_URL,
                 encoding="utf-8",
                 decode_responses=True
             )
             # 测试连接
-            await redis_client.ping()
+            await redis_client.ping() # type: ignore
             logger.info("✅ Redis连接成功")
             return redis_client
         except Exception as e:
@@ -78,8 +79,25 @@ class MemoryCacheWrapper:
             asyncio.create_task(expire())
         return True
 
-    async def delete(self, key):
-        return memory_cache.pop(key, None) is not None
+    async def setex(self, key, expire, value):
+        """设置键值并指定过期时间（秒）"""
+        memory_cache[key] = value
+        if expire:
+            import asyncio
+            async def expire_task():
+                await asyncio.sleep(expire)
+                memory_cache.pop(key, None)
+            asyncio.create_task(expire_task())
+        return True
+
+    async def delete(self, *keys):
+        """删除一个或多个键"""
+        deleted = 0
+        for key in keys:
+            if key in memory_cache:
+                del memory_cache[key]
+                deleted += 1
+        return deleted
 
     async def exists(self, key):
         return key in memory_cache
@@ -99,13 +117,34 @@ class MemoryCacheWrapper:
         # 内存缓存不支持TTL，返回-1
         return -1 if key in memory_cache else -2
 
-    async def ping(self):
-        return True
+    async def ping(self) -> str:
+        return "PONG"
 
     async def incr(self, key):
         current = int(memory_cache.get(key, 0))
         memory_cache[key] = current + 1
         return current + 1
+
+    async def publish(self, channel, message):
+        """发布消息到频道（内存缓存中模拟）"""
+        # 在内存缓存中模拟发布，实际项目中可能需要更复杂的实现
+        logger.debug(f"MemoryCache: Publishing to channel {channel}: {message}")
+        return 1  # 返回接收消息的客户端数量
+
+    async def scan(self, cursor, match=None, count=None):
+        """扫描键（内存缓存中模拟）"""
+        # 在内存缓存中模拟SCAN
+        keys = list(memory_cache.keys())
+        if match:
+            import fnmatch
+            keys = [k for k in keys if fnmatch.fnmatch(k, match)]
+
+        # 简单的分页模拟
+        if count and count < len(keys):
+            keys = keys[:count]
+
+        # 返回 (next_cursor, keys)，next_cursor为0表示结束
+        return 0, keys
 
     async def close(self):
         pass
@@ -184,13 +223,14 @@ async def init_redis():
 
         logger.info(f"🔗 尝试连接 Redis: {safe_redis_url}")
 
-        redis_client = redis.from_url(
+        # 修复：使用 redis.Redis.from_url 而不是 redis.from_url
+        redis_client = redis.Redis.from_url(
             settings.REDIS_URL,
             encoding="utf-8",
             decode_responses=True
         )
         # 测试连接
-        await redis_client.ping()
+        await redis_client.ping() # type: ignore
         logger.info("✅ Redis连接成功")
     except Exception as e:
         logger.warning(f"⚠️ Redis连接失败，使用内存缓存: {e}")

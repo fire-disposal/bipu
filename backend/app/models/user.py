@@ -65,6 +65,6 @@ class User(Base):
     @property
     def avatar_url(self) -> Optional[str]:
         """获取头像URL"""
-        if self.avatar_data:
+        if self.avatar_data is not None:
             return f"/api/users/{self.bipupu_id}/avatar"
         return None

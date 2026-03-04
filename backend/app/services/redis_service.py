@@ -9,7 +9,7 @@ logger = get_logger(__name__)
 
 class RedisService:
     """Redis服务类，封装Redis操作"""
-    
+
     @staticmethod
     async def publish_message(message: Message):
         """发布新消息通知"""
@@ -26,19 +26,19 @@ class RedisService:
                     "sender_id": message.sender_bipupu_id,
                     "receiver_id": message.receiver_bipupu_id,
                     "content": message.content,
-                    "message_type": message.message_type if message.message_type else None,
-                    "created_at": message.created_at.isoformat() if message.created_at else None,
+                    "message_type": str(message.message_type) if message.message_type is not None else None,
+                    "created_at": message.created_at.isoformat() if message.created_at is not None else None,
                     "pattern": message.pattern
                 }
             }
-            
+
             await redis.publish(channel, json.dumps(data))
             logger.info(f"Published message {message.id} to channel {channel}")
-            
+
             # 同时也为发送者发布（用于多端同步）
             sender_channel = f"user:{message.sender_bipupu_id}:messages"
             await redis.publish(sender_channel, json.dumps(data))
-            
+
         except Exception as e:
             logger.error(f"Failed to publish message to Redis: {e}")
 
@@ -105,7 +105,7 @@ class RedisService:
             value = await redis.get(key)
             if value is None:
                 return None
-            
+
             # 尝试反序列化，如果失败则返回原始值
             try:
                 return pickle.loads(value) if isinstance(value, bytes) else value
@@ -243,7 +243,7 @@ class RedisService:
     @staticmethod
     async def delete_keys_by_pattern(pattern: str) -> int:
         """按模式删除多个key（使用SCAN迭代，避免阻塞）
-        
+
         用途: 缓存失效时按pattern删除多个相关key
         示例: delete_keys_by_pattern("user:123:messages:*")
         """
@@ -251,14 +251,14 @@ class RedisService:
             redis = await get_redis()
             deleted_count = 0
             cursor = 0
-            
+
             while True:
                 cursor, keys = await redis.scan(cursor, match=pattern, count=100)
                 if keys:
                     deleted_count += await redis.delete(*keys)
                 if cursor == 0:
                     break
-            
+
             if deleted_count > 0:
                 logger.debug(f"Deleted {deleted_count} keys matching pattern {pattern}")
             return deleted_count

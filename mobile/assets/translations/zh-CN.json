@@ -1,4 +1,13 @@
 {
+  "login_title": "登录",
+  "username": "用户名",
+  "password": "密码",
+  "login_button": "登录",
+  "no_account_register": "没有账户？注册",
+  "enter_username": "请输入用户名",
+  "enter_password": "请输入密码",
+  "admin_login_title": "Bipupu 管理后台",
+  "admin_access_required": "需要管理员权限才能访问",
   "clear_binding": "清除绑定",
   "clear_bluetooth_binding": "清除蓝牙设备绑定信息",
   "confirm_clear_binding": "确定要清除所有蓝牙设备绑定信息吗？清除后需要重新绑定设备才能使用蓝牙功能。",

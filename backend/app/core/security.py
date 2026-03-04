@@ -169,7 +169,7 @@ async def get_current_active_user(
     current_user: User = Depends(get_current_user)
 ) -> User:
     """获取当前活跃用户"""
-    if not current_user.is_active:
+    if not bool(current_user.is_active):
         raise HTTPException(status_code=400, detail="用户未激活")
     return current_user
 
@@ -178,7 +178,7 @@ async def get_current_superuser(
     current_user: User = Depends(get_current_user)
 ) -> User:
     """获取当前超级用户"""
-    if not current_user.is_superuser:
+    if not bool(current_user.is_superuser):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="权限不足"
@@ -233,7 +233,7 @@ async def get_current_user_web(
             return None
 
         return user
-            
+
     except Exception as e:
         logger.warning(f"Error getting user from cookie: {e}")
         return None
@@ -245,7 +245,7 @@ async def get_current_superuser_web(
     """Web界面获取当前超级用户"""
     if not current_user:
         raise AdminAuthException("未登录")
-    if not current_user.is_superuser:
+    if not bool(current_user.is_superuser):
         raise AdminAuthException("权限不足")
     return current_user
 

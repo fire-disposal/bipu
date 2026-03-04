@@ -1,4 +1,13 @@
 {
+  "login_title": "Login",
+  "username": "Username",
+  "password": "Password",
+  "login_button": "Login",
+  "no_account_register": "Don't have an account? Register",
+  "enter_username": "Please enter username",
+  "enter_password": "Please enter password",
+  "admin_login_title": "Bipupu Admin Panel",
+  "admin_access_required": "Admin access required",
   "clear_binding": "Clear Binding",
   "clear_bluetooth_binding": "Clear Bluetooth device binding",
   "confirm_clear_binding": "Are you sure you want to clear all Bluetooth device binding information? After clearing, you need to rebind the device to use Bluetooth functions.",

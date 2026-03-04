@@ -4,7 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../network/network.dart';
-import 'bluetooth_device_service.dart';
+import 'auth_service.dart';
 
 /// 统一的 IM 服务 - 优化重写版本（单长轮询）
 class ImService extends ChangeNotifier {
@@ -12,9 +12,9 @@ class ImService extends ChangeNotifier {
   factory ImService() => _instance;
   ImService._internal();
 
-  final BluetoothDeviceService _bluetoothService = BluetoothDeviceService();
   final Connectivity _connectivity = Connectivity();
   StreamSubscription<dynamic>? _connectivitySub;
+  final AuthService _authService = AuthService();
 
   Timer? _longPollTimer;
   bool _isLongPollingActive = false;
@@ -22,6 +22,8 @@ class ImService extends ChangeNotifier {
   List<dynamic> _receivedMessages = [];
   List<dynamic> _sentMessages = [];
   int _unreadCount = 0;
+  int _unreadSystemCount = 0;
+  int _unreadNormalCount = 0;
 
   int _lastReceivedMessageId = 0;
   int _lastSentMessageId = 0;
@@ -36,6 +38,8 @@ class ImService extends ChangeNotifier {
   List<dynamic> get receivedMessages => List.unmodifiable(_receivedMessages);
   List<dynamic> get sentMessages => List.unmodifiable(_sentMessages);
   int get unreadCount => _unreadCount;
+  int get unreadSystemCount => _unreadSystemCount;
+  int get unreadNormalCount => _unreadNormalCount;
 
   /// 获取所有已读消息ID集合
   Set<int> getReadMessageIds() {
@@ -101,16 +105,30 @@ class ImService extends ChangeNotifier {
       _lastReceivedMessageId =
           _imSettingsBox?.get(_lastReceivedMsgIdKey, defaultValue: 0) ?? 0;
       _setupConnectivityListener();
+      _setupAuthListener();
       log('IM Service 初始化完成');
     } catch (e) {
       log('IM Service 初始化失败: $e');
     }
   }
 
+  void _setupAuthListener() {
+    _authService.authState.addListener(() {
+      final status = _authService.authState.value;
+      if (status == AuthStatus.authenticated) {
+        if (_isOnline) {
+          startPolling();
+        }
+      } else {
+        stopPolling();
+      }
+    });
+  }
+
   void _setupConnectivityListener() {
     _connectivitySub?.cancel();
     _connectivitySub = _connectivity.onConnectivityChanged.listen((results) {
-      final isOnlineNow = results != ConnectivityResult.none;
+      final isOnlineNow = !results.contains(ConnectivityResult.none);
 
       _isOnline = isOnlineNow;
       log('网络状态: ${_isOnline ? "在线" : "离线"}');
@@ -128,12 +146,15 @@ class ImService extends ChangeNotifier {
     await _connectivitySub?.cancel();
     stopPolling();
     await _imSettingsBox?.close();
+    _authService.authState.removeListener(() {}); // 无法移除匿名函数，但这不重要，因为服务通常是单例
     super.dispose();
   }
 
   /// 启动轮询
   Future<void> startPolling() async {
-    if (!_isOnline || _isLongPollingActive) {
+    if (!_isOnline ||
+        _isLongPollingActive ||
+        _authService.authState.value != AuthStatus.authenticated) {
       return;
     }
 
@@ -171,11 +192,9 @@ class ImService extends ChangeNotifier {
 
       if (inboxResponse.messages.isNotEmpty) {
         _receivedMessages = List.from(inboxResponse.messages);
-        final maxId =
-            inboxResponse.messages
-                    .map((m) => m.id)
-                    .reduce((a, b) => a > b ? a : b)
-                as int;
+        final maxId = inboxResponse.messages
+            .map((m) => m.id)
+            .reduce((a, b) => a > b ? a : b);
         _updateLastReceivedMessageId(maxId);
         _updateUnreadCount();
       }
@@ -212,17 +231,25 @@ class ImService extends ChangeNotifier {
         if (pollResponse.messages.isNotEmpty) {
           _receivedMessages.insertAll(0, pollResponse.messages);
 
-          final maxId =
-              pollResponse.messages
-                      .map((m) => m.id)
-                      .reduce((a, b) => a > b ? a : b)
-                  as int;
+          final maxId = pollResponse.messages
+              .map((m) => m.id)
+              .reduce((a, b) => a > b ? a : b);
           _updateLastReceivedMessageId(maxId);
           _updateUnreadCount();
           notifyListeners();
         }
       } catch (e) {
         log('长轮询出错: $e');
+        if (e is AuthException ||
+            e.toString().contains('401') ||
+            e.toString().contains('Unauthorized')) {
+          log('长轮询检测到未授权，停止轮询');
+          stopPolling();
+          // 可选：触发登出逻辑，但通常 ApiInterceptor 会处理
+        } else {
+          // 遇到错误稍微等待一下再重试，避免死循环刷屏
+          await Future.delayed(const Duration(seconds: 5));
+        }
       }
     });
   }
@@ -250,11 +277,9 @@ class ImService extends ChangeNotifier {
         if (page == 1) {
           _sentMessages = List.from(response.messages);
           if (response.messages.isNotEmpty) {
-            final maxId =
-                response.messages
-                        .map((m) => m.id)
-                        .reduce((a, b) => a > b ? a : b)
-                    as int;
+            final maxId = response.messages
+                .map((m) => m.id)
+                .reduce((a, b) => a > b ? a : b);
             _updateLastSentMessageId(maxId);
           }
           notifyListeners();
@@ -279,11 +304,9 @@ class ImService extends ChangeNotifier {
         if (page == 1) {
           _receivedMessages = List.from(response.messages);
           if (response.messages.isNotEmpty) {
-            final maxId =
-                response.messages
-                        .map((m) => m.id)
-                        .reduce((a, b) => a > b ? a : b)
-                    as int;
+            final maxId = response.messages
+                .map((m) => m.id)
+                .reduce((a, b) => a > b ? a : b);
             _updateLastReceivedMessageId(maxId);
           }
           _updateUnreadCount();
@@ -492,9 +515,17 @@ class ImService extends ChangeNotifier {
 
   void _updateUnreadCount() {
     final readIds = getReadMessageIds();
-    _unreadCount = _receivedMessages
+    final unreadMessages = _receivedMessages
         .where((m) => !readIds.contains(m.id as int))
+        .toList();
+
+    _unreadCount = unreadMessages.length;
+
+    _unreadSystemCount = unreadMessages
+        .where((m) => m.messageType == MessageType.system)
         .length;
+
+    _unreadNormalCount = _unreadCount - _unreadSystemCount;
   }
 
   void _updateLastReceivedMessageId(int newId) {

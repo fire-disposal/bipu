@@ -1,7 +1,5 @@
 /// 消息业务逻辑层 - 统一处理消息相关的业务逻辑
 /// 作用：解耦 UI 层和 API 层，提供一致的错误处理和验证
-library message_service;
-
 import 'package:bipupu/core/network/network.dart';
 import 'dart:developer' as developer;
 

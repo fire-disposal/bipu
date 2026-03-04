@@ -11,6 +11,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from typing import Optional
+import time
 
 from app.db.database import get_db
 from app.models.user import User
@@ -209,12 +210,13 @@ async def refresh_token(
         if await RedisService.is_token_blacklisted(token_data.refresh_token):
             raise ValidationException("令牌已失效")
 
-        # 将旧的刷新令牌加入黑名单
-        token_exp = payload.get("exp", 0)
-        current_time = timedelta(seconds=token_exp)
+        # 将旧的刷新令牌加入黑名单 - 使用正确的 TTL 计算
+        token_exp = payload.get("exp", 0)  # Unix 时间戳（秒）
+        current_timestamp = int(time.time())
+        ttl = max(0, token_exp - current_timestamp)  # 计算剩余有效期
         await RedisService.add_token_to_blacklist(
             token_data.refresh_token,
-            int(current_time.total_seconds())
+            ttl
         )
 
         # 创建新的令牌
@@ -270,18 +272,16 @@ async def logout_user(
     try:
         token = credentials.credentials
 
-        # 将令牌加入黑名单
+        # 将令牌加入黑名单 - 使用正确的 TTL 计算
         payload = decode_token(token)
         if payload and "exp" in payload:
-            token_exp = payload.get("exp", 0)
-            current_time = timedelta(seconds=token_exp)
-            await RedisService.add_token_to_blacklist(
-                token,
-                int(current_time.total_seconds())
-            )
+            token_exp = payload.get("exp", 0)  # Unix 时间戳（秒）
+            current_timestamp = int(time.time())
+            ttl = max(0, token_exp - current_timestamp)  # 计算剩余有效期
+            await RedisService.add_token_to_blacklist(token, ttl)
 
         logger.info("用户登出成功")
-        return SuccessResponse(message="登出成功")
+        return SuccessResponse(message="登出成功", data=None)
 
     except Exception as e:
         logger.error(f"用户登出失败: {e}")
@@ -321,7 +321,7 @@ async def verify_token(
         if await RedisService.is_token_blacklisted(token):
             raise ValidationException("令牌已失效")
 
-        return SuccessResponse(message="令牌有效")
+        return SuccessResponse(message="令牌有效", data=None)
 
     except ValidationException as e:
         raise HTTPException(status_code=401, detail=str(e))

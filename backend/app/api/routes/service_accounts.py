@@ -29,9 +29,8 @@ router = APIRouter()
 async def list_service_accounts(
     skip: int = 0,
     limit: int = 100,
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-):
+) -> ServiceAccountList:
     """获取所有活跃的服务号列表
 
     参数：
@@ -41,6 +40,8 @@ async def list_service_accounts(
     返回：
     - items: 服务号列表
     - total: 活跃服务号总数
+    - page: 当前页码
+    - page_size: 每页数量
 
     注意：只返回 is_active=True 的服务号
     """
@@ -53,7 +54,19 @@ async def list_service_accounts(
     )
     total = db.query(ServiceAccount).filter(ServiceAccount.is_active == True).count()
 
-    return {"items": services, "total": total}
+    # 计算页码
+    page = (skip // limit) + 1 if limit > 0 else 1
+    page_size = limit
+
+    # 转换为响应模型
+    service_responses = [ServiceAccountResponse.model_validate(service) for service in services]
+
+    return ServiceAccountList(
+        items=service_responses,
+        total=total,
+        page=page,
+        page_size=page_size
+    )
 
 
 @router.get("/{name}", response_model=ServiceAccountResponse, tags=["服务号"])
@@ -99,13 +112,13 @@ async def get_service_avatar(request: Request, name: str, db: Session = Depends(
     from app.services.redis_service import RedisService
 
     service = db.query(ServiceAccount).filter(ServiceAccount.name == name).first()
-    if not service or not service.avatar_data:
+    if not service or service.avatar_data is None:
         # 根据用户反馈：前端有自动处理无头像并使用首字母显示的方案
         # 没有头像没有关系，无需处理默认头像配置
         raise HTTPException(status_code=404, detail="Avatar not found")
 
     # 生成ETag - 使用时间戳
-    updated_at_timestamp = service.updated_at.timestamp() if service.updated_at else 0
+    updated_at_timestamp = service.updated_at.timestamp() if service.updated_at is not None else 0
     etag_input = f"{updated_at_timestamp}".encode()
     etag = StorageService.get_avatar_etag(service.avatar_data, etag_input)
 
@@ -148,12 +161,14 @@ async def get_service_avatar(request: Request, name: str, db: Session = Depends(
 @router.get("/subscriptions/", response_model=UserSubscriptionList)
 async def get_user_subscriptions(
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
-):
+) -> UserSubscriptionList:
     """获取当前用户订阅的所有服务号列表
 
     返回：
     - subscriptions: 订阅的服务号列表，包含服务信息和订阅设置
     - total: 订阅的服务号总数
+    - page: 当前页码
+    - page_size: 每页数量
 
     包含信息：
     - 服务号基本信息（名称、描述、头像等）
@@ -187,7 +202,7 @@ async def get_user_subscriptions(
             if setting.push_time:
                 push_time_str = setting.push_time.strftime("%H:%M")
                 push_time_source = PushTimeSource.SUBSCRIPTION
-            elif service.default_push_time:
+            elif service.default_push_time is not None:
                 push_time_str = service.default_push_time.strftime("%H:%M")
                 push_time_source = PushTimeSource.SERVICE_DEFAULT
             else:
@@ -197,7 +212,7 @@ async def get_user_subscriptions(
                 service=service,
                 settings=SubscriptionSettingsResponse(
                     service_name=str(service.name),
-                    service_description=str(service.description) if service.description else None,
+                    service_description=str(service.description) if service.description is not None else None,
                     push_time=push_time_str,
                     is_enabled=setting.is_enabled if setting.is_enabled is not None else True,
                     subscribed_at=setting.created_at,
@@ -207,7 +222,12 @@ async def get_user_subscriptions(
             )
             subscriptions.append(subscription_response)
 
-    return {"subscriptions": subscriptions, "total": len(subscriptions)}
+    return UserSubscriptionList(
+        subscriptions=subscriptions,
+        total=len(subscriptions),
+        page=1,
+        page_size=len(subscriptions) if len(subscriptions) > 0 else 1
+    )
 
 
 @router.get("/{name}/settings", response_model=SubscriptionSettingsResponse)
@@ -260,13 +280,13 @@ async def get_subscription_settings(
     if result.push_time:
         push_time_str = result.push_time.strftime("%H:%M")
         push_time_source = PushTimeSource.SUBSCRIPTION
-    elif service.default_push_time:
+    elif service.default_push_time is not None:
         push_time_str = service.default_push_time.strftime("%H:%M")
         push_time_source = PushTimeSource.SERVICE_DEFAULT
 
     return SubscriptionSettingsResponse(
         service_name=str(service.name),
-        service_description=str(service.description) if service.description else None,
+        service_description=str(service.description) if service.description is not None else None,
         push_time=push_time_str,
         is_enabled=result.is_enabled if result.is_enabled is not None else True,
         subscribed_at=result.created_at,
@@ -345,7 +365,7 @@ async def update_subscription_settings(
         result = db.execute(stmt)
         db.commit()
 
-        if result is None or (hasattr(result, 'rowcount') and result.rowcount == 0):
+        if result is None:
             raise HTTPException(status_code=404, detail="Subscription not found")
 
         # 获取更新后的设置
@@ -368,7 +388,7 @@ async def update_subscription_settings(
         if updated_result and updated_result.push_time:
             push_time_str = updated_result.push_time.strftime("%H:%M")
             push_time_source = PushTimeSource.SUBSCRIPTION
-        elif service.default_push_time:
+        elif service.default_push_time is not None:
             push_time_str = service.default_push_time.strftime("%H:%M")
             push_time_source = PushTimeSource.SERVICE_DEFAULT
 
@@ -376,7 +396,7 @@ async def update_subscription_settings(
 
         return SubscriptionSettingsResponse(
             service_name=str(service.name),
-            service_description=str(service.description) if service.description else None,
+            service_description=str(service.description) if service.description is not None else None,
             push_time=push_time_str,
             is_enabled=(updated_result.is_enabled if updated_result.is_enabled is not None else True) if updated_result else True,
             subscribed_at=updated_result.created_at if updated_result else datetime.now(),
@@ -479,7 +499,7 @@ async def subscribe_service_account(
             "push_time": push_time_to_use,
             "is_enabled": settings_update.is_enabled if settings_update else True,
             "push_time_source": "user_provided" if settings_update and settings_update.push_time else
-                              "service_default" if service.default_push_time else "none"
+                              "service_default" if service.default_push_time is not None else "none"
         }
     except IntegrityError as e:
         db.rollback()
