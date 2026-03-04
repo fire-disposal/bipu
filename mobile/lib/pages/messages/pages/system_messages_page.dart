@@ -3,6 +3,7 @@ import 'package:bipupu/core/network/network.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/im_service.dart';
+import '../../../core/widgets/user_avatar.dart';
 
 class SystemMessagesPage extends StatefulWidget {
   const SystemMessagesPage({super.key});
@@ -44,26 +45,12 @@ class _SystemMessagesPageState extends State<SystemMessagesPage> {
 
   /// 构建服务号头像
   Widget _buildServiceAvatar(ServiceAccountResponse service) {
-    if (service.avatarUrl != null && service.avatarUrl!.isNotEmpty) {
-      final avatarUrl = service.avatarUrl!.startsWith('http')
-          ? service.avatarUrl!
-          : '${ApiClient.instance.dio.options.baseUrl}${service.avatarUrl}';
-
-      return CircleAvatar(
-        radius: 24,
-        backgroundImage: NetworkImage(avatarUrl),
-        onBackgroundImageError: (exception, stackTrace) {
-          debugPrint('Failed to load avatar: $exception');
-        },
-      );
-    }
-    return CircleAvatar(
+    return UserAvatar(
+      avatarUrl: service.avatarUrl,
+      displayName: service.name,
       radius: 24,
       backgroundColor: Colors.orange.withValues(alpha: 0.2),
-      child: Text(
-        service.name.isNotEmpty ? service.name[0].toUpperCase() : '?',
-        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
-      ),
+      foregroundColor: Colors.orange,
     );
   }
 

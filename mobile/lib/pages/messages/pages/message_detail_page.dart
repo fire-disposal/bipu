@@ -7,6 +7,7 @@ import '../../../../core/api/models/message_response.dart';
 import '../../../../core/api/models/contact_create.dart';
 import '../../../../core/api/models/block_user_request.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/widgets/user_avatar.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../pages/pager/widgets/waveform_visualization_widget.dart';
 
@@ -192,23 +193,6 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
     // TODO: 从联系人缓存获取发送者信息，暂时使用消息中的 ID
     final displayName = msg.senderBipupuId;
 
-    // 根据是否为服务号选择不同的头像加载方式
-    String? avatarUrl;
-    if (isServiceAccount) {
-      // 服务号头像使用特殊接口
-      avatarUrl = '/api/service_accounts/${msg.senderBipupuId}/avatar';
-    } else {
-      // 普通用户头像使用用户接口
-      avatarUrl = '/api/users/users/${msg.senderBipupuId}/avatar';
-    }
-
-    // 拼接完整的头像 URL（avatar_url 可能是相对路径）
-    final fullAvatarUrl = avatarUrl != null && avatarUrl.isNotEmpty
-        ? (avatarUrl.startsWith('http')
-              ? avatarUrl
-              : '${ApiClient.instance.dio.options.baseUrl}$avatarUrl')
-        : null;
-
     return Scaffold(
       appBar: AppBar(title: Text('message_detail_title'.tr()), elevation: 0),
       body: SingleChildScrollView(
@@ -239,32 +223,10 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                         onTap: () {
                           context.push('/user/detail/${msg.senderBipupuId}');
                         },
-                        child: CircleAvatar(
+                        child: UserAvatar(
+                          bipupuId: msg.senderBipupuId,
+                          displayName: displayName,
                           radius: 32,
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                          backgroundImage: fullAvatarUrl != null
-                              ? NetworkImage(fullAvatarUrl)
-                              : null,
-                          onBackgroundImageError: fullAvatarUrl != null
-                              ? (exception, stackTrace) {
-                                  // 头像加载失败时，showChild 会自动显示首字母
-                                  debugPrint(
-                                    '头像加载失败: $fullAvatarUrl, 错误: $exception',
-                                  );
-                                }
-                              : null,
-                          child: Text(
-                            displayName.isNotEmpty
-                                ? displayName.substring(0, 1).toUpperCase()
-                                : '?',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: _onSurfaceColor,
-                            ),
-                          ),
                         ),
                       ),
                       const SizedBox(width: 16),

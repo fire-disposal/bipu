@@ -3,12 +3,12 @@ import 'dart:io';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import '../../../../core/services/auth_service.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_exception.dart';
+import '../../../../core/widgets/user_avatar.dart';
 import '../../../../core/api/models/user_update.dart';
 import '../../../../core/api/models/gender.dart';
 import '../../../../core/services/snackbar_manager.dart';
@@ -217,25 +217,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
             Center(
               child: Stack(
                 children: [
-                  CircleAvatar(
+                  UserAvatar(
+                    avatarUrl: _avatarUrl,
                     radius: 50,
                     backgroundColor: Theme.of(
                       context,
                     ).primaryColor.withOpacity(0.1),
-                    backgroundImage: _avatarUrl != null
-                        ? CachedNetworkImageProvider(
-                            _avatarUrl!.startsWith('http')
-                                ? _avatarUrl!
-                                : '${ApiClient.instance.dio.options.baseUrl}$_avatarUrl',
-                          )
-                        : null,
-                    child: _avatarUrl == null
-                        ? Icon(
-                            Icons.person,
-                            size: 50,
-                            color: Theme.of(context).primaryColor,
-                          )
-                        : null,
+                    fallbackIcon: Icon(
+                      Icons.person,
+                      size: 50,
+                      color: Theme.of(context).primaryColor,
+                    ),
                   ),
                   Positioned(
                     bottom: 0,

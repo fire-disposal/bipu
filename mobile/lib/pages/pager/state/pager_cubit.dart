@@ -220,9 +220,9 @@ class PagerCubit extends Cubit<PagerState> {
       // ✅ Bug 2 修复: 每轮录音开始前清除波形处理器，防止跨轮数据累积
       _waveformProcessor.clear();
 
-      // 更新状态：开始录音
+      // 更新状态：先清理显示相关字段（真正的 isWaiting 会在录音实际开始时设置）
       currentState = currentState.copyWith(
-        isWaitingForUserInput: true,
+        isWaitingForUserInput: false,
         waveformData: [],
         asrTranscript: '',
         isSilenceDetected: false,
@@ -231,7 +231,6 @@ class PagerCubit extends Cubit<PagerState> {
 
       final userText = await _voiceAssistant.recordAndRecognize(
         maxDuration: const Duration(seconds: 30),
-        silenceTimeout: const Duration(seconds: 5),
         onVolumeChanged: (volume) {
           _waveformProcessor.addVolumeData(volume);
           if (state is InCallState) {
@@ -244,6 +243,13 @@ class PagerCubit extends Cubit<PagerState> {
           if (state is InCallState) {
             final current = state as InCallState;
             emit(current.copyWith(asrTranscript: interim));
+          }
+        },
+        onStarted: () {
+          // 录音真正开始，激活等待状态与声纹特效
+          if (state is InCallState) {
+            final cs = state as InCallState;
+            emit(cs.copyWith(isWaitingForUserInput: true));
           }
         },
       );
@@ -353,7 +359,6 @@ class PagerCubit extends Cubit<PagerState> {
 
       final confirmText = await _voiceAssistant.recordAndRecognize(
         maxDuration: const Duration(seconds: 10),
-        silenceTimeout: const Duration(seconds: 2),
         onVolumeChanged: (volume) {
           _waveformProcessor.addVolumeData(volume);
           if (state is InCallState) {

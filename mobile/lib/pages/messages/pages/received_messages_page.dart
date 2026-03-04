@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/im_service.dart';
+import '../../../core/widgets/user_avatar.dart';
 
 class ReceivedMessagesPage extends StatefulWidget {
   const ReceivedMessagesPage({super.key});
@@ -178,22 +179,9 @@ class _ReceivedMessagesPageState extends State<ReceivedMessagesPage> {
                           children: [
                             Stack(
                               children: [
-                                CircleAvatar(
+                                UserAvatar(
+                                  bipupuId: msg.senderBipupuId,
                                   radius: 24,
-                                  backgroundColor: Theme.of(
-                                    context,
-                                  ).colorScheme.primary.withValues(alpha: 0.2),
-                                  child: Text(
-                                    msg.senderBipupuId
-                                        .substring(0, 1)
-                                        .toUpperCase(),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                    ),
-                                  ),
                                 ),
                                 if (!isRead)
                                   Positioned(

@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/services.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/bluetooth_device_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../../../core/network/api_client.dart';
+import '../../../core/widgets/user_avatar.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -41,23 +40,16 @@ class ProfilePage extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  CircleAvatar(
+                  UserAvatar(
+                    avatarUrl: user?.avatarUrl,
+                    displayName: user?.nickname ?? user?.username,
                     radius: 36,
                     backgroundColor: Colors.white,
-                    backgroundImage: user?.avatarUrl != null
-                        ? CachedNetworkImageProvider(
-                            user!.avatarUrl!.startsWith('http')
-                                ? user.avatarUrl!
-                                : '${ApiClient.instance.dio.options.baseUrl}${user.avatarUrl}',
-                          )
-                        : null,
-                    child: user?.avatarUrl == null
-                        ? Icon(
-                            Icons.person,
-                            size: 36,
-                            color: Theme.of(context).primaryColor,
-                          )
-                        : null,
+                    fallbackIcon: Icon(
+                      Icons.person,
+                      size: 36,
+                      color: Theme.of(context).primaryColor,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
