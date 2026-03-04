@@ -125,11 +125,15 @@ class ImService extends ChangeNotifier {
   /// 初始化专用的长轮询 Dio 实例
   void _initializeLongPollDio() {
     // 创建基础配置
+    // 🆕 关键优化：超时配置与后端对齐
+    // - 后端长轮询超时：30 秒
+    // - 前端 receiveTimeout：45 秒（30 + 15秒网络延迟缓冲）
+    // - 这样可以确保后端返回时前端能正确接收，避免误判为超时
     final baseOptions = BaseOptions(
       baseUrl: AppConfig.apiBaseUrl,
-      connectTimeout: Duration(seconds: 35), // 比服务器超时多5秒
-      receiveTimeout: Duration(seconds: 35), // 比服务器超时多5秒
-      sendTimeout: Duration(seconds: 35),
+      connectTimeout: Duration(seconds: 10), // 连接超时 10 秒
+      receiveTimeout: Duration(seconds: 45), // 接收超时 45 秒（后端 30s + 缓冲 15s）
+      sendTimeout: Duration(seconds: 10), // 发送超时 10 秒
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -292,24 +296,32 @@ class ImService extends ChangeNotifier {
     }
   }
 
-  /// 长轮询
+  /// 长轮询 - 优化版本
+  /// 🆕 关键改进：改为顺序执行而非并发，一次只有一个请求在途
   void _performLongPolling() {
     _longPollTimer?.cancel();
-    _longPollTimer = Timer.periodic(const Duration(milliseconds: 500), (
-      timer,
-    ) async {
-      if (!_isLongPollingActive || !_isOnline) {
-        timer.cancel();
-        _longPollTimer = null;
-        return;
-      }
+    _longPollTimer = null;
 
+    if (_isLongPollingActive && _isOnline) {
+      _startSequentialPolling();
+    }
+  }
+
+  /// 顺序执行长轮询（一次只有一个请求在途）
+  Future<void> _startSequentialPolling() async {
+    int retryCount = 0;
+    const maxRetries = 3;
+    const baseRetryDelay = Duration(seconds: 1);
+
+    while (_isLongPollingActive && _isOnline) {
       try {
-        // 使用专用的长轮询客户端
-        // 拦截器会自动添加认证 Token，无需手动调用 _updateLongPollAuthToken()
-
+        // 🆕 等待前一个请求完成后再发起下一个
+        // 避免请求堆积
         final pollResponse = await _longPollRestClient.messages
             .getApiMessagesPoll(lastMsgId: _lastReceivedMessageId, timeout: 30);
+
+        // 重置重试计数（成功就重置）
+        retryCount = 0;
 
         if (pollResponse.messages.isNotEmpty) {
           _receivedMessages.insertAll(0, pollResponse.messages);
@@ -320,39 +332,81 @@ class ImService extends ChangeNotifier {
           _updateLastReceivedMessageId(maxId);
           _updateUnreadCount();
           notifyListeners();
+          log('✓ 长轮询收到 ${pollResponse.messages.length} 条新消息');
+        } else {
+          // 🆕 超时返回空列表是正常的，继续轮询而无须延迟
+          log('✓ 长轮询超时（无新消息），继续轮询');
         }
+
+        // 继续下一轮轮询（立即发起，不需要延迟）
       } catch (e) {
-        log('长轮询出错: $e');
+        log('✗ 长轮询出错: $e');
+
         if (e is DioException) {
-          // 处理 Dio 异常
+          // 处理特定的 Dio 异常
           if (e.response?.statusCode == 401 ||
-              e.type == DioExceptionType.badResponse &&
-                  e.response?.statusCode == 401) {
-            log('长轮询检测到未授权，停止轮询');
+              (e.type == DioExceptionType.badResponse &&
+                  e.response?.statusCode == 401)) {
+            log('✗ 长轮询检测到未授权（401），停止轮询');
             stopPolling();
+            return;
           } else if (e.type == DioExceptionType.connectionTimeout ||
               e.type == DioExceptionType.receiveTimeout ||
               e.type == DioExceptionType.sendTimeout) {
-            // 长轮询超时是正常的，不要记录为错误
-            log('长轮询超时（正常）');
+            // 🆕 超时是正常的，继续重试（不需要延迟或重试计数）
+            log('⏱ 长轮询超时（正常现象），继续轮询');
+            continue;
           } else if (e.type == DioExceptionType.connectionError) {
-            log('长轮询连接错误，等待重试');
-            await Future.delayed(const Duration(seconds: 2));
+            // 连接错误使用指数退避策略
+            retryCount++;
+            if (retryCount <= maxRetries) {
+              final delay =
+                  baseRetryDelay * (1 << (retryCount - 1)); // 1s, 2s, 4s
+              log('⚠ 连接错误，${delay.inSeconds}秒后重试 ($retryCount/$maxRetries)');
+              await Future.delayed(delay);
+            } else {
+              log('✗ 连接错误达到最大重试次数，停止轮询');
+              stopPolling();
+              return;
+            }
           } else {
-            log('长轮询其他错误，等待重试');
-            await Future.delayed(const Duration(seconds: 2));
+            // 其他 Dio 异常也使用退避
+            retryCount++;
+            if (retryCount <= maxRetries) {
+              final delay = baseRetryDelay * (1 << (retryCount - 1));
+              log(
+                '⚠ 轮询出错，${delay.inSeconds}秒后重试 ($retryCount/$maxRetries): ${e.type}',
+              );
+              await Future.delayed(delay);
+            } else {
+              log('✗ 轮询错误达到最大重试次数，停止轮询');
+              stopPolling();
+              return;
+            }
           }
         } else if (e is AuthException ||
             e.toString().contains('401') ||
             e.toString().contains('Unauthorized')) {
-          log('长轮询检测到未授权，停止轮询');
+          log('✗ 长轮询检测到未授权，停止轮询');
           stopPolling();
+          return;
         } else {
-          // 遇到错误稍微等待一下再重试，避免死循环刷屏
-          await Future.delayed(const Duration(seconds: 2));
+          // 🆕 其他异常也使用指数退避
+          retryCount++;
+          if (retryCount <= maxRetries) {
+            final delay = baseRetryDelay * (1 << (retryCount - 1));
+            log('⚠ 轮询异常，${delay.inSeconds}秒后重试 ($retryCount/$maxRetries)');
+            await Future.delayed(delay);
+          } else {
+            log('✗ 轮询异常达到最大重试次数，停止轮询');
+            stopPolling();
+            return;
+          }
         }
       }
-    });
+    }
+
+    log('✓ 长轮询循环已退出');
   }
 
   /// 清理长轮询资源

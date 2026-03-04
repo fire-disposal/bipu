@@ -10,12 +10,15 @@ from app.models.base import Base
 logger = get_logger(__name__)
 
 # 创建SQLAlchemy引擎
+# 优化连接池配置以支持高并发长轮询请求
 engine = create_engine(
     settings.DATABASE_URL,
-    pool_size=20,
-    max_overflow=30,
-    pool_pre_ping=True,
-    echo=False,  # 强制关闭 SQLAlchemy 的 SQL 日志输出
+    pool_size=50,              # 增加到 50（原来 20）
+    max_overflow=100,          # 增加到 100（原来 30）
+    pool_pre_ping=True,        # 检查连接是否有效
+    pool_recycle=3600,         # 🆕 1 小时回收连接，防止数据库侧关闭连接
+    pool_timeout=60,           # 🆕 获取连接超时时间增加到 60 秒
+    echo=False,                # 强制关闭 SQLAlchemy 的 SQL 日志输出
 )
 
 # 创建SessionLocal类

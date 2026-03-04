@@ -14,11 +14,12 @@ from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.core.config import settings
-from app.db.database import get_db
+from app.db.database import get_db, get_redis
 from app.models.user import User
 from app.core.logging import get_logger
 from app.services.redis_service import RedisService
 from app.core.exceptions import AdminAuthException
+import json
 
 logger = get_logger(__name__)
 
@@ -122,7 +123,7 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> User:
-    """获取当前用户（依赖注入）"""
+    """获取当前用户（依赖注入）- 优化版本，支持缓存"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="无效的认证凭据",
@@ -152,7 +153,29 @@ async def get_current_user(
         logger.warning("Token missing sub claim")
         raise credentials_exception
 
-    # 查找用户
+    # 🆕 优化：先从缓存获取用户信息，避免数据库查询
+    cache_key = f"user_auth:{username}"
+    try:
+        redis = await get_redis()
+        cached_user_data = await redis.get(cache_key)
+        
+        if cached_user_data:
+            try:
+                user_data = json.loads(cached_user_data) if isinstance(cached_user_data, str) else cached_user_data
+                # 从缓存数据重建User对象
+                user = User()
+                for key, value in user_data.items():
+                    if hasattr(user, key):
+                        setattr(user, key, value)
+                logger.debug(f"User from cache: {username}")
+                return user
+            except Exception as e:
+                logger.warning(f"Failed to restore user from cache: {e}")
+                # 缓存损坏，继续从数据库查询
+    except Exception as e:
+        logger.debug(f"Cache lookup failed: {e}")
+
+    # 缓存未命中，从数据库查询
     user = db.query(User).filter(
         User.username == username,
         User.is_active
@@ -161,6 +184,28 @@ async def get_current_user(
     if user is None:
         logger.warning(f"User not found: {username}")
         raise credentials_exception
+
+    # 🆕 优化：将用户信息缓存 1 小时，避免后续认证时的数据库查询
+    try:
+        redis = await get_redis()
+        user_dict = {
+            'id': user.id,
+            'bipupu_id': user.bipupu_id,
+            'username': user.username,
+            'nickname': user.nickname,
+            'is_active': user.is_active,
+            'is_superuser': user.is_superuser,
+            'timezone': user.timezone,
+        }
+        await redis.set(
+            cache_key,
+            json.dumps(user_dict, default=str),
+            ex=3600  # 1 小时过期
+        )
+        logger.debug(f"User cached: {username} (TTL=3600s)")
+    except Exception as e:
+        logger.warning(f"Failed to cache user: {e}")
+        # 缓存失败不影响认证流程
 
     return user
 

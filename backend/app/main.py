@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
@@ -14,6 +14,7 @@ from app.core.openapi_util import export_openapi_json
 from app.core.exceptions import custom_exception_handler, http_exception_handler, general_exception_handler, BaseCustomException, AdminAuthException, admin_auth_exception_handler, request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from app.middleware.connection_monitor import ConnectionMonitorMiddleware
 
 
 from app.core.logging import setup_logging
@@ -126,6 +127,9 @@ def create_app() -> FastAPI:
     # 注册管理后台Web路由
     from app.api.routes.admin_web import router as admin_web_router
     app.include_router(admin_web_router, prefix="/admin")
+
+    # 🆕 添加连接池监控中间件
+    app.add_middleware(ConnectionMonitorMiddleware)  # type: ignore[arg-type]
 
     # 注册全局异常处理器
     app.add_exception_handler(AdminAuthException, admin_auth_exception_handler)  # type: ignore

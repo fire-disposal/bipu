@@ -24,10 +24,10 @@ class AppConfig {
 
   // ========== 超时配置 ==========
   /// 普通请求超时时间
-  static const Duration requestTimeout = Duration(seconds: 15);
+  static const Duration requestTimeout = Duration(seconds: 30);
 
-  /// Token 刷新请求超时时间（应该比普通请求短）
-  static const Duration tokenRefreshTimeout = Duration(seconds: 10);
+  /// Token 刷新请求超时时间
+  static const Duration tokenRefreshTimeout = Duration(seconds: 20);
 
   /// WebSocket 连接超时
   static const Duration websocketConnectTimeout = Duration(seconds: 10);
