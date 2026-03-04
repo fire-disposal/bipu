@@ -137,19 +137,44 @@ class PagerCubit extends Cubit<PagerState> {
 
       final inCallState = state as InCallState;
 
-      // 播放问候语（使用 PagerAssistant 的新API）
+      // ✅ 播放问候语并更新 UI（即使 TTS 失败也会返回文本）
       logger.i('PagerCubit: 开始播放问候语');
-      await _voiceAssistant.greet();
+      final greetingText = await _voiceAssistant.greet();
 
-      // 播放提示
-      await _voiceAssistant.promptForMessage();
+      if (state is InCallState) {
+        var currentState = state as InCallState;
+        currentState = currentState.copyWith(
+          operatorCurrentSpeech: greetingText,
+          operatorSpeechHistory: [
+            ...currentState.operatorSpeechHistory,
+            greetingText,
+          ],
+        );
+        emit(currentState);
 
-      await Future.delayed(const Duration(seconds: 1));
+        // 短暂延时让用户看到问候语
+        await Future.delayed(const Duration(milliseconds: 600));
 
-      logger.i('PagerCubit: 准备启动语音识别');
+        // ✅ 播放提示语并更新 UI
+        final promptText = await _voiceAssistant.promptForMessage();
+        currentState = currentState.copyWith(
+          operatorCurrentSpeech: promptText,
+          operatorSpeechHistory: [
+            ...currentState.operatorSpeechHistory,
+            promptText,
+          ],
+          isWaitingForUserInput: true,
+        );
+        emit(currentState);
 
-      // 开始录音识别
-      await _startRecordingPhase(inCallState);
+        logger.i('PagerCubit: 准备启动语音识别');
+
+        // 等待用户开始输入
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        // 开始录音识别
+        await _startRecordingPhase(currentState);
+      }
     } catch (e) {
       logger.e('Failed to start dialing: $e');
       emit(PagerErrorState(message: '拨号失败：$e'));
@@ -159,6 +184,12 @@ class PagerCubit extends Cubit<PagerState> {
   /// 开始录音识别阶段
   Future<void> _startRecordingPhase(InCallState inCallState) async {
     try {
+      var currentState = inCallState;
+
+      // 更新状态：开始录音
+      currentState = currentState.copyWith(isWaitingForUserInput: true);
+      emit(currentState);
+
       final userText = await _voiceAssistant.recordAndRecognize(
         maxDuration: Duration(seconds: 30),
         silenceTimeout: Duration(seconds: 5),
@@ -179,25 +210,67 @@ class PagerCubit extends Cubit<PagerState> {
       );
 
       if (userText.isEmpty) {
-        await _voiceAssistant.respond('未检测到输入，请重试');
-        await _startRecordingPhase(inCallState);
+        // 未检测到输入，播放提示并重试
+        final retryText =
+            currentState.operator?.dialogues.getRandomPhrase() ?? '未检测到输入，请重试';
+        await _voiceAssistant.respond(retryText);
+
+        if (state is InCallState) {
+          currentState = state as InCallState;
+          currentState = currentState.copyWith(
+            operatorCurrentSpeech: retryText,
+            operatorSpeechHistory: [
+              ...currentState.operatorSpeechHistory,
+              retryText,
+            ],
+            asrTranscript: '',
+            waveformData: [],
+          );
+          emit(currentState);
+        }
+
+        await Future.delayed(const Duration(milliseconds: 800));
+        await _startRecordingPhase(currentState);
         return;
       }
 
       if (state is! InCallState) return;
-      final current = state as InCallState;
+      currentState = state as InCallState;
 
-      // 用户输入识别完成，显示在UI中
-      emit(current.copyWith(asrTranscript: userText, isSilenceDetected: true));
+      // ✅ 用户输入识别完成，显示在 UI 中
+      currentState = currentState.copyWith(
+        asrTranscript: userText,
+        isSilenceDetected: true,
+        isWaitingForUserInput: false,
+      );
+      emit(currentState);
 
-      // 播放确认提示
-      await _voiceAssistant.respond('我听到了：$userText，请确认');
+      // ✅ 播放确认提示
+      final confirmPrompt = '我听到了：$userText，请确认';
+      await _voiceAssistant.respond(confirmPrompt);
+
+      if (state is InCallState) {
+        currentState = state as InCallState;
+        currentState = currentState.copyWith(
+          operatorCurrentSpeech: confirmPrompt,
+          operatorSpeechHistory: [
+            ...currentState.operatorSpeechHistory,
+            confirmPrompt,
+          ],
+        );
+        emit(currentState);
+      }
 
       // 等待用户确认
+      await Future.delayed(const Duration(milliseconds: 500));
+
       final confirmText = await _voiceAssistant.recordAndRecognize(
         maxDuration: Duration(seconds: 10),
         silenceTimeout: Duration(seconds: 2),
       );
+
+      if (state is! InCallState) return;
+      currentState = state as InCallState;
 
       // 简单的命令识别：包含"确认"、"是"等为确认
       final isConfirmed =
@@ -207,26 +280,64 @@ class PagerCubit extends Cubit<PagerState> {
           confirmText.contains('对');
 
       if (isConfirmed) {
-        // 确认成功，转到最终编辑状态
-        await _voiceAssistant.playSuccess('已确认');
+        // ✅ 确认成功，播放成功提示并转到最终编辑状态
+        final successText = await _voiceAssistant.playSuccess('');
+
+        // 短暂延时让用户听到成功提示
+        await Future.delayed(const Duration(milliseconds: 800));
+
+        // ✅ 更新提示词历史并转移
+        final updatedHistory = [
+          ...currentState.operatorSpeechHistory,
+          successText,
+        ];
 
         emit(
           FinalizeState(
-            targetId: current.targetId,
+            targetId: currentState.targetId,
             messageContent: userText,
-            operator: current.operator,
+            operator: currentState.operator,
+            operatorSpeechHistory: updatedHistory,
           ),
         );
       } else {
-        // 用户否认，返回重新录音
-        await _voiceAssistant.respond('已取消，请重新说一遍');
-        await _startRecordingPhase(current);
+        // ✅ 用户否认，播放取消提示并返回重新录音
+        final cancelText =
+            currentState.operator?.dialogues.getRandomPhrase() ?? '已取消，请重新说一遍';
+        await _voiceAssistant.respond(cancelText);
+
+        if (state is InCallState) {
+          currentState = state as InCallState;
+          currentState = currentState.copyWith(
+            asrTranscript: '',
+            operatorCurrentSpeech: cancelText,
+            operatorSpeechHistory: [
+              ...currentState.operatorSpeechHistory,
+              cancelText,
+            ],
+            waveformData: [],
+          );
+          emit(currentState);
+        }
+
+        await Future.delayed(const Duration(milliseconds: 800));
+        await _startRecordingPhase(currentState);
       }
     } catch (e, stackTrace) {
       logger.e('_startRecordingPhase failed', error: e, stackTrace: stackTrace);
       if (state is InCallState) {
         final current = state as InCallState;
-        emit(current.copyWith(asrTranscript: '识别失败，请重试'));
+        final errorText = '识别出错，请稍后重试';
+        emit(
+          current.copyWith(
+            asrTranscript: errorText,
+            operatorCurrentSpeech: errorText,
+            operatorSpeechHistory: [
+              ...current.operatorSpeechHistory,
+              errorText,
+            ],
+          ),
+        );
       }
     }
   }
@@ -238,16 +349,21 @@ class PagerCubit extends Cubit<PagerState> {
     final currentState = state as InCallState;
     logger.i('PagerCubit: 用户手动结束录音');
 
-    emit(currentState.copyWith(isSilenceDetected: true));
+    emit(
+      currentState.copyWith(
+        isSilenceDetected: true,
+        isWaitingForUserInput: false,
+      ),
+    );
     await _voiceAssistant.stopRecording();
   }
 
-  /// 发送消息
+  /// 发送消息（支持接线员台词历史传递）
   Future<void> sendMessage() async {
     try {
       if (state is! FinalizeState) return;
 
-      final finalizeState = state as FinalizeState;
+      var finalizeState = state as FinalizeState;
 
       if (finalizeState.messageContent.isEmpty ||
           finalizeState.messageContent == '请编辑您的消息...') {
@@ -255,14 +371,14 @@ class PagerCubit extends Cubit<PagerState> {
         return;
       }
 
-      // 更新状态：发送中
+      // ✅ 更新状态：发送中
       emit(finalizeState.copyWith(isSending: true));
 
       // 获取最终的波形数据
       _currentWaveformData = _waveformProcessor.finalize();
 
       logger.i(
-        'Sending message with waveform: ${_currentWaveformData.length} points',
+        'PagerCubit: 发送消息 - 内容: "${finalizeState.messageContent}", 波形点数: ${_currentWaveformData.length}',
       );
 
       // 使用新的统一接口发送消息
@@ -274,38 +390,52 @@ class PagerCubit extends Cubit<PagerState> {
       );
 
       if (result != null) {
-        // 更新状态：发送成功
+        // ✅ 发送成功 - 播放成功提示
         emit(finalizeState.copyWith(isSending: false, sendSuccess: true));
 
-        // 播放成功提示
+        // 播放接线员的成功台词
         emit(finalizeState.copyWith(isPlayingSuccessTts: true));
-        await _voiceAssistant.respond('消息已发送，感谢您的使用');
+        final successText = await _voiceAssistant.playSuccess('');
+
+        // 更新接线员台词历史
+        finalizeState = finalizeState.copyWith(
+          operatorSpeechHistory: [
+            ...finalizeState.operatorSpeechHistory,
+            successText,
+          ],
+        );
+
         emit(finalizeState.copyWith(isPlayingSuccessTts: false));
 
-        // 增加接线员对话次数
+        logger.i('PagerCubit: 消息发送成功');
+
+        // ✅ 增加接线员对话次数
         if (finalizeState.operator != null) {
           await _operatorService.incrementConversationCount(
             finalizeState.operator!.id,
           );
+          logger.i('PagerCubit: 接线员对话计数已增加 - ${finalizeState.operator!.name}');
         }
 
-        // 显示挂断按钮
+        // ✅ 短暂延时后显示挂断按钮
+        await Future.delayed(const Duration(milliseconds: 800));
         emit(finalizeState.copyWith(showHangupButton: true));
       } else {
         // 发送失败
+        logger.w('PagerCubit: 消息发送失败');
         emit(
           finalizeState.copyWith(
             isSending: false,
-            sendErrorMessage: result.errorMessage ?? '发送失败',
+            sendErrorMessage: '发送失败，请重试',
           ),
         );
       }
-    } catch (e) {
-      logger.e('Failed to send message: $e');
+    } catch (e, stackTrace) {
+      logger.e('Failed to send message', error: e, stackTrace: stackTrace);
       if (state is FinalizeState) {
         final finalizeState = state as FinalizeState;
         emit(
-          finalizeState.copyWith(isSending: false, sendErrorMessage: '发送失败：$e'),
+          finalizeState.copyWith(isSending: false, sendErrorMessage: '发送异常：$e'),
         );
       }
     }
@@ -363,49 +493,88 @@ class PagerCubit extends Cubit<PagerState> {
     emit(finalizeState.copyWith(isEditing: false));
   }
 
-  /// 挂断 - 返回拨号准备状态
+  /// ✅ 挂断 - 返回拨号准备状态，进行资源清理
   Future<void> hangup() async {
-    logger.i('PagerCubit: 挂断通话');
+    logger.i('PagerCubit: 用户挂断通话');
 
     try {
-      // 停止录音和清理资源
+      // 停止录音
       await _voiceAssistant.stopRecording();
 
-      // 清理波形处理器
+      // 清理波形处理器和音量订阅
       _waveformProcessor.clear();
+      await _volumeSubscription?.cancel();
+      _currentWaveformData.clear();
+
+      logger.i('PagerCubit: 资源已清理');
 
       // 返回初始状态
       emit(const DialingPrepState());
     } catch (e) {
-      logger.e('Failed to hangup: $e');
+      logger.e('Failed to hangup', error: e);
       emit(PagerErrorState(message: '挂断失败：$e'));
     }
   }
 
-  /// 取消拨号
+  /// ✅ 取消拨号 - 进行资源清理
   Future<void> cancelDialing() async {
-    logger.i('PagerCubit: 取消拨号');
+    logger.i('PagerCubit: 用户取消拨号');
 
     try {
+      // 停止所有进行中的操作
       await _voiceAssistant.stopRecording();
+
+      // 清理资源
       _waveformProcessor.clear();
+      await _volumeSubscription?.cancel();
+      _currentWaveformData.clear();
+
+      logger.i('PagerCubit: 拨号已取消，资源已清理');
+
+      // 返回拨号准备状态
       emit(const DialingPrepState());
     } catch (e) {
-      logger.e('Failed to cancel dialing: $e');
+      logger.e('Failed to cancel dialing', error: e);
       emit(PagerErrorState(message: '取消拨号失败：$e'));
     }
   }
 
+  /// ✅ 销毁 Cubit 时清理资源
   @override
   Future<void> close() async {
+    logger.i('PagerCubit: 正在清理资源...');
     try {
       await _voiceAssistant.stopRecording();
+      await _voiceAssistant.dispose();
+      await _volumeSubscription?.cancel();
       _waveformProcessor.clear();
-      _volumeSubscription?.cancel();
-      _voiceAssistant.dispose();
+      _currentWaveformData.clear();
+      logger.i('PagerCubit: 资源清理完成');
     } catch (e) {
-      logger.e('Error closing PagerCubit', error: e);
+      logger.e('Error during close', error: e);
     }
     return super.close();
+  }
+
+  /// ✅ 获取接线员信息（用于诊断和调试）
+  OperatorPersonality? getCurrentOperator() {
+    if (state is DialingPrepState) {
+      return (state as DialingPrepState).currentOperator;
+    } else if (state is InCallState) {
+      return (state as InCallState).operator;
+    } else if (state is FinalizeState) {
+      return (state as FinalizeState).operator;
+    }
+    return null;
+  }
+
+  /// ✅ 获取当前对话历史（用于调试）
+  List<String> getOperatorSpeechHistory() {
+    if (state is InCallState) {
+      return (state as InCallState).operatorSpeechHistory;
+    } else if (state is FinalizeState) {
+      return (state as FinalizeState).operatorSpeechHistory;
+    }
+    return [];
   }
 }

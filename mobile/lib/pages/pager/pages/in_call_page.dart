@@ -123,12 +123,14 @@ class _InCallPageState extends State<InCallPage> {
   }
 
   /// 2. 右侧对话历史流 (移至立绘右边)
+  /// ✅ 显示接线员的所有台词历史
   Widget _buildOperatorHistoryStream(
     InCallState state,
     ColorScheme colorScheme,
     ThemeData theme,
   ) {
-    final history = [...[]];
+    // ✅ 修复：使用状态中的实际历史台词
+    final history = state.operatorSpeechHistory;
 
     return ShaderMask(
       shaderCallback: (rect) => const LinearGradient(
@@ -138,58 +140,87 @@ class _InCallPageState extends State<InCallPage> {
         stops: [0.0, 0.2],
       ).createShader(rect),
       blendMode: BlendMode.dstIn,
-      child: ListView.builder(
-        reverse: true,
-        padding: const EdgeInsets.only(top: 40),
-        itemCount: history.length,
-        itemBuilder: (context, index) {
-          final text = history.reversed.toList()[index];
-          final isCurrent = false; // 已简化
-          return _buildMiniBubble(
-            text,
-            colorScheme,
-            theme,
-            isCurrent: isCurrent,
-          );
-        },
-      ),
+      child: history.isEmpty
+          ? Center(
+              child: Text(
+                '准备就绪...',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.outline.withOpacity(0.5),
+                ),
+              ),
+            )
+          : ListView.builder(
+              reverse: true,
+              padding: const EdgeInsets.only(top: 40),
+              itemCount: history.length,
+              itemBuilder: (context, index) {
+                final text = history.reversed.toList()[index];
+                final isCurrent = index == 0; // 最新的是当前的
+                return _buildMiniBubble(
+                  text,
+                  colorScheme,
+                  theme,
+                  isCurrent: isCurrent,
+                );
+              },
+            ),
     );
   }
 
+  /// ✅ 构建接线员台词气泡
   Widget _buildMiniBubble(
     String text,
     ColorScheme colorScheme,
     ThemeData theme, {
     required bool isCurrent,
   }) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: isCurrent
-            ? colorScheme.primaryContainer.withOpacity(0.4)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
+    return SlideTransition(
+      position: Tween<Offset>(
+        begin: const Offset(0.5, 0),
+        end: Offset.zero,
+      ).animate(AlwaysStoppedAnimation<double>(1.0)),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
           color: isCurrent
-              ? colorScheme.primary.withOpacity(0.2)
-              : colorScheme.outlineVariant.withOpacity(0.1),
+              ? colorScheme.primaryContainer.withOpacity(0.5)
+              : colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isCurrent
+                ? colorScheme.primary.withOpacity(0.3)
+                : colorScheme.outlineVariant.withOpacity(0.1),
+            width: isCurrent ? 1.5 : 0.5,
+          ),
+          boxShadow: isCurrent
+              ? [
+                  BoxShadow(
+                    color: colorScheme.primary.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [],
         ),
-      ),
-      child: Text(
-        text,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: isCurrent
-              ? colorScheme.onSurface
-              : colorScheme.onSurfaceVariant,
-          fontSize: 13,
+        child: Text(
+          text,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurface,
+            fontSize: 13,
+            fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w500,
+            height: 1.4,
+          ),
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
         ),
       ),
     );
   }
 
   /// 3. 用户消息缓冲区 (中间下半部大区域)
+  /// ✅ 显示用户当前的语音识别内容和状态
   Widget _buildUserMessageBuffer(
     InCallState state,
     ColorScheme colorScheme,
@@ -211,24 +242,56 @@ class _InCallPageState extends State<InCallPage> {
             Colors.transparent,
           ],
         ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: state.isWaitingForUserInput
+              ? colorScheme.primary.withOpacity(0.2)
+              : colorScheme.outlineVariant.withOpacity(0.1),
+          width: state.isWaitingForUserInput ? 1.5 : 0.5,
+        ),
       ),
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 200),
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(scale: animation, child: child),
+        ),
         child: state.asrTranscript.isEmpty
-            ? Text(
-                "请说话...",
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.outline.withOpacity(0.5),
+            ? Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      state.isWaitingForUserInput
+                          ? Icons.mic
+                          : Icons.hourglass_empty,
+                      color: colorScheme.outline.withOpacity(0.5),
+                      size: 28,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      state.isWaitingForUserInput ? "请说话..." : "准备中...",
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.outline.withOpacity(0.7),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
               )
             : SingleChildScrollView(
-                child: Text(
-                  state.asrTranscript,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                    fontStyle: FontStyle.italic,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    state.asrTranscript,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                      fontStyle: FontStyle.italic,
+                      height: 1.4,
+                    ),
                   ),
                 ),
               ),
@@ -237,6 +300,7 @@ class _InCallPageState extends State<InCallPage> {
   }
 
   /// 4. 底部操作区 (挂断 + 语音)
+  /// ✅ 提供直观的交互反馈
   Widget _buildBottomArea(
     InCallState state,
     ColorScheme colorScheme,
@@ -246,6 +310,7 @@ class _InCallPageState extends State<InCallPage> {
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
       child: Row(
         children: [
+          // 挂断按钮
           _buildCircleButton(
             onTap: () => widget.cubit.cancelDialing(),
             icon: Icons.call_end,
@@ -253,23 +318,37 @@ class _InCallPageState extends State<InCallPage> {
             fg: colorScheme.onErrorContainer,
           ),
           const SizedBox(width: 16),
+          // 语音识别状态按钮
           Expanded(
             child: InkWell(
-              onTap: () => widget.cubit.finishAsrRecording(),
+              onTap: state.isSilenceDetected
+                  ? () => widget.cubit.finishAsrRecording()
+                  : null,
               borderRadius: BorderRadius.circular(24),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 height: 64,
                 decoration: BoxDecoration(
-                  color: state.asrTranscript.isNotEmpty
-                      ? colorScheme.primary
-                      : colorScheme.surfaceContainerHighest,
+                  gradient: state.asrTranscript.isNotEmpty
+                      ? LinearGradient(
+                          colors: [
+                            colorScheme.primary,
+                            colorScheme.primary.withOpacity(0.8),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
+                  color: state.asrTranscript.isEmpty
+                      ? colorScheme.surfaceContainerHighest
+                      : null,
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: state.asrTranscript.isNotEmpty
                       ? [
                           BoxShadow(
                             color: colorScheme.primary.withOpacity(0.4),
                             blurRadius: 12,
+                            offset: const Offset(0, 4),
                           ),
                         ]
                       : [],
@@ -285,10 +364,17 @@ class _InCallPageState extends State<InCallPage> {
                         color: state.asrTranscript.isNotEmpty
                             ? colorScheme.onPrimary
                             : colorScheme.onSurfaceVariant,
+                        size: 24,
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        state.asrTranscript.isNotEmpty ? "正在聆听" : "等待响应",
+                        state.asrTranscript.isNotEmpty
+                            ? state.isSilenceDetected
+                                  ? "已完成"
+                                  : "正在聆听"
+                            : state.isWaitingForUserInput
+                            ? "等待输入"
+                            : "准备中",
                         style: theme.textTheme.titleMedium?.copyWith(
                           color: state.asrTranscript.isNotEmpty
                               ? colorScheme.onPrimary

@@ -114,6 +114,7 @@ class TTSEngine {
     required String text,
     int sid = 0,
     double speed = 1.0,
+    Duration timeout = const Duration(seconds: 30),
   }) async {
     if (!_isInitialized || _tts == null) {
       if (_verboseLogging) logger.i('TTS not initialized, calling init()');
@@ -131,7 +132,16 @@ class TTSEngine {
       if (_verboseLogging) {
         logger.i('Generating TTS for text: "$text", sid: $sid, speed: $speed');
       }
-      return _tts!.generate(text: text, sid: sid, speed: speed);
+
+      // OfflineTts.generate() 是同步方法，在 Future 中执行以便应用超时保护
+      final generationFuture = Future.microtask(
+        () => _tts!.generate(text: text, sid: sid, speed: speed),
+      );
+
+      return await generationFuture.timeout(timeout);
+    } on TimeoutException {
+      logger.e('TTS generation timeout after ${timeout.inSeconds}s: "$text"');
+      return null;
     } catch (e, stackTrace) {
       logger.e('Error generating TTS: $e\n$stackTrace');
       return null;

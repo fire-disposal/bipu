@@ -264,15 +264,16 @@ class VoiceService {
         logger.i('VoiceService: 播放台词 "${nextTask.text}"');
       }
 
-      // 生成TTS音频
+      // 生成TTS音频（30秒超时保护）
       final audio = await _tts.generate(
         text: nextTask.text,
         sid: nextTask.voiceId,
         speed: nextTask.speed,
+        timeout: const Duration(seconds: 30),
       );
 
       if (audio == null) {
-        logger.e('VoiceService: TTS生成失败 "${nextTask.text}"');
+        logger.e('VoiceService: TTS生成失败或超时 "${nextTask.text}"');
         nextTask.completer.completeError('TTS generation failed');
         _currentTask = null;
         return;
@@ -281,12 +282,21 @@ class VoiceService {
       // 转换为PCM字节
       final pcmBytes = _convertAudioToBytes(audio);
 
+      if (_verboseLogging) {
+        logger.i('VoiceService: 已生成PCM ${pcmBytes.length} 字节，准备播放');
+      }
+
       // 获取音频资源
       final release = await _audioManager.acquire();
 
       try {
-        // 播放
-        await _player.playPcm(pcmBytes, sampleRate: 24000, channels: 1);
+        // 播放（30秒超时保护）
+        await _player.playPcm(
+          pcmBytes,
+          sampleRate: 24000,
+          channels: 1,
+          playbackTimeout: const Duration(seconds: 30),
+        );
         nextTask.completer.complete(true);
         if (_verboseLogging) {
           logger.i('VoiceService: 台词播放完成 "${nextTask.text}"');

@@ -61,10 +61,15 @@ class DialingPrepState extends PagerState {
 class InCallState extends PagerState {
   final String targetId;
   final String operatorImageUrl; // 虚拟接线员立绘URL或Asset路径
-  final String asrTranscript; // 实时转写文本
+  final String asrTranscript; // 实时转写文本（用户输入）
   final List<double> waveformData; // 声纹动效数据 (0-1范围)
   final bool isSilenceDetected; // 是否检测到静默
   final OperatorPersonality? operator; // 当前接线员人格
+
+  // ✅ 新增：接线员台词相关字段
+  final String operatorCurrentSpeech; // 接线员当前说的台词
+  final List<String> operatorSpeechHistory; // 接线员历史台词列表
+  final bool isWaitingForUserInput; // 是否等待用户输入
 
   const InCallState({
     required this.targetId,
@@ -73,6 +78,9 @@ class InCallState extends PagerState {
     this.waveformData = const [],
     this.isSilenceDetected = false,
     this.operator,
+    this.operatorCurrentSpeech = '',
+    this.operatorSpeechHistory = const [],
+    this.isWaitingForUserInput = false,
   });
 
   InCallState copyWith({
@@ -82,6 +90,9 @@ class InCallState extends PagerState {
     List<double>? waveformData,
     bool? isSilenceDetected,
     OperatorPersonality? operator,
+    String? operatorCurrentSpeech,
+    List<String>? operatorSpeechHistory,
+    bool? isWaitingForUserInput,
   }) {
     return InCallState(
       targetId: targetId ?? this.targetId,
@@ -90,6 +101,12 @@ class InCallState extends PagerState {
       waveformData: waveformData ?? this.waveformData,
       isSilenceDetected: isSilenceDetected ?? this.isSilenceDetected,
       operator: operator ?? this.operator,
+      operatorCurrentSpeech:
+          operatorCurrentSpeech ?? this.operatorCurrentSpeech,
+      operatorSpeechHistory:
+          operatorSpeechHistory ?? this.operatorSpeechHistory,
+      isWaitingForUserInput:
+          isWaitingForUserInput ?? this.isWaitingForUserInput,
     );
   }
 
@@ -101,6 +118,9 @@ class InCallState extends PagerState {
     waveformData,
     isSilenceDetected,
     operator,
+    operatorCurrentSpeech,
+    operatorSpeechHistory,
+    isWaitingForUserInput,
   ];
 }
 
@@ -118,6 +138,7 @@ class FinalizeState extends PagerState {
   final bool isEditing; // 是否处于编辑模式
   final TextProcessingResult? textProcessingResult; // 编辑的文本处理结果
   final bool isNewlyUnlocked; // 该接线员是否首次完成对话（用于解锁提示）
+  final List<String> operatorSpeechHistory; // ✅ 新增：接线员历史台词
 
   const FinalizeState({
     required this.targetId,
@@ -131,6 +152,7 @@ class FinalizeState extends PagerState {
     this.isEditing = false,
     this.textProcessingResult,
     this.isNewlyUnlocked = false,
+    this.operatorSpeechHistory = const [],
   });
 
   FinalizeState copyWith({
@@ -145,6 +167,7 @@ class FinalizeState extends PagerState {
     bool? isEditing,
     TextProcessingResult? textProcessingResult,
     bool? isNewlyUnlocked,
+    List<String>? operatorSpeechHistory,
   }) {
     return FinalizeState(
       targetId: targetId ?? this.targetId,
@@ -158,6 +181,8 @@ class FinalizeState extends PagerState {
       isEditing: isEditing ?? this.isEditing,
       textProcessingResult: textProcessingResult ?? this.textProcessingResult,
       isNewlyUnlocked: isNewlyUnlocked ?? this.isNewlyUnlocked,
+      operatorSpeechHistory:
+          operatorSpeechHistory ?? this.operatorSpeechHistory,
     );
   }
 
@@ -174,6 +199,7 @@ class FinalizeState extends PagerState {
     isEditing,
     textProcessingResult,
     isNewlyUnlocked,
+    operatorSpeechHistory,
   ];
 }
 

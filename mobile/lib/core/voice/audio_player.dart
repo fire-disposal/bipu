@@ -42,10 +42,12 @@ class AudioPlayer {
   /// [pcmBytes] PCM原始数据
   /// [sampleRate] 采样率，默认24000
   /// [channels] 声道数，默认1（单声道）
+  /// [playbackTimeout] 播放超时，默认30秒；最多5分钟强制释放资源
   Future<void> playPcm(
     List<int> pcmBytes, {
     int sampleRate = 24000,
     int channels = 1,
+    Duration playbackTimeout = const Duration(seconds: 30),
   }) async {
     if (!_initialized) {
       await init();
@@ -56,8 +58,15 @@ class AudioPlayer {
     }
 
     final release = await _audioManager.acquire();
+    Timer? leakDetectionTimer;
 
     try {
+      // 设置资源泄漏检测：5分钟未释放则强制释放
+      leakDetectionTimer = Timer(const Duration(minutes: 5), () {
+        logger.w('AudioPlayer: 检测到资源泄漏，强制释放音频资源');
+        release();
+      });
+
       // 将PCM包装为WAV格式（就_audio的需求）
       final wavBytes = _wrapPcmAsWav(pcmBytes, sampleRate, channels);
 
@@ -76,23 +85,27 @@ class AudioPlayer {
         logger.i('AudioPlayer.playPcm: 开始播放');
       }
 
-      // 等待播放完成（30秒超时保护）
-      final timeout = Duration(seconds: 30);
+      // 等待播放完成（可配置超时保护）
       final playerDone = _player.playerStateStream
           .firstWhere(
             (state) => state.processingState == ja.ProcessingState.completed,
           )
-          .timeout(timeout);
+          .timeout(playbackTimeout);
 
       await playerDone;
 
       if (_verboseLogging) {
         logger.i('AudioPlayer.playPcm: 播放完成');
       }
+    } on TimeoutException {
+      logger.w('AudioPlayer.playPcm: 播放超时 ${playbackTimeout.inSeconds}s');
+      await _player.stop();
+      rethrow;
     } catch (e, stackTrace) {
       logger.e('AudioPlayer.playPcm: 播放失败', error: e, stackTrace: stackTrace);
       rethrow;
     } finally {
+      leakDetectionTimer?.cancel();
       release();
     }
   }

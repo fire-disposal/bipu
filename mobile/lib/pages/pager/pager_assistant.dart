@@ -40,54 +40,95 @@ class PagerAssistant {
 
   // ============ 接线员特定的对话API ============
 
-  /// 播放问候语
-  Future<void> greet() async {
+  /// 播放问候语，返回实际的台词文本
+  /// 即使 TTS 失败，文本也会返回供 UI 显示
+  Future<String> greet() async {
     final text = _operator?.dialogues.getGreeting() ?? '您好，有什么我可以帮助您的吗？';
-    await _speak(text);
+    try {
+      await _speak(text);
+    } catch (e) {
+      logger.w('PagerAssistant.greet: TTS 播放失败，但返回文本');
+    }
+    return text;
   }
 
-  /// 播放等待提示
-  Future<void> promptForMessage() async {
+  /// 播放等待提示，返回实际的台词文本
+  Future<String> promptForMessage() async {
     final text = _operator?.dialogues.getRequestMessage() ?? '请说出您的诉求';
-    await _speak(text);
+    try {
+      await _speak(text);
+    } catch (e) {
+      logger.w('PagerAssistant.promptForMessage: TTS 播放失败，但返回文本');
+    }
+    return text;
   }
 
-  /// 播放验证确认
-  Future<void> playVerification() async {
+  /// 播放验证确认，返回实际的台词文本
+  Future<String> playVerification() async {
     final text = _operator?.dialogues.getVerify() ?? '我来帮您确认一下';
-    await _speak(text);
+    try {
+      await _speak(text);
+    } catch (e) {
+      logger.w('PagerAssistant.playVerification: TTS 播放失败，但返回文本');
+    }
+    return text;
   }
 
-  /// 播放目标ID确认
-  Future<void> confirmTargetId(String targetId) async {
+  /// 播放目标ID确认，返回实际的台词文本
+  Future<String> confirmTargetId(String targetId) async {
     final text =
         _operator?.dialogues.getConfirmId(targetId) ?? '确认目标 ID：$targetId';
-    await _speak(text);
+    try {
+      await _speak(text);
+    } catch (e) {
+      logger.w('PagerAssistant.confirmTargetId: TTS 播放失败，但返回文本');
+    }
+    return text;
   }
 
-  /// 播放用户未找到提示
-  Future<void> playUserNotFound() async {
+  /// 播放用户未找到提示，返回实际的台词文本
+  Future<String> playUserNotFound() async {
     final text = _operator?.dialogues.getUserNotFound() ?? '抱歉，找不到该用户';
-    await _speak(text);
+    try {
+      await _speak(text);
+    } catch (e) {
+      logger.w('PagerAssistant.playUserNotFound: TTS 播放失败，但返回文本');
+    }
+    return text;
   }
 
-  /// 播放成功消息
-  Future<void> playSuccess(String message) async {
+  /// 播放成功消息，返回实际的台词文本
+  Future<String> playSuccess(String message) async {
     final text = message.isEmpty
         ? (_operator?.dialogues.getSuccessMessage() ?? '完成')
         : message;
-    await _speak(text);
+    try {
+      await _speak(text);
+    } catch (e) {
+      logger.w('PagerAssistant.playSuccess: TTS 播放失败，但返回文本');
+    }
+    return text;
   }
 
-  /// 播放emoji警告（需要用户输入时）
-  Future<void> playEmojiWarning() async {
+  /// 播放emoji警告，返回实际的台词文本
+  Future<String> playEmojiWarning() async {
     final text = _operator?.dialogues.getEmojiWarning() ?? '不支持特殊字符';
-    await _speak(text);
+    try {
+      await _speak(text);
+    } catch (e) {
+      logger.w('PagerAssistant.playEmojiWarning: TTS 播放失败，但返回文本');
+    }
+    return text;
   }
 
-  /// 播放自定义文本
+  /// 播放自定义文本，返回提供的文本（调用者已知内容）
+  /// 注意：respond() 不返回文本，调用者应自行管理文本内容
   Future<void> respond(String text, {double? speed}) async {
-    await _speak(text, customSpeed: speed);
+    try {
+      await _speak(text, customSpeed: speed);
+    } catch (e) {
+      logger.w('PagerAssistant.respond: TTS 播放失败 - $e');
+    }
   }
 
   // ============ 识别API ============
@@ -154,6 +195,8 @@ class PagerAssistant {
 
   // ============ 内部实现 ============
 
+  /// 内部语音播放方法（带降级处理）
+  /// 如果 TTS 失败，记录日志但不中断流程
   Future<void> _speak(String text, {double? customSpeed}) async {
     if (!_initialized) await init();
 
@@ -169,8 +212,9 @@ class PagerAssistant {
     try {
       await _voiceService.speak(text, sid: voiceId, speed: speed);
     } catch (e) {
-      logger.e('PagerAssistant._speak: 播放失败 - $e');
-      rethrow;
+      // 关键：不 rethrow，允许调用者继续执行
+      // 这样即使 TTS 失败，状态更新和 UI 显示仍会继续
+      logger.w('PagerAssistant._speak: TTS 播放失败 (仅显示文本) - $e');
     }
   }
 
