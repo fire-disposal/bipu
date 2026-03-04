@@ -201,17 +201,27 @@ class VoiceService {
   // ============ 内部实现 ============
 
   void _enqueueTask(_SpeechTask task) {
+    const int maxQueueLen = 200;
     switch (task.priority) {
       case SpeechPriority.immediate:
+        // 保证队列长度上限，溢出时丢弃最老项
+        if (_highPriorityQueue.length >= maxQueueLen)
+          _highPriorityQueue.removeFirst();
         _highPriorityQueue.addFirst(task);
         break;
       case SpeechPriority.high:
+        if (_highPriorityQueue.length >= maxQueueLen)
+          _highPriorityQueue.removeFirst();
         _highPriorityQueue.add(task);
         break;
       case SpeechPriority.normal:
+        if (_normalPriorityQueue.length >= maxQueueLen)
+          _normalPriorityQueue.removeFirst();
         _normalPriorityQueue.add(task);
         break;
       case SpeechPriority.low:
+        if (_lowPriorityQueue.length >= maxQueueLen)
+          _lowPriorityQueue.removeFirst();
         _lowPriorityQueue.add(task);
         break;
     }
@@ -222,11 +232,34 @@ class VoiceService {
     _isProcessing = true;
 
     if (_verboseLogging) {
-      logger.i('VoiceService: 启动处理线程');
+      logger.i('VoiceService: 启动处理循环');
     }
 
-    _processingTimer = Timer.periodic(Duration.zero, (_) async {
-      await _processNextTask();
+    // 使用单独的异步循环替代 Timer.periodic(Duration.zero)
+    Future<void>(() async {
+      try {
+        while (_isProcessing) {
+          // 如果没有任务则优雅退出循环（避免 Busy-loop），上层 enqueue 会再次启动
+          final hasTask =
+              _highPriorityQueue.isNotEmpty ||
+              _normalPriorityQueue.isNotEmpty ||
+              _lowPriorityQueue.isNotEmpty;
+          if (!hasTask) {
+            _isProcessing = false;
+            if (_verboseLogging) logger.i('VoiceService: 队列已空，停止处理');
+            break;
+          }
+
+          // 处理下一任务
+          await _processNextTask();
+
+          // 小睡以降低 CPU 占用，防止紧密重试
+          await Future.delayed(const Duration(milliseconds: 40));
+        }
+      } catch (e, st) {
+        logger.e('VoiceService: 处理循环意外退出', error: e, stackTrace: st);
+        _isProcessing = false;
+      }
     });
   }
 
@@ -247,12 +280,10 @@ class VoiceService {
     }
 
     if (nextTask == null) {
-      // 队列空了，停止处理
-      _processingTimer?.cancel();
-      _processingTimer = null;
+      // 队列空了，上层循环会发现并退出
       _isProcessing = false;
       if (_verboseLogging) {
-        logger.i('VoiceService: 队列已空，停止处理');
+        logger.i('VoiceService: 本次无任务，等待下一次启动');
       }
       return;
     }
@@ -273,6 +304,21 @@ class VoiceService {
       );
 
       if (audio == null) {
+        // 失败时尝试有限重试
+        nextTask.retryCount += 1;
+        if (nextTask.retryCount <= 2) {
+          if (_verboseLogging)
+            logger.w(
+              'VoiceService: TTS生成失败，重试 ${nextTask.retryCount} "${nextTask.text}"',
+            );
+          // 退回到普通队列尾部以便稍后重试
+          if (_normalPriorityQueue.length >= 200)
+            _normalPriorityQueue.removeFirst();
+          _normalPriorityQueue.addLast(nextTask);
+          _currentTask = null;
+          return;
+        }
+
         logger.e('VoiceService: TTS生成失败或超时 "${nextTask.text}"');
         nextTask.completer.completeError('TTS generation failed');
         _currentTask = null;
@@ -291,16 +337,24 @@ class VoiceService {
 
       try {
         // 播放（30秒超时保护）
-        await _player.playPcm(
-          pcmBytes,
-          sampleRate: 24000,
-          channels: 1,
-          playbackTimeout: const Duration(seconds: 30),
-        );
-        nextTask.completer.complete(true);
-        if (_verboseLogging) {
+        // ✅ 即使播放失败也记录为完成，不中断队列处理
+        try {
+          await _player.playPcm(
+            pcmBytes,
+            sampleRate: 24000,
+            channels: 1,
+            playbackTimeout: const Duration(seconds: 30),
+          );
           logger.i('VoiceService: 台词播放完成 "${nextTask.text}"');
+        } catch (playbackError, playbackStackTrace) {
+          // 播放失败时记录但继续
+          logger.w(
+            'VoiceService: 台词播放出错（但不中断） "${nextTask.text}"',
+            error: playbackError,
+            stackTrace: playbackStackTrace,
+          );
         }
+        nextTask.completer.complete(true);
       } finally {
         release();
         _currentTask = null;
@@ -336,6 +390,13 @@ class VoiceService {
 
   void dispose() {
     _processingTimer?.cancel();
+    _processingTimer = null;
+    // ✅ 修复：重置处理状态，避免重入时处理线程卡死
+    _isProcessing = false;
+    _currentTask = null;
+    _highPriorityQueue.clear();
+    _normalPriorityQueue.clear();
+    _lowPriorityQueue.clear();
     _tts.dispose();
     _asr.dispose();
     _player.dispose();

@@ -115,6 +115,13 @@ class ASREngine {
     if (status.isDenied) {
       throw Exception('Microphone permission denied');
     }
+    if (status.isPermanentlyDenied) {
+      // 提示调用方需要引导用户到设置页开启权限
+      logger.e(
+        'ASREngine.startRecording: Microphone permission permanently denied',
+      );
+      throw Exception('Microphone permission permanently denied');
+    }
 
     _isRecording = false;
 
@@ -208,6 +215,8 @@ class ASREngine {
 
     _stopLock = Completer<void>();
     _isStopping = true;
+    // ✅ 修复: 先保存录音状态再重置，避免后续 if (!_isRecording) 永真
+    final wasRecording = _isRecording;
     _isRecording = false;
 
     _processingQueue.clear();
@@ -216,7 +225,7 @@ class ASREngine {
     String resultText = '';
 
     try {
-      if (!_isRecording || _recorderSub == null) {
+      if (!wasRecording || _recorderSub == null) {
         return '';
       }
 

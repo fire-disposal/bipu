@@ -21,12 +21,23 @@ import 'models/operator_model.dart';
 /// ```
 class PagerAssistant {
   final VoiceService _voiceService = VoiceService();
-  final OperatorPersonality? _operator;
+  OperatorPersonality? _operator; // ✅ 可变，支持后续设置接线员
 
   bool _initialized = false;
   String? _lastRecognizedText;
+  Completer<void>? _recordingCompleter; // ✅ 新增：支持提前中断录音
 
   PagerAssistant({OperatorPersonality? operator}) : _operator = operator;
+
+  /// ✅ 动态更新接线员信息（音色、语速、台词）
+  void updateOperator(OperatorPersonality operator) {
+    _operator = operator;
+    if (kDebugMode) {
+      logger.i(
+        'PagerAssistant: 接线员已更新为 ${operator.name} (ttsId: ${operator.ttsId})',
+      );
+    }
+  }
 
   /// 初始化助手
   Future<void> init() async {
@@ -144,6 +155,10 @@ class PagerAssistant {
 
     try {
       logger.i('PagerAssistant: 开始录音识别');
+      _lastRecognizedText = null;
+
+      // 创建可中断完成器
+      _recordingCompleter = Completer<void>();
 
       // 启动录音
       await _voiceService.startRecording();
@@ -161,17 +176,25 @@ class PagerAssistant {
         onInterimResult?.call(interim);
       });
 
-      // 等待停止（超时或手动）
-      await Future.delayed(maxDuration);
+      // ✅ 等待：超时 OR 手动停止（通过 _recordingCompleter 信号）
+      try {
+        await _recordingCompleter!.future.timeout(maxDuration);
+      } on TimeoutException {
+        // 正常超时，继续停止
+      } catch (_) {
+        // 其他中断，继续
+      }
 
       final result = await _voiceService.stopRecording();
-      _lastRecognizedText = result;
+      _lastRecognizedText = result.isNotEmpty ? result : _lastRecognizedText;
 
       await volumeSub.cancel();
       await resultSub.cancel();
+      _recordingCompleter = null;
 
-      logger.i('PagerAssistant: 识别完成 - "$result"');
-      return result;
+      final finalText = _lastRecognizedText ?? '';
+      logger.i('PagerAssistant: 识别完成 - "$finalText"');
+      return finalText;
     } catch (e) {
       logger.e('PagerAssistant: 识别失败 - $e');
       rethrow;
@@ -181,12 +204,28 @@ class PagerAssistant {
   /// 手动停止录音
   Future<String> stopRecording() async {
     try {
+      // ✅ 信号 Completer，让 recordAndRecognize 提前退出等待
+      if (_recordingCompleter != null && !_recordingCompleter!.isCompleted) {
+        _recordingCompleter!.complete();
+      }
       final result = await _voiceService.stopRecording();
-      logger.i('PagerAssistant: 录音已停止 - "$result"');
-      return result;
+      final finalText = result.isNotEmpty
+          ? result
+          : (_lastRecognizedText ?? '');
+      logger.i('PagerAssistant: 录音已停止 - "$finalText"');
+      return finalText;
     } catch (e) {
       logger.e('PagerAssistant: 停止录音失败 - $e');
       rethrow;
+    }
+  }
+
+  /// ✅ 仅发送停止信号，不直接调用底层 stop
+  /// 用于 finishAsrRecording - 让 recordAndRecognize 自行调用 stopRecording 获取最终文本
+  void signalStop() {
+    if (_recordingCompleter != null && !_recordingCompleter!.isCompleted) {
+      _recordingCompleter!.complete();
+      logger.i('PagerAssistant: 发送录音停止信号');
     }
   }
 
@@ -210,11 +249,17 @@ class PagerAssistant {
     }
 
     try {
+      logger.i('PagerAssistant._speak: 调用 VoiceService.speak()');
       await _voiceService.speak(text, sid: voiceId, speed: speed);
-    } catch (e) {
+      logger.i('PagerAssistant._speak: ✅ 播放完成');
+    } catch (e, stackTrace) {
       // 关键：不 rethrow，允许调用者继续执行
       // 这样即使 TTS 失败，状态更新和 UI 显示仍会继续
-      logger.w('PagerAssistant._speak: TTS 播放失败 (仅显示文本) - $e');
+      logger.w(
+        'PagerAssistant._speak: ❌ TTS 播放失败 (仅显示文本)',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 

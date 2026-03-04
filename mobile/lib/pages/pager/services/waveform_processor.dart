@@ -49,7 +49,14 @@ class WaveformProcessor {
       final normalizedEnergies = _normalizeToByteRange(trimmedEnergies);
 
       // 4. 下采样到最多128个点
-      final downsampled = _downsample(normalizedEnergies, maxWaveformPoints);
+      var downsampled = _downsample(normalizedEnergies, maxWaveformPoints);
+
+      // 保证返回最小长度为1，且不超过 maxWaveformPoints
+      if (downsampled.isEmpty) {
+        downsampled = [0];
+      } else if (downsampled.length > maxWaveformPoints) {
+        downsampled = downsampled.sublist(0, maxWaveformPoints);
+      }
 
       logger.i('Waveform extracted: ${downsampled.length} points');
       return downsampled;

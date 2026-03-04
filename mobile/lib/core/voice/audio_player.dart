@@ -59,12 +59,16 @@ class AudioPlayer {
 
     final release = await _audioManager.acquire();
     Timer? leakDetectionTimer;
+    bool released = false;
 
     try {
       // 设置资源泄漏检测：5分钟未释放则强制释放
       leakDetectionTimer = Timer(const Duration(minutes: 5), () {
         logger.w('AudioPlayer: 检测到资源泄漏，强制释放音频资源');
-        release();
+        if (!released) {
+          released = true;
+          release();
+        }
       });
 
       // 将PCM包装为WAV格式（就_audio的需求）
@@ -75,38 +79,56 @@ class AudioPlayer {
       }
 
       // 使用URI方式播放（兼容iOS等平台）
+      logger.i('AudioPlayer.playPcm: 设置音频源');
       await _player.setAudioSource(
         ja.AudioSource.uri(Uri.dataFromBytes(wavBytes, mimeType: 'audio/wav')),
       );
 
+      logger.i('AudioPlayer.playPcm: 开始播放');
       await _player.play();
 
       if (_verboseLogging) {
-        logger.i('AudioPlayer.playPcm: 开始播放');
+        logger.i('AudioPlayer.playPcm: play() 调用成功');
       }
 
-      // 等待播放完成（可配置超时保护）
-      final playerDone = _player.playerStateStream
-          .firstWhere(
-            (state) => state.processingState == ja.ProcessingState.completed,
-          )
-          .timeout(playbackTimeout);
+      // ✅ 优化：等待播放完成或超时
+      // 先等待一个短超时检查是否能收到完成信号
+      try {
+        logger.i(
+          'AudioPlayer.playPcm: 等待播放完成，超时: ${playbackTimeout.inSeconds}s',
+        );
+        final playerDone = _player.playerStateStream
+            .where((state) {
+              if (_verboseLogging) {
+                logger.d('AudioPlayer: 播放状态 - ${state.processingState}');
+              }
+              return state.processingState == ja.ProcessingState.completed;
+            })
+            .first
+            .timeout(playbackTimeout);
 
-      await playerDone;
-
-      if (_verboseLogging) {
-        logger.i('AudioPlayer.playPcm: 播放完成');
+        await playerDone;
+        logger.i('AudioPlayer.playPcm: ✅ 播放完成');
+      } on TimeoutException {
+        logger.w(
+          'AudioPlayer.playPcm: ⚠️ 播放超时 ${playbackTimeout.inSeconds}s，但继续执行',
+        );
+        // 不 rethrow，允许继续（可能音频太短或系统问题）
+        try {
+          await _player.stop();
+        } catch (e) {
+          logger.w('AudioPlayer.playPcm: stop() 失败 - $e');
+        }
       }
-    } on TimeoutException {
-      logger.w('AudioPlayer.playPcm: 播放超时 ${playbackTimeout.inSeconds}s');
-      await _player.stop();
-      rethrow;
     } catch (e, stackTrace) {
-      logger.e('AudioPlayer.playPcm: 播放失败', error: e, stackTrace: stackTrace);
-      rethrow;
+      logger.e('AudioPlayer.playPcm: ❌ 播放失败', error: e, stackTrace: stackTrace);
+      // 不 rethrow，让音频播放失败不影响后续流程
     } finally {
       leakDetectionTimer?.cancel();
-      release();
+      if (!released) {
+        released = true;
+        release();
+      }
     }
   }
 
