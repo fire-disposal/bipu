@@ -78,16 +78,11 @@ class ErrorMessageMapper {
 
   static String _getAuthExceptionMessage(AuthException e, bool isUserFacing) {
     if (isUserFacing) {
-      switch (e.statusCode) {
-        case 401:
-          return '登录已过期，请重新登录';
-        case 403:
-          return '无权限访问，请联系管理员';
-        default:
-          return '认证失败，请重新登录';
-      }
+      // 后端 401/403 消息已是用户友好的中文（如"用户名或密码错误"、"无效的认证凭据"）
+      // 直接透传，避免硬编码消息掩盖业务层含义
+      return e.message;
     } else {
-      return '认证异常: ${e.message}';
+      return '认证异常 (${e.statusCode}): ${e.message}';
     }
   }
 
@@ -96,14 +91,15 @@ class ErrorMessageMapper {
     bool isUserFacing,
   ) {
     if (isUserFacing) {
-      // 如果有具体的字段错误，汇总显示
+      // 字段级 errors（来自 422 Pydantic 校验）：汇总显示
       if (e.errors != null && e.errors!.isNotEmpty) {
         final errors = e.errors!.entries
             .map((entry) => _formatFieldError(entry.key, entry.value))
             .join('、');
         return '输入有误: $errors';
       }
-      return '输入数据不合法，请检查';
+      // 业务层 400 错误：后端消息已是用户友好的中文（如"用户名已存在"）
+      return e.message;
     } else {
       return '验证异常: ${e.message}';
     }

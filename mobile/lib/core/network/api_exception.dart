@@ -58,6 +58,17 @@ class AuthException extends ApiException {
     super.originalError,
   });
 
+  /// 从后端响应中提取真实错误消息
+  factory AuthException.fromResponse(Response response) {
+    final fallback = response.statusCode == 403 ? '禁止访问' : '未授权，请重新登录';
+    final message = _extractMessage(response.data, fallback);
+    return AuthException(
+      message: message,
+      statusCode: response.statusCode,
+      originalError: response,
+    );
+  }
+
   factory AuthException.unauthorized() {
     return AuthException(message: '未授权，请重新登录', statusCode: 401);
   }
@@ -69,6 +80,20 @@ class AuthException extends ApiException {
   factory AuthException.tokenExpired() {
     return AuthException(message: 'Token已过期', statusCode: 401);
   }
+}
+
+/// 从后端统一错误格式中提取 message 字段
+/// 后端格式: {"success": false, "error": {"type": "...", "message": "...", ...}}
+String _extractMessage(dynamic data, String fallback) {
+  if (data is Map) {
+    final errorObj = data['error'];
+    if (errorObj is Map) {
+      return errorObj['message'] as String? ?? fallback;
+    }
+    // 兼容旧格式 {"message": "..."} 或 {"detail": "..."}
+    return data['message'] as String? ?? data['detail'] as String? ?? fallback;
+  }
+  return fallback;
 }
 
 /// 服务器异常
@@ -83,23 +108,19 @@ class ServerException extends ApiException {
   });
 
   factory ServerException.fromResponse(Response response) {
-    String message = '服务器错误';
-
-    if (response.data is Map) {
-      final data = response.data as Map<String, dynamic>;
-      message = data['message'] ?? data['detail'] ?? message;
-    }
-
+    final message = _extractMessage(response.data, '服务器错误');
     return ServerException(
       message: message,
       statusCode: response.statusCode ?? 500,
-      responseData: response.data is Map ? response.data : null,
+      responseData: response.data is Map
+          ? response.data as Map<String, dynamic>
+          : null,
       originalError: response,
     );
   }
 }
 
-/// 验证异常
+/// 验证异常（400 / 422）
 class ValidationException extends ApiException {
   final Map<String, dynamic>? errors;
 
@@ -115,8 +136,30 @@ class ValidationException extends ApiException {
 
     if (response.data is Map) {
       final data = response.data as Map<String, dynamic>;
-      message = data['message'] ?? message;
-      errors = data['errors'] as Map<String, dynamic>?;
+      final errorObj = data['error'];
+      if (errorObj is Map) {
+        message = errorObj['message'] as String? ?? message;
+        // 422 RequestValidationError: error.details.validation_errors
+        final details = errorObj['details'];
+        if (details is Map) {
+          final validationErrors = details['validation_errors'];
+          if (validationErrors is List && validationErrors.isNotEmpty) {
+            final Map<String, dynamic> errMap = {};
+            for (final item in validationErrors) {
+              if (item is Map) {
+                final loc = item['loc'] as List?;
+                final field = loc?.last?.toString() ?? 'field';
+                errMap[field] = item['msg']?.toString() ?? '';
+              }
+            }
+            if (errMap.isNotEmpty) errors = errMap;
+          }
+        }
+      } else {
+        // 兼容旧格式
+        message = data['message'] as String? ?? message;
+        errors = data['errors'] as Map<String, dynamic>?;
+      }
     }
 
     return ValidationException(

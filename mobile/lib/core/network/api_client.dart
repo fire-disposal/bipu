@@ -107,7 +107,7 @@ class ApiClient {
       _logger.e(
         '❌ Error: ${operationName ?? 'API Request'}: ${apiException.message} (Status: ${e.response?.statusCode})',
       );
-      rethrow;
+      throw apiException; // 抛出转换后的 ApiException，使调用方可精确捕获类型
     } catch (e) {
       _logger.e('❌ Unexpected Error: ${operationName ?? 'API Request'}: $e');
       rethrow;
@@ -120,10 +120,10 @@ class ApiClient {
       final statusCode = error.response!.statusCode;
 
       if (statusCode == 401) {
-        return AuthException.unauthorized();
+        return AuthException.fromResponse(error.response!);
       } else if (statusCode == 403) {
-        return AuthException.forbidden();
-      } else if (statusCode == 400) {
+        return AuthException.fromResponse(error.response!);
+      } else if (statusCode == 400 || statusCode == 422) {
         return ValidationException.fromResponse(error.response!);
       } else if (statusCode != null && statusCode >= 500) {
         return ServerException.fromResponse(error.response!);

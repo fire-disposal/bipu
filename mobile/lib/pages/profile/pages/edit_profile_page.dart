@@ -105,8 +105,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
         // 上传头像
         setState(() => _isUploadingAvatar = true);
         try {
-          final response = await _apiClient.api.userProfile
-              .postApiProfileAvatar(file: File(croppedFile.path));
+          final response = await _apiClient.execute(
+            () => _apiClient.api.userProfile.postApiProfileAvatar(
+              file: File(croppedFile.path),
+            ),
+            operationName: 'UploadAvatar',
+          );
 
           setState(() => _avatarUrl = response.avatarUrl);
           // 更新当前用户信息
@@ -167,7 +171,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
               : _baziController.text.trim(),
         );
 
-        await _apiClient.api.userProfile.putApiProfile(body: updateData);
+        await _apiClient.execute(
+          () => _apiClient.api.userProfile.putApiProfile(body: updateData),
+          operationName: 'SaveProfile',
+        );
 
         // 更新当前用户信息
         _authService.fetchCurrentUser();
