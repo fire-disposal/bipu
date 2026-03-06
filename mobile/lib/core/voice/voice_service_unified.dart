@@ -30,11 +30,6 @@ class VoiceService {
   /// ASR 录音活跃标记（由 startRecording/stopRecording 维护）
   bool _isAudioRecording = false;
 
-  /// TTS 预生成缓存：key=文本，value=PCM bytes
-  /// 在 ConnectingPage 期间预生成，供 InCallPage 首次播放时直接使用，
-  /// 避免同步 ONNX 推理阻塞 Dart 主线程导致的首帧冻结
-  final Map<String, List<int>> _ttsCache = {};
-
   /// 当前是否有 TTS 正在播放（包括排队等待播放的）
   bool get isSpeaking => !_speakDone.isCompleted;
 
@@ -66,38 +61,6 @@ class VoiceService {
 
   // ============ TTS API ============
 
-  /// 预生成 TTS 音频并缓存，供 speak() 直接使用。
-  ///
-  /// 应在用户不感知的等待期调用（如 ConnectingPage 2 秒动画期间），
-  /// 避免第一次 speak() 时 ONNX 同步推理阻塞 Dart 主线程冻结 UI。
-  Future<void> pregenerateText(
-    String text, {
-    int sid = 0,
-    double speed = 1.0,
-  }) async {
-    if (!_initialized) await init();
-    if (_ttsCache.containsKey(text)) return; // 已缓存，无需重复生成
-    try {
-      logger.i('VoiceService.pregenerateText: 预生成 "$text"');
-      final pcmBytes = await _tts.generate(
-        text: text,
-        sid: sid,
-        speed: speed,
-        timeout: const Duration(seconds: 30),
-      );
-      if (pcmBytes != null) {
-        _ttsCache[text] = pcmBytes;
-        logger.i(
-          'VoiceService.pregenerateText: ✅ 缓存就绪 (${pcmBytes.length} bytes)',
-        );
-      } else {
-        logger.w('VoiceService.pregenerateText: TTS 生成失败 "$text"');
-      }
-    } catch (e) {
-      logger.w('VoiceService.pregenerateText: 异常 - $e');
-    }
-  }
-
   /// 播放 TTS 语音，顺序执行，await 返回表示播放完毕
   ///
   /// 多次并发调用时按顺序串行执行，不会互相覆盖。
@@ -123,25 +86,16 @@ class VoiceService {
 
     _speakDone = Completer<void>();
     try {
-      // ✅ 优先使用预生成缓存（一次性消费），命中时完全跳过 ONNX 推理
-      final cached = _ttsCache.remove(text);
-      final List<int> pcmBytes;
-      if (cached != null) {
-        logger.i('VoiceService.speak: ✅ 使用预生成缓存 "$text"');
-        pcmBytes = cached;
-      } else {
-        logger.i('VoiceService.speak: 生成TTS "$text" sid=$sid spd=$speed');
-        final generated = await _tts.generate(
-          text: text,
-          sid: sid,
-          speed: speed,
-          timeout: const Duration(seconds: 30),
-        );
-        if (generated == null) {
-          logger.w('VoiceService.speak: TTS生成失败 "$text"');
-          return;
-        }
-        pcmBytes = generated;
+      logger.i('VoiceService.speak: 生成TTS "$text" sid=$sid spd=$speed');
+      final pcmBytes = await _tts.generate(
+        text: text,
+        sid: sid,
+        speed: speed,
+        timeout: const Duration(seconds: 30),
+      );
+      if (pcmBytes == null) {
+        logger.w('VoiceService.speak: TTS生成失败 "$text"');
+        return;
       }
 
       // ✅ 关键：此处直接调用 playPcm，不再 acquire AudioResourceManager
@@ -201,7 +155,6 @@ class VoiceService {
   // ============ 内部工具 ============
 
   void dispose() {
-    _ttsCache.clear();
     _tts.dispose();
     _asr.dispose();
     _player.dispose();

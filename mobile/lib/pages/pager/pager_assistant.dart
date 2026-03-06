@@ -42,24 +42,6 @@ class PagerAssistant {
 
   // ============ TTS ============
 
-  /// 在 ConnectingPage 期间预生成问候语 TTS，返回已预选的台词文本。
-  ///
-  /// 返回的文本应传给 _runGreetingFlow，就不需要再次随机选取，
-  /// 保证 speak() 能命中缓存。
-  Future<String> prewarmGreeting() async {
-    if (!_initialized) return '';
-    final op = _operator;
-    if (op == null) return '';
-    final greeting = op.dialogues.getGreeting();
-    logger.i('PagerAssistant: 预生成问候语 TTS "$greeting"');
-    await _voiceService.pregenerateText(
-      greeting,
-      sid: op.ttsId,
-      speed: op.ttsSpeed,
-    );
-    return greeting;
-  }
-
   /// 播放任意文本，使用当前接线员音色/语速
   /// await 返回表示播放完毕（TTS 失败时静默跳过，不抛出异常）
   Future<void> respond(String text, {double? speed}) async {

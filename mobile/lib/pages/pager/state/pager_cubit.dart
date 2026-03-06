@@ -131,12 +131,6 @@ class PagerCubit extends Cubit<PagerState> {
 
       logger.i('PagerCubit: 语音服务就绪，接线员 = ${op.name}');
 
-      // 在仍停留于 ConnectingPage 期间预生成问候语 TTS。
-      // 这里会短暂阻塞 Dart 主线程（ONNX 同步推理），
-      // 但用户此时看到的是 ConnectingPage，而非 InCallPage，
-      // 转场后加载即动、音频立即播放，消除首帧冻结感。
-      final prewarmGreeting = await _voiceAssistant.prewarmGreeting();
-
       // 进入接通状态
       emit(ConnectedState(operator: op, phase: InCallPhase.greeting));
 
@@ -144,10 +138,7 @@ class PagerCubit extends Cubit<PagerState> {
       await Future.delayed(Duration.zero);
       if (state is! ConnectedState) return;
 
-      await _runGreetingFlow(
-        op,
-        prewarmedGreeting: prewarmGreeting.isEmpty ? null : prewarmGreeting,
-      );
+      await _runGreetingFlow(op);
     } catch (e) {
       logger.e('startDialing failed: $e');
       emit(PagerErrorState(message: '连接失败：$e'));
@@ -157,13 +148,9 @@ class PagerCubit extends Cubit<PagerState> {
   }
 
   /// 问候流程：问候语 → 询问目标 ID
-  /// [prewarmedGreeting] 若已预生成缓存则传入对应文本，避免重复随机选取导致缓存未命中
-  Future<void> _runGreetingFlow(
-    OperatorPersonality op, {
-    String? prewarmedGreeting,
-  }) async {
-    // ① 问候语（优先使用预热时已选定的文本，确保与缓存 key 一致）
-    final greeting = prewarmedGreeting ?? op.dialogues.getGreeting();
+  Future<void> _runGreetingFlow(OperatorPersonality op) async {
+    // ① 问候语
+    final greeting = op.dialogues.getGreeting();
     _update(
       (cs) => emit(
         cs.copyWith(
@@ -224,14 +211,16 @@ class PagerCubit extends Cubit<PagerState> {
       final targetId = cs.targetId.trim();
       final op = cs.operator;
 
-      // 接线员播报确认台词
+      // 接线员播报确认台词（用 _update 取当前最新 state，确保 isConfirming 标志不被旧快照覆盖）
       final confirmText = op.dialogues.getConfirmId(targetId);
-      emit(
-        cs.copyWith(
-          operatorCurrentSpeech: confirmText,
-          operatorSpeechHistory: _appendSpeech(
-            cs.operatorSpeechHistory,
-            confirmText,
+      _update(
+        (current) => emit(
+          current.copyWith(
+            operatorCurrentSpeech: confirmText,
+            operatorSpeechHistory: _appendSpeech(
+              current.operatorSpeechHistory,
+              confirmText,
+            ),
           ),
         ),
       );
@@ -243,12 +232,13 @@ class PagerCubit extends Cubit<PagerState> {
         await _apiClient.api.users.getApiUsersUsersBipupuId(bipupuId: targetId);
         logger.i('PagerCubit: 目标用户存在 - $targetId');
 
-        // 成功 → 进入消息录入阶段
+        // 成功 → 进入消息录入阶段（同时清除 isConfirming，UI 立即解除加载态）
         final askMsg = op.dialogues.getRequestMessage();
         _update(
           (current) => emit(
             current.copyWith(
               phase: InCallPhase.inputtingMessage,
+              isConfirming: false,
               operatorCurrentSpeech: askMsg,
               operatorSpeechHistory: _appendSpeech(
                 current.operatorSpeechHistory,
@@ -262,7 +252,7 @@ class PagerCubit extends Cubit<PagerState> {
       } catch (e) {
         logger.w('PagerCubit: 目标用户不存在 - $targetId');
 
-        // 失败 → 接线员提示，重置回 ID 输入
+        // 失败 → 接线员提示，重置回 ID 输入（同时清除 isConfirming）
         final notFound = op.dialogues.getUserNotFound();
         _update(
           (current) => emit(
@@ -282,7 +272,11 @@ class PagerCubit extends Cubit<PagerState> {
 
         _update(
           (current) => emit(
-            current.copyWith(phase: InCallPhase.enteringTarget, targetId: ''),
+            current.copyWith(
+              phase: InCallPhase.enteringTarget,
+              targetId: '',
+              isConfirming: false,
+            ),
           ),
         );
       }
@@ -474,6 +468,8 @@ class PagerCubit extends Cubit<PagerState> {
           ),
         );
         await _voiceAssistant.respond(askContinue);
+        // hangup 可能在第二段 TTS 期间被调用
+        if (state is! ConnectedState) return;
 
         // 计录接线员对话次数
         await _operatorService.incrementConversationCount(cs.operator.id);
@@ -483,16 +479,22 @@ class PagerCubit extends Cubit<PagerState> {
           cs.operator.id,
         );
         if (wasNewlyUnlocked) {
-          // 短暂 emit 解锁状态，触发 PagerPage BlocListener 展示解锁弹窗
-          // （buildWhen 保证底层 body 不被重建）
+          // 瞬态 emit 解锁状态触发 BlocListener 弹窗，随即恢复 ConnectedState。
+          // 若不恢复，state 永久停在 OperatorUnlockedState，
+          // _cs 返回 null，所有 UI 交互静默失效。
           logger.i('PagerCubit: 解锁接线员 ${cs.operator.name}');
           final updatedOp = _operatorService.getOperatorById(cs.operator.id)!;
+          final savedConnected =
+              _cs; // 在 emit 之前保存，emit 后 state 变为非 ConnectedState
           emit(
             OperatorUnlockedState(
               operator: updatedOp,
               unlockMessage: '恭喜！您已解锁接线员 ${updatedOp.name}！',
             ),
           );
+          // 立即恢复，BlocBuilder 的 buildWhen 会跳过 OperatorUnlockedState
+          // 对 UI 无感，但 _cs 重新有效，按钮交互恢复正常
+          if (savedConnected != null) emit(savedConnected);
         }
       } else {
         logger.w('PagerCubit: 消息发送失败（result == null）');
