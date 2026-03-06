@@ -131,15 +131,23 @@ class PagerCubit extends Cubit<PagerState> {
 
       logger.i('PagerCubit: 语音服务就绪，接线员 = ${op.name}');
 
+      // 在仍停留于 ConnectingPage 期间预生成问候语 TTS。
+      // 这里会短暂阻塞 Dart 主线程（ONNX 同步推理），
+      // 但用户此时看到的是 ConnectingPage，而非 InCallPage，
+      // 转场后加载即动、音频立即播放，消除首帧冻结感。
+      final prewarmGreeting = await _voiceAssistant.prewarmGreeting();
+
       // 进入接通状态
       emit(ConnectedState(operator: op, phase: InCallPhase.greeting));
 
-      // 🔑 让 Flutter 先渲染 InCallPage 首帧，
-      // 再执行 TTS 合成（同步 ONNX 推理会短暂占用 Dart isolate）
+      // 🔑 让 Flutter 先渲染 InCallPage 首帧，再开始播放
       await Future.delayed(Duration.zero);
       if (state is! ConnectedState) return;
 
-      await _runGreetingFlow(op);
+      await _runGreetingFlow(
+        op,
+        prewarmedGreeting: prewarmGreeting.isEmpty ? null : prewarmGreeting,
+      );
     } catch (e) {
       logger.e('startDialing failed: $e');
       emit(PagerErrorState(message: '连接失败：$e'));
@@ -149,9 +157,13 @@ class PagerCubit extends Cubit<PagerState> {
   }
 
   /// 问候流程：问候语 → 询问目标 ID
-  Future<void> _runGreetingFlow(OperatorPersonality op) async {
-    // ① 问候语
-    final greeting = op.dialogues.getGreeting();
+  /// [prewarmedGreeting] 若已预生成缓存则传入对应文本，避免重复随机选取导致缓存未命中
+  Future<void> _runGreetingFlow(
+    OperatorPersonality op, {
+    String? prewarmedGreeting,
+  }) async {
+    // ① 问候语（优先使用预热时已选定的文本，确保与缓存 key 一致）
+    final greeting = prewarmedGreeting ?? op.dialogues.getGreeting();
     _update(
       (cs) => emit(
         cs.copyWith(

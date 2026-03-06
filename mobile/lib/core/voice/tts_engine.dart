@@ -1,142 +1,123 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 import 'model_manager.dart';
 import 'voice_config.dart';
+import 'tts_isolate.dart';
 import '../utils/logger.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  TTSEngine — 统一 TTS 接口，内部委托给后台 Isolate
+//
+//  核心改变（相比旧版）：
+//    - 不再在主 Isolate 持有 sherpa.OfflineTts 对象
+//    - generate() 在后台 Isolate 执行 ONNX 推理，主线程完全异步等待
+//    - generate() 返回类型 sherpa.GeneratedAudio? → List<int>?（PCM bytes）
+//      调用方（VoiceService）无需再调用 _convertAudioToBytes()
+// ─────────────────────────────────────────────────────────────────────────────
 
 class TTSEngine {
   static final TTSEngine _instance = TTSEngine._internal();
-
   factory TTSEngine() => _instance;
-
   TTSEngine._internal();
 
-  sherpa.OfflineTts? _tts;
+  final TtsIsolateRunner _worker = TtsIsolateRunner();
+
   bool _isInitialized = false;
   Completer<void>? _initCompleter;
+
   static const bool _verboseLogging = kDebugMode;
 
   bool get isInitialized => _isInitialized;
 
+  /// 初始化：提取模型文件路径，启动后台 Isolate，在其中加载 ONNX 模型。
   Future<void> init() async {
     if (_isInitialized) return;
     if (_initCompleter != null) return _initCompleter!.future;
 
     _initCompleter = Completer<void>();
-
     try {
-      sherpa.initBindings();
-
+      // ① 确保模型文件已从 assets 解压到文件系统
       await ModelManager.instance.ensureInitialized(VoiceConfig.ttsModelFiles);
 
-      final paths = _extractModelPaths(VoiceConfig.ttsModelFiles);
-      final config = _buildTtsConfig(paths);
+      // ② 提取文件系统绝对路径（语义化 key，解耦对具体文件名的依赖）
+      final paths = _extractModelPaths();
 
-      _tts = sherpa.OfflineTts(config);
-      _isInitialized = true;
-      logger.i('✅ TTSEngine 初始化完成');
-      _initCompleter!.complete();
-    } catch (e, stackTrace) {
-      logger.e(
-        'TTSEngine initialization failed.',
-        error: e,
-        stackTrace: stackTrace,
+      // ③ 启动后台 Isolate，在其中完成 sherpa.OfflineTts 初始化
+      await _worker.spawn(
+        modelPaths: paths,
+        numThreads: VoiceConfig.ttsNumThreads,
+        debug: VoiceConfig.ttsDebug,
       );
-      _initCompleter!.completeError(e, stackTrace);
+
+      _isInitialized = true;
+      _initCompleter!.complete();
+      logger.i('✅ TTSEngine 初始化完成（后台 Isolate 模式）');
+    } catch (e, st) {
+      logger.e('TTSEngine 初始化失败', error: e, stackTrace: st);
+      _initCompleter!.completeError(e, st);
       _initCompleter = null;
       rethrow;
     }
   }
 
-  Map<String, String> _extractModelPaths(Map<String, String> modelFiles) {
-    final paths = <String, String>{};
-    for (final key in modelFiles.keys) {
-      final p = ModelManager.instance.getModelPath(key);
-      if (p == null) {
-        logger.e('ModelManager failed to prepare model: $key');
-        throw Exception('ModelManager failed to prepare $key');
-      }
-      final extractedKey = key.split('/').last.split('.').first;
-      paths[extractedKey] = p;
-    }
-    return paths;
-  }
-
-  sherpa.OfflineTtsConfig _buildTtsConfig(Map<String, String> paths) {
-    // 检查必需的路径是否存在
-    final requiredKeys = [
-      VoiceConfig.ttsModel,
-      VoiceConfig.ttsLexicon,
-      VoiceConfig.ttsTokens,
-    ];
-    for (final key in requiredKeys) {
-      if (!paths.containsKey(key)) {
-        logger.e('Missing required TTS model key: $key');
-        logger.e('Available keys: ${paths.keys.toList()}');
-        throw Exception('Missing required TTS model key: $key');
-      }
-    }
-
-    final vits = sherpa.OfflineTtsVitsModelConfig(
-      model: paths[VoiceConfig.ttsModel]!,
-      lexicon: paths[VoiceConfig.ttsLexicon]!,
-      tokens: paths[VoiceConfig.ttsTokens]!,
-    );
-
-    final ruleFsts =
-        '${paths[VoiceConfig.ttsPhone]},${paths[VoiceConfig.ttsDate]},${paths[VoiceConfig.ttsNumber]},${paths[VoiceConfig.ttsHeteronym]}';
-
-    return sherpa.OfflineTtsConfig(
-      model: sherpa.OfflineTtsModelConfig(
-        vits: vits,
-        numThreads: VoiceConfig.ttsNumThreads,
-        debug: VoiceConfig.ttsDebug,
-      ),
-      ruleFsts: ruleFsts,
-    );
-  }
-
-  Future<sherpa.GeneratedAudio?> generate({
+  /// 生成 TTS 音频（在后台 Isolate 中执行，主线程不阻塞）。
+  ///
+  /// 返回 16-bit little-endian PCM bytes（24 kHz 单声道），失败时返回 null。
+  Future<List<int>?> generate({
     required String text,
     int sid = 0,
     double speed = 1.0,
     Duration timeout = const Duration(seconds: 30),
   }) async {
-    if (!_isInitialized || _tts == null) {
-      await init();
-    }
-
-    // 检查 _tts 是否成功初始化
-    if (_tts == null) {
-      logger.e('TTS engine not initialized properly after init() call');
-      logger.e('_isInitialized: $_isInitialized, _tts: $_tts');
+    if (!_isInitialized) await init();
+    if (!_worker.isReady) {
+      logger.e('TTSEngine.generate: Isolate 未就绪');
       return null;
     }
 
-    try {
-      if (_verboseLogging) {
-        logger.i('Generating TTS for text: "$text", sid: $sid, speed: $speed');
-      }
-
-      // OfflineTts.generate() 是同步方法，在 Future 中执行以便应用超时保护
-      final generationFuture = Future.microtask(
-        () => _tts!.generate(text: text, sid: sid, speed: speed),
-      );
-
-      return await generationFuture.timeout(timeout);
-    } on TimeoutException {
-      logger.e('TTS generation timeout after ${timeout.inSeconds}s: "$text"');
-      return null;
-    } catch (e, stackTrace) {
-      logger.e('Error generating TTS: $e\n$stackTrace');
-      return null;
+    if (_verboseLogging) {
+      logger.i('TTSEngine.generate: "$text" sid=$sid spd=$speed');
     }
+
+    final result = await _worker.generate(
+      text: text,
+      sid: sid,
+      speed: speed,
+      timeout: timeout,
+    );
+
+    if (result == null) {
+      logger.w('TTSEngine.generate: 失败或超时 "$text"');
+    }
+    return result;
   }
 
+  /// 释放后台 Isolate 及 native 资源。
   void dispose() {
-    _tts?.free();
-    _tts = null;
+    _worker.dispose();
     _isInitialized = false;
+    _initCompleter = null;
+  }
+
+  // ─── 内部工具 ──────────────────────────────────────────────────────────────
+
+  /// 将 VoiceConfig.ttsModelFiles 解析为文件系统绝对路径，
+  /// 使用语义化 key 供后台 Isolate 构建 sherpa 配置时使用。
+  Map<String, String> _extractModelPaths() {
+    String req(String assetKey) {
+      final p = ModelManager.instance.getModelPath(assetKey);
+      if (p == null) throw Exception('ModelManager: $assetKey 未就绪');
+      return p;
+    }
+
+    return {
+      'onnx': req('tts/vits-zh-hf-fanchen-C.onnx'),
+      'tokens': req('tts/tokens.txt'),
+      'lexicon': req('tts/lexicon.txt'),
+      'phone': req('tts/phone.fst'),
+      'date': req('tts/date.fst'),
+      'number': req('tts/number.fst'),
+      'heteronym': req('tts/new_heteronym.fst'),
+    };
   }
 }
