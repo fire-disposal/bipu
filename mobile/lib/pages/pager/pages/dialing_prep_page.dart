@@ -5,10 +5,10 @@ import '../state/pager_cubit.dart';
 import '../models/operator_model.dart';
 
 // ──────────────────────────────────────────────────────────────────────────────
-//  拨号准备页面（简化版）
+//  拨号准备页面
 //
-//  职责：展示当前接线员 + 提供"开始通话"入口
-//  目标号码改为在接通后由接线员语音引导输入，此页不再需要数字键盘
+//  职责：品牌入口 + 服务流程说明 + 开始通话按钮
+//  接线员由系统在接通后随机分配，此页不展示接线员面板
 // ──────────────────────────────────────────────────────────────────────────────
 
 class DialingPrepPage extends StatelessWidget {
@@ -47,43 +47,46 @@ class _PrepView extends StatelessWidget {
           child: Column(
             children: [
               const SizedBox(height: 12),
-              // ─── 顶部标题行 ───
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '拨号传呼',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: cs.primary,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                  // 接线员选择功能暂时禁用，拨通后随机分配
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      op != null ? op.name : '随机接线员',
-                      style: TextStyle(
-                        color: cs.onSurfaceVariant,
-                        fontSize: 12,
+              // ─── 顶部品牌标题 ───
+              Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'BIPUPU',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: cs.primary,
+                        letterSpacing: 3,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: cs.primaryContainer,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '传呼',
+                        style: TextStyle(
+                          color: cs.onPrimaryContainer,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
               const Spacer(flex: 1),
 
-              // ─── 神秘接线员占位符 ───
-              _MysteryOperatorCard(cs: cs, theme: theme),
+              // ─── 视觉中心区 ───
+              _HeroVisual(themeColor: themeColor, cs: cs, theme: theme),
 
               const Spacer(flex: 1),
 
@@ -146,283 +149,14 @@ class _PrepView extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────
-//  接线员选择器 Chip
+//  视觉中心区
 // ─────────────────────────────────────────────────────
 
-class _OperatorSelectorChip extends StatelessWidget {
-  final DialingPrepState state;
-  final PagerCubit cubit;
-  final ColorScheme cs;
-  const _OperatorSelectorChip({
-    required this.state,
-    required this.cubit,
-    required this.cs,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final op = state.currentOperator;
-    return InkWell(
-      onTap: () => _showOperatorSheet(context),
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: cs.secondaryContainer,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.person_outline,
-              size: 15,
-              color: cs.onSecondaryContainer,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              op?.name ?? '随机接线员',
-              style: TextStyle(
-                color: cs.onSecondaryContainer,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.arrow_drop_down,
-              size: 16,
-              color: cs.onSecondaryContainer,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showOperatorSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => _OperatorPickerSheet(cubit: cubit, cs: cs),
-    );
-  }
-}
-
-/// 接线员选择器底部弹窗
-class _OperatorPickerSheet extends StatelessWidget {
-  final PagerCubit cubit;
-  final ColorScheme cs;
-  const _OperatorPickerSheet({required this.cubit, required this.cs});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '选择接线员',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 130,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              itemCount: OperatorFactory.defaultOperators.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 16),
-              itemBuilder: (context, i) {
-                final op = OperatorFactory.defaultOperators[i];
-                return GestureDetector(
-                  onTap: () {
-                    cubit.selectOperator(op);
-                    Navigator.pop(context);
-                  },
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: op.themeColor.withOpacity(0.15),
-                          border: Border.all(color: op.themeColor, width: 2),
-                          image: DecorationImage(
-                            image: op.portraitUrl.startsWith('assets')
-                                ? AssetImage(op.portraitUrl) as ImageProvider
-                                : NetworkImage(op.portraitUrl),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        op.name,
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        op.description,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontSize: 9,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────
-//  神秘接线员占位符（拨通前不显示具体是谁）
-// ─────────────────────────────────────────────────────
-
-class _MysteryOperatorCard extends StatelessWidget {
-  final ColorScheme cs;
-  final ThemeData theme;
-  const _MysteryOperatorCard({required this.cs, required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        color: cs.surfaceContainer,
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.3),
-          width: 1.5,
-        ),
-      ),
-      child: Row(
-        children: [
-          // 神秘立绘区
-          Container(
-            width: 80,
-            height: 100,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              color: cs.surfaceContainerHighest,
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.4),
-                width: 1.5,
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.question_mark_rounded,
-                  size: 28,
-                  color: cs.onSurfaceVariant.withValues(alpha: 0.5),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '???',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.4),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '未知接线员',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '拨通后随机分配一位接线员为您服务',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: cs.primaryContainer.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.casino_outlined,
-                        size: 12,
-                        color: cs.onPrimaryContainer,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '随机分配',
-                        style: TextStyle(
-                          color: cs.onPrimaryContainer,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────
-//  接线员展示卡（接通后展示）
-// ─────────────────────────────────────────────────────
-
-class _OperatorCard extends StatelessWidget {
-  final OperatorPersonality? op;
+class _HeroVisual extends StatelessWidget {
   final Color themeColor;
   final ColorScheme cs;
   final ThemeData theme;
-  const _OperatorCard({
-    required this.op,
+  const _HeroVisual({
     required this.themeColor,
     required this.cs,
     required this.theme,
@@ -430,126 +164,76 @@ class _OperatorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (op == null) return const SizedBox(height: 200);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        color: cs.surfaceContainer,
-        border: Border.all(color: themeColor.withOpacity(0.2), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: themeColor.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // 立绘
-          Container(
-            width: 80,
-            height: 100,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: themeColor.withOpacity(0.3),
-                width: 1.5,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 160,
+          height: 160,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // 外圈光晕
+              Container(
+                width: 160,
+                height: 160,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: themeColor.withOpacity(0.08),
+                    width: 1,
+                  ),
+                ),
               ),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: _buildPortrait(themeColor),
-            ),
-          ),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  op!.name,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    color: themeColor,
-                    fontWeight: FontWeight.w800,
+              // 中圈
+              Container(
+                width: 116,
+                height: 116,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: themeColor.withOpacity(0.18),
+                    width: 1.5,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  op!.description,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
+              ),
+              // 核心圆
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: themeColor.withOpacity(0.1),
+                  border: Border.all(
+                    color: themeColor.withOpacity(0.3),
+                    width: 2,
                   ),
                 ),
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: themeColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: themeColor.withOpacity(0.25)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.headset_mic_rounded,
-                        size: 13,
-                        color: themeColor,
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        '待机中',
-                        style: TextStyle(
-                          color: themeColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
+                child: Icon(
+                  Icons.phone_in_talk_rounded,
+                  size: 34,
+                  color: themeColor,
                 ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPortrait(Color themeColor) {
-    Widget fallback = Container(
-      color: themeColor.withOpacity(0.1),
-      child: Center(
-        child: Text(
-          op!.initials,
-          style: TextStyle(
-            color: themeColor,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
+              ),
+            ],
           ),
         ),
-      ),
-    );
-    if (op == null) return fallback;
-    final url = op!.portraitUrl;
-    if (url.startsWith('assets')) {
-      return Image.asset(
-        url,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => fallback,
-      );
-    }
-    return Image.network(
-      url,
-      fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => fallback,
+        const SizedBox(height: 20),
+        Text(
+          '随机接线员接待',
+          style: theme.textTheme.titleSmall?.copyWith(
+            color: cs.onSurface,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '接通后为您随机分配一位接线员',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: cs.onSurfaceVariant.withOpacity(0.7),
+          ),
+        ),
+      ],
     );
   }
 }

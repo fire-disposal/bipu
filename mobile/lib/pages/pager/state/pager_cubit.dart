@@ -75,6 +75,10 @@ class PagerCubit extends Cubit<PagerState> {
       final op = _operatorService.getRandomOperator();
       logger.i('PagerCubit: 随机选择接线员 - ${op.name}');
       emit(DialingPrepState(currentOperator: op));
+      // 🔥 后台预热语音服务（fire-and-forget）
+      // 用户在准备页浏览时即开始加载 TTS/ASR ONNX 模型，
+      // 使后续的连接动效不因模型加载而冻结
+      unawaited(_voiceAssistant.init());
     } catch (e) {
       logger.e('initializeDialingPrep failed: $e');
       emit(PagerErrorState(message: '初始化失败：$e'));
@@ -98,27 +102,35 @@ class PagerCubit extends Cubit<PagerState> {
     if (_isDialing) return;
     _isDialing = true;
     try {
-      // 提取当前接线员（若已选择）
+      // 提前确定接线员，使连接页能立即显示接线员名称
       OperatorPersonality? op;
       if (state is DialingPrepState) {
         op = (state as DialingPrepState).currentOperator;
       }
+      op ??= _operatorService.getRandomOperator();
+      _voiceAssistant.updateOperator(op);
 
       emit(ConnectingState(currentOperator: op));
-      logger.i('PagerCubit: 进入连接中状态');
+      logger.i('PagerCubit: 进入连接中状态，接线员 = ${op.name}');
 
       // 并行：展示连接动画（最少 2 秒）+ 初始化语音服务
+      // 若已在 initializeDialingPrep 预热，init() 几乎立即返回，
+      // Future.wait 仅等待 2 秒动画时间，连接动效全程流畅。
       await Future.wait([
         Future.delayed(const Duration(seconds: 2)),
         _voiceAssistant.init(),
       ]);
 
-      op ??= _operatorService.getRandomOperator();
-      _voiceAssistant.updateOperator(op);
-      logger.i('PagerCubit: 语音服务初始化完成，接线员 = ${op.name}');
+      logger.i('PagerCubit: 语音服务就绪，接线员 = ${op.name}');
 
-      // 进入接通状态，开始问候阶段
+      // 进入接通状态
       emit(ConnectedState(operator: op, phase: InCallPhase.greeting));
+
+      // 🔑 让 Flutter 先渲染 InCallPage 首帧，
+      // 再执行 TTS 合成（同步 ONNX 推理会短暂占用 Dart isolate）
+      await Future.delayed(Duration.zero);
+      if (state is! ConnectedState) return;
+
       await _runGreetingFlow(op);
     } catch (e) {
       logger.e('startDialing failed: $e');
@@ -143,6 +155,10 @@ class PagerCubit extends Cubit<PagerState> {
         ),
       ),
     );
+    // 先让气泡文本渲染到屏幕，再开始 TTS 合成
+    await Future.delayed(Duration.zero);
+    if (state is! ConnectedState) return;
+
     await _voiceAssistant.respond(greeting);
     if (state is! ConnectedState) return;
 
@@ -160,6 +176,10 @@ class PagerCubit extends Cubit<PagerState> {
         ),
       ),
     );
+    // 先让阶段切换动画渲染，再开始 TTS
+    await Future.delayed(Duration.zero);
+    if (state is! ConnectedState) return;
+
     await _voiceAssistant.respond(askTarget);
   }
 

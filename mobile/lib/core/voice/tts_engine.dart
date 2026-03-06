@@ -31,16 +31,11 @@ class TTSEngine {
       await ModelManager.instance.ensureInitialized(VoiceConfig.ttsModelFiles);
 
       final paths = _extractModelPaths(VoiceConfig.ttsModelFiles);
-      if (_verboseLogging) logger.i('TTS model paths extracted: $paths');
-
       final config = _buildTtsConfig(paths);
-      if (_verboseLogging) logger.i('TTS config built successfully');
 
       _tts = sherpa.OfflineTts(config);
-      if (_verboseLogging) logger.i('Sherpa OfflineTts instance created');
-
       _isInitialized = true;
-      if (_verboseLogging) logger.i('TTSEngine initialized successfully');
+      logger.i('✅ TTSEngine 初始化完成');
       _initCompleter!.complete();
     } catch (e, stackTrace) {
       logger.e(
@@ -63,17 +58,12 @@ class TTSEngine {
         throw Exception('ModelManager failed to prepare $key');
       }
       final extractedKey = key.split('/').last.split('.').first;
-      if (_verboseLogging) {
-        logger.i('Extracted key: $extractedKey from $key, path: $p');
-      }
       paths[extractedKey] = p;
     }
     return paths;
   }
 
   sherpa.OfflineTtsConfig _buildTtsConfig(Map<String, String> paths) {
-    if (_verboseLogging) logger.i('Building TTS config with paths: $paths');
-
     // 检查必需的路径是否存在
     final requiredKeys = [
       VoiceConfig.ttsModel,
@@ -94,11 +84,8 @@ class TTSEngine {
       tokens: paths[VoiceConfig.ttsTokens]!,
     );
 
-    if (_verboseLogging) logger.i('VITS model config created successfully');
-
     final ruleFsts =
         '${paths[VoiceConfig.ttsPhone]},${paths[VoiceConfig.ttsDate]},${paths[VoiceConfig.ttsNumber]},${paths[VoiceConfig.ttsHeteronym]}';
-    if (_verboseLogging) logger.i('Rule FSTs: $ruleFsts');
 
     return sherpa.OfflineTtsConfig(
       model: sherpa.OfflineTtsModelConfig(
@@ -117,7 +104,6 @@ class TTSEngine {
     Duration timeout = const Duration(seconds: 30),
   }) async {
     if (!_isInitialized || _tts == null) {
-      if (_verboseLogging) logger.i('TTS not initialized, calling init()');
       await init();
     }
 

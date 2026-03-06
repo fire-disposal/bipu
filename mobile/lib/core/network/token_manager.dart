@@ -40,12 +40,7 @@ class TokenManager {
   static Future<String?> getAccessToken() async {
     try {
       final token = await StorageManager.getSecureData(_accessTokenKey);
-      if (token != null && token.isNotEmpty) {
-        debugPrint('✅ Access token retrieved: ${token.substring(0, 20)}...');
-      } else {
-        debugPrint('⚠️ Access token is null or empty');
-      }
-      return token;
+      return token?.isNotEmpty == true ? token : null;
     } catch (e) {
       debugPrint('❌ Error reading access token: $e');
       return null;

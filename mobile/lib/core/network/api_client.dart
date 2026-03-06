@@ -51,11 +51,11 @@ class ApiClient {
   /// 创建日志拦截器
   LogInterceptor _createLogInterceptor() {
     return LogInterceptor(
-      request: true,
-      requestHeader: true,
-      requestBody: true,
-      responseHeader: true,
-      responseBody: true,
+      request: false,
+      requestHeader: false,
+      requestBody: false,
+      responseHeader: false,
+      responseBody: false,
       error: true,
       logPrint: (message) {
         _logger.d('🌐 DIO: $message');

@@ -71,37 +71,20 @@ class AudioPlayer {
         }
       });
 
-      // 将PCM包装为WAV格式（就_audio的需求）
+      // 将PCM包装为WAV格式
       final wavBytes = _wrapPcmAsWav(pcmBytes, sampleRate, channels);
 
-      if (_verboseLogging) {
-        logger.i('AudioPlayer.playPcm: WAV大小 ${wavBytes.length} 字节');
-      }
-
       // 使用URI方式播放（兼容iOS等平台）
-      logger.i('AudioPlayer.playPcm: 设置音频源');
       await _player.setAudioSource(
         ja.AudioSource.uri(Uri.dataFromBytes(wavBytes, mimeType: 'audio/wav')),
       );
 
-      logger.i('AudioPlayer.playPcm: 开始播放');
       await _player.play();
 
-      if (_verboseLogging) {
-        logger.i('AudioPlayer.playPcm: play() 调用成功');
-      }
-
       // ✅ 优化：等待播放完成或超时
-      // 先等待一个短超时检查是否能收到完成信号
       try {
-        logger.i(
-          'AudioPlayer.playPcm: 等待播放完成，超时: ${playbackTimeout.inSeconds}s',
-        );
         final playerDone = _player.playerStateStream
             .where((state) {
-              if (_verboseLogging) {
-                logger.d('AudioPlayer: 播放状态 - ${state.processingState}');
-              }
               return state.processingState == ja.ProcessingState.completed;
             })
             .first

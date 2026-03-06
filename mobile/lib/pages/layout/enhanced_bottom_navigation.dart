@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../core/state/app_state_management.dart';
@@ -10,16 +11,12 @@ class EnhancedBottomNavigation extends StatefulWidget {
   final int currentIndex;
   final Function(int) onTap;
   final VoidCallback? onPagerLongPress;
-  final VoidCallback? onPagerLongPressEnd;
-  final bool isPagerListening;
 
   const EnhancedBottomNavigation({
     super.key,
     required this.currentIndex,
     required this.onTap,
     this.onPagerLongPress,
-    this.onPagerLongPressEnd,
-    this.isPagerListening = false,
   });
 
   @override
@@ -29,9 +26,7 @@ class EnhancedBottomNavigation extends StatefulWidget {
 
 class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
     with TickerProviderStateMixin {
-  late AnimationController _breathingController;
   late AnimationController _selectionController;
-  late Animation<double> _breathingAnimation;
   late Animation<double> _selectionAnimation;
 
   late List<NavItem> _navItems;
@@ -77,18 +72,9 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
       ),
     ];
 
-    _breathingController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    );
-
     _selectionController = AnimationController(
       duration: AnimationConfig.normal,
       vsync: this,
-    );
-
-    _breathingAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
-      CurvedAnimation(parent: _breathingController, curve: Curves.easeInOut),
     );
 
     _selectionAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -98,25 +84,12 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
       ),
     );
 
-    if (widget.currentIndex == 1 && widget.isPagerListening) {
-      _breathingController.repeat(reverse: true);
-    }
-
     _selectionController.forward();
   }
 
   @override
   void didUpdateWidget(EnhancedBottomNavigation oldWidget) {
     super.didUpdateWidget(oldWidget);
-
-    if (widget.isPagerListening != oldWidget.isPagerListening) {
-      if (widget.isPagerListening) {
-        _breathingController.repeat(reverse: true);
-      } else {
-        _breathingController.stop();
-        _breathingController.reset();
-      }
-    }
 
     if (widget.currentIndex != oldWidget.currentIndex) {
       _selectionController.reset();
@@ -126,7 +99,6 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
 
   @override
   void dispose() {
-    _breathingController.dispose();
     _selectionController.dispose();
     _imService.removeListener(_onImServiceChanged);
     super.dispose();
@@ -305,92 +277,174 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
     ColorScheme colorScheme,
     bool isSelected,
   ) {
+    return _PagerNavButton(
+      item: item,
+      colorScheme: colorScheme,
+      isSelected: isSelected,
+      onTap: () => widget.onTap(item.index),
+      onLongPressTriggered: widget.onPagerLongPress,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+//  传呼按钮（含蓄力环绕动画）
+// ─────────────────────────────────────────────────────
+
+class _PagerNavButton extends StatefulWidget {
+  final NavItem item;
+  final ColorScheme colorScheme;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPressTriggered;
+
+  const _PagerNavButton({
+    required this.item,
+    required this.colorScheme,
+    required this.isSelected,
+    required this.onTap,
+    this.onLongPressTriggered,
+  });
+
+  @override
+  State<_PagerNavButton> createState() => _PagerNavButtonState();
+}
+
+class _PagerNavButtonState extends State<_PagerNavButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _charge;
+  // 动画已走完并触发了长按动作
+  bool _fired = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _charge = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
+    _charge.addStatusListener((status) {
+      if (status == AnimationStatus.completed && !_fired) {
+        _fired = true;
+        // 触感反馈 + 触发长按动作
+        HapticFeedback.heavyImpact();
+        widget.onLongPressTriggered?.call();
+        // 短暂停留后收回蓄力环
+        Future.delayed(const Duration(milliseconds: 80), () {
+          if (mounted) {
+            _charge.animateTo(
+              0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _charge.dispose();
+    super.dispose();
+  }
+
+  /// 取消蓄力，动画回弹到 0
+  void _cancelCharge() {
+    if (!_fired) {
+      _charge.animateTo(
+        0,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Expanded(
       child: GestureDetector(
-        onTap: () => widget.onTap(item.index),
-        onLongPressStart: (_) {
-          if (isSelected) {
-            widget.onPagerLongPress?.call();
-          } else {
-            widget.onTap(item.index);
-          }
+        // 使用 onTapDown/onTapUp/onTapCancel 替代 onLongPress* 系列，
+        // 避免 Flutter 手势竞技场中 TapRecognizer 与 LongPressRecognizer 的冲突：
+        //   - onTapDown  : 手指按下 → 启动蓄力动画
+        //   - onTapUp    : 手指抬起 → 若动画未完成则视为短按（导航），否则忽略
+        //   - onTapCancel: 手势取消（滑走等）→ 回弹动画
+        onTapDown: (_) {
+          _fired = false;
+          _charge.forward(from: 0);
         },
-        onLongPressEnd: (_) => widget.onPagerLongPressEnd?.call(),
-        onLongPressCancel: () => widget.onPagerLongPressEnd?.call(),
+        onTapUp: (_) {
+          if (!_fired) {
+            // 短按：回弹动画 + 执行导航
+            _cancelCharge();
+            widget.onTap();
+          }
+          // 若 _fired == true，长按已触发，什么都不做
+        },
+        onTapCancel: _cancelCharge,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedBuilder(
-              animation: widget.isPagerListening
-                  ? _breathingAnimation
-                  : _selectionAnimation,
+              animation: _charge,
               builder: (context, child) {
-                final scale = widget.isPagerListening
-                    ? _breathingAnimation.value
-                    : 1.0;
-
-                return Transform.scale(
-                  scale: scale,
-                  child: AnimatedContainer(
-                    duration: AnimationConfig.normal,
-                    curve: AnimationConfig.easeOut,
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? colorScheme.primary
-                          : colorScheme.primary.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                      boxShadow: isSelected || widget.isPagerListening
-                          ? [
-                              BoxShadow(
-                                color: colorScheme.primary.withValues(
-                                  alpha: 0.3,
-                                ),
-                                blurRadius: widget.isPagerListening ? 12 : 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : [],
+                final progress = _charge.value;
+                final isActive = widget.isSelected || progress > 0;
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // 蓄力环（稍大于按钮，环绕一圈）
+                    SizedBox(
+                      width: 56,
+                      height: 56,
+                      child: CircularProgressIndicator(
+                        value: progress,
+                        strokeWidth: 2.5,
+                        strokeCap: StrokeCap.round,
+                        color: widget.colorScheme.primary,
+                        backgroundColor: progress > 0
+                            ? widget.colorScheme.primary.withValues(alpha: 0.15)
+                            : Colors.transparent,
+                      ),
                     ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        if (widget.isPagerListening)
-                          AnimatedBuilder(
-                            animation: _breathingController,
-                            builder: (context, child) {
-                              return Container(
-                                width: 48 * _breathingAnimation.value,
-                                height: 48 * _breathingAnimation.value,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: colorScheme.primary.withValues(
-                                    alpha:
-                                        0.1 * (1 - _breathingController.value),
+                    // 核心按钮（随蓄力程度增强发光）
+                    AnimatedContainer(
+                      duration: AnimationConfig.normal,
+                      curve: AnimationConfig.easeOut,
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? widget.colorScheme.primary
+                            : widget.colorScheme.primary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                        boxShadow: isActive
+                            ? [
+                                BoxShadow(
+                                  color: widget.colorScheme.primary.withValues(
+                                    alpha: 0.2 + progress * 0.25,
                                   ),
+                                  blurRadius: 8 + progress * 10,
+                                  offset: const Offset(0, 2),
                                 ),
-                              );
-                            },
-                          ),
-                        AnimatedSwitcher(
-                          duration: AnimationConfig.fast,
-                          child: Icon(
-                            widget.isPagerListening
-                                ? Icons.stop_rounded
-                                : (isSelected ? item.activeIcon : item.icon),
-                            key: ValueKey(
-                              '${isSelected}_${widget.isPagerListening}',
-                            ),
-                            color: isSelected || widget.isPagerListening
-                                ? colorScheme.onPrimary
-                                : colorScheme.primary,
-                            size: widget.isPagerListening ? 28 : 24,
-                          ),
+                              ]
+                            : [],
+                      ),
+                      child: AnimatedSwitcher(
+                        duration: AnimationConfig.fast,
+                        child: Icon(
+                          widget.isSelected
+                              ? widget.item.activeIcon
+                              : widget.item.icon,
+                          key: ValueKey(widget.isSelected),
+                          color: isActive
+                              ? widget.colorScheme.onPrimary
+                              : widget.colorScheme.primary,
+                          size: 24,
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 );
               },
             ),
@@ -398,17 +452,17 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation>
             AnimatedDefaultTextStyle(
               duration: AnimationConfig.normal,
               style: TextStyle(
-                color: isSelected || widget.isPagerListening
-                    ? colorScheme.primary
-                    : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                color: widget.isSelected
+                    ? widget.colorScheme.primary
+                    : widget.colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.6,
+                      ),
                 fontSize: 10,
-                fontWeight: isSelected || widget.isPagerListening
+                fontWeight: widget.isSelected
                     ? FontWeight.w600
                     : FontWeight.w500,
               ),
-              child: Text(
-                widget.isPagerListening ? 'recording'.tr() : item.label,
-              ),
+              child: Text(widget.item.label),
             ),
           ],
         ),

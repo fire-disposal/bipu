@@ -49,14 +49,11 @@ class ApiInterceptor extends Interceptor {
       final token = await _getToken();
       if (token != null && token.isNotEmpty) {
         options.headers['Authorization'] = 'Bearer $token';
-        _logger.i('✅ Token attached to request: ${token.substring(0, 20)}...');
       } else {
         _logger.w(
           '⚠️ No token available for authenticated endpoint: ${options.uri.path}',
         );
       }
-    } else {
-      _logger.i('⏭️ Skipping auth for public endpoint: ${options.uri.path}');
     }
 
     handler.next(options);
@@ -253,7 +250,6 @@ class ApiInterceptor extends Interceptor {
         _logger.w('⚠️ Token is null or empty in storage');
         return null;
       }
-      _logger.i('✅ Token retrieved from storage: ${token.substring(0, 20)}...');
       return token;
     } catch (e) {
       _logger.e('❌ Error reading token from storage', error: e);
