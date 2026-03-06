@@ -117,11 +117,11 @@ class ConnectedState extends PagerState {
   /// ASR 是否正在工作（麦克风激活）
   final bool isRecording;
 
-  /// 实时音量波形数据
-  final List<double> waveformData;
-
   /// ASR 实时中间识别结果
   final String asrTranscript;
+
+  /// 是否正在确认目标 ID（查询 API + TTS 播报期间）
+  final bool isConfirming;
 
   /// 是否正在发送消息
   final bool isSending;
@@ -144,8 +144,8 @@ class ConnectedState extends PagerState {
     this.targetId = '',
     this.messageContent = '',
     this.isRecording = false,
-    this.waveformData = const [],
     this.asrTranscript = '',
+    this.isConfirming = false,
     this.isSending = false,
     this.errorMessage,
     this.operatorSpeechHistory = const [],
@@ -159,8 +159,8 @@ class ConnectedState extends PagerState {
     String? targetId,
     String? messageContent,
     bool? isRecording,
-    List<double>? waveformData,
     String? asrTranscript,
+    bool? isConfirming,
     bool? isSending,
     String? errorMessage,
     bool clearError = false,
@@ -174,8 +174,8 @@ class ConnectedState extends PagerState {
       targetId: targetId ?? this.targetId,
       messageContent: messageContent ?? this.messageContent,
       isRecording: isRecording ?? this.isRecording,
-      waveformData: waveformData ?? this.waveformData,
       asrTranscript: asrTranscript ?? this.asrTranscript,
+      isConfirming: isConfirming ?? this.isConfirming,
       isSending: isSending ?? this.isSending,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       operatorSpeechHistory:
@@ -193,8 +193,8 @@ class ConnectedState extends PagerState {
     targetId,
     messageContent,
     isRecording,
-    waveformData,
     asrTranscript,
+    isConfirming,
     isSending,
     errorMessage,
     operatorSpeechHistory,

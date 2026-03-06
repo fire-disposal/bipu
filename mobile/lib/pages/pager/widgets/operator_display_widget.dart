@@ -91,7 +91,7 @@ class _OperatorDisplayWidgetState extends State<OperatorDisplayWidget>
     }
   }
 
-  /// 占位符
+  /// 占位符（骨架屏）
   Widget _buildPlaceholder() {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
@@ -105,7 +105,7 @@ class _OperatorDisplayWidgetState extends State<OperatorDisplayWidget>
     );
   }
 
-  /// 错误显示
+  /// 错误显示（带尺寸约束）
   Widget _buildErrorWidget() {
     final colorScheme = Theme.of(context).colorScheme;
     final theme = Theme.of(context);

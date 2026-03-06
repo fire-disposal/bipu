@@ -1,19 +1,19 @@
 import 'dart:math' as math;
 import '../../../core/utils/logger.dart';
 
-/// 波形数据处理器
-/// 负责从音频数据中提取波形包络，进行预处理（去除静默/噪声），
-/// 并转换为 0-255 的振幅值用于消息发送
+/// 消息封包用接志波形包络处理器
+///
+/// 职责：从录音 PCM 数据中提取波形包络，并转换为 0-255 的可传输格式随消息一起发送。
+/// 波形展示动画已完全移至 [WaveformAnimationWidget]（纯程序动画），本类不处理任何 UI 逻辑。
 class WaveformProcessor {
-  // 波形数据缓冲区
+  // PCM 封包缓冲区
   final List<int> _waveformBuffer = [];
-  final List<double> _volumeBuffer = [];
 
-  // 配置参数
-  static const int maxWaveformPoints = 128; // 最多128个点
-  static const int silenceThreshold = 500; // 静默阈值（PCM值）
-  static const int noiseFloor = 300; // 噪声底线
-  static const double silenceRatio = 0.1; // 允许的静默比例（10%）
+  // PCM 封包配置
+  static const int maxWaveformPoints = 128;
+  static const int silenceThreshold = 500;
+  static const int noiseFloor = 300;
+  static const double silenceRatio = 0.1;
 
   /// 从PCM音频数据中提取波形包络
   ///
@@ -194,51 +194,6 @@ class WaveformProcessor {
     _waveformBuffer.addAll(pcmData);
   }
 
-  /// 添加音量数据
-  ///
-  /// 用于从ASR引擎的实时音量数据生成波形
-  void addVolumeData(double volume) {
-    _volumeBuffer.add(volume);
-  }
-
-  /// 从音量数据生成波形
-  ///
-  /// 将音量数据转换为波形点
-  List<double> getWaveformFromVolume() {
-    if (_volumeBuffer.isEmpty) {
-      return [];
-    }
-
-    // 限制波形点数
-    final targetPoints = math.min(_volumeBuffer.length, maxWaveformPoints);
-
-    // 如果数据点太多，进行下采样
-    if (_volumeBuffer.length > targetPoints) {
-      final downsampled = <double>[];
-      final segmentSize = _volumeBuffer.length / targetPoints;
-
-      for (int i = 0; i < targetPoints; i++) {
-        final startIdx = (i * segmentSize).toInt();
-        final endIdx = ((i + 1) * segmentSize).toInt().clamp(
-          0,
-          _volumeBuffer.length,
-        );
-
-        if (startIdx >= _volumeBuffer.length) break;
-
-        // 取该段的最大值
-        final maxValue = _volumeBuffer
-            .sublist(startIdx, endIdx)
-            .reduce((a, b) => a > b ? a : b);
-        downsampled.add(maxValue);
-      }
-
-      return downsampled;
-    }
-
-    return List.from(_volumeBuffer);
-  }
-
   /// 获取当前缓冲区的波形数据
   ///
   /// 返回已处理的波形包络（0-255）
@@ -250,10 +205,9 @@ class WaveformProcessor {
     return extractWaveform(_waveformBuffer, frameSize: frameSize);
   }
 
-  /// 清空缓冲区
+  /// 清空 PCM 缓冲区，准备下一次录音
   void clear() {
     _waveformBuffer.clear();
-    _volumeBuffer.clear();
   }
 
   /// 获取缓冲区大小（字节数）

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../state/pager_state_machine.dart';
 import '../state/pager_cubit.dart';
-import '../models/operator_model.dart';
 
 // ──────────────────────────────────────────────────────────────────────────────
 //  拨号准备页面

@@ -4,7 +4,6 @@ import 'dart:math' as math;
 /// 实时声纹动效组件
 /// 使用CustomPainter绘制声波动画，模拟接线员说话或收音
 class WaveformAnimationWidget extends StatefulWidget {
-  final List<double> waveformData; // 声纹数据 (0-1范围)
   final bool isActive; // 是否激活动画
   final Color waveColor;
   final Color backgroundColor;
@@ -13,7 +12,6 @@ class WaveformAnimationWidget extends StatefulWidget {
 
   const WaveformAnimationWidget({
     super.key,
-    this.waveformData = const [],
     this.isActive = false,
     this.waveColor = Colors.blue,
     this.backgroundColor = Colors.transparent,
@@ -73,7 +71,6 @@ class _WaveformAnimationWidgetState extends State<WaveformAnimationWidget>
       builder: (context, child) {
         return CustomPaint(
           painter: WaveformPainter(
-            waveformData: widget.waveformData,
             animationValue: _animationController.value,
             waveColor: widget.waveColor,
             backgroundColor: widget.backgroundColor,
@@ -85,23 +82,23 @@ class _WaveformAnimationWidgetState extends State<WaveformAnimationWidget>
   }
 }
 
-/// 声纹绘制器
+/// 声纹绘制器（纯程序动画，无需外部数据）
+///
+/// 使用双频正弦叠加 + 正弦包络塑形，产生有机感的波形动效。
+/// isActive=false 时显示静态低幅条，isActive=true 时全幅动画。
 class WaveformPainter extends CustomPainter {
-  final List<double> waveformData;
   final double animationValue;
   final Color waveColor;
   final Color backgroundColor;
 
-  WaveformPainter({
-    required this.waveformData,
+  const WaveformPainter({
     required this.animationValue,
     required this.waveColor,
-    required this.backgroundColor,
+    this.backgroundColor = Colors.transparent,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 绘制背景
     if (backgroundColor != Colors.transparent) {
       canvas.drawRect(
         Rect.fromLTWH(0, 0, size.width, size.height),
@@ -109,102 +106,47 @@ class WaveformPainter extends CustomPainter {
       );
     }
 
-    // 绘制声纹
-    _drawWaveform(canvas, size);
-  }
-
-  void _drawWaveform(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = waveColor
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.fill; // 使用填充样式以提高可见性
+      ..style = PaintingStyle.fill;
 
-    // 归一化输入数据到 0.0 - 1.0 范围，兼容 0-255 或任意缩放数据
-    final samples = waveformData
-        .map((e) => e.isFinite ? e.abs() : 0.0)
-        .toList();
-    double maxVal = 1.0;
-    if (samples.isNotEmpty) {
-      maxVal = samples.reduce((a, b) => a > b ? a : b);
-      if (maxVal <= 0) maxVal = 1.0;
-    }
-
-    final centerY = size.height / 2;
-    final count = samples.isEmpty ? 0 : samples.length;
-    final segmentWidth = count > 0 ? (size.width / (count + 1)) : size.width;
-    final minBarWidth = math.min(6.0, segmentWidth * 0.6);
-
-    // 如果没有数据，绘制默认动画
-    if (count == 0) {
-      _drawDefaultWaveform(canvas, size, paint, centerY);
-      return;
-    }
-    // 绘制每个声纹柱（归一化后）
-    for (int i = 0; i < samples.length; i++) {
-      final x = (i + 1) * segmentWidth;
-      final norm = (samples[i] / maxVal).clamp(0.0, 1.0);
-      final baseHeight = norm * size.height * 0.8;
-
-      // 添加动画效果（微幅振荡）
-      final animatedHeight =
-          baseHeight *
-          (0.6 + 0.4 * math.sin(animationValue * 2 * math.pi + i * 0.25));
-
-      final barW = math.max(1.0, segmentWidth * 0.6);
-      final rect = Rect.fromCenter(
-        center: Offset(x, centerY),
-        width: barW,
-        height: animatedHeight,
-      );
-
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, Radius.circular(barW * 0.25)),
-        paint,
-      );
-    }
-  }
-
-  /// 绘制默认动画（无数据时）
-  void _drawDefaultWaveform(
-    Canvas canvas,
-    Size size,
-    Paint paint,
-    double centerY,
-  ) {
-    const barCount = 16;
+    const barCount = 18;
     final barWidth = size.width / (barCount + 1);
+    final centerY = size.height / 2;
+    final phase = animationValue * 2 * math.pi;
 
     for (int i = 0; i < barCount; i++) {
       final x = (i + 1) * barWidth;
+      final pos = i / (barCount - 1); // 0.0 ~ 1.0
 
-      // 创建波形效果
-      final phase = animationValue * 2 * math.pi;
-      final baseHeight = size.height * 0.3;
-      final amplitude = size.height * 0.22;
+      // 双频叠加：主频 + 谐波，产生有机感
+      final wave1 = math.sin(phase + i * (2 * math.pi / barCount));
+      final wave2 = 0.35 * math.sin(phase * 2.3 + i * 0.8);
+      final combined = ((wave1 + wave2) / 1.35).clamp(-1.0, 1.0);
 
-      final height =
-          baseHeight +
-          amplitude * math.sin(phase + i * (2 * math.pi / barCount));
+      // 正弦包络：两端低、中间高，边缘自然收缩
+      final envelope = math.sin(pos * math.pi);
+      final baseH = size.height * (0.15 + 0.55 * envelope);
+      final barH = math.max(2.0, baseH * (0.5 + 0.5 * (combined * 0.5 + 0.5)));
 
-      final rect = Rect.fromCenter(
-        center: Offset(x, centerY),
-        width: math.max(2.0, barWidth * 0.5),
-        height: height.abs(),
-      );
-
+      final barW = math.max(1.5, barWidth * 0.55);
       canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, Radius.circular(barWidth * 0.25)),
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: Offset(x, centerY),
+            width: barW,
+            height: barH,
+          ),
+          Radius.circular(barW * 0.4),
+        ),
         paint,
       );
     }
   }
 
   @override
-  bool shouldRepaint(WaveformPainter oldDelegate) {
-    return oldDelegate.animationValue != animationValue ||
-        oldDelegate.waveformData != waveformData ||
-        oldDelegate.waveColor != waveColor;
-  }
+  bool shouldRepaint(WaveformPainter old) =>
+      old.animationValue != animationValue || old.waveColor != waveColor;
 }
 
 /// 圆形脉冲动效组件

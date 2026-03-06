@@ -30,6 +30,26 @@ class InCallPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<PagerCubit, PagerState>(
       bloc: cubit,
+      // 波形动效已彻底改为纯程序动画（WaveformAnimationWidget），与音频数据无关，
+      // 此处仅过滤不影响 UI 的字段变化，避免不必要重建
+      buildWhen: (prev, next) {
+        if (prev.runtimeType != next.runtimeType) return true;
+        if (prev is! ConnectedState || next is! ConnectedState) return true;
+        final p = prev;
+        final n = next;
+        return p.phase != n.phase ||
+            p.operator != n.operator ||
+            p.targetId != n.targetId ||
+            p.messageContent != n.messageContent ||
+            p.isRecording != n.isRecording ||
+            p.asrTranscript != n.asrTranscript ||
+            p.isConfirming != n.isConfirming ||
+            p.isSending != n.isSending ||
+            p.errorMessage != n.errorMessage ||
+            p.operatorSpeechHistory != n.operatorSpeechHistory ||
+            p.operatorCurrentSpeech != n.operatorCurrentSpeech ||
+            p.sentHistory != n.sentHistory;
+      },
       builder: (context, state) {
         if (state is! ConnectedState) return const SizedBox.shrink();
         return _ConnectedView(state: state, cubit: cubit);
@@ -64,12 +84,14 @@ class _ConnectedView extends StatelessWidget {
 
             // ② 接线员区域（立绘 + 台词流）— 占据剩余空间
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: _OperatorPresenceSection(
-                  state: state,
-                  theme: theme,
-                  themeColor: themeColor,
+              child: RepaintBoundary(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: _OperatorPresenceSection(
+                    state: state,
+                    theme: theme,
+                    themeColor: themeColor,
+                  ),
                 ),
               ),
             ),
@@ -206,17 +228,21 @@ class _OperatorPresenceSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = theme.colorScheme;
-    final showWaveform = state.waveformData.isNotEmpty || state.isRecording;
+    // showWaveform 由 isRecording 控制显隐；具体波形数据由 ValueListenableBuilder 独立驱动
+    final showWaveform = state.isRecording;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // 左栏：立绘卡
+        // 左栏：立绘卡（固定尺寸，避免被拉长）
         SizedBox(
           width: 104,
           child: Column(
             children: [
-              Expanded(
+              // 立绘容器：固定高度，使用 AspectRatio 保持比例
+              SizedBox(
+                height: 104,
+                width: 104,
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(18),
@@ -241,7 +267,7 @@ class _OperatorPresenceSection extends StatelessWidget {
                   ),
                 ),
               ),
-              // 波形条（录音或接线员说话时显示）
+              // 波形条：纯程序动画，isActive=true 时自动播放，与音频数据无关
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 height: showWaveform ? 34 : 0,
@@ -255,14 +281,11 @@ class _OperatorPresenceSection extends StatelessWidget {
                             color: cs.primary.withOpacity(0.15),
                           ),
                         ),
-                        child: state.waveformData.isNotEmpty
-                            ? WaveformAnimationWidget(
-                                waveformData: state.waveformData,
-                                isActive: true,
-                                height: 34,
-                                waveColor: themeColor,
-                              )
-                            : _IdlePulseBars(color: cs.primary),
+                        child: WaveformAnimationWidget(
+                          isActive: true,
+                          height: 34,
+                          waveColor: themeColor,
+                        ),
                       )
                     : const SizedBox.shrink(),
               ),
@@ -307,6 +330,8 @@ class _SpeechHistoryStream extends StatelessWidget {
         ),
       );
     }
+    // 预先计算一次，避免 itemBuilder 中 O(n²) 的 reversed.toList()[index]
+    final reversedHistory = history.reversed.toList();
     return ShaderMask(
       shaderCallback: (rect) => const LinearGradient(
         begin: Alignment.topCenter,
@@ -320,7 +345,7 @@ class _SpeechHistoryStream extends StatelessWidget {
         padding: const EdgeInsets.only(top: 32, bottom: 4),
         itemCount: history.length,
         itemBuilder: (context, index) {
-          final text = history.reversed.toList()[index];
+          final text = reversedHistory[index];
           final isCurrent = index == 0;
           return AnimatedContainer(
             duration: const Duration(milliseconds: 280),
@@ -470,7 +495,7 @@ class _PhasePanelContainer extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────
-//  Panel 1: 问候中
+//  Panel 1: 问候中（带骨架屏）
 // ─────────────────────────────────────────────────────
 
 class _GreetingPanel extends StatelessWidget {
@@ -491,30 +516,68 @@ class _GreetingPanel extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                '接线员上线中，请稍候...',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+          // 骨架屏加载指示器
+          _buildLoadingSkeleton(cs, theme),
           const SizedBox(height: 20),
           _HangupButton(cubit: cubit, cs: cs, theme: theme),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingSkeleton(ColorScheme cs, ThemeData theme) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 加载动画 + 文字
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.2,
+                valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              '接线员上线中，请稍候...',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // 骨架屏：模拟面板内容
+        _SkeletonLine(width: double.infinity, height: 50, cs: cs),
+        const SizedBox(height: 8),
+        _SkeletonLine(width: double.infinity, height: 36, cs: cs),
+      ],
+    );
+  }
+}
+
+/// 骨架屏占位行
+class _SkeletonLine extends StatelessWidget {
+  final double? width;
+  final double height;
+  final ColorScheme cs;
+
+  const _SkeletonLine({this.width, required this.height, required this.cs});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(12),
       ),
     );
   }
@@ -540,18 +603,23 @@ class _EnterTargetPanel extends StatelessWidget {
   });
 
   void _onDigit(String d) {
+    if (state.isConfirming) return;
     if (state.targetId.length >= 12) return;
     cubit.updateInCallTargetId(state.targetId + d);
   }
 
   void _onBackspace() {
+    if (state.isConfirming) return;
     if (state.targetId.isEmpty) return;
     cubit.updateInCallTargetId(
       state.targetId.substring(0, state.targetId.length - 1),
     );
   }
 
-  void _onClear() => cubit.updateInCallTargetId('');
+  void _onClear() {
+    if (state.isConfirming) return;
+    cubit.updateInCallTargetId('');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -621,11 +689,22 @@ class _EnterTargetPanel extends StatelessWidget {
             width: double.infinity,
             height: 50,
             child: FilledButton.icon(
-              onPressed: hasId ? () => cubit.confirmInCallTargetId() : null,
-              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-              label: const Text(
-                '确认号码',
-                style: TextStyle(fontWeight: FontWeight.w700),
+              onPressed: (hasId && !state.isConfirming)
+                  ? () => cubit.confirmInCallTargetId()
+                  : null,
+              icon: state.isConfirming
+                  ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        valueColor: AlwaysStoppedAnimation<Color>(cs.onPrimary),
+                      ),
+                    )
+                  : const Icon(Icons.arrow_forward_rounded, size: 18),
+              label: Text(
+                state.isConfirming ? '查询中...' : '确认号码',
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               style: FilledButton.styleFrom(
                 backgroundColor: themeColor,

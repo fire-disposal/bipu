@@ -20,6 +20,8 @@ class PagerCubit extends Cubit<PagerState> {
   final ImService _imService;
   final PagerAssistant _voiceAssistant;
   final OperatorService _operatorService;
+
+  /// PCM 包络处理器——仅用于录音完成后随消息发送波形数据
   final WaveformProcessor _waveformProcessor = WaveformProcessor();
 
   List<int> _currentWaveformData = [];
@@ -198,6 +200,8 @@ class PagerCubit extends Cubit<PagerState> {
     final cs = _cs;
     if (cs == null || cs.targetId.trim().isEmpty) return;
     _isConfirming = true;
+    // 立刻向 UI 反馈“确认中”状态：禁用按鈕和键盘、显示加载展示
+    emit(cs.copyWith(isConfirming: true, clearError: true));
     try {
       final targetId = cs.targetId.trim();
       final op = cs.operator;
@@ -266,6 +270,13 @@ class PagerCubit extends Cubit<PagerState> {
       }
     } finally {
       _isConfirming = false;
+      // 无论成功还是失败，确保 UI 展示不再处于加载态
+      if (state is ConnectedState) {
+        final cur = state as ConnectedState;
+        if (cur.isConfirming) {
+          emit(cur.copyWith(isConfirming: false));
+        }
+      }
     }
   }
 
@@ -287,27 +298,12 @@ class PagerCubit extends Cubit<PagerState> {
     try {
       _update(
         (cs) => emit(
-          cs.copyWith(
-            isRecording: false,
-            waveformData: [],
-            asrTranscript: '',
-            clearError: true,
-          ),
+          cs.copyWith(isRecording: false, asrTranscript: '', clearError: true),
         ),
       );
 
       final userText = await _voiceAssistant.recordAndRecognize(
         maxDuration: const Duration(seconds: 30),
-        onVolumeChanged: (volume) {
-          _waveformProcessor.addVolumeData(volume);
-          _update(
-            (cs) => emit(
-              cs.copyWith(
-                waveformData: _waveformProcessor.getWaveformFromVolume(),
-              ),
-            ),
-          );
-        },
         onInterimResult: (interim) {
           _update((cs) => emit(cs.copyWith(asrTranscript: interim)));
         },
@@ -319,13 +315,7 @@ class PagerCubit extends Cubit<PagerState> {
       if (userText.isEmpty) {
         logger.w('PagerCubit: 未识别到语音输入');
         _update(
-          (cs) => emit(
-            cs.copyWith(
-              isRecording: false,
-              asrTranscript: '',
-              waveformData: [],
-            ),
-          ),
+          (cs) => emit(cs.copyWith(isRecording: false, asrTranscript: '')),
         );
         return;
       }
@@ -337,7 +327,6 @@ class PagerCubit extends Cubit<PagerState> {
           cs.copyWith(
             isRecording: false,
             asrTranscript: '',
-            waveformData: [],
             messageContent: userText,
             phase: InCallPhase.reviewing,
           ),
@@ -345,11 +334,7 @@ class PagerCubit extends Cubit<PagerState> {
       );
     } catch (e) {
       logger.e('_executeVoiceRecording error: $e');
-      _update(
-        (cs) => emit(
-          cs.copyWith(isRecording: false, asrTranscript: '', waveformData: []),
-        ),
-      );
+      _update((cs) => emit(cs.copyWith(isRecording: false, asrTranscript: '')));
     }
   }
 
@@ -373,7 +358,6 @@ class PagerCubit extends Cubit<PagerState> {
         phase: InCallPhase.reviewing,
         messageContent: draft,
         isRecording: false,
-        waveformData: [],
         asrTranscript: '',
       ),
     );
@@ -389,7 +373,6 @@ class PagerCubit extends Cubit<PagerState> {
           phase: InCallPhase.inputtingMessage,
           messageContent: '',
           asrTranscript: '',
-          waveformData: [],
         ),
       ),
     );

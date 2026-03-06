@@ -381,32 +381,32 @@ class _OperatorGalleryPageState extends State<OperatorGalleryPage> {
           ),
 
           // 信息区域
-          Expanded(
-            flex: 1,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    height: 12,
-                    width: 60,
-                    decoration: BoxDecoration(
-                      color: colorScheme.onSurfaceVariant.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  height: 8,
+                  width: 50,
+                  decoration: BoxDecoration(
+                    color: colorScheme.onSurfaceVariant.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(3),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '???',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                      fontStyle: FontStyle.italic,
-                    ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '???',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                    fontStyle: FontStyle.italic,
+                    fontSize: 9,
+                    height: 1.0,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],

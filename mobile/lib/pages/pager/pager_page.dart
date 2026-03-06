@@ -6,7 +6,6 @@ import 'pages/dialing_prep_page.dart';
 import 'pages/connecting_page.dart';
 import 'pages/in_call_page.dart';
 import 'pages/operator_gallery_page.dart';
-import 'services/operator_service.dart';
 
 /// 拨号页面
 /// 采用状态机模式，通过 PagerCubit 驱动 UI 切换
