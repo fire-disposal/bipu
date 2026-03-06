@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- Permissions for Bluetooth and Location -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
@@ -29,10 +30,11 @@
         android:requestLegacyExternalStorage="true">
         
         <!-- Flutter Background Service -->
+        <!-- tools:replace 仅覆盖 foregroundServiceType，exported 保持插件默认值(true) -->
         <service
-            android:name="com.pravera.flutter_background_service.BackgroundService"
+            android:name="id.flutter.flutter_background_service.BackgroundService"
             android:foregroundServiceType="connectedDevice"
-            android:exported="false"
+            tools:replace="android:foregroundServiceType"
         />
 
         <activity

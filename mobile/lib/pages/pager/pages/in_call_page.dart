@@ -40,9 +40,7 @@ class InCallPage extends StatelessWidget {
         return p.phase != n.phase ||
             p.operator != n.operator ||
             p.targetId != n.targetId ||
-            p.messageContent != n.messageContent ||
             p.isRecording != n.isRecording ||
-            p.asrTranscript != n.asrTranscript ||
             p.isConfirming != n.isConfirming ||
             p.isSending != n.isSending ||
             p.errorMessage != n.errorMessage ||
@@ -347,31 +345,45 @@ class _SpeechHistoryStream extends StatelessWidget {
         itemBuilder: (context, index) {
           final text = reversedHistory[index];
           final isCurrent = index == 0;
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 280),
-            margin: EdgeInsets.only(
-              bottom: isCurrent ? 14 : 10,
-              left: isCurrent ? 0 : 4,
-            ),
-            padding: EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: isCurrent ? 12 : 10,
-            ),
+          if (isCurrent) {
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 280),
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: themeColor.withOpacity(0.28),
+                  width: 1.5,
+                ),
+              ),
+              child: Text(
+                text,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onPrimaryContainer,
+                  fontWeight: FontWeight.w700,
+                  height: 1.45,
+                ),
+              ),
+            );
+          }
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10, left: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: isCurrent ? cs.primaryContainer : cs.surfaceContainerLow,
+              color: cs.surfaceContainerLow,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isCurrent
-                    ? themeColor.withOpacity(0.28)
-                    : cs.outlineVariant.withOpacity(0.18),
-                width: isCurrent ? 1.5 : 0.8,
+                color: cs.outlineVariant.withOpacity(0.18),
+                width: 0.8,
               ),
             ),
             child: Text(
               text,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: isCurrent ? cs.onPrimaryContainer : cs.onSurface,
-                fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
+                color: cs.onSurface,
+                fontWeight: FontWeight.w500,
                 height: 1.45,
               ),
             ),
@@ -857,14 +869,13 @@ class _InputMessagePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isRecording = state.isRecording;
-    final hasTranscript = state.asrTranscript.isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ASR 实时转写区
+          // ASR 实时转写区（transcript 通过 ValueNotifier 驱动，不触发父级重建）
           AnimatedContainer(
             duration: const Duration(milliseconds: 260),
             width: double.infinity,
@@ -882,9 +893,12 @@ class _InputMessagePanel extends StatelessWidget {
                 width: isRecording ? 1.5 : 1,
               ),
             ),
-            child: hasTranscript
-                ? Text(
-                    state.asrTranscript,
+            child: ValueListenableBuilder<String>(
+              valueListenable: cubit.asrTranscriptNotifier,
+              builder: (context, transcript, _) {
+                if (transcript.isNotEmpty) {
+                  return Text(
+                    transcript,
                     textAlign: TextAlign.center,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
@@ -893,30 +907,31 @@ class _InputMessagePanel extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                       height: 1.5,
                     ),
-                  )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isRecording
-                            ? Icons.mic_rounded
-                            : Icons.mic_none_rounded,
-                        size: 26,
-                        color: isRecording
-                            ? cs.primary
-                            : cs.onSurfaceVariant.withOpacity(0.5),
+                  );
+                }
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isRecording ? Icons.mic_rounded : Icons.mic_none_rounded,
+                      size: 26,
+                      color: isRecording
+                          ? cs.primary
+                          : cs.onSurfaceVariant.withOpacity(0.5),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      isRecording ? '正在聆听...' : '点击麦克风开始说话',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isRecording ? cs.primary : cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        isRecording ? '正在聆听...' : '点击麦克风开始说话',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: isRecording ? cs.primary : cs.onSurfaceVariant,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
           const SizedBox(height: 16),
           // 控制行：挂断 | 大麦克风 | 键盘
@@ -1013,10 +1028,18 @@ class _ReviewPanelState extends State<_ReviewPanel> {
     super.initState();
     _ctrl = TextEditingController(text: widget.state.messageContent);
     _focus = FocusNode();
+    // 监听输入和焦点变化：仅局部 setState 刷新按鈕状态和边框样式，
+    // 不再通过 cubit.updateMessageContent 触发全局 Bloc 重建
+    _ctrl.addListener(_onLocalChange);
+    _focus.addListener(_onLocalChange);
     // 自动聚焦（进入面板后弹出键盘）
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _focus.requestFocus();
     });
+  }
+
+  void _onLocalChange() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -1080,7 +1103,7 @@ class _ReviewPanelState extends State<_ReviewPanel> {
                   color: cs.onSurfaceVariant.withOpacity(0.5),
                 ),
               ),
-              onChanged: (v) => widget.cubit.updateMessageContent(v),
+              onChanged: null,
             ),
           ),
           // 错误提示
@@ -1126,7 +1149,7 @@ class _ReviewPanelState extends State<_ReviewPanel> {
               Expanded(
                 child: FilledButton.icon(
                   onPressed: _ctrl.text.trim().isNotEmpty
-                      ? () => widget.cubit.sendMessage()
+                      ? () => widget.cubit.sendMessage(message: _ctrl.text)
                       : null,
                   icon: const Icon(Icons.send_rounded, size: 18),
                   label: const Text(

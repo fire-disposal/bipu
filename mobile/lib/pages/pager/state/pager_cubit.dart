@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/api/models/message_type.dart';
@@ -26,6 +27,10 @@ class PagerCubit extends Cubit<PagerState> {
   final WaveformProcessor _waveformProcessor = WaveformProcessor();
 
   List<int> _currentWaveformData = [];
+
+  /// ASR 实时中间识别结果通知器（高频 interim 回调走此通道，不走 Bloc 状态树，
+  /// 避免每次中间结果都触发 _ConnectedView 全树重建）
+  final ValueNotifier<String> asrTranscriptNotifier = ValueNotifier('');
 
   /// 防重入：confirmInCallTargetId 正在执行中
   bool _isConfirming = false;
@@ -302,17 +307,21 @@ class PagerCubit extends Cubit<PagerState> {
           cs.copyWith(isRecording: false, asrTranscript: '', clearError: true),
         ),
       );
+      asrTranscriptNotifier.value = ''; // 清空上次残留
 
       final userText = await _voiceAssistant.recordAndRecognize(
         maxDuration: const Duration(seconds: 30),
         onInterimResult: (interim) {
-          _update((cs) => emit(cs.copyWith(asrTranscript: interim)));
+          // 高频 interim 回调只更新 ValueNotifier，不走 Bloc emit，
+          // UI 通过 ValueListenableBuilder 局部刷新，避免全页 rebuild
+          asrTranscriptNotifier.value = interim;
         },
         onStarted: () {
           _update((cs) => emit(cs.copyWith(isRecording: true)));
         },
       );
 
+      asrTranscriptNotifier.value = ''; // 录音结束立即清空
       if (userText.isEmpty) {
         logger.w('PagerCubit: 未识别到语音输入');
         _update(
@@ -335,6 +344,7 @@ class PagerCubit extends Cubit<PagerState> {
       );
     } catch (e) {
       logger.e('_executeVoiceRecording error: $e');
+      asrTranscriptNotifier.value = '';
       _update((cs) => emit(cs.copyWith(isRecording: false, asrTranscript: '')));
     }
   }
@@ -347,8 +357,9 @@ class PagerCubit extends Cubit<PagerState> {
   /// 用户触发：切换到文字输入模式（直接进入确认阶段，内容为当前 ASR 临时结果）
   Future<void> switchToTextInput() async {
     if (state is! ConnectedState) return;
-    final cs = state as ConnectedState;
-    final draft = cs.asrTranscript;
+    // 从 ValueNotifier 取最新 interim 结果作草稿（bloc state 中的 asrTranscript 不再实时更新）
+    final draft = asrTranscriptNotifier.value;
+    asrTranscriptNotifier.value = '';
     // 停止录音和 TTS（顺序先发信号停录音，再停 TTS）
     _voiceAssistant.signalStop();
     await _voiceAssistant.stopSpeaking();
@@ -389,18 +400,21 @@ class PagerCubit extends Cubit<PagerState> {
   // ──────────────────────────────────────────────
 
   /// 确认并发送消息
-  Future<void> sendMessage() async {
+  /// [message] 可由 UI 控件直接传入，免去每次按键都通过 Bloc emit 更新状态
+  Future<void> sendMessage({String? message}) async {
     final cs = _cs;
-    if (cs == null || cs.messageContent.trim().isEmpty) return;
+    if (cs == null) return;
+    final content = (message ?? cs.messageContent).trim();
+    if (content.isEmpty) return;
 
     emit(cs.copyWith(phase: InCallPhase.sending, isSending: true));
-    logger.i('PagerCubit: 发送消息 → "${cs.messageContent}" → ${cs.targetId}');
+    logger.i('PagerCubit: 发送消息 → "$content" → ${cs.targetId}');
 
     try {
       _currentWaveformData = _waveformProcessor.finalize();
       final result = await _imService.sendMessage(
         receiverId: cs.targetId,
-        content: cs.messageContent.trim(),
+        content: content,
         messageType: MessageType.voice,
         waveform: _currentWaveformData.isEmpty ? null : _currentWaveformData,
       );
@@ -410,7 +424,7 @@ class PagerCubit extends Cubit<PagerState> {
 
         final record = SendRecord(
           targetId: cs.targetId,
-          content: cs.messageContent.trim(),
+          content: content,
           sentAt: DateTime.now(),
         );
         final successText = cs.operator.dialogues.getSuccessMessage();
@@ -556,6 +570,7 @@ class PagerCubit extends Cubit<PagerState> {
       await _voiceAssistant.dispose();
       _waveformProcessor.clear();
       _currentWaveformData.clear();
+      asrTranscriptNotifier.dispose();
     } catch (e) {
       logger.e('close error: $e');
     }
