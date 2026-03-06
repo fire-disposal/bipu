@@ -22,6 +22,17 @@ class _SystemMessagesPageState extends State<SystemMessagesPage> {
   void initState() {
     super.initState();
     _loadMessages();
+    _imService.addListener(_onImServiceChanged);
+  }
+
+  @override
+  void dispose() {
+    _imService.removeListener(_onImServiceChanged);
+    super.dispose();
+  }
+
+  void _onImServiceChanged() {
+    if (mounted) setState(() {});
   }
 
   /// 获取服务号信息（带缓存）

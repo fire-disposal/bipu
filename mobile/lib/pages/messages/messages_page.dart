@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/im_service.dart';
 
 class MessagesPage extends StatefulWidget {
   const MessagesPage({super.key});
@@ -13,6 +14,23 @@ class MessagesPage extends StatefulWidget {
 
 class _MessagesPageState extends State<MessagesPage> {
   final AuthService _authService = AuthService();
+  final ImService _imService = ImService();
+
+  @override
+  void initState() {
+    super.initState();
+    _imService.addListener(_onImServiceChanged);
+  }
+
+  @override
+  void dispose() {
+    _imService.removeListener(_onImServiceChanged);
+    super.dispose();
+  }
+
+  void _onImServiceChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +55,7 @@ class _MessagesPageState extends State<MessagesPage> {
                 'messages_menu_received'.tr(),
                 Icons.mail_outline,
                 () => context.push('/messages/received'),
+                badge: _imService.unreadNormalCount,
               ),
               const SizedBox(height: 12),
               // 发出的消息
@@ -51,6 +70,7 @@ class _MessagesPageState extends State<MessagesPage> {
                 'messages_menu_system'.tr(),
                 Icons.notifications_outlined,
                 () => context.push('/messages/system'),
+                badge: _imService.unreadSystemCount,
               ),
               const SizedBox(height: 12),
               // 我的收藏
@@ -79,6 +99,7 @@ class _MessagesPageState extends State<MessagesPage> {
     IconData icon,
     VoidCallback onTap, {
     bool isSettings = false,
+    int badge = 0,
   }) {
     return Card(
       elevation: 2,
@@ -95,23 +116,60 @@ class _MessagesPageState extends State<MessagesPage> {
               Expanded(
                 child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: isSettings
-                            ? Colors.orange.withValues(alpha: 0.1)
-                            : Theme.of(
-                                context,
-                              ).colorScheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        icon,
-                        size: 20,
-                        color: isSettings
-                            ? Colors.orange
-                            : Theme.of(context).colorScheme.primary,
-                      ),
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: isSettings
+                                ? Colors.orange.withValues(alpha: 0.1)
+                                : Theme.of(
+                                    context,
+                                  ).colorScheme.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            icon,
+                            size: 20,
+                            color: isSettings
+                                ? Colors.orange
+                                : Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        if (badge > 0)
+                          Positioned(
+                            right: -6,
+                            top: -6,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.surface,
+                                  width: 1.5,
+                                ),
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 18,
+                                minHeight: 18,
+                              ),
+                              child: Text(
+                                badge > 99 ? '99+' : badge.toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(width: 12),
                     Expanded(
