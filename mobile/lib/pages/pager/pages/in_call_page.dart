@@ -5,673 +5,119 @@ import '../state/pager_cubit.dart';
 import '../widgets/operator_display_widget.dart';
 import '../widgets/waveform_animation_widget.dart';
 
-class InCallPage extends StatefulWidget {
+// ──────────────────────────────────────────────────────────────────────────────
+//  InCallPage — 接通后的统一交互页面
+//
+//  布局结构：
+//    TopBar（固定：接线员名 + 信号图标）
+//    OperatorPresenceSection（Expanded：立绘 + 台词历史气泡流）
+//    PhasePanel（固定高度容器：随 InCallPhase 切换面板，AnimatedSwitcher 过渡）
+//
+//  面板列表：
+//    GreetingPanel       - 接线员问候中
+//    EnterTargetPanel    - 数字键盘输入目标 ID
+//    InputMessagePanel   - 语音录入消息
+//    ReviewPanel         - 确认/编辑消息文本
+//    SendingPanel        - 发送进行中
+//    SuccessPanel        - 发送成功 + 继续/挂断
+// ──────────────────────────────────────────────────────────────────────────────
+
+class InCallPage extends StatelessWidget {
   final PagerCubit cubit;
   const InCallPage({super.key, required this.cubit});
 
   @override
-  State<InCallPage> createState() => _InCallPageState();
-}
-
-class _InCallPageState extends State<InCallPage> {
-  @override
   Widget build(BuildContext context) {
     return BlocBuilder<PagerCubit, PagerState>(
-      bloc: widget.cubit,
+      bloc: cubit,
       builder: (context, state) {
-        if (state is! InCallState) return const SizedBox.shrink();
-
-        // 使用接线员的配置主题色
-        final operator = state.operator;
-        final themeColor =
-            operator?.themeColor ?? Theme.of(context).colorScheme.primary;
-
-        // 创建基于接线员主题色的 ColorScheme
-        final colorScheme = ColorScheme.fromSeed(
-          seedColor: themeColor,
-          brightness: Theme.of(context).brightness,
-        );
-        final theme = Theme.of(context);
-
-        return Stack(
-          children: [
-            Container(color: colorScheme.surface),
-            SafeArea(
-              child: Column(
-                children: [
-                  _buildTopBar(state, colorScheme, theme, themeColor),
-
-                  // --- 中间核心区：立绘与历史气泡并列 ---
-                  Expanded(
-                    flex: 5,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildLeftProfile(
-                            state,
-                            colorScheme,
-                            theme,
-                            themeColor,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildOperatorHistoryStream(
-                              state,
-                              colorScheme,
-                              theme,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // --- 用户消息显示缓冲区：占据中间下半部 ---
-                  _buildUserMessageBuffer(state, colorScheme, theme),
-
-                  // --- 录音声纹特效条（等待用户输入时显示）---
-                  if (state.isWaitingForUserInput)
-                    _buildRecordingWaveformBar(state, colorScheme, theme),
-
-                  // --- 底部操作区 ---
-                  _buildBottomArea(state, colorScheme, theme),
-                ],
-              ),
-            ),
-          ],
-        );
+        if (state is! ConnectedState) return const SizedBox.shrink();
+        return _ConnectedView(state: state, cubit: cubit);
       },
     );
   }
+}
 
-  /// 1. 左侧立绘 (保持紧凑) - 优化视觉效果
-  Widget _buildLeftProfile(
-    InCallState state,
-    ColorScheme colorScheme,
-    ThemeData theme,
-    Color themeColor,
-  ) {
-    return SizedBox(
-      width: MediaQuery.of(context).size.width * 0.32,
-      child: Column(
-        children: [
-          // ✅ 立绘容器：优化边框和阴影
-          Container(
-            height: 200,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22),
-              color: colorScheme.surfaceContainerHighest.withOpacity(0.4),
-              border: Border.all(
-                color: themeColor.withOpacity(0.25),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: themeColor.withOpacity(0.15),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: OperatorDisplayWidget(
-                imageUrl: state.operatorImageUrl,
-                isAnimating: state.waveformData.isNotEmpty,
-              ),
-            ),
-          ),
-          // ✅ 波形动画：改进样式
-          if (state.waveformData.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: colorScheme.primary.withOpacity(0.06),
-                  border: Border.all(
-                    color: colorScheme.primary.withOpacity(0.15),
-                  ),
-                ),
-                child: WaveformAnimationWidget(
-                  waveformData: state.waveformData,
-                  isActive: true,
-                  height: 24,
-                  waveColor: themeColor,
-                ),
-              ),
-            ),
-          // ✅ 接线员名称标签（新增）
-          if (state.operator?.name != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                decoration: BoxDecoration(
-                  color: themeColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: themeColor.withOpacity(0.2),
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  state.operator!.name,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: themeColor,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 11,
-                    letterSpacing: 0.3,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+// ─────────────────────────────────────────────────────
+//  顶层视图
+// ─────────────────────────────────────────────────────
 
-  /// 2. 右侧对话历史流 (移至立绘右边)
-  /// ✅ 显示接线员的所有台词历史
-  Widget _buildOperatorHistoryStream(
-    InCallState state,
-    ColorScheme colorScheme,
-    ThemeData theme,
-  ) {
-    // ✅ 修复：使用状态中的实际历史台词
-    final history = state.operatorSpeechHistory;
+class _ConnectedView extends StatelessWidget {
+  final ConnectedState state;
+  final PagerCubit cubit;
+  const _ConnectedView({required this.state, required this.cubit});
 
-    return ShaderMask(
-      shaderCallback: (rect) => const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [Colors.transparent, Colors.black],
-        stops: [0.0, 0.2],
-      ).createShader(rect),
-      blendMode: BlendMode.dstIn,
-      child: history.isEmpty
-          ? Center(
-              child: Text(
-                '准备就绪...',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.outline.withOpacity(0.5),
-                ),
-              ),
-            )
-          : ListView.builder(
-              reverse: true,
-              padding: const EdgeInsets.only(top: 40),
-              itemCount: history.length,
-              itemBuilder: (context, index) {
-                final text = history.reversed.toList()[index];
-                final isCurrent = index == 0; // 最新的是当前的
-                return _buildMiniBubble(
-                  text,
-                  colorScheme,
-                  theme,
-                  isCurrent: isCurrent,
-                );
-              },
-            ),
-    );
-  }
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final themeColor = state.operator.themeColor;
 
-  /// ✅ 构建接线员台词气泡 - 优化视觉效果
-  Widget _buildMiniBubble(
-    String text,
-    ColorScheme colorScheme,
-    ThemeData theme, {
-    required bool isCurrent,
-  }) {
-    return SlideTransition(
-      position: Tween<Offset>(
-        begin: const Offset(0.5, 0),
-        end: Offset.zero,
-      ).animate(AlwaysStoppedAnimation<double>(1.0)),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        margin: EdgeInsets.only(
-          bottom: isCurrent ? 16 : 12,
-          left: isCurrent ? 0 : 4,
-        ),
-        padding: EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: isCurrent ? 14 : 12,
-        ),
-        decoration: BoxDecoration(
-          // ✅ 当前气泡：渐变背景，增强视觉层级
-          gradient: isCurrent
-              ? LinearGradient(
-                  colors: [
-                    colorScheme.primaryContainer.withOpacity(0.6),
-                    colorScheme.primaryContainer.withOpacity(0.3),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: !isCurrent ? colorScheme.surfaceContainerLow : null,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isCurrent
-                ? colorScheme.primary.withOpacity(0.4)
-                : colorScheme.outlineVariant.withOpacity(0.15),
-            width: isCurrent ? 1.5 : 0.8,
-          ),
-          boxShadow: isCurrent
-              ? [
-                  BoxShadow(
-                    color: colorScheme.primary.withOpacity(0.15),
-                    blurRadius: 12,
-                    offset: const Offset(0, 3),
-                  ),
-                ]
-              : [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-        ),
+    return Scaffold(
+      backgroundColor: cs.surface,
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              text,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurface,
-                fontSize: isCurrent ? 14 : 13,
-                fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w600,
-                height: 1.5,
-                letterSpacing: isCurrent ? 0.3 : 0,
-              ),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-            ),
-            // ✅ 当前气泡添加时间戳
-            if (isCurrent)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  '刚刚',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.primary.withOpacity(0.6),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
+            // ① 顶部状态栏
+            _TopBar(state: state, cubit: cubit, themeColor: themeColor),
+
+            // ② 接线员区域（立绘 + 台词流）— 占据剩余空间
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: _OperatorPresenceSection(
+                  state: state,
+                  theme: theme,
+                  themeColor: themeColor,
                 ),
               ),
+            ),
+
+            // ③ 相位面板容器（圆角卡片，随阶段切换内容）
+            _PhasePanelContainer(
+              state: state,
+              cubit: cubit,
+              themeColor: themeColor,
+            ),
           ],
         ),
       ),
     );
   }
+}
 
-  /// 3. 用户消息缓冲区 (中间下半部大区域) - 优化视觉效果
-  /// ✅ 显示用户当前的语音识别内容和状态
-  Widget _buildUserMessageBuffer(
-    InCallState state,
-    ColorScheme colorScheme,
-    ThemeData theme,
-  ) {
+// ─────────────────────────────────────────────────────
+//  Top Bar
+// ─────────────────────────────────────────────────────
+
+class _TopBar extends StatelessWidget {
+  final ConnectedState state;
+  final PagerCubit cubit;
+  final Color themeColor;
+  const _TopBar({
+    required this.state,
+    required this.cubit,
+    required this.themeColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     return Container(
-      width: double.infinity,
-      height: 140, // 略微增加高度，提高易读性
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        // ✅ 优化背景：更强的视觉分离和深度感
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            colorScheme.primary.withOpacity(0.08),
-            colorScheme.primary.withOpacity(0.04),
-            colorScheme.primary.withOpacity(0.06),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: state.isWaitingForUserInput
-              ? colorScheme.primary.withOpacity(0.25)
-              : colorScheme.outlineVariant.withOpacity(0.12),
-          width: state.isWaitingForUserInput ? 2 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: state.isWaitingForUserInput
-                ? colorScheme.primary.withOpacity(0.1)
-                : Colors.black.withOpacity(0.05),
-            blurRadius: state.isWaitingForUserInput ? 12 : 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        transitionBuilder: (child, animation) => FadeTransition(
-          opacity: animation,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.95, end: 1.0).animate(
-              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-            ),
-            child: child,
-          ),
-        ),
-        child: state.asrTranscript.isEmpty
-            ? Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // ✅ 动画图标
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0, end: 1),
-                      duration: const Duration(milliseconds: 600),
-                      builder: (context, value, child) {
-                        return Transform.scale(
-                          scale: 0.8 + 0.2 * value,
-                          child: Icon(
-                            state.isWaitingForUserInput
-                                ? Icons.mic
-                                : Icons.hourglass_empty,
-                            color: colorScheme.primary.withOpacity(
-                              0.5 + 0.3 * value,
-                            ),
-                            size: 32,
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      state.isWaitingForUserInput ? "请说话..." : "准备中...",
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.primary.withOpacity(0.7),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            : SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 18,
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // ✅ 标签
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Text(
-                          '已识别',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.primary.withOpacity(0.6),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                      // ✅ 主文本：更大、更粗、更清晰
-                      Text(
-                        state.asrTranscript,
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          color: colorScheme.primary,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 17,
-                          height: 1.6,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-      ),
-    );
-  }
-
-  /// 4. 底部操作区 (挂断 + 语音) - 优化视觉反馈
-  /// ✅ 提供直观的交互反馈
-  Widget _buildBottomArea(
-    InCallState state,
-    ColorScheme colorScheme,
-    ThemeData theme,
-  ) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-      child: Row(
-        children: [
-          // ✅ 挂断按钮 - 改进视觉反馈
-          _buildCircleButton(
-            onTap: () => widget.cubit.cancelDialing(),
-            icon: Icons.call_end,
-            bg: colorScheme.errorContainer,
-            fg: colorScheme.onErrorContainer,
-            shadow: true,
-          ),
-          const SizedBox(width: 14),
-          // ✅ 语音识别状态按钮 - 优化渐变和动画
-          Expanded(
-            child: InkWell(
-              onTap: state.isSilenceDetected
-                  ? () => widget.cubit.finishAsrRecording()
-                  : null,
-              borderRadius: BorderRadius.circular(28),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 350),
-                height: 70,
-                decoration: BoxDecoration(
-                  gradient: state.asrTranscript.isNotEmpty
-                      ? LinearGradient(
-                          colors: [
-                            colorScheme.primary,
-                            colorScheme.primary.withOpacity(0.75),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        )
-                      : null,
-                  color: state.asrTranscript.isEmpty
-                      ? colorScheme.surfaceContainerHighest
-                      : null,
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                    BoxShadow(
-                      color: state.asrTranscript.isNotEmpty
-                          ? colorScheme.primary.withOpacity(0.35)
-                          : Colors.black.withOpacity(0.08),
-                      blurRadius: state.asrTranscript.isNotEmpty ? 16 : 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // ✅ 动画图标
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        transitionBuilder: (child, animation) {
-                          return ScaleTransition(
-                            scale: animation,
-                            child: child,
-                          );
-                        },
-                        child: Icon(
-                          key: ValueKey(state.asrTranscript.isNotEmpty),
-                          state.asrTranscript.isNotEmpty
-                              ? Icons.graphic_eq
-                              : Icons.mic,
-                          color: state.asrTranscript.isNotEmpty
-                              ? colorScheme.onPrimary
-                              : colorScheme.onSurfaceVariant,
-                          size: 26,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      // ✅ 优化文本样式
-                      Expanded(
-                        child: Text(
-                          state.asrTranscript.isNotEmpty
-                              ? state.isSilenceDetected
-                                    ? "完成"
-                                    : "聆听中"
-                              : state.isWaitingForUserInput
-                              ? "等待输入"
-                              : "准备中",
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: state.asrTranscript.isNotEmpty
-                                ? colorScheme.onPrimary
-                                : colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            letterSpacing: 0.3,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// ✅ 录音状态声纹特效条（新增）
-  Widget _buildRecordingWaveformBar(
-    InCallState state,
-    ColorScheme colorScheme,
-    ThemeData theme,
-  ) {
-    final isRecording = state.isWaitingForUserInput;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-      height: 40,
-      decoration: BoxDecoration(
-        color: isRecording
-            ? colorScheme.primary.withOpacity(0.06)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: state.waveformData.isNotEmpty
-          ? Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: WaveformAnimationWidget(
-                waveformData: state.waveformData,
-                isActive: true,
-                height: 40,
-                waveColor: colorScheme.primary,
-              ),
-            )
-          : isRecording
-          ? Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                7,
-                (i) => _buildIdlePulseBar(colorScheme.primary, i * 120),
-              ),
-            )
-          : const SizedBox.shrink(),
-    );
-  }
-
-  /// ✅ 静态等待脉冲条
-  Widget _buildIdlePulseBar(Color color, int delayMs) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.3, end: 1.0),
-      duration: Duration(milliseconds: 600 + delayMs % 400),
-      curve: Curves.easeInOut,
-      builder: (context, value, _) {
-        return Container(
-          width: 3,
-          height: 10 + 20 * value,
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.3 + 0.4 * value),
-            borderRadius: BorderRadius.circular(2),
-          ),
-        );
-      },
-      onEnd: () => setState(() {}), // 触发重建实现循环动画
-    );
-  }
-
-  /// ✅ 圆形按钮 - 支持阴影
-  Widget _buildCircleButton({
-    required VoidCallback onTap,
-    required IconData icon,
-    required Color bg,
-    required Color fg,
-    bool shadow = false,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      customBorder: const CircleBorder(),
-      child: Container(
-        width: 70,
-        height: 70,
-        decoration: BoxDecoration(
-          color: bg,
-          shape: BoxShape.circle,
-          boxShadow: shadow
-              ? [
-                  BoxShadow(
-                    color: bg.withOpacity(0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : [],
-        ),
-        child: Icon(icon, color: fg, size: 30),
-      ),
-    );
-  }
-
-  Widget _buildTopBar(
-    InCallState state,
-    ColorScheme colorScheme,
-    ThemeData theme,
-    Color themeColor,
-  ) {
-    final operatorName = state.operator?.name ?? 'BIPUPU 接线员';
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+      padding: const EdgeInsets.fromLTRB(20, 12, 16, 12),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: colorScheme.outlineVariant.withOpacity(0.1),
+            color: cs.outlineVariant.withOpacity(0.12),
             width: 1,
           ),
         ),
       ),
       child: Row(
         children: [
-          // ✅ 状态指示器脉冲点
+          // 脉冲指示点
           Container(
             width: 8,
             height: 8,
@@ -688,14 +134,14 @@ class _InCallPageState extends State<InCallPage> {
             ),
           ),
           const SizedBox(width: 10),
-          // ✅ 接线员名称（新增）
+          // 接线员名 + 状态文字
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  operatorName,
+                  state.operator.name,
                   style: theme.textTheme.titleSmall?.copyWith(
                     color: themeColor,
                     fontWeight: FontWeight.w800,
@@ -710,31 +156,1232 @@ class _InCallPageState extends State<InCallPage> {
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: themeColor.withOpacity(0.6),
                     fontWeight: FontWeight.w600,
-                    fontSize: 10,
-                    letterSpacing: 1.0,
+                    fontSize: 9,
+                    letterSpacing: 1.2,
                   ),
                 ),
               ],
             ),
           ),
-          // ✅ 优化ID显示
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: colorScheme.primary.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              'ID: ${state.targetId}',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: colorScheme.primary,
+          // 快捷挂断按钮（始终可见）
+          TextButton.icon(
+            onPressed: () => cubit.hangup(),
+            icon: Icon(Icons.call_end_rounded, size: 16, color: cs.error),
+            label: Text(
+              '挂断',
+              style: TextStyle(
+                color: cs.error,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
-                fontSize: 11,
+              ),
+            ),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              backgroundColor: cs.errorContainer.withOpacity(0.2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+//  接线员存在区（立绘 + 台词历史）
+// ─────────────────────────────────────────────────────
+
+class _OperatorPresenceSection extends StatelessWidget {
+  final ConnectedState state;
+  final ThemeData theme;
+  final Color themeColor;
+  const _OperatorPresenceSection({
+    required this.state,
+    required this.theme,
+    required this.themeColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = theme.colorScheme;
+    final showWaveform = state.waveformData.isNotEmpty || state.isRecording;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 左栏：立绘卡
+        SizedBox(
+          width: 104,
+          child: Column(
+            children: [
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: themeColor.withOpacity(0.25),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: themeColor.withOpacity(0.12),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: OperatorDisplayWidget(
+                      imageUrl: state.operator.portraitUrl,
+                      isAnimating: showWaveform,
+                    ),
+                  ),
+                ),
+              ),
+              // 波形条（录音或接线员说话时显示）
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                height: showWaveform ? 34 : 0,
+                margin: EdgeInsets.only(top: showWaveform ? 6 : 0),
+                child: showWaveform
+                    ? Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          color: cs.primary.withOpacity(0.06),
+                          border: Border.all(
+                            color: cs.primary.withOpacity(0.15),
+                          ),
+                        ),
+                        child: state.waveformData.isNotEmpty
+                            ? WaveformAnimationWidget(
+                                waveformData: state.waveformData,
+                                isActive: true,
+                                height: 34,
+                                waveColor: themeColor,
+                              )
+                            : _IdlePulseBars(color: cs.primary),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        // 右栏：台词气泡流
+        Expanded(
+          child: _SpeechHistoryStream(
+            history: state.operatorSpeechHistory,
+            theme: theme,
+            themeColor: themeColor,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 台词历史气泡流（ShaderMask 渐变淡入）
+class _SpeechHistoryStream extends StatelessWidget {
+  final List<String> history;
+  final ThemeData theme;
+  final Color themeColor;
+  const _SpeechHistoryStream({
+    required this.history,
+    required this.theme,
+    required this.themeColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = theme.colorScheme;
+    if (history.isEmpty) {
+      return Center(
+        child: Text(
+          '等待接线员...',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: cs.outline.withOpacity(0.4),
+          ),
+        ),
+      );
+    }
+    return ShaderMask(
+      shaderCallback: (rect) => const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Colors.transparent, Colors.black],
+        stops: [0.0, 0.18],
+      ).createShader(rect),
+      blendMode: BlendMode.dstIn,
+      child: ListView.builder(
+        reverse: true,
+        padding: const EdgeInsets.only(top: 32, bottom: 4),
+        itemCount: history.length,
+        itemBuilder: (context, index) {
+          final text = history.reversed.toList()[index];
+          final isCurrent = index == 0;
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 280),
+            margin: EdgeInsets.only(
+              bottom: isCurrent ? 14 : 10,
+              left: isCurrent ? 0 : 4,
+            ),
+            padding: EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: isCurrent ? 12 : 10,
+            ),
+            decoration: BoxDecoration(
+              color: isCurrent ? cs.primaryContainer : cs.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isCurrent
+                    ? themeColor.withOpacity(0.28)
+                    : cs.outlineVariant.withOpacity(0.18),
+                width: isCurrent ? 1.5 : 0.8,
+              ),
+            ),
+            child: Text(
+              text,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: isCurrent ? cs.onPrimaryContainer : cs.onSurface,
+                fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
+                height: 1.45,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+//  相位面板容器（AnimatedSwitcher 切换）
+// ─────────────────────────────────────────────────────
+
+class _PhasePanelContainer extends StatelessWidget {
+  final ConnectedState state;
+  final PagerCubit cubit;
+  final Color themeColor;
+  const _PhasePanelContainer({
+    required this.state,
+    required this.cubit,
+    required this.themeColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        boxShadow: [
+          BoxShadow(
+            color: cs.shadow.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position:
+                Tween<Offset>(
+                  begin: const Offset(0, 0.08),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
+            child: child,
+          ),
+        ),
+        child: _buildPanel(context),
+      ),
+    );
+  }
+
+  Widget _buildPanel(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    switch (state.phase) {
+      case InCallPhase.greeting:
+        return _GreetingPanel(
+          key: const ValueKey('greeting'),
+          cubit: cubit,
+          cs: cs,
+          theme: theme,
+        );
+      case InCallPhase.enteringTarget:
+        return _EnterTargetPanel(
+          key: const ValueKey('enterTarget'),
+          state: state,
+          cubit: cubit,
+          cs: cs,
+          theme: theme,
+          themeColor: themeColor,
+        );
+      case InCallPhase.inputtingMessage:
+        return _InputMessagePanel(
+          key: const ValueKey('inputMsg'),
+          state: state,
+          cubit: cubit,
+          cs: cs,
+          theme: theme,
+          themeColor: themeColor,
+        );
+      case InCallPhase.reviewing:
+        return _ReviewPanel(
+          key: const ValueKey('review'),
+          state: state,
+          cubit: cubit,
+          cs: cs,
+          theme: theme,
+          themeColor: themeColor,
+        );
+      case InCallPhase.sending:
+        return _SendingPanel(
+          key: const ValueKey('sending'),
+          cs: cs,
+          theme: theme,
+        );
+      case InCallPhase.sentSuccess:
+        return _SuccessPanel(
+          key: const ValueKey('success'),
+          state: state,
+          cubit: cubit,
+          cs: cs,
+          theme: theme,
+          themeColor: themeColor,
+        );
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────
+//  Panel 1: 问候中
+// ─────────────────────────────────────────────────────
+
+class _GreetingPanel extends StatelessWidget {
+  final PagerCubit cubit;
+  final ColorScheme cs;
+  final ThemeData theme;
+  const _GreetingPanel({
+    super.key,
+    required this.cubit,
+    required this.cs,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '接线员上线中，请稍候...',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _HangupButton(cubit: cubit, cs: cs, theme: theme),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+//  Panel 2: 输入目标 ID（数字键盘）
+// ─────────────────────────────────────────────────────
+
+class _EnterTargetPanel extends StatelessWidget {
+  final ConnectedState state;
+  final PagerCubit cubit;
+  final ColorScheme cs;
+  final ThemeData theme;
+  final Color themeColor;
+  const _EnterTargetPanel({
+    super.key,
+    required this.state,
+    required this.cubit,
+    required this.cs,
+    required this.theme,
+    required this.themeColor,
+  });
+
+  void _onDigit(String d) {
+    if (state.targetId.length >= 12) return;
+    cubit.updateInCallTargetId(state.targetId + d);
+  }
+
+  void _onBackspace() {
+    if (state.targetId.isEmpty) return;
+    cubit.updateInCallTargetId(
+      state.targetId.substring(0, state.targetId.length - 1),
+    );
+  }
+
+  void _onClear() => cubit.updateInCallTargetId('');
+
+  @override
+  Widget build(BuildContext context) {
+    final id = state.targetId;
+    final hasId = id.isNotEmpty;
+    final hasError = state.errorMessage != null;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ID 显示区
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            decoration: BoxDecoration(
+              color: hasError
+                  ? cs.errorContainer.withOpacity(0.3)
+                  : cs.surfaceContainerHighest.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: hasError
+                    ? cs.error.withOpacity(0.5)
+                    : (hasId
+                          ? themeColor.withOpacity(0.4)
+                          : cs.outlineVariant.withOpacity(0.3)),
+                width: hasId ? 1.5 : 1,
+              ),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  hasId ? id : '请输入对方的传呼号',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: hasId ? cs.onSurface : cs.outline.withOpacity(0.4),
+                    letterSpacing: hasId ? 5 : 0,
+                  ),
+                ),
+                if (hasError) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    state.errorMessage!,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: cs.error,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          // 数字键盘（紧凑版）
+          _CompactNumpad(
+            onDigit: _onDigit,
+            onBackspace: _onBackspace,
+            onClear: _onClear,
+            cs: cs,
+            theme: theme,
+          ),
+          const SizedBox(height: 10),
+          // 确认按钮
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: FilledButton.icon(
+              onPressed: hasId ? () => cubit.confirmInCallTargetId() : null,
+              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+              label: const Text(
+                '确认号码',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: themeColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 紧凑数字键盘
+class _CompactNumpad extends StatelessWidget {
+  final void Function(String) onDigit;
+  final VoidCallback onBackspace;
+  final VoidCallback onClear;
+  final ColorScheme cs;
+  final ThemeData theme;
+  const _CompactNumpad({
+    required this.onDigit,
+    required this.onBackspace,
+    required this.onClear,
+    required this.cs,
+    required this.theme,
+  });
+
+  static const _rows = [
+    ['1', '2', '3'],
+    ['4', '5', '6'],
+    ['7', '8', '9'],
+    ['C', '0', '⌫'],
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: _rows.map((row) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: row
+                .map(
+                  (label) => _NumpadKey(
+                    label: label,
+                    onDigit: onDigit,
+                    onBackspace: onBackspace,
+                    onClear: onClear,
+                    cs: cs,
+                    theme: theme,
+                  ),
+                )
+                .toList(),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _NumpadKey extends StatelessWidget {
+  final String label;
+  final void Function(String) onDigit;
+  final VoidCallback onBackspace;
+  final VoidCallback onClear;
+  final ColorScheme cs;
+  final ThemeData theme;
+  const _NumpadKey({
+    required this.label,
+    required this.onDigit,
+    required this.onBackspace,
+    required this.onClear,
+    required this.cs,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isFunc = label == 'C' || label == '⌫';
+    return InkWell(
+      onTap: () {
+        if (label == 'C')
+          onClear();
+        else if (label == '⌫')
+          onBackspace();
+        else
+          onDigit(label);
+      },
+      borderRadius: BorderRadius.circular(30),
+      child: Container(
+        width: 72,
+        height: 46,
+        decoration: BoxDecoration(
+          shape: BoxShape.rectangle,
+          borderRadius: BorderRadius.circular(12),
+          color: isFunc
+              ? Colors.transparent
+              : cs.surfaceContainerHighest.withOpacity(0.4),
+          border: isFunc
+              ? null
+              : Border.all(color: cs.outlineVariant.withOpacity(0.4)),
+        ),
+        child: Center(
+          child: isFunc
+              ? Icon(
+                  label == '⌫'
+                      ? Icons.backspace_rounded
+                      : Icons.delete_sweep_rounded,
+                  size: 22,
+                  color: label == 'C'
+                      ? cs.error.withOpacity(0.8)
+                      : cs.onSurfaceVariant,
+                )
+              : Text(
+                  label,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w400,
+                    color: cs.onSurface,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+//  Panel 3: 语音 / 文字录入消息
+// ─────────────────────────────────────────────────────
+
+class _InputMessagePanel extends StatelessWidget {
+  final ConnectedState state;
+  final PagerCubit cubit;
+  final ColorScheme cs;
+  final ThemeData theme;
+  final Color themeColor;
+  const _InputMessagePanel({
+    super.key,
+    required this.state,
+    required this.cubit,
+    required this.cs,
+    required this.theme,
+    required this.themeColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isRecording = state.isRecording;
+    final hasTranscript = state.asrTranscript.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ASR 实时转写区
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 260),
+            width: double.infinity,
+            constraints: const BoxConstraints(minHeight: 60, maxHeight: 96),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isRecording
+                  ? cs.primaryContainer.withOpacity(0.35)
+                  : cs.surfaceContainerHighest.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isRecording
+                    ? cs.primary.withOpacity(0.4)
+                    : cs.outlineVariant.withOpacity(0.25),
+                width: isRecording ? 1.5 : 1,
+              ),
+            ),
+            child: hasTranscript
+                ? Text(
+                    state.asrTranscript,
+                    textAlign: TextAlign.center,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: cs.onSurface,
+                      fontWeight: FontWeight.w500,
+                      height: 1.5,
+                    ),
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isRecording
+                            ? Icons.mic_rounded
+                            : Icons.mic_none_rounded,
+                        size: 26,
+                        color: isRecording
+                            ? cs.primary
+                            : cs.onSurfaceVariant.withOpacity(0.5),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        isRecording ? '正在聆听...' : '点击麦克风开始说话',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: isRecording ? cs.primary : cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+          const SizedBox(height: 16),
+          // 控制行：挂断 | 大麦克风 | 键盘
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              // 挂断
+              _SmallCircleButton(
+                icon: Icons.call_end_rounded,
+                bg: cs.errorContainer,
+                fg: cs.onErrorContainer,
+                label: '挂断',
+                theme: theme,
+                onTap: () => cubit.hangup(),
+              ),
+              // 大麦克风按钮
+              GestureDetector(
+                onTap: () {
+                  if (isRecording) {
+                    cubit.finishAsrRecording();
+                  } else {
+                    cubit.startVoiceRecording();
+                  }
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 76,
+                  height: 76,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isRecording ? cs.error : themeColor,
+                    boxShadow: [
+                      BoxShadow(
+                        color: (isRecording ? cs.error : themeColor)
+                            .withOpacity(0.4),
+                        blurRadius: isRecording ? 20 : 12,
+                        spreadRadius: isRecording ? 4 : 0,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    isRecording ? Icons.stop_rounded : Icons.mic_rounded,
+                    color: Colors.white,
+                    size: 34,
+                  ),
+                ),
+              ),
+              // 键盘
+              _SmallCircleButton(
+                icon: Icons.keyboard_alt_rounded,
+                bg: cs.secondaryContainer,
+                fg: cs.onSecondaryContainer,
+                label: '键盘',
+                theme: theme,
+                onTap: () => cubit.switchToTextInput(),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+//  Panel 4: 确认 / 编辑消息
+// ─────────────────────────────────────────────────────
+
+class _ReviewPanel extends StatefulWidget {
+  final ConnectedState state;
+  final PagerCubit cubit;
+  final ColorScheme cs;
+  final ThemeData theme;
+  final Color themeColor;
+  const _ReviewPanel({
+    super.key,
+    required this.state,
+    required this.cubit,
+    required this.cs,
+    required this.theme,
+    required this.themeColor,
+  });
+
+  @override
+  State<_ReviewPanel> createState() => _ReviewPanelState();
+}
+
+class _ReviewPanelState extends State<_ReviewPanel> {
+  late final TextEditingController _ctrl;
+  late final FocusNode _focus;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.state.messageContent);
+    _focus = FocusNode();
+    // 自动聚焦（进入面板后弹出键盘）
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focus.requestFocus();
+    });
+  }
+
+  @override
+  void didUpdateWidget(_ReviewPanel old) {
+    super.didUpdateWidget(old);
+    // 仅在外部（cubit）修改内容时同步（防止打字时被覆盖）
+    if (widget.state.messageContent != old.state.messageContent &&
+        widget.state.messageContent != _ctrl.text) {
+      _ctrl.text = widget.state.messageContent;
+      _ctrl.selection = TextSelection.fromPosition(
+        TextPosition(offset: _ctrl.text.length),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = widget.cs;
+    final theme = widget.theme;
+    final themeColor = widget.themeColor;
+    final hasError = widget.state.errorMessage != null;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 消息编辑框
+          Container(
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: _focus.hasFocus
+                    ? themeColor.withOpacity(0.5)
+                    : cs.outlineVariant.withOpacity(0.3),
+                width: 1.5,
+              ),
+            ),
+            child: TextField(
+              controller: _ctrl,
+              focusNode: _focus,
+              maxLines: 3,
+              minLines: 2,
+              style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                border: InputBorder.none,
+                hintText: '请输入或编辑要发送的消息...',
+                hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurfaceVariant.withOpacity(0.5),
+                ),
+              ),
+              onChanged: (v) => widget.cubit.updateMessageContent(v),
+            ),
+          ),
+          // 错误提示
+          if (hasError)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline, size: 14, color: cs.error),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      widget.state.errorMessage!,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: cs.error,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 12),
+          // 操作行
+          Row(
+            children: [
+              // 重新录音
+              OutlinedButton.icon(
+                onPressed: () => widget.cubit.backToVoiceInput(),
+                icon: const Icon(Icons.refresh_rounded, size: 16),
+                label: const Text('重录'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              // 发送
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _ctrl.text.trim().isNotEmpty
+                      ? () => widget.cubit.sendMessage()
+                      : null,
+                  icon: const Icon(Icons.send_rounded, size: 18),
+                  label: const Text(
+                    '确认发送',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: themeColor,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+//  Panel 5: 发送中
+// ─────────────────────────────────────────────────────
+
+class _SendingPanel extends StatelessWidget {
+  final ColorScheme cs;
+  final ThemeData theme;
+  const _SendingPanel({super.key, required this.cs, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 28, 20, 32),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: cs.primary,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Text(
+            '正在发送消息...',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+//  Panel 6: 发送成功
+// ─────────────────────────────────────────────────────
+
+class _SuccessPanel extends StatelessWidget {
+  final ConnectedState state;
+  final PagerCubit cubit;
+  final ColorScheme cs;
+  final ThemeData theme;
+  final Color themeColor;
+  const _SuccessPanel({
+    super.key,
+    required this.state,
+    required this.cubit,
+    required this.cs,
+    required this.theme,
+    required this.themeColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final last = state.sentHistory.isNotEmpty ? state.sentHistory.last : null;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 成功卡片
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: cs.primaryContainer.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: cs.primary.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.check_rounded,
+                    color: cs.onPrimaryContainer,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '消息已发送至 ${last?.targetId ?? state.targetId}',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      if (last != null)
+                        Text(
+                          last.content,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: cs.onSurface,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // 本次已发送计数
+          if (state.sentHistory.length > 1)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                '本次通话已发送 ${state.sentHistory.length} 条消息',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ),
+          const SizedBox(height: 14),
+          // 操作行
+          Row(
+            children: [
+              // 挂断
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => cubit.hangup(),
+                  icon: const Icon(Icons.call_end_rounded, size: 16),
+                  label: const Text('挂断'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: cs.error,
+                    side: BorderSide(color: cs.error.withOpacity(0.6)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // 继续发送给另一人
+              Expanded(
+                flex: 2,
+                child: FilledButton.icon(
+                  onPressed: () => cubit.continueToNextRecipient(),
+                  icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+                  label: const Text(
+                    '继续发送',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: themeColor,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+//  共享组件
+// ─────────────────────────────────────────────────────
+
+/// 全宽挂断按钮（问候阶段使用）
+class _HangupButton extends StatelessWidget {
+  final PagerCubit cubit;
+  final ColorScheme cs;
+  final ThemeData theme;
+  const _HangupButton({
+    required this.cubit,
+    required this.cs,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: OutlinedButton.icon(
+        onPressed: () => cubit.hangup(),
+        icon: const Icon(Icons.call_end_rounded, size: 18),
+        label: const Text(
+          '挂断通话',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: cs.error,
+          side: BorderSide(color: cs.error.withOpacity(0.5)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 带标签的小圆形按钮（语音输入面板使用）
+class _SmallCircleButton extends StatelessWidget {
+  final IconData icon;
+  final Color bg;
+  final Color fg;
+  final String label;
+  final ThemeData theme;
+  final VoidCallback onTap;
+  const _SmallCircleButton({
+    required this.icon,
+    required this.bg,
+    required this.fg,
+    required this.label,
+    required this.theme,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+            child: Icon(icon, color: fg, size: 22),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 静态等待脉冲条（无波形数据但正在录音时显示）
+class _IdlePulseBars extends StatefulWidget {
+  final Color color;
+  const _IdlePulseBars({required this.color});
+
+  @override
+  State<_IdlePulseBars> createState() => _IdlePulseBarsState();
+}
+
+class _IdlePulseBarsState extends State<_IdlePulseBars>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(5, (i) {
+            final height = 6.0 + 14.0 * (((_ctrl.value + i * 0.18) % 1.0));
+            return Container(
+              width: 3,
+              height: height,
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              decoration: BoxDecoration(
+                color: widget.color.withOpacity(0.5 + 0.4 * _ctrl.value),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            );
+          }),
+        );
+      },
     );
   }
 }

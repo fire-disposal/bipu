@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -8,7 +10,7 @@ import 'core/utils/interaction_optimizer.dart';
 import 'core/network/network.dart';
 import 'core/api/export.dart';
 import 'pages/layout/main_layout.dart';
-import 'pages/pager/pager_page_enhanced.dart';
+import 'pages/pager/pager_page.dart';
 import 'pages/profile/profile_page.dart';
 import 'pages/profile/pages/security_page.dart';
 import 'pages/profile/pages/edit_profile_page.dart';
@@ -40,6 +42,7 @@ import 'pages/profile/pages/bluetooth/device_detail_page.dart';
 import 'pages/home/pages/quick_actions/voice_test_page.dart';
 import 'pages/home/home_page.dart';
 import 'pages/home/pages/bluetooth_message_test.dart';
+import 'core/voice/voice_service_unified.dart'; // 预热语音模型
 
 Future<void> main() async {
   // Catch errors
@@ -64,6 +67,9 @@ Future<void> main() async {
 
   // Initialize IM Service
   await ImService().init();
+
+  // 后台预热语音模型，避免用户首次拨号时才初始化
+  unawaited(VoiceService().init());
 
   await EasyLocalization.ensureInitialized();
 
@@ -145,10 +151,7 @@ final GoRouter _router = GoRouter(
       builder: (context, state, child) => MainLayout(child: child),
       routes: [
         GoRoute(path: '/home', builder: (context, state) => const HomePage()),
-        GoRoute(
-          path: '/pager',
-          builder: (context, state) => const PagerPageEnhanced(),
-        ),
+        GoRoute(path: '/pager', builder: (context, state) => const PagerPage()),
         GoRoute(
           path: '/messages',
           builder: (context, state) => const MessagesPage(),

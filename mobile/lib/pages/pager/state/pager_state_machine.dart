@@ -1,11 +1,8 @@
 import 'package:equatable/equatable.dart';
 import '../models/operator_model.dart';
-import '../services/text_processor.dart';
 
 /// 拨号页面的状态机定义
-/// 定义了三个主要状态及其转换逻辑
-
-/// 拨号状态基类
+/// 接通后由 [ConnectedState] + [InCallPhase] 驱动，无需多个独立页面
 abstract class PagerState extends Equatable {
   const PagerState();
 
@@ -13,33 +10,33 @@ abstract class PagerState extends Equatable {
   List<Object?> get props => [];
 }
 
-/// 状态1: 拨号准备 (Dialing Prep)
-/// 用户输入目标ID，选择联系人，准备拨号
+// ──────────────────────────────────────────────
+//  接通前：准备 / 连接中
+// ──────────────────────────────────────────────
+
+/// 初始状态
+class PagerInitialState extends PagerState {
+  const PagerInitialState();
+}
+
+/// 拨号准备状态（仅选择接线员，目标号码在接通后由接线员引导输入）
 class DialingPrepState extends PagerState {
-  final String targetId;
-  final String? selectedContactName;
   final bool isLoading;
   final String? errorMessage;
-  final OperatorPersonality? currentOperator; // 当前选择的接线员
+  final OperatorPersonality? currentOperator;
 
   const DialingPrepState({
-    this.targetId = '',
-    this.selectedContactName,
     this.isLoading = false,
     this.errorMessage,
     this.currentOperator,
   });
 
   DialingPrepState copyWith({
-    String? targetId,
-    String? selectedContactName,
     bool? isLoading,
     String? errorMessage,
     OperatorPersonality? currentOperator,
   }) {
     return DialingPrepState(
-      targetId: targetId ?? this.targetId,
-      selectedContactName: selectedContactName ?? this.selectedContactName,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage,
       currentOperator: currentOperator ?? this.currentOperator,
@@ -47,163 +44,170 @@ class DialingPrepState extends PagerState {
   }
 
   @override
-  List<Object?> get props => [
-    targetId,
-    selectedContactName,
-    isLoading,
-    errorMessage,
-    currentOperator,
-  ];
+  List<Object?> get props => [isLoading, errorMessage, currentOperator];
 }
 
-/// 状态2: 通话中 (In-Call Experience)
-/// 显示虚拟接线员立绘，播放TTS，进行ASR语音转写
-class InCallState extends PagerState {
-  final String targetId;
-  final String operatorImageUrl; // 虚拟接线员立绘URL或Asset路径
-  final String asrTranscript; // 实时转写文本（用户输入）
-  final List<double> waveformData; // 声纹动效数据 (0-1范围)
-  final bool isSilenceDetected; // 是否检测到静默
-  final OperatorPersonality? operator; // 当前接线员人格
+/// 连接中状态（显示拨号动画 + 初始化语音服务）
+class ConnectingState extends PagerState {
+  final OperatorPersonality? currentOperator;
 
-  // ✅ 新增：接线员台词相关字段
-  final String operatorCurrentSpeech; // 接线员当前说的台词
-  final List<String> operatorSpeechHistory; // 接线员历史台词列表
-  final bool isWaitingForUserInput; // 是否等待用户输入
-
-  const InCallState({
-    required this.targetId,
-    this.operatorImageUrl = '',
-    this.asrTranscript = '',
-    this.waveformData = const [],
-    this.isSilenceDetected = false,
-    this.operator,
-    this.operatorCurrentSpeech = '',
-    this.operatorSpeechHistory = const [],
-    this.isWaitingForUserInput = false,
-  });
-
-  InCallState copyWith({
-    String? targetId,
-    String? operatorImageUrl,
-    String? asrTranscript,
-    List<double>? waveformData,
-    bool? isSilenceDetected,
-    OperatorPersonality? operator,
-    String? operatorCurrentSpeech,
-    List<String>? operatorSpeechHistory,
-    bool? isWaitingForUserInput,
-  }) {
-    return InCallState(
-      targetId: targetId ?? this.targetId,
-      operatorImageUrl: operatorImageUrl ?? this.operatorImageUrl,
-      asrTranscript: asrTranscript ?? this.asrTranscript,
-      waveformData: waveformData ?? this.waveformData,
-      isSilenceDetected: isSilenceDetected ?? this.isSilenceDetected,
-      operator: operator ?? this.operator,
-      operatorCurrentSpeech:
-          operatorCurrentSpeech ?? this.operatorCurrentSpeech,
-      operatorSpeechHistory:
-          operatorSpeechHistory ?? this.operatorSpeechHistory,
-      isWaitingForUserInput:
-          isWaitingForUserInput ?? this.isWaitingForUserInput,
-    );
-  }
+  const ConnectingState({this.currentOperator});
 
   @override
-  List<Object?> get props => [
-    targetId,
-    operatorImageUrl,
-    asrTranscript,
-    waveformData,
-    isSilenceDetected,
-    operator,
-    operatorCurrentSpeech,
-    operatorSpeechHistory,
-    isWaitingForUserInput,
-  ];
+  List<Object?> get props => [currentOperator];
 }
 
-/// 状态3: 发送与结束 (Finalize)
-/// 显示"发送"按钮，发送消息后播放成功TTS，显示"挂断"按钮
-class FinalizeState extends PagerState {
-  final String targetId;
-  final String messageContent; // 要发送的消息内容
-  final bool isSending; // 是否正在发送
-  final bool sendSuccess; // 是否发送成功
-  final String? sendErrorMessage;
-  final bool showHangupButton; // 是否显示挂断按钮
-  final bool isPlayingSuccessTts; // 是否正在播放成功TTS
-  final OperatorPersonality? operator; // 当前接线员人格
-  final bool isEditing; // 是否处于编辑模式
-  final TextProcessingResult? textProcessingResult; // 编辑的文本处理结果
-  final bool isNewlyUnlocked; // 该接线员是否首次完成对话（用于解锁提示）
-  final List<String> operatorSpeechHistory; // ✅ 新增：接线员历史台词
+// ──────────────────────────────────────────────
+//  接通后：统一状态 ConnectedState + InCallPhase
+// ──────────────────────────────────────────────
 
-  const FinalizeState({
+/// 接通后的交互阶段（子状态枚举）
+enum InCallPhase {
+  /// 接线员问候中，用户聆听
+  greeting,
+
+  /// 用户通过数字键盘输入目标用户 ID
+  enteringTarget,
+
+  /// 用户通过语音/键盘录入消息内容
+  inputtingMessage,
+
+  /// 用户确认 / 编辑消息内容（预览面板）
+  reviewing,
+
+  /// 消息发送进行中
+  sending,
+
+  /// 消息发送成功，等待用户决定是否继续
+  sentSuccess,
+}
+
+/// 本次通话内单条发送记录
+class SendRecord extends Equatable {
+  final String targetId;
+  final String content;
+  final DateTime sentAt;
+
+  const SendRecord({
     required this.targetId,
-    this.messageContent = '',
-    this.isSending = false,
-    this.sendSuccess = false,
-    this.sendErrorMessage,
-    this.showHangupButton = false,
-    this.isPlayingSuccessTts = false,
-    this.operator,
-    this.isEditing = false,
-    this.textProcessingResult,
-    this.isNewlyUnlocked = false,
-    this.operatorSpeechHistory = const [],
+    required this.content,
+    required this.sentAt,
   });
 
-  FinalizeState copyWith({
+  @override
+  List<Object?> get props => [targetId, content, sentAt];
+}
+
+/// 已接通状态（整合原 InCallState + FinalizeState）
+///
+/// 通过 [phase] 区分当前交互子阶段，全程保持接线员立绘与台词区可见。
+class ConnectedState extends PagerState {
+  /// 当前接线员
+  final OperatorPersonality operator;
+
+  /// 当前交互阶段
+  final InCallPhase phase;
+
+  /// 当前目标用户 ID（enteringTarget 阶段填入）
+  final String targetId;
+
+  /// 当前消息内容（inputtingMessage / reviewing / sending 阶段）
+  final String messageContent;
+
+  /// ASR 是否正在工作（麦克风激活）
+  final bool isRecording;
+
+  /// 实时音量波形数据
+  final List<double> waveformData;
+
+  /// ASR 实时中间识别结果
+  final String asrTranscript;
+
+  /// 是否正在发送消息
+  final bool isSending;
+
+  /// 当前操作的错误消息
+  final String? errorMessage;
+
+  /// 接线员台词历史（用于气泡流显示）
+  final List<String> operatorSpeechHistory;
+
+  /// 接线员当前正在说的台词（最新一条）
+  final String operatorCurrentSpeech;
+
+  /// 本次通话内已成功发送的记录列表
+  final List<SendRecord> sentHistory;
+
+  const ConnectedState({
+    required this.operator,
+    this.phase = InCallPhase.greeting,
+    this.targetId = '',
+    this.messageContent = '',
+    this.isRecording = false,
+    this.waveformData = const [],
+    this.asrTranscript = '',
+    this.isSending = false,
+    this.errorMessage,
+    this.operatorSpeechHistory = const [],
+    this.operatorCurrentSpeech = '',
+    this.sentHistory = const [],
+  });
+
+  ConnectedState copyWith({
+    OperatorPersonality? operator,
+    InCallPhase? phase,
     String? targetId,
     String? messageContent,
+    bool? isRecording,
+    List<double>? waveformData,
+    String? asrTranscript,
     bool? isSending,
-    bool? sendSuccess,
-    String? sendErrorMessage,
-    bool? showHangupButton,
-    bool? isPlayingSuccessTts,
-    OperatorPersonality? operator,
-    bool? isEditing,
-    TextProcessingResult? textProcessingResult,
-    bool? isNewlyUnlocked,
+    String? errorMessage,
+    bool clearError = false,
     List<String>? operatorSpeechHistory,
+    String? operatorCurrentSpeech,
+    List<SendRecord>? sentHistory,
   }) {
-    return FinalizeState(
+    return ConnectedState(
+      operator: operator ?? this.operator,
+      phase: phase ?? this.phase,
       targetId: targetId ?? this.targetId,
       messageContent: messageContent ?? this.messageContent,
+      isRecording: isRecording ?? this.isRecording,
+      waveformData: waveformData ?? this.waveformData,
+      asrTranscript: asrTranscript ?? this.asrTranscript,
       isSending: isSending ?? this.isSending,
-      sendSuccess: sendSuccess ?? this.sendSuccess,
-      sendErrorMessage: sendErrorMessage,
-      showHangupButton: showHangupButton ?? this.showHangupButton,
-      isPlayingSuccessTts: isPlayingSuccessTts ?? this.isPlayingSuccessTts,
-      operator: operator ?? this.operator,
-      isEditing: isEditing ?? this.isEditing,
-      textProcessingResult: textProcessingResult ?? this.textProcessingResult,
-      isNewlyUnlocked: isNewlyUnlocked ?? this.isNewlyUnlocked,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       operatorSpeechHistory:
           operatorSpeechHistory ?? this.operatorSpeechHistory,
+      operatorCurrentSpeech:
+          operatorCurrentSpeech ?? this.operatorCurrentSpeech,
+      sentHistory: sentHistory ?? this.sentHistory,
     );
   }
 
   @override
   List<Object?> get props => [
+    operator,
+    phase,
     targetId,
     messageContent,
+    isRecording,
+    waveformData,
+    asrTranscript,
     isSending,
-    sendSuccess,
-    sendErrorMessage,
-    showHangupButton,
-    isPlayingSuccessTts,
-    operator,
-    isEditing,
-    textProcessingResult,
-    isNewlyUnlocked,
+    errorMessage,
     operatorSpeechHistory,
+    operatorCurrentSpeech,
+    sentHistory,
   ];
 }
 
-/// 操作员解锁提示状态
+// ──────────────────────────────────────────────
+//  通用状态
+// ──────────────────────────────────────────────
+
+/// 接线员解锁提示状态
 class OperatorUnlockedState extends PagerState {
   final OperatorPersonality operator;
   final String unlockMessage;
@@ -226,9 +230,4 @@ class PagerErrorState extends PagerState {
 
   @override
   List<Object?> get props => [message, code];
-}
-
-/// 初始状态
-class PagerInitialState extends PagerState {
-  const PagerInitialState();
 }

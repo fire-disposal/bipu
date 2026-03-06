@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 import 'tts_engine.dart';
 import 'asr_engine.dart';
@@ -28,6 +27,15 @@ class VoiceService {
 
   /// 顺序锁：当前 speak() 未完成时，新的 speak() 排队等待
   Completer<void> _speakDone = Completer<void>()..complete();
+
+  /// ASR 录音活跃标记（由 startRecording/stopRecording 维护）
+  bool _isAudioRecording = false;
+
+  /// 当前是否有 TTS 正在播放（包括排队等待播放的）
+  bool get isSpeaking => !_speakDone.isCompleted;
+
+  /// 当前是否有 ASR 录音在进行
+  bool get isRecording => _isAudioRecording;
 
   // ============ 初始化 ============
 
@@ -59,6 +67,12 @@ class VoiceService {
   /// 多次并发调用时按顺序串行执行，不会互相覆盖。
   Future<void> speak(String text, {int sid = 0, double speed = 1.0}) async {
     if (!_initialized) await init();
+
+    // ✅ 安全联锁：TTS 播放前必须确保 ASR 已停止，防止麦克风拾入 TTS 音频造成回路
+    if (_isAudioRecording) {
+      logger.w('VoiceService.speak: ⚠️ 检测到录音进行中，自动停止 ASR 后再播放 TTS');
+      await stopRecording();
+    }
 
     // 等待上一次播放完成（超时保护 15s，防止卡死）
     if (!_speakDone.isCompleted) {
@@ -116,13 +130,24 @@ class VoiceService {
   // ============ ASR API ============
 
   /// 开始录音
+  ///
+  /// ✅ 安全联锁：录音前自动停止正在播放的 TTS，防止接线员声音被误录入。
   Future<void> startRecording() async {
     if (!_initialized) await init();
+
+    // 若 TTS 正在播放，先中断它再录音
+    if (!_speakDone.isCompleted) {
+      logger.w('VoiceService.startRecording: ⚠️ 检测到 TTS 播放中，自动停止后再开始 ASR');
+      await stopSpeaking();
+    }
+
+    _isAudioRecording = true;
     await _asr.startRecording();
   }
 
   /// 停止录音并返回识别结果
   Future<String> stopRecording() async {
+    _isAudioRecording = false;
     return _asr.stop();
   }
 
@@ -150,6 +175,7 @@ class VoiceService {
     _asr.dispose();
     _player.dispose();
     _initialized = false;
+    _isAudioRecording = false;
     if (!_speakDone.isCompleted) _speakDone.complete();
   }
 }

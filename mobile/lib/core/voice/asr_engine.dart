@@ -354,8 +354,15 @@ class ASREngine {
         if (_volumeCounter % 20 == 0 && !_isStopping && !_isDisposing) {
           if (_recognizer!.isReady(_stream!) && !_isStopping && !_isDisposing) {
             _recognizer!.decode(_stream!);
+
+            // ✅ 流式识别：每次 decode 后立即推送中间结果
+            final result = _recognizer!.getResult(_stream!);
+            if (result.text.isNotEmpty && !_resultController.isClosed) {
+              _resultController.add(result.text);
+            }
           }
 
+          // Endpoint 检测：语句结束时也推送最终结果
           final isEndpoint = _recognizer!.isEndpoint(_stream!);
           if (isEndpoint && !_isStopping && !_isDisposing) {
             final text = _recognizer!.getResult(_stream!).text;

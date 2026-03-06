@@ -129,17 +129,17 @@ class ProfilePage extends StatelessWidget {
                   Card(
                     child: Column(
                       children: [
-                        ListTile(
-                          leading: Icon(
-                            Icons.bluetooth_connected,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          title: Text('pupu_device'.tr()),
-                          subtitle: Text('view_bound_devices'.tr()),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => context.push('/bluetooth/scan'),
-                        ),
-                        Divider(height: 1, indent: 56),
+                        // ListTile(
+                        //   leading: Icon(
+                        //     Icons.bluetooth_connected,
+                        //     color: Theme.of(context).colorScheme.primary,
+                        //   ),
+                        //   title: Text('pupu_device'.tr()),
+                        //   subtitle: Text('view_bound_devices'.tr()),
+                        //   trailing: const Icon(Icons.chevron_right),
+                        //   onTap: () => context.push('/bluetooth/scan'),
+                        // ),
+                        // Divider(height: 1, indent: 56),
                         ListTile(
                           leading: Icon(
                             Icons.person_outline,

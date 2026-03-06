@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 
@@ -104,6 +105,8 @@ class OperatorPersonality extends Equatable {
 
 /// 接线员台词配置
 class OperatorDialogues extends Equatable {
+  static final Random _random = Random();
+
   /// 初始问候语（多个变体，随机选择）
   final List<String> greetingVariants;
 
@@ -128,6 +131,12 @@ class OperatorDialogues extends Equatable {
   /// 其他随机台词
   final List<String> randomPhrases;
 
+  /// 接通后询问目标用户 ID 的台词（多个变体）
+  final List<String> askTargetVariants;
+
+  /// 发送成功后询问是否继续的台词（多个变体）
+  final List<String> askContinueVariants;
+
   const OperatorDialogues({
     required this.greetingVariants,
     required this.confirmIdVariants,
@@ -137,48 +146,63 @@ class OperatorDialogues extends Equatable {
     required this.successMessageVariants,
     required this.userNotFoundVariants,
     this.randomPhrases = const [],
+    this.askTargetVariants = const ['请告诉我您要联系的用户 ID'],
+    this.askContinueVariants = const ['是否需要继续发送给其他用户？'],
   });
 
   /// 获取随机问候语
-  String getGreeting() =>
-      greetingVariants[DateTime.now().millisecond % greetingVariants.length];
+  String getGreeting() {
+    return greetingVariants[_random.nextInt(greetingVariants.length)];
+  }
 
   /// 获取随机确认 ID 台词
   String getConfirmId(String targetId) {
     final template =
-        confirmIdVariants[DateTime.now().millisecond %
-            confirmIdVariants.length];
+        confirmIdVariants[_random.nextInt(confirmIdVariants.length)];
     return template.replaceAll('%s', targetId);
   }
 
   /// 获取随机核实台词
-  String getVerify() =>
-      verifyVariants[DateTime.now().millisecond % verifyVariants.length];
+  String getVerify() {
+    return verifyVariants[_random.nextInt(verifyVariants.length)];
+  }
 
   /// 获取随机请求消息台词
-  String getRequestMessage() =>
-      requestMessageVariants[DateTime.now().millisecond %
-          requestMessageVariants.length];
+  String getRequestMessage() {
+    return requestMessageVariants[_random.nextInt(
+      requestMessageVariants.length,
+    )];
+  }
 
   /// 获取随机表情符号提醒
-  String getEmojiWarning() =>
-      emojiWarningVariants[DateTime.now().millisecond %
-          emojiWarningVariants.length];
+  String getEmojiWarning() {
+    return emojiWarningVariants[_random.nextInt(emojiWarningVariants.length)];
+  }
 
   /// 获取随机成功消息台词
-  String getSuccessMessage() =>
-      successMessageVariants[DateTime.now().millisecond %
-          successMessageVariants.length];
+  String getSuccessMessage() {
+    return successMessageVariants[_random.nextInt(
+      successMessageVariants.length,
+    )];
+  }
 
   /// 获取随机用户不存在提示
-  String getUserNotFound() =>
-      userNotFoundVariants[DateTime.now().millisecond %
-          userNotFoundVariants.length];
+  String getUserNotFound() {
+    return userNotFoundVariants[_random.nextInt(userNotFoundVariants.length)];
+  }
 
   /// 获取随机短语
   String getRandomPhrase() => randomPhrases.isNotEmpty
-      ? randomPhrases[DateTime.now().millisecond % randomPhrases.length]
+      ? randomPhrases[_random.nextInt(randomPhrases.length)]
       : '';
+
+  /// 获取询问目标 ID 的台词
+  String getAskTarget() =>
+      askTargetVariants[_random.nextInt(askTargetVariants.length)];
+
+  /// 获取询问是否继续发送的台词
+  String getAskContinue() =>
+      askContinueVariants[_random.nextInt(askContinueVariants.length)];
 
   @override
   List<Object?> get props => [
@@ -190,6 +214,8 @@ class OperatorDialogues extends Equatable {
     successMessageVariants,
     userNotFoundVariants,
     randomPhrases,
+    askTargetVariants,
+    askContinueVariants,
   ];
 }
 
@@ -231,6 +257,12 @@ class OperatorFactory {
           '该用户 ID 无效，请重新输入',
         ],
         randomPhrases: ['为您服务是我的荣幸', '感谢您的使用', '祝您有美好的一天'],
+        askTargetVariants: ['请输入您要联系的用户 ID', '请告知目标用户的 ID 号码', '请提供您想联系的用户 ID'],
+        askContinueVariants: [
+          '消息已送达，是否需要继续向其他用户发送？',
+          '发送成功，还有其他需要传达的吗？',
+          '是否需要再发送给其他人？',
+        ],
       ),
     ),
 
@@ -265,6 +297,16 @@ class OperatorFactory {
           '这个 ID 好像不对，再确认一下吧',
         ],
         randomPhrases: ['很高兴认识您', '感谢您的信任', '希望我的服务让您满意'],
+        askTargetVariants: [
+          '请告诉我您想联系的用户 ID 哦',
+          '请输入对方的 ID 号码',
+          '请慢慢说，您要找哪位用户呢',
+        ],
+        askContinueVariants: [
+          '太棒了，消息已经发出去啦！还需要发给其他人吗？',
+          '好消息，已经发送成功哦。还有要联系的人吗？',
+          '已经帮您发送了，还要继续吗？',
+        ],
       ),
     ),
 
@@ -295,6 +337,8 @@ class OperatorFactory {
           'ID 不对吧，再检查一下',
         ],
         randomPhrases: ['没问题，包在我身上', '下次再来啊', '有事儿再找我'],
+        askTargetVariants: ['来，告诉我你要找哪个 ID', '输入对方 ID，快快快', '目标 ID 是多少？'],
+        askContinueVariants: ['搞定了！还要发给其他人不？', 'OK 发出去了，继续？', '还有下一个吗？'],
       ),
     ),
 
@@ -321,15 +365,51 @@ class OperatorFactory {
         successMessageVariants: ['您的消息已被传递', '消息已经送达彼岸', '已经完成，愿您的心意被理解'],
         userNotFoundVariants: ['这个用户似乎不存在', '在茫茫人海中，没有找到这位用户', '这个 ID 好像不存在呢'],
         randomPhrases: ['一切皆有可能', '感谢您的信任', '再见，朋友'],
+        askTargetVariants: ['请告知您要寻找的用户 ID', '请输入您想联系之人的 ID', '请提供目标用户的 ID'],
+        askContinueVariants: [
+          '消息已传达至彼岸。是否还有其他需要传递的心意？',
+          '发送已完成。是否继续向其他人传达？',
+          '是否还需要联系其他用户？',
+        ],
+      ),
+    ),
+    // 接线员 5: 机械型 - 零号
+    OperatorPersonality(
+      id: 'op_005',
+      name: '零号',
+      description: '绝对理性的 AI 接线员',
+      portraitUrl: 'assets/operators/zero.png',
+      initials: 'Z0',
+      ttsId: 0, // 假设 0 是标准机器人音色
+      ttsSpeed: 1.2, // 语速稍快
+      themeColor: const Color(0xFF607D8B), // Blue Grey
+      dialogues: OperatorDialogues(
+        greetingVariants: ['系统已连接。我是接线员零号。', '初始化完成。零号为您服务。', '指令接收中。请讲。'],
+        confirmIdVariants: ['目标 ID 识别为 %s。确认执行？', '正在锁定用户 %s。', '连接 %s 中。'],
+        verifyVariants: ['正在检索数据库...', '数据校验中...', '同步用户信息...'],
+        requestMessageVariants: ['请输入传输内容。', '等待信息输入。', '开始记录消息。'],
+        emojiWarningVariants: [
+          '错误：不支持非文本字符。',
+          '警告：检测到无效符号。请修正。',
+          '格式错误。仅接受文本。',
+        ],
+        successMessageVariants: ['传输完成。', '数据包已发送。', '任务执行完毕。'],
+        userNotFoundVariants: ['错误：目标用户不存在。', '查询失败：无效的 ID。', '数据库中未找到匹配项。'],
+        randomPhrases: ['逻辑是唯一的真理。', '系统运行正常。', '保持理性。'],
+        askTargetVariants: ['输入目标用户 ID。', '请提供接收方 ID。', '等待 ID 输入。'],
+        askContinueVariants: [
+          '传输完成。是否继续执行新的发送任务？',
+          '任务完成。是否启动下一轮传输？',
+          '发送成功。继续？',
+        ],
       ),
     ),
   ];
 
   /// 获取随机操作员
   static OperatorPersonality getRandomOperator() {
-    final random =
-        DateTime.now().millisecondsSinceEpoch % defaultOperators.length;
-    return defaultOperators[random];
+    final rnd = Random();
+    return defaultOperators[rnd.nextInt(defaultOperators.length)];
   }
 
   /// 根据 ID 获取操作员

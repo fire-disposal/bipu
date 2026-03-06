@@ -2,29 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'state/pager_state_machine.dart';
 import 'state/pager_cubit.dart';
-import 'pages/dialing_prep_page_minimal.dart';
+import 'pages/dialing_prep_page.dart';
+import 'pages/connecting_page.dart';
 import 'pages/in_call_page.dart';
-import 'pages/finalize_page.dart';
-import 'pages/operator_gallery_page_new.dart';
+import 'pages/operator_gallery_page.dart';
 import 'services/operator_service.dart';
 
-/// 增强版拨号页面
+/// 拨号页面
 /// 采用状态机模式，通过 PagerCubit 驱动 UI 切换
-class PagerPageEnhanced extends StatefulWidget {
-  const PagerPageEnhanced({super.key});
+class PagerPage extends StatefulWidget {
+  const PagerPage({super.key});
 
   @override
-  State<PagerPageEnhanced> createState() => _PagerPageEnhancedState();
+  State<PagerPage> createState() => _PagerPageState();
 }
 
-class _PagerPageEnhancedState extends State<PagerPageEnhanced> {
+class _PagerPageState extends State<PagerPage> {
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<PagerCubit>(
-      // 这里的 create 确保 Cubit 生命周期与 Widget 绑定
-      create: (context) => PagerCubit()..initializeDialingPrep(),
-      child: const _PagerView(),
-    );
+    // PagerCubit 由 MainLayout 层持久提供，切换 Tab 时通话不被销毁
+    return const _PagerView();
   }
 }
 
@@ -91,13 +88,18 @@ class _PagerView extends StatelessWidget {
   /// 根据状态分发子页面
   Widget _buildBody(BuildContext context, PagerState state, PagerCubit cubit) {
     if (state is DialingPrepState) {
-      return DialingPrepPageMinimal(key: const ValueKey('prep'), cubit: cubit);
+      return DialingPrepPage(key: const ValueKey('prep'), cubit: cubit);
     }
-    if (state is InCallState) {
+    if (state is ConnectingState) {
+      return ConnectingPage(
+        key: const ValueKey('connecting'),
+        assignedOperator: state.currentOperator,
+      );
+    }
+    // 接通后所有阶段（greeting / enteringTarget / inputtingMessage / reviewing / sending / sentSuccess）
+    // 均在 InCallPage 内通过 InCallPhase 子状态切换面板处理
+    if (state is ConnectedState) {
       return InCallPage(key: const ValueKey('in_call'), cubit: cubit);
-    }
-    if (state is FinalizeState) {
-      return FinalizePage(key: const ValueKey('finalize'), cubit: cubit);
     }
     if (state is PagerErrorState) {
       return _ErrorDisplay(state: state, onRetry: cubit.initializeDialingPrep);
@@ -259,10 +261,11 @@ class _PagerView extends StatelessWidget {
   }
 
   void _navigateToGallery(BuildContext context) {
+    final cubit = context.read<PagerCubit>();
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) =>
-            OperatorGalleryPageNew(operatorService: OperatorService()),
+            OperatorGalleryPage(operatorService: cubit.operatorService),
       ),
     );
   }
@@ -300,11 +303,4 @@ class _ErrorDisplay extends StatelessWidget {
       ),
     );
   }
-}
-
-// 兼容旧类名
-class PagerPage extends StatelessWidget {
-  const PagerPage({super.key});
-  @override
-  Widget build(BuildContext context) => const PagerPageEnhanced();
 }

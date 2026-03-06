@@ -46,11 +46,22 @@ class PagerAssistant {
   /// await 返回表示播放完毕（TTS 失败时静默跳过，不抛出异常）
   Future<void> respond(String text, {double? speed}) async {
     if (!_initialized) await init();
+
+    // ✅ 安全防护：若录音会话活跃，先发信号停止（由统一服务层进一步串行保证）
+    if (_isRecording) {
+      logger.w('PagerAssistant.respond: ⚠️ 录音进行中尝试播放 TTS，先发停止信号');
+      signalStop(); // 让 recordAndRecognize 自行收尾
+      // 用少量时间等待 recordAndRecognize finally 块执行
+      int waited = 0;
+      while (_isRecording && waited < 15) {
+        await Future.delayed(const Duration(milliseconds: 20));
+        waited++;
+      }
+    }
+
     final sid = _operator?.ttsId ?? 0;
     final spd = speed ?? _operator?.ttsSpeed ?? 1.0;
-    if (kDebugMode) {
-      logger.i('PagerAssistant.respond: "$text" sid=$sid spd=$spd');
-    }
+    logger.i('PagerAssistant.respond: "$text" sid=$sid spd=$spd');
     try {
       await _voiceService.speak(text, sid: sid, speed: spd);
     } catch (e) {
@@ -146,6 +157,17 @@ class PagerAssistant {
     }
   }
 
+  // ============ TTS 控制 ============
+
+  /// 停止当前正在播放的 TTS（用于打断接线员发言）
+  Future<void> stopSpeaking() async {
+    try {
+      await _voiceService.stopSpeaking();
+    } catch (e) {
+      logger.w('PagerAssistant.stopSpeaking: $e');
+    }
+  }
+
   // ============ 录音控制 ============
 
   /// 仅发送停止信号，让 recordAndRecognize() 自行调用 stopRecording()
@@ -189,6 +211,6 @@ class PagerAssistant {
       await _voiceService.stopSpeaking();
     } catch (_) {}
     _initialized = false;
-    if (kDebugMode) logger.i('PagerAssistant: 已清理');
+    logger.i('PagerAssistant: 已清理');
   }
 }

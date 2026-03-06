@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../core/services/toast_service.dart';
 import '../../core/state/app_state_management.dart';
+import '../pager/state/pager_cubit.dart';
 import 'enhanced_bottom_navigation.dart';
 
 /// 重构后的主布局
@@ -19,9 +21,19 @@ class MainLayout extends StatefulWidget {
 class _MainLayoutState extends State<MainLayout> {
   bool _isListening = false;
 
+  /// PagerCubit 持久化在此层，确保切换 Tab 时通话状态不被销毁
+  late final PagerCubit _pagerCubit;
+
   @override
   void initState() {
     super.initState();
+    _pagerCubit = PagerCubit()..initializeDialingPrep();
+  }
+
+  @override
+  void dispose() {
+    _pagerCubit.close();
+    super.dispose();
   }
 
   int _getCurrentIndex(BuildContext context) {
@@ -91,22 +103,20 @@ class _MainLayoutState extends State<MainLayout> {
   }
 
   @override
-  void dispose() {
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final currentIndex = _getCurrentIndex(context);
 
-    return Scaffold(
-      body: widget.child,
-      bottomNavigationBar: EnhancedBottomNavigation(
-        currentIndex: currentIndex,
-        onTap: (index) => _onItemTapped(index, context),
-        onPagerLongPress: () => _onPagerLongPressed(context),
-        onPagerLongPressEnd: () => _onPagerLongPressEnd(context),
-        isPagerListening: _isListening,
+    return BlocProvider<PagerCubit>.value(
+      value: _pagerCubit,
+      child: Scaffold(
+        body: widget.child,
+        bottomNavigationBar: EnhancedBottomNavigation(
+          currentIndex: currentIndex,
+          onTap: (index) => _onItemTapped(index, context),
+          onPagerLongPress: () => _onPagerLongPressed(context),
+          onPagerLongPressEnd: () => _onPagerLongPressEnd(context),
+          isPagerListening: _isListening,
+        ),
       ),
     );
   }
