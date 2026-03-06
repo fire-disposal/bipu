@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../core/services/background_service.dart';
+import '../../../core/services/notification_service.dart';
 
 /// 通用设置对话框
 class SettingsDialog {
@@ -63,11 +65,20 @@ class SettingsDialog {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    // 先读取后台服务当前状态
+    final bgService = BackgroundMessageService();
+    final initRunning = await bgService.isRunning();
+
+    if (!context.mounted) return;
+
     return showDialog(
       context: context,
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setState) {
+            // 用本地状态跟踪开关，避免频繁 await
+            bool bgServiceRunning = initRunning;
+
             return AlertDialog(
               title: Text(
                 '通知设置',
@@ -80,33 +91,43 @@ class SettingsDialog {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SwitchListTile(
-                    title: const Text('消息通知'),
-                    subtitle: const Text('接收新消息时的通知'),
-                    value: true,
-                    onChanged: (value) {
+                    title: const Text('后台消息监听'),
+                    subtitle: const Text('后台运行时持续拉取新消息并推送通知'),
+                    value: bgServiceRunning,
+                    onChanged: (value) async {
+                      if (value) {
+                        // 请求通知权限再启动
+                        await NotificationService().requestPermission();
+                        await bgService.start();
+                      } else {
+                        await bgService.stop();
+                      }
+                      final nowRunning = await bgService.isRunning();
                       setState(() {
-                        // 更新设置
+                        bgServiceRunning = nowRunning;
                       });
                     },
                   ),
-                  SwitchListTile(
-                    title: const Text('声音提醒'),
-                    subtitle: const Text('通知时播放声音'),
-                    value: true,
-                    onChanged: (value) {
-                      setState(() {
-                        // 更新设置
-                      });
-                    },
-                  ),
-                  SwitchListTile(
-                    title: const Text('振动提醒'),
-                    subtitle: const Text('通知时振动'),
-                    value: false,
-                    onChanged: (value) {
-                      setState(() {
-                        // 更新设置
-                      });
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.notifications_active_outlined),
+                    title: const Text('测试通知'),
+                    subtitle: const Text('发送一条测试通知以验证权限'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () async {
+                      await NotificationService().showNewMessageNotification(
+                        notificationId: 9999,
+                        senderName: 'Bipupu',
+                        messagePreview: '这是一条测试通知 🔔',
+                      );
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('测试通知已发送'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
                     },
                   ),
                 ],

@@ -8,7 +8,10 @@ import '../network/network.dart';
 
 import '../config/app_config.dart';
 import 'auth_service.dart';
+import 'background_service.dart';
 import '../api/models/favorite_create.dart';
+import '../api/models/message_create.dart';
+import '../api/models/message_type.dart';
 
 /// 统一的 IM 服务 - 优化重写版本（单长轮询）
 class ImService extends ChangeNotifier {
@@ -22,8 +25,10 @@ class ImService extends ChangeNotifier {
   StreamSubscription<dynamic>? _connectivitySub;
   final AuthService _authService = AuthService();
 
-  Timer? _longPollTimer;
   bool _isLongPollingActive = false;
+  bool _isStartingPolling = false; // 防止 startPolling() 并发调用竞态
+  late final VoidCallback _authListener;
+  Set<int> _cachedReadIds = {};
 
   // 专用的长轮询 Dio 实例和 RestClient
   late Dio _longPollDio;
@@ -52,33 +57,17 @@ class ImService extends ChangeNotifier {
   int get unreadSystemCount => _unreadSystemCount;
   int get unreadNormalCount => _unreadNormalCount;
 
-  /// 获取所有已读消息ID集合
-  Set<int> getReadMessageIds() {
-    try {
-      final readIds =
-          _imSettingsBox?.get(_readMessageIdsKey, defaultValue: <int>[]) ?? [];
-      if (readIds is List<int>) {
-        return readIds.toSet();
-      }
-      return (readIds as List).cast<int>().toSet();
-    } catch (e) {
-      log('获取已读消息ID失败: $e');
-      return {};
-    }
-  }
+  /// 获取所有已读消息ID集合（使用内存缓存，避免重复磁盘 IO）
+  Set<int> getReadMessageIds() => Set.unmodifiable(_cachedReadIds);
 
   /// 检查消息是否已读
-  bool isMessageRead(int messageId) {
-    return getReadMessageIds().contains(messageId);
-  }
+  bool isMessageRead(int messageId) => _cachedReadIds.contains(messageId);
 
   /// 标记单条消息为已读
   Future<void> markAsRead(int messageId) async {
     try {
-      final readIds = getReadMessageIds();
-      if (!readIds.contains(messageId)) {
-        readIds.add(messageId);
-        await _imSettingsBox?.put(_readMessageIdsKey, readIds.toList());
+      if (_cachedReadIds.add(messageId)) {
+        await _imSettingsBox?.put(_readMessageIdsKey, _cachedReadIds.toList());
         _updateUnreadCount();
         notifyListeners();
       }
@@ -87,21 +76,26 @@ class ImService extends ChangeNotifier {
     }
   }
 
+  /// 标记单条消息为未读
+  Future<void> markAsUnread(int messageId) async {
+    try {
+      if (_cachedReadIds.remove(messageId)) {
+        await _imSettingsBox?.put(_readMessageIdsKey, _cachedReadIds.toList());
+        _updateUnreadCount();
+        notifyListeners();
+      }
+    } catch (e) {
+      log('标记消息为未读失败: $e');
+    }
+  }
+
   /// 批量标记消息为已读
   Future<void> markAsReadBatch(List<int> messageIds) async {
     try {
-      final readIds = getReadMessageIds();
-      bool hasChanges = false;
-
-      for (final id in messageIds) {
-        if (!readIds.contains(id)) {
-          readIds.add(id);
-          hasChanges = true;
-        }
-      }
-
-      if (hasChanges) {
-        await _imSettingsBox?.put(_readMessageIdsKey, readIds.toList());
+      final sizeBefore = _cachedReadIds.length;
+      _cachedReadIds.addAll(messageIds);
+      if (_cachedReadIds.length != sizeBefore) {
+        await _imSettingsBox?.put(_readMessageIdsKey, _cachedReadIds.toList());
         _updateUnreadCount();
         notifyListeners();
       }
@@ -115,8 +109,19 @@ class ImService extends ChangeNotifier {
       _imSettingsBox = await Hive.openBox(_imSettingsBoxName);
       _lastReceivedMessageId =
           _imSettingsBox?.get(_lastReceivedMsgIdKey, defaultValue: 0) ?? 0;
+      // 预加载已读 ID 至内存缓存，避免后续每次触发磁盘 IO
+      final storedIds =
+          _imSettingsBox?.get(_readMessageIdsKey, defaultValue: <int>[]) ?? [];
+      _cachedReadIds = (storedIds is List<int>)
+          ? storedIds.toSet()
+          : (storedIds as List).cast<int>().toSet();
       _setupConnectivityListener();
       _setupAuthListener();
+      // 冷启动时 auth 可能已是 authenticated，ValueNotifier 不会重触发，需手动检查
+      if (_authService.authState.value == AuthStatus.authenticated &&
+          _isOnline) {
+        startPolling();
+      }
       log('IM Service 初始化完成');
     } catch (e) {
       log('IM Service 初始化失败: $e');
@@ -202,7 +207,7 @@ class ImService extends ChangeNotifier {
   }
 
   void _setupAuthListener() {
-    _authService.authState.addListener(() {
+    _authListener = () {
       final status = _authService.authState.value;
       if (status == AuthStatus.authenticated) {
         if (_isOnline) {
@@ -211,7 +216,8 @@ class ImService extends ChangeNotifier {
       } else {
         stopPolling();
       }
-    });
+    };
+    _authService.authState.addListener(_authListener);
   }
 
   void _setupConnectivityListener() {
@@ -235,7 +241,7 @@ class ImService extends ChangeNotifier {
     await _connectivitySub?.cancel();
     _cleanupLongPollResources();
     await _imSettingsBox?.close();
-    _authService.authState.removeListener(() {}); // 无法移除匿名函数，但这不重要，因为服务通常是单例
+    _authService.authState.removeListener(_authListener);
     super.dispose();
   }
 
@@ -243,12 +249,13 @@ class ImService extends ChangeNotifier {
   Future<void> startPolling() async {
     if (!_isOnline ||
         _isLongPollingActive ||
+        _isStartingPolling ||
         _authService.authState.value != AuthStatus.authenticated) {
       return;
     }
 
+    _isStartingPolling = true;
     try {
-      // 确保长轮询资源已初始化
       if (!_isLongPollDioInitialized) {
         _initializeLongPollDio();
       }
@@ -259,6 +266,8 @@ class ImService extends ChangeNotifier {
       log('消息轮询已启动');
     } catch (e) {
       log('启动轮询失败: $e');
+    } finally {
+      _isStartingPolling = false;
     }
   }
 
@@ -300,9 +309,6 @@ class ImService extends ChangeNotifier {
   /// 长轮询 - 优化版本
   /// 🆕 关键改进：改为顺序执行而非并发，一次只有一个请求在途
   void _performLongPolling() {
-    _longPollTimer?.cancel();
-    _longPollTimer = null;
-
     if (_isLongPollingActive && _isOnline) {
       _startSequentialPolling();
     }
@@ -316,17 +322,13 @@ class ImService extends ChangeNotifier {
 
     while (_isLongPollingActive && _isOnline) {
       try {
-        // 🆕 等待前一个请求完成后再发起下一个
-        // 避免请求堆积
         final pollResponse = await _longPollRestClient.messages
             .getApiMessagesPoll(lastMsgId: _lastReceivedMessageId, timeout: 30);
 
-        // 重置重试计数（成功就重置）
-        retryCount = 0;
+        retryCount = 0; // 请求成功则重置重试计数
 
         if (pollResponse.messages.isNotEmpty) {
           _receivedMessages.insertAll(0, pollResponse.messages);
-
           final maxId = pollResponse.messages
               .map((m) => m.id)
               .reduce((a, b) => a > b ? a : b);
@@ -335,74 +337,49 @@ class ImService extends ChangeNotifier {
           notifyListeners();
           log('✓ 长轮询收到 ${pollResponse.messages.length} 条新消息');
         } else {
-          // 🆕 超时返回空列表是正常的，继续轮询而无须延迟
           log('✓ 长轮询超时（无新消息），继续轮询');
         }
-
-        // 继续下一轮轮询（立即发起，不需要延迟）
       } catch (e) {
         log('✗ 长轮询出错: $e');
 
-        if (e is DioException) {
-          // 处理特定的 Dio 异常
-          if (e.response?.statusCode == 401 ||
-              (e.type == DioExceptionType.badResponse &&
-                  e.response?.statusCode == 401)) {
-            log('✗ 长轮询检测到未授权（401），停止轮询');
-            stopPolling();
-            return;
-          } else if (e.type == DioExceptionType.connectionTimeout ||
-              e.type == DioExceptionType.receiveTimeout ||
-              e.type == DioExceptionType.sendTimeout) {
-            // 🆕 超时是正常的，继续重试（不需要延迟或重试计数）
-            log('⏱ 长轮询超时（正常现象），继续轮询');
-            continue;
-          } else if (e.type == DioExceptionType.connectionError) {
-            // 连接错误使用指数退避策略
-            retryCount++;
-            if (retryCount <= maxRetries) {
-              final delay =
-                  baseRetryDelay * (1 << (retryCount - 1)); // 1s, 2s, 4s
-              log('⚠ 连接错误，${delay.inSeconds}秒后重试 ($retryCount/$maxRetries)');
-              await Future.delayed(delay);
-            } else {
-              log('✗ 连接错误达到最大重试次数，停止轮询');
-              stopPolling();
-              return;
-            }
-          } else {
-            // 其他 Dio 异常也使用退避
-            retryCount++;
-            if (retryCount <= maxRetries) {
-              final delay = baseRetryDelay * (1 << (retryCount - 1));
-              log(
-                '⚠ 轮询出错，${delay.inSeconds}秒后重试 ($retryCount/$maxRetries): ${e.type}',
-              );
-              await Future.delayed(delay);
-            } else {
-              log('✗ 轮询错误达到最大重试次数，停止轮询');
-              stopPolling();
-              return;
-            }
-          }
-        } else if (e is AuthException ||
+        // 401 未授权：立即停止
+        if (e is DioException &&
+            (e.response?.statusCode == 401 ||
+                (e.type == DioExceptionType.badResponse &&
+                    e.response?.statusCode == 401))) {
+          log('✗ 长轮询检测到未授权（401），停止轮询');
+          stopPolling();
+          return;
+        }
+
+        // Dio 超时（正常现象）：立即继续，不计重试
+        if (e is DioException &&
+            (e.type == DioExceptionType.connectionTimeout ||
+                e.type == DioExceptionType.receiveTimeout ||
+                e.type == DioExceptionType.sendTimeout)) {
+          log('⏱ 长轮询超时（正常现象），继续轮询');
+          continue;
+        }
+
+        // AuthException / 字符串 401：立即停止
+        if (e is AuthException ||
             e.toString().contains('401') ||
             e.toString().contains('Unauthorized')) {
           log('✗ 长轮询检测到未授权，停止轮询');
           stopPolling();
           return;
-        } else {
-          // 🆕 其他异常也使用指数退避
-          retryCount++;
-          if (retryCount <= maxRetries) {
-            final delay = baseRetryDelay * (1 << (retryCount - 1));
-            log('⚠ 轮询异常，${delay.inSeconds}秒后重试 ($retryCount/$maxRetries)');
-            await Future.delayed(delay);
-          } else {
-            log('✗ 轮询异常达到最大重试次数，停止轮询');
-            stopPolling();
-            return;
-          }
+        }
+
+        // 其余错误（连接错误、其他 Dio、未知异常）：指数退避重试
+        retryCount++;
+        final context = e is DioException ? 'Dio 错误 (${e.type})' : '轮询异常';
+        if (!await _retryWithBackoff(
+          retryCount,
+          maxRetries,
+          baseRetryDelay,
+          context,
+        )) {
+          return;
         }
       }
     }
@@ -410,11 +387,30 @@ class ImService extends ChangeNotifier {
     log('✓ 长轮询循环已退出');
   }
 
+  /// 指数退避重试辅助方法。[retryCount] 为已递增后的次数。
+  /// 返回 true 表示已等待可继续重试；返回 false 表示达到上限已调用 [stopPolling]。
+  Future<bool> _retryWithBackoff(
+    int retryCount,
+    int maxRetries,
+    Duration baseDelay,
+    String context,
+  ) async {
+    if (retryCount <= maxRetries) {
+      final delay = baseDelay * (1 << (retryCount - 1)); // 1s, 2s, 4s
+      log('⚠ $context，${delay.inSeconds}秒后重试 ($retryCount/$maxRetries)');
+      await Future.delayed(delay);
+      return true;
+    } else {
+      log('✗ $context 达到最大重试次数，停止轮询');
+      stopPolling();
+      return false;
+    }
+  }
+
   /// 清理长轮询资源
   void _cleanupLongPollResources() {
-    _longPollTimer?.cancel();
-    _longPollTimer = null;
     _isLongPollingActive = false;
+    _isStartingPolling = false;
     try {
       _longPollDio.close();
       _isLongPollDioInitialized = false;
@@ -495,8 +491,16 @@ class ImService extends ChangeNotifier {
     }
   }
 
-  /// 获取特定用户的对话历史
+  /// 获取特定用户的对话历史（优先从内存缓存过滤，避免全量 API 拉取）
   Future<List<dynamic>> getConversation(String peerId, {int page = 1}) async {
+    if (_receivedMessages.isNotEmpty) {
+      return _receivedMessages
+          .where(
+            (m) => m.senderBipupuId == peerId || m.receiverBipupuId == peerId,
+          )
+          .toList();
+    }
+
     try {
       final apiClient = ApiClient.instance;
 
@@ -508,13 +512,11 @@ class ImService extends ChangeNotifier {
         operationName: 'GetConversation',
       );
 
-      final conversation = inboxResponse.messages
+      return inboxResponse.messages
           .where(
             (m) => m.senderBipupuId == peerId || m.receiverBipupuId == peerId,
           )
           .toList();
-
-      return conversation;
     } catch (e) {
       log('获取对话历史失败: $e');
       rethrow;
@@ -525,26 +527,23 @@ class ImService extends ChangeNotifier {
   Future<dynamic> sendMessage({
     required String receiverId,
     required String content,
-    String messageType = 'NORMAL',
-    Map<String, dynamic>? pattern,
+    MessageType messageType = MessageType.normal,
+    dynamic pattern,
     List<int>? waveform,
   }) async {
     try {
       final apiClient = ApiClient.instance;
 
-      // 构建消息创建对象
-      final Map<String, dynamic> messageData = {
-        'receiver_bipupu_id': receiverId,
-        'content': content,
-        'message_type': messageType,
-      };
-      if (pattern != null) messageData['pattern'] = pattern;
-      if (waveform != null) messageData['waveform'] = waveform;
+      final messageCreate = MessageCreate(
+        receiverId: receiverId,
+        content: content,
+        messageType: messageType,
+        pattern: pattern,
+        waveform: waveform,
+      );
 
       final response = await apiClient.execute(
-        () => apiClient.api.messages.postApiMessages(
-          body: messageData as dynamic,
-        ),
+        () => apiClient.api.messages.postApiMessages(body: messageCreate),
         operationName: 'SendMessage',
       );
 
@@ -683,9 +682,8 @@ class ImService extends ChangeNotifier {
   }
 
   void _updateUnreadCount() {
-    final readIds = getReadMessageIds();
     final unreadMessages = _receivedMessages
-        .where((m) => !readIds.contains(m.id as int))
+        .where((m) => !_cachedReadIds.contains(m.id as int))
         .toList();
 
     _unreadCount = unreadMessages.length;
@@ -701,6 +699,8 @@ class ImService extends ChangeNotifier {
     if (newId > _lastReceivedMessageId) {
       _lastReceivedMessageId = newId;
       _imSettingsBox?.put(_lastReceivedMsgIdKey, _lastReceivedMessageId);
+      // 同步到 SharedPreferences，使后台服务能读取最新游标，避免重复推送通知
+      unawaited(BackgroundMessageService.syncLastMessageId(newId));
     }
   }
 

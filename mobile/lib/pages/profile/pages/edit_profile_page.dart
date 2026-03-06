@@ -11,7 +11,7 @@ import '../../../../core/network/api_exception.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../../../../core/api/models/user_update.dart';
 import '../../../../core/api/models/gender.dart';
-import '../../../../core/services/snackbar_manager.dart';
+import '../../../../core/services/toast_service.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -112,18 +112,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
           // 更新当前用户信息
           _authService.fetchCurrentUser();
 
-          SnackBarManager.showSuccess('avatar_updated_success'.tr());
+          ToastService.success('avatar_updated_success'.tr());
         } catch (e) {
-          SnackBarManager.showError(
-            'avatar_upload_failed'.tr(args: [e.toString()]),
-          );
+          ToastService.error('avatar_upload_failed'.tr(args: [e.toString()]));
         } finally {
           setState(() => _isUploadingAvatar = false);
         }
       } catch (e) {
-        SnackBarManager.showError(
-          'image_selection_failed'.tr(args: [e.toString()]),
-        );
+        ToastService.error('image_selection_failed'.tr(args: [e.toString()]));
       }
     }
 
@@ -143,7 +139,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     Future<void> saveProfile() async {
       if (_nicknameController.text.trim().isEmpty) {
-        SnackBarManager.showValidationError('nickname');
+        ToastService.validationError('nickname');
         return;
       }
 
@@ -175,15 +171,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
         // 更新当前用户信息
         _authService.fetchCurrentUser();
-        SnackBarManager.showUpdateSuccess();
+        ToastService.updateSuccess();
 
         if (context.mounted) {
           context.pop();
         }
       } on ApiException catch (e) {
-        SnackBarManager.showOperationFailed('update', e.message);
+        ToastService.operationFailed('update', e.message);
       } catch (e) {
-        SnackBarManager.showOperationFailed('update', e.toString());
+        ToastService.operationFailed('update', e.toString());
       } finally {
         setState(() => _isLoading = false);
       }

@@ -12,8 +12,8 @@ class ApiClient {
   static ApiClient? _instance;
   static ApiClient get instance => _instance ??= ApiClient._internal();
 
-  late final Dio _dio;
-  late final RestClient _restClient;
+  late Dio _dio;
+  late RestClient _restClient;
   late final Logger _logger;
 
   ApiClient._internal() {

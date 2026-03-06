@@ -28,7 +28,8 @@ class BluetoothDeviceService {
 
   // ========== 连接状态 ==========
   BluetoothDevice? _connectedDevice;
-  BluetoothCharacteristic? _nusTxCharacteristic;
+  BluetoothCharacteristic? _nusTxCharacteristic; // 写入特征值（手机→设备，NUS RX 6e400002）
+  BluetoothCharacteristic? _nusRxCharacteristic; // 通知特征值（设备→手机，NUS TX 6e400003）
   String? _lastConnectedDeviceId;
   DateTime? _lastConnectionTime;
 
@@ -135,8 +136,9 @@ class BluetoothDeviceService {
         print('蓝牙连接失败: $e');
       }
 
-      // 连接失败，尝试重连
-      if (_lastConnectedDeviceId != null && !_isDisposing) {
+      // 连接失败且不在重连流程中时，触发首次自动重连
+      // （重连流程中的重试由 _scheduleReconnect 定时器自身负责，避免双重触发）
+      if (_lastConnectedDeviceId != null && !_isDisposing && !_isReconnecting) {
         _scheduleReconnect();
       }
 
@@ -386,12 +388,20 @@ class BluetoothDeviceService {
         orElse: () => throw StateError('未找到 NUS 服务'),
       );
 
-      // 3. 查找 TX 特征值
+      // 3. 查找写入特征值（手机→设备，NUS RX 0x0002）
       _nusTxCharacteristic = nusService.characteristics.firstWhere(
         (characteristic) =>
             characteristic.uuid.toString().toLowerCase() ==
             '6e400002-b5a3-f393-e0a9-e50e24dcca9e',
-        orElse: () => throw StateError('未找到 TX 特征值'),
+        orElse: () => throw StateError('未找到写入特征值 (6e400002)'),
+      );
+
+      // 3b. 查找通知特征值（设备→手机，NUS TX 0x0003）
+      _nusRxCharacteristic = nusService.characteristics.firstWhere(
+        (characteristic) =>
+            characteristic.uuid.toString().toLowerCase() ==
+            '6e400003-b5a3-f393-e0a9-e50e24dcca9e',
+        orElse: () => throw StateError('未找到通知特征值 (6e400003)'),
       );
 
       // 4. 设置接收监听
@@ -420,9 +430,12 @@ class BluetoothDeviceService {
 
   /// 设置数据接收监听
   Future<void> _setupReceiveListener() async {
-    if (_nusTxCharacteristic == null) return;
+    if (_nusRxCharacteristic == null) return;
 
-    final subscription = _nusTxCharacteristic!.onValueReceived.listen(
+    // 必须先启用通知，设备才会主动推送数据到手机
+    await _nusRxCharacteristic!.setNotifyValue(true);
+
+    final subscription = _nusRxCharacteristic!.onValueReceived.listen(
       (value) {
         if (_isDisposing) return;
 
@@ -601,6 +614,7 @@ class BluetoothDeviceService {
 
     _connectedDevice = null;
     _nusTxCharacteristic = null;
+    _nusRxCharacteristic = null;
     _isReconnecting = false;
     _reconnectAttempts = 0;
 

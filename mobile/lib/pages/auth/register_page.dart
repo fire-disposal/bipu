@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/services/auth_service.dart';
-import '../../core/services/snackbar_manager.dart';
+import '../../core/services/toast_service.dart';
 import '../../core/network/network.dart';
 import '../../core/network/api_exception.dart';
 
@@ -21,19 +21,17 @@ class _UserRegisterPageState extends State<UserRegisterPage> {
 
   Future<void> _register() async {
     if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
-      SnackBarManager.showInputWarning('Please fill all required fields');
+      ToastService.inputWarning('Please fill all required fields');
       return;
     }
 
     if (_passwordController.text.length < 6) {
-      SnackBarManager.showInputWarning(
-        'Password must be at least 6 characters',
-      );
+      ToastService.inputWarning('Password must be at least 6 characters');
       return;
     }
 
     if (_passwordController.text != _confirmPasswordController.text) {
-      SnackBarManager.showInputWarning('Passwords do not match');
+      ToastService.inputWarning('Passwords do not match');
       return;
     }
 
@@ -48,13 +46,13 @@ class _UserRegisterPageState extends State<UserRegisterPage> {
       );
 
       if (mounted) {
-        SnackBarManager.showSuccess('Registration successful! Please login.');
+        ToastService.success('Registration successful! Please login.');
         context.pop(); // Go back to login
       }
     } on AuthException catch (e) {
       // 认证异常：用户名已存在等
       if (mounted) {
-        SnackBarManager.showError('Authentication failed: ${e.message}');
+        ToastService.error('Authentication failed: ${e.message}');
       }
     } on ValidationException catch (e) {
       // 验证异常：输入格式错误等
@@ -67,32 +65,32 @@ class _UserRegisterPageState extends State<UserRegisterPage> {
         errorMessage = e.message;
       }
       if (mounted) {
-        SnackBarManager.showError(errorMessage);
+        ToastService.error(errorMessage);
       }
     } on NetworkException catch (e) {
       // 网络异常：连接超时、网络不可用等
       if (mounted) {
-        SnackBarManager.showNetworkError(e.message);
+        ToastService.networkError(e.message);
       }
     } on ServerException catch (e) {
       // 服务器异常：5xx 错误
       if (mounted) {
-        SnackBarManager.showServerError(e.message);
+        ToastService.serverError(e.message);
       }
     } on ParseException catch (e) {
       // 解析异常：响应格式错误
       if (mounted) {
-        SnackBarManager.showError('Data parsing error: ${e.message}');
+        ToastService.error('Data parsing error: ${e.message}');
       }
     } on ApiException catch (e) {
       // 其他 API 异常
       if (mounted) {
-        SnackBarManager.showError('API error: ${e.message}');
+        ToastService.error('API error: ${e.message}');
       }
     } catch (e) {
       // 未知异常
       if (mounted) {
-        SnackBarManager.showError('Registration failed: $e');
+        ToastService.error('Registration failed: $e');
       }
     } finally {
       if (mounted) {

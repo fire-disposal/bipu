@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/api/models/message_type.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/im_service.dart';
 import '../../../core/utils/logger.dart';
@@ -400,7 +401,7 @@ class PagerCubit extends Cubit<PagerState> {
       final result = await _imService.sendMessage(
         receiverId: cs.targetId,
         content: cs.messageContent.trim(),
-        messageType: 'VOICE',
+        messageType: MessageType.voice,
         waveform: _currentWaveformData.isEmpty ? null : _currentWaveformData,
       );
 

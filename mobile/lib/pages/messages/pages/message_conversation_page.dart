@@ -47,11 +47,7 @@ class _MessageConversationPageState extends State<MessageConversationPage> {
     _textController.clear();
     try {
       // 使用新的统一接口
-      await _imService.sendMessage(
-        receiverId: widget.peerId,
-        content: text,
-        messageType: 'NORMAL',
-      );
+      await _imService.sendMessage(receiverId: widget.peerId, content: text);
 
       if (mounted) {
         ScaffoldMessenger.of(
@@ -113,7 +109,7 @@ class _MessageConversationPageState extends State<MessageConversationPage> {
               itemCount: conversation.length,
               itemBuilder: (context, index) {
                 final msg = conversation[index];
-                final isMe = msg.senderId == myId;
+                final isMe = msg.senderBipupuId == myId;
 
                 return GestureDetector(
                   onLongPress: () {

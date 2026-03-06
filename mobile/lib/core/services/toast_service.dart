@@ -148,4 +148,57 @@ class ToastService {
   void dismiss() {
     scaffoldMessengerKey.currentState?.removeCurrentSnackBar();
   }
+
+  // ── 静态快捷方法（合并自 SnackBarManager）────────────────────────────────
+
+  static void success(
+    String message, {
+    Duration duration = const Duration(seconds: 3),
+  }) => _instance.showSuccess(message, duration: duration);
+
+  static void error(
+    String message, {
+    Duration duration = const Duration(seconds: 3),
+  }) => _instance.showError(message, duration: duration);
+
+  static void info(
+    String message, {
+    Duration duration = const Duration(seconds: 3),
+  }) => _instance.showInfo(message, duration: duration);
+
+  static void warning(
+    String message, {
+    Duration duration = const Duration(seconds: 3),
+  }) => _instance.showWarning(message, duration: duration);
+
+  /// 操作成功：'$operationName 成功'
+  static void operationSuccess(String operationName) =>
+      success('$operationName 成功');
+
+  static void saveSuccess() => success('保存成功');
+
+  static void deleteSuccess() => success('删除成功');
+
+  static void updateSuccess() => success('更新成功');
+
+  /// 操作失败：'$operationName 失败' 或 '$operationName 失败: $reason'
+  static void operationFailed(String operationName, [String? reason]) => error(
+    reason != null ? '$operationName 失败: $reason' : '$operationName 失败',
+  );
+
+  static void networkError([String? message]) =>
+      error(message ?? '网络连接失败，请检查网络设置');
+
+  static void serverError([String? message]) => error(message ?? '服务器错误，请稍后重试');
+
+  /// 字段为空校验错误：'$fieldName 不能为空'
+  static void validationError(String fieldName) => error('$fieldName 不能为空');
+
+  static void inputWarning(String message) => warning(message);
+
+  static void newMessage(
+    String message, {
+    Duration duration = const Duration(seconds: 4),
+    VoidCallback? onTap,
+  }) => _instance.showMessage(message, duration: duration, onTap: onTap);
 }

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../core/services/auth_service.dart';
-import '../../core/services/snackbar_manager.dart';
+import '../../core/services/toast_service.dart';
 
 import '../../core/utils/error_message_mapper.dart';
 
@@ -83,7 +83,7 @@ class _UserLoginPageState extends State<UserLoginPage>
   void _showError(String message) {
     setState(() => _errorMessage = message);
     // 同时显示 Snackbar
-    SnackBarManager.showError(message);
+    ToastService.error(message);
   }
 
   void _clearError() {

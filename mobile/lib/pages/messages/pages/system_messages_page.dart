@@ -187,10 +187,7 @@ class _SystemMessagesPageState extends State<SystemMessagesPage> {
                                     onTap: () {
                                       Navigator.pop(context);
                                       if (isRead) {
-                                        _imService.getReadMessageIds().remove(
-                                          msg.id,
-                                        );
-                                        setState(() {});
+                                        _imService.markAsUnread(msg.id);
                                       } else {
                                         _imService.markAsRead(msg.id);
                                       }

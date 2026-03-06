@@ -28,6 +28,10 @@ import 'pages/home/pages/quick_actions/contacts_page.dart';
 import 'pages/home/pages/quick_actions/user_search_page.dart';
 import 'pages/profile/pages/user_detail_page.dart';
 import 'core/services/im_service.dart';
+import 'core/services/notification_service.dart';
+import 'core/services/background_service.dart';
+import 'core/services/bluetooth_forward_service.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'pages/layout/discover_page.dart';
 
 import 'core/services/auth_service.dart';
@@ -67,6 +71,15 @@ Future<void> main() async {
 
   // Initialize IM Service
   await ImService().init();
+
+  // 初始化本地通知服务（频道 + 权限提示准备）
+  await NotificationService().initialize();
+
+  // 配置后台消息轮询服务（仅注册入口点，不立即启动）
+  await BackgroundMessageService().configure();
+
+  // 监听认证状态：登录后启动后台服务 / 登出后停止
+  _setupBackgroundServiceAuthListener();
 
   // 后台预热语音模型，避免用户首次拨号时才初始化
   unawaited(VoiceService().init());
@@ -111,7 +124,66 @@ class MyApp extends StatelessWidget {
   }
 }
 
+/// 全局 Navigator Key，用于从通知点击回调中执行页面导航
+final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
+  debugLabel: 'root',
+);
+
+/// 监听认证状态以控制后台服务生命周期
+void _setupBackgroundServiceAuthListener() {
+  // 订阅后台 isolate 发来的蓝牙转发请求
+  // 当后台轮询到新消息时，会附带消息数据 invoke 到主引擎
+  // 主引擎的 [BluetoothForwardService] 将尝试经由 BLE 转发、属于双保险机制
+  FlutterBackgroundService().on('btForwardMessages').listen((event) {
+    if (event == null) return;
+    final rawMessages = event['messages'];
+    if (rawMessages is List) {
+      BluetoothForwardService().forwardRawMessages(rawMessages);
+    }
+  });
+
+  AuthService().authState.addListener(() async {
+    final status = AuthService().authState.value;
+    final bgService = BackgroundMessageService();
+    if (status == AuthStatus.authenticated) {
+      // 请求通知权限（首次弹窗）
+      await NotificationService().requestPermission();
+      // 启动后台轮询服务
+      await bgService.start();
+      // 启动蓝牙转发服务（主引擎监听 ImService 并转发到 BLE 设备）
+      BluetoothForwardService().start();
+      // 设置通知点击：跳转到消息页
+      NotificationService().onNotificationTap = (id, payload) {
+        if (payload == 'messages') {
+          _rootNavigatorKey.currentContext?.go('/messages');
+        }
+      };
+    } else if (status == AuthStatus.unauthenticated) {
+      // 登出时停止后台服务并清除通知
+      BluetoothForwardService().stop();
+      await bgService.stop();
+      await NotificationService().cancelAll();
+    }
+  });
+
+  // 冷启动修复：AuthService.initialize() 完成时 authState 可能已是 authenticated，
+  // ValueNotifier 不会重复触发，需手动检查并触发一次启动流程
+  if (AuthService().authState.value == AuthStatus.authenticated) {
+    unawaited(() async {
+      await NotificationService().requestPermission();
+      await BackgroundMessageService().start();
+      BluetoothForwardService().start();
+      NotificationService().onNotificationTap = (id, payload) {
+        if (payload == 'messages') {
+          _rootNavigatorKey.currentContext?.go('/messages');
+        }
+      };
+    }());
+  }
+}
+
 final GoRouter _router = GoRouter(
+  navigatorKey: _rootNavigatorKey,
   refreshListenable: AuthService().authState,
   redirect: (BuildContext context, GoRouterState state) {
     final authService = AuthService();
