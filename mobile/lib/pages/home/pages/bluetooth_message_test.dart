@@ -17,6 +17,8 @@ class _BluetoothMessageTestPageState extends State<BluetoothMessageTestPage> {
   BluetoothConnectionState _connectionState =
       BluetoothConnectionState.disconnected;
   bool _isSending = false;
+  // 保存 listener 引用，确保 dispose 时能正确移除，防止内存泄漏
+  VoidCallback? _connectionStateListener;
 
   @override
   void initState() {
@@ -26,18 +28,24 @@ class _BluetoothMessageTestPageState extends State<BluetoothMessageTestPage> {
 
   @override
   void dispose() {
+    if (_connectionStateListener != null) {
+      _bluetoothService.connectionState.removeListener(
+        _connectionStateListener!,
+      );
+    }
     _messageController.dispose();
     super.dispose();
   }
 
   void _setupConnectionListener() {
-    _bluetoothService.connectionState.addListener(() {
+    _connectionStateListener = () {
       if (mounted) {
         setState(() {
           _connectionState = _bluetoothService.connectionState.value;
         });
       }
-    });
+    };
+    _bluetoothService.connectionState.addListener(_connectionStateListener!);
   }
 
   bool get _isConnected =>

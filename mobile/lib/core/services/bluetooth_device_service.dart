@@ -171,13 +171,17 @@ class BluetoothDeviceService {
   }
 
   /// 发送文本消息
-  Future<void> sendTextMessage(String text) async {
+  ///
+  /// [body] 消息正文；[sender] 发送者显示名（默认 `'App'`，即直接蓝牙发送）。
+  /// 两者由 [UnifiedBluetoothProtocol.createTextPacket] 编码为长度前缀二进制格式，
+  /// ESP32 侧在协议层直接解析，无字符串拼接/分割。
+  Future<void> sendTextMessage(String body, {String sender = 'App'}) async {
     if (!isConnected || _nusTxCharacteristic == null) {
       throw StateError('蓝牙未连接或特征值未找到');
     }
 
     try {
-      final packet = _protocol.createTextPacket(text);
+      final packet = _protocol.createTextPacket(body, sender: sender);
 
       await _nusTxCharacteristic!.write(
         packet,
@@ -185,7 +189,7 @@ class BluetoothDeviceService {
       );
 
       if (kDebugMode) {
-        print('文本消息已发送: "$text"');
+        print('文本消息已发送: sender="$sender" body="$body"');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -224,7 +228,9 @@ class BluetoothDeviceService {
   }
 
   /// 安全发送消息（带连接检查）
-  Future<bool> safeSendTextMessage(String text) async {
+  ///
+  /// [body] 消息正文；[sender] 发送者显示名（默认 `'App'`）。
+  Future<bool> safeSendTextMessage(String body, {String sender = 'App'}) async {
     if (!isConnected || _nusTxCharacteristic == null) {
       if (kDebugMode) {
         print('蓝牙未连接，跳过消息发送');
@@ -233,7 +239,7 @@ class BluetoothDeviceService {
     }
 
     try {
-      await sendTextMessage(text);
+      await sendTextMessage(body, sender: sender);
       return true;
     } catch (e) {
       if (kDebugMode) {

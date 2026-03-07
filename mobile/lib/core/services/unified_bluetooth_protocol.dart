@@ -138,49 +138,79 @@ class UnifiedBluetoothProtocol {
     );
   }
 
-  /// 创建文本消息数据包（安全的UTF-8截断）
+  /// 创建文本消息数据包
+  ///
+  /// ## 数据字段布局
+  /// ```
+  /// [ 1字节: sender_len ][ sender_len 字节: 发送者名 UTF-8 ][ 剩余字节: 正文 UTF-8 ]
+  /// ```
+  /// - `sender_len = 0`：直接蓝牙发送（DeviceDetailPage），ESP32 显示为 "App"
+  /// - `sender_len > 0`：网络转发消息，ESP32 直接读取二进制字段，无字符串解析
+  ///
+  /// ## 截断策略
+  /// 总 data ≤ [MAX_DATA_LENGTH] = 240 字节。
+  /// sender 最长 63 字节（留余量给正文）；正文超出部分字节感知截断并追加 `…`。
   ///
   /// 参数：
-  /// - text: 文本内容
-  /// - timestamp: 时间戳（可选）
-  ///
-  /// 返回：包含文本和时间戳的数据包（带校验和）
-  /// 注意：如果文本超过最大长度，会安全截断到UTF-8字符边界
-  Uint8List createTextPacket(String text, {DateTime? timestamp}) {
-    // 将文本转换为UTF-8字节
-    final utf8Bytes = utf8.encode(text);
+  /// - [body]：消息正文
+  /// - [sender]：发送者显示名（默认 `'App'`，即直接蓝牙发送）
+  /// - [timestamp]：时间戳（可选，默认当前时间）
+  Uint8List createTextPacket(
+    String body, {
+    String sender = 'App',
+    DateTime? timestamp,
+  }) {
+    // ── 编码 sender ────────────────────────────────────────────────────────
+    const int maxSenderBytes = 63; // 1 字节 len + 最多 63 字节名 = 64 字节开销
+    final rawSenderBytes = utf8.encode(sender);
 
-    // 检查文本长度
-    if (utf8Bytes.length > MAX_DATA_LENGTH) {
-      // 如果文本过长，进行安全截断
-      final safeBytes = _safeUtf8Truncate(utf8Bytes, MAX_DATA_LENGTH);
-
-      if (safeBytes.isEmpty) {
-        // 如果截断后为空，发送空消息
-        return createPacket(
-          messageType: MESSAGE_TYPE_TEXT,
-          data: Uint8List(0),
-          timestamp: timestamp,
-        );
+    // 向前找 UTF-8 字符边界，防止截断出乱码
+    int senderLen = rawSenderBytes.length;
+    if (senderLen > maxSenderBytes) {
+      senderLen = maxSenderBytes;
+      while (senderLen > 0 && (rawSenderBytes[senderLen] & 0xC0) == 0x80) {
+        senderLen--;
       }
+    }
 
-      final safeText = utf8.decode(safeBytes, allowMalformed: true);
+    // sender_len = 0 when sender is exactly "App" AND senderLen stays 0?
+    // No: we always encode sender_len accurately.
+    // Special case: if original sender == 'App', we still encode sender_len=3
+    // so ESP32 reads it correctly. The ESP32 will show "App" as-is.
+    // (No special case needed — the protocol is uniform.)
 
-      if (kDebugMode) {
-        print('文本安全截断: ${utf8Bytes.length} -> ${safeBytes.length} 字节');
-        print('截断后文本: "$safeText"');
-      }
+    // ── 编码 body ──────────────────────────────────────────────────────────
+    final maxBodyBytes = MAX_DATA_LENGTH - 1 - senderLen; // 1 for len byte
+    final rawBodyBytes = utf8.encode(body);
 
-      return createPacket(
-        messageType: MESSAGE_TYPE_TEXT,
-        data: Uint8List.fromList(safeBytes),
-        timestamp: timestamp,
+    Uint8List safeBodyBytes;
+    if (rawBodyBytes.length <= maxBodyBytes) {
+      safeBodyBytes = Uint8List.fromList(rawBodyBytes);
+    } else {
+      safeBodyBytes = _safeUtf8Truncate(
+        Uint8List.fromList(rawBodyBytes),
+        maxBodyBytes,
+      );
+    }
+
+    // ── 组装 data = [senderLen(1)][sender][body] ──────────────────────────
+    final data = Uint8List(1 + senderLen + safeBodyBytes.length);
+    data[0] = senderLen;
+    if (senderLen > 0) {
+      data.setRange(1, 1 + senderLen, rawSenderBytes.sublist(0, senderLen));
+    }
+    data.setRange(1 + senderLen, data.length, safeBodyBytes);
+
+    if (kDebugMode) {
+      print(
+        '[BLE] createTextPacket sender="$sender"($senderLen B) '
+        'body=${safeBodyBytes.length} B total_data=${data.length} B',
       );
     }
 
     return createPacket(
       messageType: MESSAGE_TYPE_TEXT,
-      data: Uint8List.fromList(utf8Bytes),
+      data: data,
       timestamp: timestamp,
     );
   }

@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:developer';
-import 'dart:math' show max;
+
+import 'package:bipupu/core/network/network.dart';
 
 import 'im_service.dart';
 import 'bluetooth_device_service.dart';
+import 'unified_bluetooth_protocol.dart';
 import '../api/models/message_response.dart';
 import '../api/models/message_type.dart';
 
@@ -22,7 +24,10 @@ import '../api/models/message_type.dart';
 ///
 /// ── 消息格式 ──────────────────────────────────────────────────────────────
 /// 发送给蓝牙设备的文本格式为：
-///   [senderBipupuId]: content（超出 BLE MTU 时末尾截断并加省略号）
+///   [用户昵称/备注]: 消息正文（超出 BLE MTU 时末尾字节感知截断并加省略号）
+///
+/// ESP32 端（app_ble.c）会解析此前缀，分离出发送者名与正文后再显示。
+/// 直接从测试页发送的消息无此前缀，ESP32 端显示为 "App"。
 ///
 /// 系统消息（[MessageType.system]）不转发，以免打扰。
 class BluetoothForwardService {
@@ -39,6 +44,13 @@ class BluetoothForwardService {
   /// 主引擎侧已转发的最大消息 ID，防止重复转发
   int _lastForwardedId = 0;
 
+  /// bipupuId → 显示名称 缓存（alias > nickname > username > id）
+  /// 在 start() 时从联系人 API 加载，每 5 分钟周期刷新
+  final Map<String, String> _senderDisplayNameCache = {};
+
+  /// 周期刷新定时器
+  Timer? _cacheRefreshTimer;
+
   // ── 公开 API ─────────────────────────────────────────────────────────────
 
   /// 启动转发服务
@@ -51,6 +63,15 @@ class BluetoothForwardService {
     // 用当前已有消息初始化游标，避免把历史消息当新消息转发
     _initCursorFromCurrentMessages();
 
+    // 异步加载联系人姓名缓存（不阻塞启动）
+    unawaited(_refreshContactsCache());
+
+    // 每 5 分钟周期刷新一次（应对联系人多、备注名变更等场景）
+    _cacheRefreshTimer = Timer.periodic(
+      const Duration(minutes: 5),
+      (_) => unawaited(_refreshContactsCache()),
+    );
+
     _imService.addListener(_onImServiceChanged);
     log('[BtForward] 转发服务已启动，初始游标: $_lastForwardedId');
   }
@@ -59,9 +80,11 @@ class BluetoothForwardService {
   void stop() {
     if (!_running) return;
     _imService.removeListener(_onImServiceChanged);
+    _cacheRefreshTimer?.cancel();
+    _cacheRefreshTimer = null;
     _running = false;
-    _lastForwardedId =
-        0; // 重置游标，下次 start() 通过 _initCursorFromCurrentMessages 重新初始化
+    _lastForwardedId = 0;
+    _senderDisplayNameCache.clear();
     log('[BtForward] 转发服务已停止');
   }
 
@@ -70,24 +93,46 @@ class BluetoothForwardService {
   /// 外部强制转发（由 main.dart 订阅后台服务 invoke 事件时调用）
   ///
   /// [rawMessages] 是后台 isolate 通过 `service.invoke('btForwardMessages')`
-  /// 推送过来的原始 JSON 消息列表。用于应对主引擎 ImService 已恢复轮询之前的
-  /// 短暂空窗期，属于"双保险"机制。
+  /// 推送过来的原始 JSON 消息列表。
+  ///
+  /// 速率限制：每次最多处理 5 条，防止消息洪泛导致蓝牙写入串队。
   Future<void> forwardRawMessages(List<dynamic> rawMessages) async {
     if (!_btService.isConnected) return;
+
+    const maxPerBatch = 5;
+    int forwarded = 0;
+    int maxProcessedId = _lastForwardedId;
 
     for (final raw in rawMessages) {
       if (raw is! Map) continue;
       final id = raw['id'] as int? ?? 0;
       if (id <= _lastForwardedId) continue; // 已处理，跳过
 
+      if (forwarded >= maxPerBatch) {
+        log('[BtForward] 批次限额已达（$maxPerBatch 条），剩余消息将在下次轮询处理');
+        break;
+      }
+
       final senderId = raw['sender_bipupu_id'] as String? ?? '未知';
       final content = (raw['content'] as String?) ?? '';
       final typeStr = raw['message_type'] as String? ?? '';
 
-      // 跳过系统消息
       if (typeStr.toUpperCase() == 'SYSTEM') continue;
 
-      await _sendToBluetooth(id: id, senderId: senderId, content: content);
+      if (id > maxProcessedId) maxProcessedId = id;
+
+      final displayName = _getSenderDisplayName(senderId);
+      await _sendToBluetooth(
+        id: id,
+        senderDisplayName: displayName,
+        content: content,
+      );
+      forwarded++;
+    }
+
+    // 更新游标：防止 _onImServiceChanged 重复转发相同消息
+    if (maxProcessedId > _lastForwardedId) {
+      _lastForwardedId = maxProcessedId;
     }
   }
 
@@ -121,15 +166,17 @@ class BluetoothForwardService {
     if (pending.isEmpty) return;
 
     // 先更新游标，防止重入时重复转发
-    _lastForwardedId = pending.map((m) => m.id).reduce(max);
+    _lastForwardedId = pending.map((m) => m.id).reduce((a, b) => a > b ? a : b);
 
     // 过滤系统消息，逐条异步转发
     for (final msg in pending) {
       if (msg.messageType == MessageType.system) continue;
+      // 将 bipupuId 转换为可读显示名，未命中缓存时退化为 ID 本身
+      final displayName = _getSenderDisplayName(msg.senderBipupuId);
       unawaited(
         _sendToBluetooth(
           id: msg.id,
-          senderId: msg.senderBipupuId,
+          senderDisplayName: displayName,
           content: msg.content,
         ),
       );
@@ -137,9 +184,14 @@ class BluetoothForwardService {
   }
 
   /// 格式化并写入蓝牙设备
+  ///
+  /// [senderDisplayName] 与 [content] 作为两个独立参数传入 [BluetoothDeviceService.safeSendTextMessage]，
+  /// 底层 [UnifiedBluetoothProtocol.createTextPacket] 将其编码为长度前缀二进制格式：
+  ///   `[ 1B: sender_len ][ sender UTF-8 ][ body UTF-8 ]`
+  /// ESP32 侧由 `bipupu_protocol.c` 在协议层直接解析，无字符串拼接/切割。
   Future<void> _sendToBluetooth({
     required int id,
-    required String senderId,
+    required String senderDisplayName,
     required String content,
   }) async {
     if (!_btService.isConnected) {
@@ -147,28 +199,63 @@ class BluetoothForwardService {
       return;
     }
 
-    final maxLen = _btService.maxTextLength;
+    // 截断与编码由 createTextPacket 内部处理（字节感知 UTF-8 截断）
+    final sent = await _btService.safeSendTextMessage(
+      content,
+      sender: senderDisplayName,
+    );
+    log(
+      '[BtForward] 消息 $id [from: $senderDisplayName] → 蓝牙 ${sent ? "✓ 成功" : "✗ 失败"}',
+    );
+  }
 
-    // 前缀格式："[senderId]: "
-    final prefix = '[$senderId]: ';
-    final prefixLen = prefix.length;
+  // ── 联系人姓名缓存 ────────────────────────────────────────────────────────
 
-    final maxBody = maxLen - prefixLen;
-    final String body;
-    if (maxBody <= 0) {
-      // 极端情况：ID 本身太长，只发前缀
-      body = '';
-    } else if (content.length > maxBody) {
-      // 截断并加省略号（占 1 个字符位）
-      body = '${content.substring(0, maxBody - 1)}…';
-    } else {
-      body = content;
+  /// 从联系人 API 加载所有联系人，建立 bipupuId → displayName 映射
+  ///
+  /// 分页拉取直到全部加载完毕（服务器每页最多 100 条）。
+  /// 失败时静默忽略——降级为直接显示 bipupuId。
+  Future<void> _refreshContactsCache() async {
+    try {
+      const pageSize = 100;
+      int page = 1;
+      int loaded = 0;
+      int total = 1; // 先赋 1，进入循环后用真实值覆盖
+
+      while (loaded < total) {
+        final resp = await ApiClient.instance.api.contacts.getApiContacts(
+          page: page,
+          pageSize: pageSize,
+        );
+        total = resp.total;
+
+        for (final c in resp.contacts) {
+          // 优先级：备注名 > 昵称 > 用户名 > contactId（bipupuId）
+          final displayName =
+              (c.alias?.isNotEmpty == true ? c.alias : null) ??
+              (c.contactNickname?.isNotEmpty == true
+                  ? c.contactNickname
+                  : null) ??
+              c.contactUsername;
+          _senderDisplayNameCache[c.contactId] = displayName;
+        }
+
+        loaded += resp.contacts.length;
+        page++;
+
+        // 防止空列表死循环
+        if (resp.contacts.isEmpty) break;
+      }
+
+      log('[BtForward] 联系人缓存已加载，共 ${_senderDisplayNameCache.length} 条');
+    } catch (e) {
+      log('[BtForward] 加载联系人缓存失败（降级为 ID 显示）: $e');
     }
+  }
 
-    final text = '$prefix$body';
-    final sent = await _btService.safeSendTextMessage(text);
-
-    log('[BtForward] 消息 $id → 蓝牙 ${sent ? "✓ 成功" : "✗ 失败"}');
+  /// 根据 bipupuId 查询可读显示名，未命中时直接返回 id
+  String _getSenderDisplayName(String bipupuId) {
+    return _senderDisplayNameCache[bipupuId] ?? bipupuId;
   }
 
   static int _extractId(dynamic m) {

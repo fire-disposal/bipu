@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:bipupu/core/services/auth_service.dart';
 import 'package:bipupu/core/services/bluetooth_device_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 class DeviceDetailPage extends StatefulWidget {
@@ -13,13 +13,30 @@ class DeviceDetailPage extends StatefulWidget {
 class _DeviceDetailPageState extends State<DeviceDetailPage> {
   final BluetoothDeviceService _bluetoothService = BluetoothDeviceService();
   final TextEditingController _messageController = TextEditingController();
-  bool _isBound = false;
-  String? _boundDeviceName;
+  bool _isSending = false;
+
+  // 直接从服务的 ValueNotifier 读取绑定状态，无需本地副本
+  bool get _isBound => _bluetoothService.isBound.value;
+  String? get _boundDeviceName => _bluetoothService.boundDeviceName.value;
+
+  void _onBindingChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   void initState() {
     super.initState();
-    _loadBindingInfo();
+    // 订阅绑定状态变化，UI 自动跟随更新
+    _bluetoothService.isBound.addListener(_onBindingChanged);
+    _bluetoothService.boundDeviceName.addListener(_onBindingChanged);
+  }
+
+  @override
+  void dispose() {
+    _bluetoothService.isBound.removeListener(_onBindingChanged);
+    _bluetoothService.boundDeviceName.removeListener(_onBindingChanged);
+    _messageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -212,29 +229,28 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton.icon(
-                          onPressed: () {
-                            if (_messageController.text.isNotEmpty) {
-                              _bluetoothService.sendTextMessage(
-                                _messageController.text,
-                              );
-                              _messageController.clear();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('消息已发送！'),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                            }
-                          },
-                          icon: const Icon(Icons.send),
-                          label: Text('send_to_device'.tr()),
+                          onPressed: _isSending ? null : _sendMessage,
+                          icon: _isSending
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.send),
+                          label: Text(
+                            _isSending ? 'sending'.tr() : 'send_to_device'.tr(),
+                          ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.primary,
-                            foregroundColor: Theme.of(
-                              context,
-                            ).colorScheme.onPrimary,
+                            backgroundColor: _isSending
+                                ? Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHighest
+                                : Theme.of(context).colorScheme.primary,
+                            foregroundColor: _isSending
+                                ? Theme.of(context).colorScheme.onSurfaceVariant
+                                : Theme.of(context).colorScheme.onPrimary,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -248,9 +264,9 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
 
               const SizedBox(height: 24),
 
-              // 消息发送区域
+              // 设备控制功能区
               Text(
-                'message_sending'.tr(),
+                'device_control'.tr(),
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -271,13 +287,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                     label: 'sync_time'.tr(),
                     color: Colors.blue,
                     onPressed: () {
-                      _bluetoothService.sendTimeSync();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('时间同步命令已发送！'),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
+                      _sendTimeSync();
                     },
                   ),
                   _buildControlButton(
@@ -345,14 +355,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                       label: 'SOS'.tr(),
                       color: Colors.red,
                       onPressed: () {
-                        _bluetoothService.sendTextMessage('SOS');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('SOS信号已发送！'),
-                            behavior: SnackBarBehavior.floating,
-                            backgroundColor: Colors.red,
-                          ),
-                        );
+                        _sendQuickText('SOS');
                       },
                     ),
                   ),
@@ -458,19 +461,56 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     );
   }
 
-  /// 加载绑定信息
-  Future<void> _loadBindingInfo() async {
-    final prefs = await SharedPreferences.getInstance();
-    final boundId = prefs.getString('bluetooth_binding_info');
-    final boundName = prefs.getString('bluetooth_binding_info_name');
+  // ─── 发送业务方法（与 BluetoothForwardService 走同一 safeSend* 接口）───
 
-    setState(() {
-      _isBound = boundId != null;
-      _boundDeviceName = boundName;
-    });
+  /// 发送主消息框内容（带加载状态与错误回馈）
+  Future<void> _sendMessage() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty || !_bluetoothService.isConnected) return;
+
+    setState(() => _isSending = true);
+    try {
+      final success = await _bluetoothService.safeSendTextMessage(text);
+      if (success) {
+        _messageController.clear();
+        _showSnackBar('message_sent'.tr());
+      } else {
+        _showSnackBar('send_failed'.tr(args: ['ble_no_response'.tr()]));
+      }
+    } catch (e) {
+      _showSnackBar('send_failed'.tr(args: [e.toString()]));
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
   }
 
-  /// 绑定设备
+  /// 发送时间同步（连接时已自动发送一次，此处为手动触发）
+  Future<void> _sendTimeSync() async {
+    if (!_bluetoothService.isConnected) return;
+    final success = await _bluetoothService.safeSendTimeSync();
+    _showSnackBar(
+      success ? 'time_sync_sent'.tr() : 'send_failed'.tr(args: ['TimeSync']),
+    );
+  }
+
+  /// 发送快捷文本（SOS 等），与网络消息转发使用同一 safeSendTextMessage 接口
+  Future<void> _sendQuickText(String text) async {
+    if (!_bluetoothService.isConnected) return;
+    final success = await _bluetoothService.safeSendTextMessage(text);
+    if (text == 'SOS') {
+      _showSnackBar(
+        success ? 'sos_signal_sent'.tr() : 'send_failed'.tr(args: ['SOS']),
+      );
+    } else {
+      _showSnackBar(
+        success ? 'message_sent'.tr() : 'send_failed'.tr(args: [text]),
+      );
+    }
+  }
+
+  // ─── 绑定管理方法 ─────────────────────────────────────────────────────────
+
+  /// 绑定设备：将用户真实身份信息发送给设备
   Future<void> _bindDevice() async {
     if (!_bluetoothService.isConnected) {
       _showSnackBar('device_not_connected_cannot_bind'.tr());
@@ -478,25 +518,23 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     }
 
     try {
-      // 发送绑定信息到设备
-      final success = await _bluetoothService.sendBindingInfo(
-        'bipupu_app',
-        '用户设备',
-      );
+      // 从 AuthService 获取真实用户信息
+      final user = AuthService().currentUser;
+      final appId = (user?.bipupuId as String?) ?? 'bipupu_app';
+      final userName =
+          (user?.nickname as String?) ?? (user?.username as String?) ?? '用户';
 
-      if (success) {
-        // 绑定信息会自动保存到本地
-        await _loadBindingInfo();
-        _showSnackBar('device_binding_success'.tr());
-      } else {
-        _showSnackBar('binding_failed_retry'.tr());
-      }
+      final success = await _bluetoothService.sendBindingInfo(appId, userName);
+      // isBound ValueNotifier 在 connect() 时已由服务自动更新，无需手动刷新
+      _showSnackBar(
+        success ? 'device_binding_success'.tr() : 'binding_failed_retry'.tr(),
+      );
     } catch (e) {
       _showSnackBar('binding_error_occurred'.tr(args: [e.toString()]));
     }
   }
 
-  /// 解绑设备
+  /// 弹出解绑确认对话框
   Future<void> _unbindDevice() async {
     showDialog(
       context: context,
@@ -523,30 +561,25 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     );
   }
 
-  /// 执行解绑操作
+  /// 执行解绑：发送解绑命令 + 清除本地绑定
+  /// clearBinding() 内部更新 isBound ValueNotifier，UI 自动刷新
   Future<void> _performUnbind() async {
     try {
-      // 发送解绑命令到设备
       final success = await _bluetoothService.sendUnbindCommand();
-
-      // 清除本地绑定
       await _bluetoothService.clearBinding();
-
-      // 更新UI状态
-      await _loadBindingInfo();
-
-      if (success) {
-        _showSnackBar('device_unbound'.tr());
-      } else {
-        _showSnackBar('local_binding_cleared_device_unbind_failed'.tr());
-      }
+      _showSnackBar(
+        success
+            ? 'device_unbound'.tr()
+            : 'local_binding_cleared_device_unbind_failed'.tr(),
+      );
     } catch (e) {
       _showSnackBar('unbind_error_occurred'.tr(args: [e.toString()]));
     }
   }
 
-  /// 显示提示消息
+  /// 显示底部提示 SnackBar（确保 mounted 再操作 context）
   void _showSnackBar(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
