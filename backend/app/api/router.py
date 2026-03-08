@@ -12,6 +12,7 @@ from app.api.routes.service_accounts import router as service_accounts_router
 from app.api.routes.posters import router as posters_router
 from app.api.routes.admin_web import router as admin_web_router
 from app.api.routes.root import router as root_router
+from app.api.routes.modern_push import router as modern_push_router
 
 api_router = APIRouter()
 
@@ -38,6 +39,9 @@ api_router.include_router(contacts_router, prefix="/contacts", tags=["contacts"]
 
 # Service account routes
 api_router.include_router(service_accounts_router, prefix="/service_accounts", tags=["service-accounts"])
+
+# Push service routes
+api_router.include_router(modern_push_router, prefix="/push", tags=["push"])
 
 # Poster routes
 api_router.include_router(posters_router, prefix="/posters", tags=["posters"])

@@ -10,12 +10,13 @@ logger = get_logger(__name__)
 # 获取容器角色
 CONTAINER_ROLE = os.getenv("CONTAINER_ROLE", "backend")
 
-# 创建Celery实例
 celery_app = Celery(
     "bipupu",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=["app.tasks"]
+    include=[
+        "app.tasks.subscriptions",    # 推送调度任务（定时推送 + 日志清理）
+    ]
 )
 
 # 配置Celery
@@ -31,10 +32,15 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     worker_max_tasks_per_child=1000,
     beat_schedule={
-        # 高频检查推送时间：每15分钟检查一次
+        # 每15分钟检查定时推送时间窗口，向应接收推送的用户发送消息
         "subscriptions-check-push-times": {
             "task": "subscriptions.check_push_times",
             "schedule": crontab(minute="*/15"),
+        },
+        # 每天凌晨3点清理30天前的旧推送日志
+        "subscriptions-cleanup-push-logs": {
+            "task": "subscriptions.cleanup_push_logs",
+            "schedule": crontab(hour=3, minute=0),
         },
     }
 )

@@ -9,7 +9,7 @@
 
 from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Any, Dict
 from enum import Enum
 
 
@@ -45,12 +45,77 @@ class ServiceAccountList(BaseModel):
     page_size: int = Field(default=20, description="每页数量")
 
 
+# ---- 管理员操作 Schema ----
+
+class ServiceAccountCreate(BaseModel):
+    """创建服务号请求（管理员）"""
+    name: str = Field(..., min_length=1, max_length=50, pattern=r'^[a-z0-9._-]+$',
+                      description="服务号名称，只允许小写字母、数字、点、横线和下划线")
+    description: Optional[str] = Field(None, max_length=200, description="服务号描述")
+    default_push_time: Optional[str] = Field(
+        None,
+        pattern=r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$',
+        description="默认推送时间，格式: HH:MM"
+    )
+    is_active: bool = Field(default=True, description="是否激活")
+    bot_logic: Optional[Dict[str, Any]] = Field(None, description="Bot逻辑配置（JSON）")
+
+
+class ServiceAccountUpdate(BaseModel):
+    """更新服务号请求（管理员）"""
+    description: Optional[str] = Field(None, max_length=200, description="服务号描述")
+    default_push_time: Optional[str] = Field(
+        None,
+        pattern=r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$',
+        description="默认推送时间，格式: HH:MM"
+    )
+    is_active: Optional[bool] = Field(None, description="是否激活")
+    bot_logic: Optional[Dict[str, Any]] = Field(None, description="Bot逻辑配置（JSON）")
+
+
+class ServiceAccountSubscriberResponse(BaseModel):
+    """服务号订阅者响应"""
+    bipupu_id: str
+    username: str
+    nickname: Optional[str] = None
+    push_time: Optional[str] = Field(None, description="用户自定义推送时间（HH:MM），None 表示使用服务号默认")
+    is_enabled: bool = True
+    subscribed_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PushLogResponse(BaseModel):
+    """推送日志响应"""
+    id: int
+    service_name: str
+    receiver_bipupu_id: str
+    status: str
+    content_preview: Optional[str] = None
+    error_message: Optional[str] = None
+    retry_count: int = 0
+    task_id: Optional[str] = None
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PushLogList(BaseModel):
+    """推送日志列表响应"""
+    items: List[PushLogResponse]
+    total: int
+
+
+# ---- 订阅设置 Schema ----
+
 class SubscriptionSettingsBase(BaseModel):
     """订阅设置基础模型"""
     push_time: Optional[str] = Field(
         None,
         pattern=r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$',
-        description="推送时间，格式: HH:MM"
+        description="推送时间，格式: HH:MM。传 null 清除个人化设置，恢复使用服务号默认时间"
     )
     is_enabled: Optional[bool] = Field(default=True, description="是否启用推送")
 

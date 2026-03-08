@@ -6,10 +6,12 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>消息推送日志</h2>
     <div class="btn-group" role="group">
-        <button class="btn btn-outline-secondary" onclick="filterByStatus('all')">全部</button>
-        <button class="btn btn-outline-success" onclick="filterByStatus('success')">成功</button>
-        <button class="btn btn-outline-danger" onclick="filterByStatus('failed')">失败</button>
-        <button class="btn btn-outline-warning" onclick="filterByStatus('processing')">处理中</button>
+        <button class="btn {% if current_status == 'all' %}btn-secondary{% else %}btn-outline-secondary{% endif %}" onclick="filterByStatus('all')">全部 ({{ stats.total }})</button>
+        <button class="btn {% if current_status == 'success' %}btn-success{% else %}btn-outline-success{% endif %}" onclick="filterByStatus('success')">成功 ({{ stats.success }})</button>
+        <button class="btn {% if current_status == 'failed' %}btn-danger{% else %}btn-outline-danger{% endif %}" onclick="filterByStatus('failed')">失败 ({{ stats.failed }})</button>
+        <button class="btn {% if current_status == 'processing' %}btn-warning{% else %}btn-outline-warning{% endif %}" onclick="filterByStatus('processing')">处理中 ({{ stats.processing }})</button>
+        <button class="btn {% if current_status == 'pending' %}btn-secondary{% else %}btn-outline-secondary{% endif %}" onclick="filterByStatus('pending')">待推送 ({{ stats.pending }})</button>
+        <button class="btn {% if current_status == 'skipped' %}btn-light{% else %}btn-outline-secondary{% endif %}" onclick="filterByStatus('skipped')">跳过 ({{ stats.skipped }})</button>
         <button class="btn btn-primary" onclick="refreshLogs()">刷新</button>
     </div>
 </div>
@@ -267,12 +269,6 @@ async function viewLogDetail(logId) {
                 <dt class="col-sm-3">状态</dt>
                 <dd class="col-sm-9">${statusBadge}</dd>
                 
-                <dt class="col-sm-3">任务ID</dt>
-                <dd class="col-sm-9"><code>${data.task_id || '-'}</code></dd>
-                
-                <dt class="col-sm-3">任务名称</dt>
-                <dd class="col-sm-9">${data.task_name || '-'}</dd>
-                
                 <dt class="col-sm-3">创建时间</dt>
                 <dd class="col-sm-9">${new Date(data.created_at).toLocaleString()}</dd>
                 
@@ -293,9 +289,7 @@ async function viewLogDetail(logId) {
             html += `
                 <dt class="col-sm-3">内容预览</dt>
                 <dd class="col-sm-9">
-                    <div class="bg-light p-2 rounded" style="max-height: 200px; overflow-y: auto;">
-                        <small>${escapeHtml(data.content_preview)}</small>
-                    </div>
+                    <div class="bg-light p-2 rounded" style="max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; font-size: .875rem;">${escapeHtml(data.content_preview)}</div>
                 </dd>
             `;
         }

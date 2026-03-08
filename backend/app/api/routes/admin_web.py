@@ -198,6 +198,28 @@ async def admin_messages(
     )
 
 
+@router.get("/messages/{message_id}/detail")
+async def get_message_detail(
+    message_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser_web),
+):
+    """获取消息详情（JSON 格式）"""
+    msg = db.query(Message).filter(Message.id == message_id).first()
+    if not msg:
+        raise HTTPException(status_code=404, detail="消息不存在")
+    return {
+        "id": msg.id,
+        "sender_bipupu_id": msg.sender_bipupu_id,
+        "receiver_bipupu_id": msg.receiver_bipupu_id,
+        "message_type": msg.message_type,
+        "content": msg.content,
+        "pattern": msg.pattern,
+        "waveform": msg.waveform,
+        "created_at": msg.created_at.isoformat() if msg.created_at else None,
+    }
+
+
 @router.get("/posters")
 async def posters_page(
     request: Request,
@@ -218,6 +240,8 @@ async def admin_services(
     request: Request,
     page: int = 1,
     per_page: int = 20,
+    msg: str = None,   # type: ignore
+    error: str = None, # type: ignore
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_superuser_web),
 ):
@@ -235,8 +259,81 @@ async def admin_services(
             "per_page": per_page,
             "total": total,
             "total_pages": (total + per_page - 1) // per_page,
+            "msg": msg,
+            "error": error,
         },
     )
+
+
+@router.post("/service_accounts/create")
+async def create_service_account_web(
+    name: str = Form(...),
+    description: str = Form(None),
+    push_time: str = Form(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser_web),
+):
+    """创建服务号（管理员 Web 表单）"""
+    import re
+
+    if not re.match(r"^[a-z0-9._-]{2,50}$", name):
+        raise HTTPException(
+            status_code=400,
+            detail="服务号名称只能包含小写字母、数字、点、横线和下划线，长度 2-50",
+        )
+
+    existing = db.query(ServiceAccount).filter(ServiceAccount.name == name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"服务号 '{name}' 已存在")
+
+    push_time_obj = None
+    if push_time:
+        try:
+            hour, minute = map(int, push_time.split(":"))
+            if not (0 <= hour <= 23 and 0 <= minute <= 59):
+                raise ValueError("时间无效")
+            push_time_obj = time(hour, minute)
+        except (ValueError, AttributeError):
+            raise HTTPException(
+                status_code=400, detail="时间格式无效，请使用 HH:MM 格式"
+            )
+
+    service = ServiceAccount(
+        name=name,
+        description=description,
+        default_push_time=push_time_obj,
+        is_active=True,
+    )
+    db.add(service)
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error(f"创建服务号失败: {e}")
+        raise HTTPException(status_code=500, detail="创建失败，请稍后重试")
+
+    return RedirectResponse(url="/admin/service_accounts", status_code=302)
+
+
+@router.post("/service_accounts/{service_id}/delete")
+async def delete_service_account_web(
+    service_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser_web),
+):
+    """软删除服务号（将 is_active 设置为 False）"""
+    service = db.query(ServiceAccount).filter(ServiceAccount.id == service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    try:
+        service.is_active = False
+        db.commit()
+        return RedirectResponse(url="/admin/service_accounts", status_code=302)
+    except Exception as e:
+        db.rollback()
+        logger.error(f"软删除服务号失败: {e}")
+        raise HTTPException(status_code=500, detail="操作失败")
 
 
 @router.post("/service_accounts/{service_id}/toggle")
@@ -427,15 +524,15 @@ async def admin_push_logs(
     # 获取分页数据
     logs = query.offset(offset).limit(per_page).all()
     
-    # 计算统计信息
-    all_logs = db.query(PushLog).all()
-    stats = {
-        'total': len(all_logs),
-        'success': len([l for l in all_logs if l.status == 'success']),
-        'failed': len([l for l in all_logs if l.status == 'failed']),
-        'processing': len([l for l in all_logs if l.status == 'processing']),
-        'pending': len([l for l in all_logs if l.status == 'pending']),
-    }
+    # 计算统计信息——直接用 SQL 聚合而不是加载所有记录
+    from sqlalchemy import func as sql_func
+    from app.models.push_log import PushStatus as PushLogStatus
+    stats = {}
+    for s in ("success", "failed", "processing", "pending", "skipped"):
+        stats[s] = db.query(sql_func.count(PushLog.id)).filter(
+            PushLog.status == PushLogStatus(s)
+        ).scalar() or 0
+    stats["total"] = db.query(sql_func.count(PushLog.id)).scalar() or 0
     
     return templates.TemplateResponse(
         "push_logs.html",
@@ -474,7 +571,7 @@ async def get_push_log_detail(
         "max_retries": log.max_retries,
         "task_id": log.task_id,
         "task_name": log.task_name,
-        "extra_data": log.extra_data,
+        "metadata": log.extra_data,
         "created_at": log.created_at.isoformat() if log.created_at else None,
         "started_at": log.started_at.isoformat() if log.started_at else None,
         "completed_at": log.completed_at.isoformat() if log.completed_at else None,

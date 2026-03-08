@@ -8,21 +8,22 @@
 
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Request
 from sqlalchemy.orm import Session
-from typing import Optional
+from datetime import date
 
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.user import (
     UserPrivate, UserUpdate, UserPasswordUpdate,
-    TimezoneUpdate, UserPublic
+    TimezoneUpdate
 )
-from app.schemas.common import StatusResponse, SuccessResponse
+from app.schemas.common import SuccessResponse
 from app.core.security import get_current_active_user, verify_password, get_password_hash
 from app.core.exceptions import ValidationException
 from app.core.logging import get_logger
 from app.services.redis_service import RedisService
-from app.services.user_service import UserService
 from app.services.storage_service import StorageService
+from app.services.lunar_service import compute_bazi
+from app.core.user_utils import get_western_zodiac
 from app.core.config import settings
 
 router = APIRouter()
@@ -122,6 +123,34 @@ async def update_profile(
         for field, value in update_dict.items():
             setattr(current_user, field, value)
 
+        # 当 birthday 或 birth_time 被更新时，自动推导衍生字段
+        birthday_changed = "birthday" in update_dict or "birth_time" in update_dict
+        if birthday_changed:
+            birthday: date | None = getattr(current_user, "birthday", None)
+            birth_time: str | None = getattr(current_user, "birth_time", None)
+
+            if birthday:
+                # 自动计算生辰八字（客户端未显式传入时）
+                if "bazi" not in update_dict:
+                    computed_bazi = compute_bazi(str(birthday), birth_time)
+                    if computed_bazi:
+                        current_user.bazi = computed_bazi
+                        logger.debug(f"自动计算八字: {computed_bazi}")
+
+                # 自动计算西方星座（客户端未显式传入时）
+                if "zodiac" not in update_dict:
+                    zodiac = get_western_zodiac(birthday)
+                    if zodiac:
+                        current_user.zodiac = zodiac
+
+                # 自动计算年龄（客户端未显式传入时）
+                if "age" not in update_dict:
+                    today = date.today()
+                    current_user.age = (
+                        today.year - birthday.year
+                        - ((today.month, today.day) < (birthday.month, birthday.day))
+                    )
+
         db.add(current_user)
         db.commit()
         db.refresh(current_user)
@@ -207,7 +236,6 @@ async def get_user_avatar(
     db: Session = Depends(get_db)
 ):
     """获取用户头像（公开接口）"""
-    from fastapi.responses import Response
     from app.api.routes.users import get_user_avatar_by_bipupu_id
 
     # 重定向到公共接口

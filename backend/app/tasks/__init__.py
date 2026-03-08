@@ -1,8 +1,13 @@
 """Celery任务模块，集中导入以便 autodiscover"""
 
-from .subscriptions import fortune_task, weather_task  # noqa: F401
+from .subscriptions import (  # noqa: F401
+    check_push_times_task,
+    push_service_task,
+    cleanup_push_logs_task,
+)
 
 __all__ = [
-    "fortune_task",
-    "weather_task",
+    "check_push_times_task",
+    "push_service_task",
+    "cleanup_push_logs_task",
 ]

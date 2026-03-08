@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, Request
+from fastapi import APIRouter, Depends, HTTPException, Response, Request, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
@@ -10,6 +10,10 @@ from app.models.service_account import ServiceAccount, subscription_table
 from app.schemas.service_account import (
     ServiceAccountResponse,
     ServiceAccountList,
+    ServiceAccountCreate,
+    ServiceAccountUpdate,
+    ServiceAccountSubscriberResponse,
+    PushLogResponse,
     SubscriptionSettingsUpdate,
     SubscriptionSettingsResponse,
     UserSubscriptionResponse,
@@ -334,22 +338,26 @@ async def update_subscription_settings(
         raise HTTPException(status_code=404, detail="Not subscribed to this service")
 
     # 准备更新数据
-    update_data = {"updated_at": func.now()}
+    update_data = {}
 
-    if settings_update.push_time is not None:
-        if settings_update.push_time == "":
-            # 清除个人化推送时间，恢复使用默认
-            update_data['push_time'] = None
-        else:
-            # 解析时间字符串
+    # 使用 model_fields_set 区分"未提供"与"明确传 null"
+    if 'push_time' in settings_update.model_fields_set:
+        if settings_update.push_time is not None:
+            # 解析并设置时间
             try:
                 hour, minute = map(int, settings_update.push_time.split(':'))
                 update_data['push_time'] = time(hour, minute)
             except (ValueError, AttributeError):
                 raise HTTPException(status_code=400, detail="Invalid time format. Use HH:MM")
+        else:
+            # 明确传 null → 清除个人化推送时间，恢复使用服务号默认时间
+            update_data['push_time'] = None
 
     if settings_update.is_enabled is not None:
         update_data['is_enabled'] = settings_update.is_enabled
+
+    # 添加更新时间
+    update_data['updated_at'] = func.now()
 
     # 执行更新
     try:
@@ -470,8 +478,8 @@ async def subscribe_service_account(
         if settings_update and settings_update.push_time:
             # 使用用户提供的推送时间
             push_time_to_use = settings_update.push_time
-        else:
-            # 使用服务号的默认推送时间
+        elif service.default_push_time is not None:
+            # 使用服务号的默认推送时间（修复：先检查 None）
             push_time_to_use = service.default_push_time.strftime("%H:%M")
 
         # 设置推送时间
@@ -551,3 +559,335 @@ async def unsubscribe_service_account(
         db.rollback()
         logger.error(f"Error in unsubscribe_service_account: {e}")
         raise HTTPException(status_code=500, detail="Database operation failed")
+
+# ============================================================
+# 管理员接口（需要 is_superuser=True）
+# ============================================================
+
+def _require_admin(current_user: User):
+    """检查管理员权限"""
+    if not (current_user.is_superuser if current_user.is_superuser is not None else False):
+        raise HTTPException(status_code=403, detail="管理员权限不足")
+
+
+@router.post("/", response_model=ServiceAccountResponse, tags=["服务号管理"])
+async def create_service_account(
+    data: ServiceAccountCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """创建服务号（管理员）
+
+    参数：
+    - name: 全局唯一服务号名称（仅小写字母、数字、点、横线、下划线）
+    - description: 服务号描述（可选）
+    - default_push_time: 默认推送时间，HH:MM 格式（可选）
+    - is_active: 是否激活，默认 true
+    - bot_logic: Bot 逻辑配置 JSON（可选）
+
+    返回创建的服务号信息。重名时返回 400。
+    """
+    _require_admin(current_user)
+
+    # 解析 default_push_time
+    default_push_time_obj = None
+    if data.default_push_time:
+        try:
+            hour, minute = map(int, data.default_push_time.split(':'))
+            default_push_time_obj = time(hour, minute)
+        except (ValueError, AttributeError):
+            raise HTTPException(status_code=400, detail="default_push_time 格式无效，请使用 HH:MM")
+
+    service = ServiceAccount(
+        name=data.name,
+        description=data.description,
+        default_push_time=default_push_time_obj,
+        is_active=data.is_active,
+        bot_logic=data.bot_logic,
+    )
+
+    try:
+        db.add(service)
+        db.commit()
+        db.refresh(service)
+        logger.info(f"管理员 {current_user.bipupu_id} 创建了服务号 {data.name}")
+        return ServiceAccountResponse.model_validate(service)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"服务号名称 '{data.name}' 已存在")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"创建服务号失败: {e}")
+        raise HTTPException(status_code=500, detail="创建服务号失败")
+
+
+@router.put("/{name}", response_model=ServiceAccountResponse, tags=["服务号管理"])
+async def update_service_account(
+    name: str,
+    data: ServiceAccountUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """更新服务号信息（管理员）
+
+    可更新字段：description、default_push_time、is_active、bot_logic。
+    未提供的字段保持不变。传 null 给 default_push_time 可清除默认推送时间。
+    """
+    _require_admin(current_user)
+
+    service = db.query(ServiceAccount).filter(ServiceAccount.name == name).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service account not found")
+
+    # 使用 model_fields_set 确保只更新明确提供的字段
+    if 'description' in data.model_fields_set:
+        service.description = data.description
+
+    if 'is_active' in data.model_fields_set and data.is_active is not None:
+        service.is_active = data.is_active
+
+    if 'bot_logic' in data.model_fields_set:
+        service.bot_logic = data.bot_logic
+
+    if 'default_push_time' in data.model_fields_set:
+        if data.default_push_time is None:
+            service.default_push_time = None
+        else:
+            try:
+                hour, minute = map(int, data.default_push_time.split(':'))
+                service.default_push_time = time(hour, minute)
+            except (ValueError, AttributeError):
+                raise HTTPException(status_code=400, detail="default_push_time 格式无效，请使用 HH:MM")
+
+    try:
+        db.commit()
+        db.refresh(service)
+        logger.info(f"管理员 {current_user.bipupu_id} 更新了服务号 {name}")
+        return ServiceAccountResponse.model_validate(service)
+    except Exception as e:
+        db.rollback()
+        logger.error(f"更新服务号失败: {e}")
+        raise HTTPException(status_code=500, detail="更新服务号失败")
+
+
+@router.delete("/{name}", tags=["服务号管理"])
+async def delete_service_account(
+    name: str,
+    hard_delete: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """停用或删除服务号（管理员）
+
+    参数：
+    - hard_delete=false（默认）：软删除，设置 is_active=False，保留数据
+    - hard_delete=true：硬删除，删除服务号及所有订阅关系（不可恢复）
+    """
+    _require_admin(current_user)
+
+    service = db.query(ServiceAccount).filter(ServiceAccount.name == name).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service account not found")
+
+    try:
+        if hard_delete:
+            db.delete(service)
+            db.commit()
+            logger.info(f"管理员 {current_user.bipupu_id} 硬删除了服务号 {name}")
+            return {"message": f"服务号 '{name}' 已永久删除"}
+        else:
+            service.is_active = False
+            db.commit()
+            logger.info(f"管理员 {current_user.bipupu_id} 停用了服务号 {name}")
+            return {"message": f"服务号 '{name}' 已停用"}
+    except Exception as e:
+        db.rollback()
+        logger.error(f"删除服务号失败: {e}")
+        raise HTTPException(status_code=500, detail="删除服务号失败")
+
+
+@router.post("/{name}/avatar", tags=["服务号管理"])
+async def upload_service_account_avatar(
+    name: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """上传服务号头像（管理员）
+
+    接受 JPEG/PNG 图片，自动压缩为 100×100 JPEG，存储于数据库。
+    同时清除 Redis 头像缓存。
+    """
+    _require_admin(current_user)
+
+    service = db.query(ServiceAccount).filter(ServiceAccount.name == name).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service account not found")
+
+    try:
+        from app.services.storage_service import StorageService
+        from app.services.redis_service import RedisService
+
+        avatar_data = await StorageService.save_avatar(file)
+        service.avatar_data = avatar_data
+        db.commit()
+
+        # 清除头像缓存
+        cache_key = StorageService.get_avatar_cache_key(name)
+        await RedisService.delete_cache(cache_key)
+
+        logger.info(f"管理员 {current_user.bipupu_id} 上传了服务号 {name} 的头像")
+        return {"message": "头像上传成功", "service_name": name}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        db.rollback()
+        logger.error(f"上传服务号头像失败: {e}")
+        raise HTTPException(status_code=500, detail="头像上传失败")
+
+
+@router.get("/{name}/subscribers", tags=["服务号管理"])
+async def list_service_account_subscribers(
+    name: str,
+    skip: int = 0,
+    limit: int = 100,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """获取服务号订阅者列表（管理员）
+
+    返回所有订阅该服务号的用户信息及其订阅设置。
+    """
+    _require_admin(current_user)
+
+    service = db.query(ServiceAccount).filter(ServiceAccount.name == name).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service account not found")
+
+    stmt = select(
+        User.bipupu_id,
+        User.username,
+        User.nickname,
+        subscription_table.c.push_time,
+        subscription_table.c.is_enabled,
+        subscription_table.c.created_at,
+    ).join(
+        subscription_table,
+        User.id == subscription_table.c.user_id
+    ).where(
+        subscription_table.c.service_account_id == service.id
+    ).offset(skip).limit(limit)
+
+    results = db.execute(stmt).all()
+
+    subscribers = []
+    for row in results:
+        push_time_str = row.push_time.strftime("%H:%M") if row.push_time else None
+        subscribers.append({
+            "bipupu_id": row.bipupu_id,
+            "username": row.username,
+            "nickname": row.nickname,
+            "push_time": push_time_str,
+            "is_enabled": row.is_enabled if row.is_enabled is not None else True,
+            "subscribed_at": row.created_at.isoformat() if row.created_at else None,
+        })
+
+    total = db.execute(
+        select(func.count()).select_from(subscription_table).where(
+            subscription_table.c.service_account_id == service.id
+        )
+    ).scalar()
+
+    return {
+        "service_name": name,
+        "subscribers": subscribers,
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+    }
+
+
+@router.get("/{name}/push_logs", tags=["服务号管理"])
+async def get_service_push_logs(
+    name: str,
+    status: Optional[str] = None,
+    limit: int = 50,
+    skip: int = 0,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """查询服务号推送日志（管理员）
+
+    参数：
+    - status: 筛选状态（pending/processing/success/failed/skipped），可选
+    - limit: 返回条数（默认 50，最大 200）
+    - skip: 分页偏移
+
+    返回最新的推送日志记录。
+    """
+    _require_admin(current_user)
+
+    from app.models.push_log import PushLog
+
+    limit = min(limit, 200)
+    query = db.query(PushLog).filter(PushLog.service_name == name)
+
+    if status:
+        query = query.filter(PushLog.status == status)
+
+    total = query.count()
+    logs = query.order_by(PushLog.created_at.desc()).offset(skip).limit(limit).all()
+
+    items = []
+    for log in logs:
+        items.append({
+            "id": log.id,
+            "service_name": log.service_name,
+            "receiver_bipupu_id": log.receiver_bipupu_id,
+            "status": str(log.status.value) if hasattr(log.status, 'value') else str(log.status),
+            "content_preview": log.content_preview,
+            "error_message": log.error_message,
+            "retry_count": log.retry_count,
+            "task_id": log.task_id,
+            "created_at": log.created_at.isoformat() if log.created_at else None,
+            "started_at": log.started_at.isoformat() if log.started_at else None,
+            "completed_at": log.completed_at.isoformat() if log.completed_at else None,
+        })
+
+    return {"items": items, "total": total, "skip": skip, "limit": limit}
+
+
+@router.post("/{name}/broadcast", tags=["服务号管理"])
+async def admin_broadcast_push(
+    name: str,
+    content: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """向服务号所有订阅者手动广播推送（管理员）
+
+    立即向该服务号所有启用订阅的用户发送推送消息。
+    如果不提供 content，系统将根据服务号类型自动生成内容。
+    """
+    _require_admin(current_user)
+
+    from app.services.service_accounts import broadcast_push
+
+    service = db.query(ServiceAccount).filter(
+        ServiceAccount.name == name,
+        ServiceAccount.is_active == True
+    ).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service account not found or inactive")
+
+    try:
+        sent_count = await broadcast_push(db, name, content)
+        logger.info(f"管理员 {current_user.bipupu_id} 对服务号 {name} 执行了广播，发送 {sent_count} 条")
+        return {
+            "message": "广播完成",
+            "service_name": name,
+            "sent_count": sent_count,
+        }
+    except Exception as e:
+        logger.error(f"管理员广播推送失败 {name}: {e}")
+        raise HTTPException(status_code=500, detail=f"广播失败: {str(e)}")

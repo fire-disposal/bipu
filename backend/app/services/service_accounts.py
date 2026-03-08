@@ -52,17 +52,16 @@ async def send_push(
     try:
         # 如果内容为空，根据服务号类型自动生成
         if content is None:
-            if service_name == "cosmic.fortune":
-                from app.tasks.subscriptions import generate_daily_fortune
-                content = generate_daily_fortune(receiver_bipupu_id, datetime.now(timezone.utc))
-            elif service_name == "weather.service":
-                from app.tasks.subscriptions import generate_weather_forecast
-                content = generate_weather_forecast(datetime.now(timezone.utc))
-            else:
-                content = f"来自 {service_name} 的推送"
+            from app.services.push.content import ContentGenerator
+            content = ContentGenerator().get_service_content(
+                service_name, receiver_bipupu_id, datetime.now(timezone.utc)
+            )
 
         # 记录内容预览
-        push_log.content_preview = content[:200] if content else None
+        if content:
+            push_log.content_preview = content[:200] if len(content) > 200 else content
+        else:
+            push_log.content_preview = None
 
         # 创建推送消息
         new_message = Message(
@@ -87,7 +86,7 @@ async def send_push(
                     "id": new_message.id,
                     "sender_id": new_message.sender_bipupu_id,
                     "content": new_message.content,
-                    "message_type": new_message.message_type if new_message.message_type else None,
+                    "message_type": str(new_message.message_type) if new_message.message_type else None,
                     "pattern": new_message.pattern,
                     "created_at": new_message.created_at.isoformat()
                 }
@@ -114,7 +113,7 @@ async def send_push(
             db.commit()
         except Exception as log_error:
             logger.error(f"Failed to save push log: {log_error}")
-        
+
         logger.error(f"Service push failed: {service_name} -> {receiver_bipupu_id}: {e}")
         raise
 
@@ -147,14 +146,24 @@ async def broadcast_push(
         logger.error(f"Cannot broadcast: Service {service_name} not found")
         return 0
 
-    count = 0
     subscribers = service.subscribers
+    if not subscribers:
+        return 0
+
     logger.info(f"Broadcasting from {service_name} to {len(subscribers)} subscribers")
 
-    for user in subscribers:
-        await send_push(db, service_name, user.bipupu_id, content, pattern, message_type, task_id, task_name)
-        count += 1
+    # 并发发送（asyncio.gather 在单线程事件循环中安全，DB session 无并发竞争）
+    tasks = [
+        send_push(db, service_name, user.bipupu_id, content, pattern, message_type, task_id, task_name)
+        for user in subscribers
+        if user.bipupu_id
+    ]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
 
+    count = sum(1 for r in results if not isinstance(r, Exception))
+    errors = sum(1 for r in results if isinstance(r, Exception))
+    if errors:
+        logger.warning(f"Broadcast {service_name}: {errors} failed out of {len(tasks)}")
     return count
 
 

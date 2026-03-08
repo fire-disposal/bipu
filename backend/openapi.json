@@ -1875,6 +1875,52 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "service-accounts",
+          "服务号管理"
+        ],
+        "summary": "Create Service Account",
+        "description": "创建服务号（管理员）\n\n参数：\n- name: 全局唯一服务号名称（仅小写字母、数字、点、横线、下划线）\n- description: 服务号描述（可选）\n- default_push_time: 默认推送时间，HH:MM 格式（可选）\n- is_active: 是否激活，默认 true\n- bot_logic: Bot 逻辑配置 JSON（可选）\n\n返回创建的服务号信息。重名时返回 400。",
+        "operationId": "create_service_account_api_service_accounts__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceAccountCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceAccountResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/service_accounts/{name}": {
@@ -1924,6 +1970,118 @@
             }
           }
         }
+      },
+      "put": {
+        "tags": [
+          "service-accounts",
+          "服务号管理"
+        ],
+        "summary": "Update Service Account",
+        "description": "更新服务号信息（管理员）\n\n可更新字段：description、default_push_time、is_active、bot_logic。\n未提供的字段保持不变。传 null 给 default_push_time 可清除默认推送时间。",
+        "operationId": "update_service_account_api_service_accounts__name__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceAccountUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceAccountResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "service-accounts",
+          "服务号管理"
+        ],
+        "summary": "Delete Service Account",
+        "description": "停用或删除服务号（管理员）\n\n参数：\n- hard_delete=false（默认）：软删除，设置 is_active=False，保留数据\n- hard_delete=true：硬删除，删除服务号及所有订阅关系（不可恢复）",
+        "operationId": "delete_service_account_api_service_accounts__name__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          },
+          {
+            "name": "hard_delete",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Hard Delete"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/service_accounts/{name}/avatar": {
@@ -1946,6 +2104,61 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "service-accounts",
+          "服务号管理"
+        ],
+        "summary": "Upload Service Account Avatar",
+        "description": "上传服务号头像（管理员）\n\n接受 JPEG/PNG 图片，自动压缩为 100×100 JPEG，存储于数据库。\n同时清除 Redis 头像缓存。",
+        "operationId": "upload_service_account_avatar_api_service_accounts__name__avatar_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_service_account_avatar_api_service_accounts__name__avatar_post"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2190,6 +2403,659 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/service_accounts/{name}/subscribers": {
+      "get": {
+        "tags": [
+          "service-accounts",
+          "服务号管理"
+        ],
+        "summary": "List Service Account Subscribers",
+        "description": "获取服务号订阅者列表（管理员）\n\n返回所有订阅该服务号的用户信息及其订阅设置。",
+        "operationId": "list_service_account_subscribers_api_service_accounts__name__subscribers_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/service_accounts/{name}/push_logs": {
+      "get": {
+        "tags": [
+          "service-accounts",
+          "服务号管理"
+        ],
+        "summary": "Get Service Push Logs",
+        "description": "查询服务号推送日志（管理员）\n\n参数：\n- status: 筛选状态（pending/processing/success/failed/skipped），可选\n- limit: 返回条数（默认 50，最大 200）\n- skip: 分页偏移\n\n返回最新的推送日志记录。",
+        "operationId": "get_service_push_logs_api_service_accounts__name__push_logs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Skip"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/service_accounts/{name}/broadcast": {
+      "post": {
+        "tags": [
+          "service-accounts",
+          "服务号管理"
+        ],
+        "summary": "Admin Broadcast Push",
+        "description": "向服务号所有订阅者手动广播推送（管理员）\n\n立即向该服务号所有启用订阅的用户发送推送消息。\n如果不提供 content，系统将根据服务号类型自动生成内容。",
+        "operationId": "admin_broadcast_push_api_service_accounts__name__broadcast_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          },
+          {
+            "name": "content",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Content"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/push/status": {
+      "get": {
+        "tags": [
+          "push",
+          "推送服务"
+        ],
+        "summary": "Get Push Service Status",
+        "description": "获取推送服务状态（引擎统计、服务号列表）",
+        "operationId": "get_push_service_status_api_push_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Push Service Status Api Push Status Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/push/send": {
+      "post": {
+        "tags": [
+          "push",
+          "推送服务"
+        ],
+        "summary": "Send Immediate Push",
+        "description": "立即向指定用户发送推送消息（高优先级）",
+        "operationId": "send_immediate_push_api_push_send_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_send_immediate_push_api_push_send_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Send Immediate Push Api Push Send Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/push/broadcast": {
+      "post": {
+        "tags": [
+          "push",
+          "推送服务"
+        ],
+        "summary": "Broadcast Push",
+        "description": "向服务号所有订阅者广播推送（管理员）",
+        "operationId": "broadcast_push_api_push_broadcast_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_broadcast_push_api_push_broadcast_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Broadcast Push Api Push Broadcast Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/push/test": {
+      "post": {
+        "tags": [
+          "push",
+          "推送服务"
+        ],
+        "summary": "Test Push",
+        "description": "发送测试推送，验证推送链路是否正常",
+        "operationId": "test_push_api_push_test_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_test_push_api_push_test_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Test Push Api Push Test Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/push/scheduled/run": {
+      "post": {
+        "tags": [
+          "push",
+          "推送服务"
+        ],
+        "summary": "Trigger Scheduled Push",
+        "description": "手动触发一次定时推送检查（管理员）\n\n立即执行定时推送逻辑，向当前时间窗口内应收到推送的所有用户发送消息。\n可用于测试调度逻辑或在 Celery 不可用时手动补推。",
+        "operationId": "trigger_scheduled_push_api_push_scheduled_run_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Trigger Scheduled Push Api Push Scheduled Run Post"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/push/retry_failed": {
+      "post": {
+        "tags": [
+          "push",
+          "推送服务"
+        ],
+        "summary": "Retry Failed Pushes",
+        "description": "重试失败推送（管理员）",
+        "operationId": "retry_failed_pushes_api_push_retry_failed_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "integer",
+                "title": "Max Retries",
+                "description": "最大重试次数上限",
+                "default": 3
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Retry Failed Pushes Api Push Retry Failed Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/push/logs": {
+      "get": {
+        "tags": [
+          "push",
+          "推送服务"
+        ],
+        "summary": "Get Push Logs",
+        "description": "查询推送日志（管理员）- 支持多条件筛选，按时间倒序",
+        "operationId": "get_push_logs_api_push_logs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "service_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "按服务号名称筛选",
+              "title": "Service Name"
+            },
+            "description": "按服务号名称筛选"
+          },
+          {
+            "name": "receiver_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "按接收者 BIPUPU ID 筛选",
+              "title": "Receiver Id"
+            },
+            "description": "按接收者 BIPUPU ID 筛选"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "按状态筛选（pending/processing/success/failed/skipped）",
+              "title": "Status"
+            },
+            "description": "按状态筛选（pending/processing/success/failed/skipped）"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "description": "返回条数",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "返回条数"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "分页偏移",
+              "default": 0,
+              "title": "Skip"
+            },
+            "description": "分页偏移"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Push Logs Api Push Logs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/push/logs/cleanup": {
+      "delete": {
+        "tags": [
+          "push",
+          "推送服务"
+        ],
+        "summary": "Cleanup Push Logs",
+        "description": "清理旧推送日志（管理员）",
+        "operationId": "cleanup_push_logs_api_push_logs_cleanup_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 7,
+              "description": "保留最近 N 天，更早的 success/failed 日志将被删除",
+              "default": 30,
+              "title": "Days"
+            },
+            "description": "保留最近 N 天，更早的 success/failed 日志将被删除"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cleanup Push Logs Api Push Logs Cleanup Delete"
+                }
               }
             }
           },
@@ -2863,6 +3729,47 @@
         }
       }
     },
+    "/api/admin/messages/{message_id}/detail": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Message Detail",
+        "description": "获取消息详情（JSON 格式）",
+        "operationId": "get_message_detail_api_admin_messages__message_id__detail_get",
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Message Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/posters": {
       "get": {
         "tags": [
@@ -2910,6 +3817,105 @@
               "type": "integer",
               "default": 20,
               "title": "Per Page"
+            }
+          },
+          {
+            "name": "msg",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Msg"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Error"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/service_accounts/create": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Create Service Account Web",
+        "description": "创建服务号（管理员 Web 表单）",
+        "operationId": "create_service_account_web_api_admin_service_accounts_create_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_service_account_web_api_admin_service_accounts_create_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/service_accounts/{service_id}/delete": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Delete Service Account Web",
+        "description": "软删除服务号（将 is_active 设置为 False）",
+        "operationId": "delete_service_account_web_api_admin_service_accounts__service_id__delete_post",
+        "parameters": [
+          {
+            "name": "service_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Service Id"
             }
           }
         ],
@@ -3481,6 +4487,44 @@
         }
       }
     },
+    "/admin/messages/{message_id}/detail": {
+      "get": {
+        "summary": "Get Message Detail",
+        "description": "获取消息详情（JSON 格式）",
+        "operationId": "get_message_detail_admin_messages__message_id__detail_get",
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Message Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/posters": {
       "get": {
         "summary": "Posters Page",
@@ -3522,6 +4566,99 @@
               "type": "integer",
               "default": 20,
               "title": "Per Page"
+            }
+          },
+          {
+            "name": "msg",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Msg"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Error"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/service_accounts/create": {
+      "post": {
+        "summary": "Create Service Account Web",
+        "description": "创建服务号（管理员 Web 表单）",
+        "operationId": "create_service_account_web_admin_service_accounts_create_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_service_account_web_admin_service_accounts_create_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/service_accounts/{service_id}/delete": {
+      "post": {
+        "summary": "Delete Service Account Web",
+        "description": "软删除服务号（将 is_active 设置为 False）",
+        "operationId": "delete_service_account_web_admin_service_accounts__service_id__delete_post",
+        "parameters": [
+          {
+            "name": "service_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Service Id"
             }
           }
         ],
@@ -3961,6 +5098,32 @@
         ],
         "title": "Body_admin_login_api_admin_login_post"
       },
+      "Body_broadcast_push_api_push_broadcast_post": {
+        "properties": {
+          "service_name": {
+            "type": "string",
+            "title": "Service Name",
+            "description": "服务号名称"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content",
+            "description": "推送内容，为空时自动生成"
+          }
+        },
+        "type": "object",
+        "required": [
+          "service_name"
+        ],
+        "title": "Body_broadcast_push_api_push_broadcast_post"
+      },
       "Body_create_poster_api_posters__post": {
         "properties": {
           "title": {
@@ -4006,6 +5169,112 @@
           "image_file"
         ],
         "title": "Body_create_poster_api_posters__post"
+      },
+      "Body_create_service_account_web_admin_service_accounts_create_post": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "push_time": {
+            "type": "string",
+            "title": "Push Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "Body_create_service_account_web_admin_service_accounts_create_post"
+      },
+      "Body_create_service_account_web_api_admin_service_accounts_create_post": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "push_time": {
+            "type": "string",
+            "title": "Push Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "Body_create_service_account_web_api_admin_service_accounts_create_post"
+      },
+      "Body_send_immediate_push_api_push_send_post": {
+        "properties": {
+          "service_name": {
+            "type": "string",
+            "title": "Service Name",
+            "description": "服务号名称"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id",
+            "description": "目标用户 BIPUPU ID，为空时推给当前用户"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content",
+            "description": "推送内容，为空时按服务号类型自动生成"
+          }
+        },
+        "type": "object",
+        "required": [
+          "service_name"
+        ],
+        "title": "Body_send_immediate_push_api_push_send_post"
+      },
+      "Body_test_push_api_push_test_post": {
+        "properties": {
+          "service_name": {
+            "type": "string",
+            "title": "Service Name",
+            "description": "服务号名称"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id",
+            "description": "目标用户 BIPUPU ID，为空时推给当前用户"
+          }
+        },
+        "type": "object",
+        "required": [
+          "service_name"
+        ],
+        "title": "Body_test_push_api_push_test_post"
       },
       "Body_update_poster_image_api_posters__poster_id__image_put": {
         "properties": {
@@ -4069,6 +5338,20 @@
           "file"
         ],
         "title": "Body_upload_avatar_api_profile_avatar_post"
+      },
+      "Body_upload_service_account_avatar_api_service_accounts__name__avatar_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_service_account_avatar_api_service_accounts__name__avatar_post"
       },
       "Body_upload_service_avatar_admin_service_accounts__service_id__avatar_post": {
         "properties": {
@@ -4896,6 +6179,69 @@
         "title": "ReadyResponse",
         "description": "就绪检查响应"
       },
+      "ServiceAccountCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "pattern": "^[a-z0-9._-]+$",
+            "title": "Name",
+            "description": "服务号名称，只允许小写字母、数字、点、横线和下划线"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "服务号描述"
+          },
+          "default_push_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Push Time",
+            "description": "默认推送时间，格式: HH:MM"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "description": "是否激活",
+            "default": true
+          },
+          "bot_logic": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bot Logic",
+            "description": "Bot逻辑配置（JSON）"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ServiceAccountCreate",
+        "description": "创建服务号请求（管理员）"
+      },
       "ServiceAccountList": {
         "properties": {
           "items": {
@@ -5001,6 +6347,64 @@
         "title": "ServiceAccountResponse",
         "description": "服务号响应"
       },
+      "ServiceAccountUpdate": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "服务号描述"
+          },
+          "default_push_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Push Time",
+            "description": "默认推送时间，格式: HH:MM"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active",
+            "description": "是否激活"
+          },
+          "bot_logic": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bot Logic",
+            "description": "Bot逻辑配置（JSON）"
+          }
+        },
+        "type": "object",
+        "title": "ServiceAccountUpdate",
+        "description": "更新服务号请求（管理员）"
+      },
       "SubscriptionSettingsResponse": {
         "properties": {
           "push_time": {
@@ -5014,7 +6418,7 @@
               }
             ],
             "title": "Push Time",
-            "description": "推送时间，格式: HH:MM"
+            "description": "推送时间，格式: HH:MM。传 null 清除个人化设置，恢复使用服务号默认时间"
           },
           "is_enabled": {
             "anyOf": [
@@ -5092,7 +6496,7 @@
               }
             ],
             "title": "Push Time",
-            "description": "推送时间，格式: HH:MM"
+            "description": "推送时间，格式: HH:MM。传 null 清除个人化设置，恢复使用服务号默认时间"
           },
           "is_enabled": {
             "anyOf": [
