@@ -470,7 +470,8 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
 
     setState(() => _isSending = true);
     try {
-      final success = await _bluetoothService.safeSendTextMessage(text);
+      // 使用 sendTextMessage() 等待 ACK 确认
+      final success = await _bluetoothService.sendTextMessage(text);
       if (success) {
         _messageController.clear();
         _showSnackBar('message_sent'.tr());
@@ -493,18 +494,22 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     );
   }
 
-  /// 发送快捷文本（SOS 等），与网络消息转发使用同一 safeSendTextMessage 接口
+  /// 发送快捷文本（SOS 等），使用 sendTextMessage 等待 ACK 确认
   Future<void> _sendQuickText(String text) async {
     if (!_bluetoothService.isConnected) return;
-    final success = await _bluetoothService.safeSendTextMessage(text);
-    if (text == 'SOS') {
-      _showSnackBar(
-        success ? 'sos_signal_sent'.tr() : 'send_failed'.tr(args: ['SOS']),
-      );
-    } else {
-      _showSnackBar(
-        success ? 'message_sent'.tr() : 'send_failed'.tr(args: [text]),
-      );
+    try {
+      final success = await _bluetoothService.sendTextMessage(text);
+      if (text == 'SOS') {
+        _showSnackBar(
+          success ? 'sos_signal_sent'.tr() : 'send_failed'.tr(args: ['SOS']),
+        );
+      } else {
+        _showSnackBar(
+          success ? 'message_sent'.tr() : 'send_failed'.tr(args: [text]),
+        );
+      }
+    } catch (e) {
+      _showSnackBar('send_failed'.tr(args: [e.toString()]));
     }
   }
 
@@ -561,17 +566,21 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     );
   }
 
-  /// 执行解绑：发送解绑命令 + 清除本地绑定
-  /// clearBinding() 内部更新 isBound ValueNotifier，UI 自动刷新
+  /// 执行解绑：发送解绑命令并等待 ACK，成功后清除本地绑定
   Future<void> _performUnbind() async {
     try {
+      // 发送解绑命令并等待设备 ACK 确认（10 秒超时）
       final success = await _bluetoothService.sendUnbindCommand();
-      await _bluetoothService.clearBinding();
-      _showSnackBar(
-        success
-            ? 'device_unbound'.tr()
-            : 'local_binding_cleared_device_unbind_failed'.tr(),
-      );
+      
+      if (success) {
+        // 只有收到设备 ACK 后才清除本地绑定
+        await _bluetoothService.clearBinding();
+        _showSnackBar('device_unbound'.tr());
+      } else {
+        // 未收到 ACK，但本地仍清除绑定（用户可手动重试）
+        await _bluetoothService.clearBinding();
+        _showSnackBar('unbind_timeout_but_local_cleared'.tr());
+      }
     } catch (e) {
       _showSnackBar('unbind_error_occurred'.tr(args: [e.toString()]));
     }

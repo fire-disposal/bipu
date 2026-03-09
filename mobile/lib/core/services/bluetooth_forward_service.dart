@@ -45,8 +45,10 @@ class BluetoothForwardService {
   int _lastForwardedId = 0;
 
   /// bipupuId → 显示名称 缓存（alias > nickname > username > id）
-  /// 在 start() 时从联系人 API 加载，每 5 分钟周期刷新
+  /// 懒加载：首次需要时加载，之后每 5 分钟刷新
   final Map<String, String> _senderDisplayNameCache = {};
+  bool _cacheLoaded = false;
+  bool _cacheLoading = false;
 
   /// 周期刷新定时器
   Timer? _cacheRefreshTimer;
@@ -63,8 +65,7 @@ class BluetoothForwardService {
     // 用当前已有消息初始化游标，避免把历史消息当新消息转发
     _initCursorFromCurrentMessages();
 
-    // 异步加载联系人姓名缓存（不阻塞启动）
-    unawaited(_refreshContactsCache());
+    // 联系人缓存改为懒加载，不在此处加载
 
     // 每 5 分钟周期刷新一次（应对联系人多、备注名变更等场景）
     _cacheRefreshTimer = Timer.periodic(
@@ -73,7 +74,7 @@ class BluetoothForwardService {
     );
 
     _imService.addListener(_onImServiceChanged);
-    log('[BtForward] 转发服务已启动，初始游标: $_lastForwardedId');
+    log('[BtForward] 转发服务已启动，初始游标：$_lastForwardedId');
   }
 
   /// 停止转发服务（用户登出时调用）
@@ -185,10 +186,12 @@ class BluetoothForwardService {
 
   /// 格式化并写入蓝牙设备
   ///
-  /// [senderDisplayName] 与 [content] 作为两个独立参数传入 [BluetoothDeviceService.safeSendTextMessage]，
+  /// [senderDisplayName] 与 [content] 作为两个独立参数传入 [BluetoothDeviceService.sendTextMessage]，
   /// 底层 [UnifiedBluetoothProtocol.createTextPacket] 将其编码为长度前缀二进制格式：
   ///   `[ 1B: sender_len ][ sender UTF-8 ][ body UTF-8 ]`
   /// ESP32 侧由 `bipupu_protocol.c` 在协议层直接解析，无字符串拼接/切割。
+  ///
+  /// 注意：使用 sendTextMessage() 会等待 ACK 确认，确保可靠送达
   Future<void> _sendToBluetooth({
     required int id,
     required String senderDisplayName,
@@ -199,14 +202,21 @@ class BluetoothForwardService {
       return;
     }
 
-    // 截断与编码由 createTextPacket 内部处理（字节感知 UTF-8 截断）
-    final sent = await _btService.safeSendTextMessage(
-      content,
-      sender: senderDisplayName,
-    );
-    log(
-      '[BtForward] 消息 $id [from: $senderDisplayName] → 蓝牙 ${sent ? "✓ 成功" : "✗ 失败"}',
-    );
+    try {
+      // 使用 sendTextMessage() 等待 ACK 确认（带重试机制）
+      // 超时时间：5 秒 * 3 次重试 = 15 秒
+      final sent = await _btService.sendTextMessage(
+        content,
+        sender: senderDisplayName,
+      );
+      log(
+        '[BtForward] 消息 $id [from: $senderDisplayName] → 蓝牙 ${sent ? "✓ 成功 (ACK 确认)" : "✗ 失败 (未收到 ACK)"}',
+      );
+    } catch (e) {
+      log(
+        '[BtForward] 消息 $id [from: $senderDisplayName] → 蓝牙 ✗ 异常：$e',
+      );
+    }
   }
 
   // ── 联系人姓名缓存 ────────────────────────────────────────────────────────
@@ -216,11 +226,16 @@ class BluetoothForwardService {
   /// 分页拉取直到全部加载完毕（服务器每页最多 100 条）。
   /// 失败时静默忽略——降级为直接显示 bipupuId。
   Future<void> _refreshContactsCache() async {
+    if (_cacheLoading && !_cacheLoaded) {
+      // 已经在加载中，跳过
+      return;
+    }
+    
     try {
       const pageSize = 100;
       int page = 1;
       int loaded = 0;
-      int total = 1; // 先赋 1，进入循环后用真实值覆盖
+      int total = 1;
 
       while (loaded < total) {
         final resp = await ApiClient.instance.api.contacts.getApiContacts(
@@ -230,7 +245,6 @@ class BluetoothForwardService {
         total = resp.total;
 
         for (final c in resp.contacts) {
-          // 优先级：备注名 > 昵称 > 用户名 > contactId（bipupuId）
           final displayName =
               (c.alias?.isNotEmpty == true ? c.alias : null) ??
               (c.contactNickname?.isNotEmpty == true
@@ -243,10 +257,10 @@ class BluetoothForwardService {
         loaded += resp.contacts.length;
         page++;
 
-        // 防止空列表死循环
         if (resp.contacts.isEmpty) break;
       }
 
+      _cacheLoaded = true;
       log('[BtForward] 联系人缓存已加载，共 ${_senderDisplayNameCache.length} 条');
     } catch (e) {
       log('[BtForward] 加载联系人缓存失败（降级为 ID 显示）: $e');
@@ -254,8 +268,23 @@ class BluetoothForwardService {
   }
 
   /// 根据 bipupuId 查询可读显示名，未命中时直接返回 id
+  /// 懒加载：首次调用时触发加载
   String _getSenderDisplayName(String bipupuId) {
-    return _senderDisplayNameCache[bipupuId] ?? bipupuId;
+    // 如果缓存已加载，直接返回
+    if (_cacheLoaded) {
+      return _senderDisplayNameCache[bipupuId] ?? bipupuId;
+    }
+    
+    // 如果正在加载，返回 ID（加载完成后会更新）
+    if (_cacheLoading) {
+      return bipupuId;
+    }
+    
+    // 首次需要时触发加载
+    _cacheLoading = true;
+    unawaited(_refreshContactsCache().whenComplete(() => _cacheLoading = false));
+    
+    return bipupuId;
   }
 
   static int _extractId(dynamic m) {

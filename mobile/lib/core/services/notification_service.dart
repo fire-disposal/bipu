@@ -86,6 +86,7 @@ class NotificationService {
   }
 
   /// 展示单条新消息通知
+  /// 首次调用时会自动请求通知权限（按需请求，提升用户体验）
   Future<void> showNewMessageNotification({
     required int notificationId,
     required String senderName,
@@ -93,6 +94,9 @@ class NotificationService {
     String payload = 'messages',
   }) async {
     if (!_initialized) return;
+
+    // 首次显示通知时请求权限（按需请求）
+    await requestPermission();
 
     await _plugin.show(
       id: notificationId,

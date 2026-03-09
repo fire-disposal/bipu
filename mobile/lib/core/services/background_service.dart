@@ -82,9 +82,14 @@ void onBackgroundStart(ServiceInstance service) async {
   });
 
   log('[BG] 后台消息轮询服务已启动 → ${AppConfig.apiBaseUrl}');
+  log('[BG] 注意：后台服务仅负责通知，消息转发由前台主引擎负责');
 
   int consecutiveErrors = 0;
   const maxConsecutiveErrors = 5;
+  
+  // 最后通知时间戳，用于去重（避免短时间重复通知）
+  int lastNotificationTimestamp = 0;
+  const minNotificationIntervalMs = 3000; // 最短通知间隔 3 秒
 
   // ── 主轮询循环 ──────────────────────────────────────────────────────────────
   while (true) {
@@ -132,28 +137,34 @@ void onBackgroundStart(ServiceInstance service) async {
               (first['content'] as String?)?.trim().isNotEmpty == true
               ? first['content'] as String
               : '新消息';
-
-          // 展示通知
-          await notifications.show(
-            id: maxId % 9999, // 通知 ID 取模，避免无限增长
-            title: messages.length == 1
-                ? '来自 $senderName 的新消息'
-                : '您有 ${messages.length} 条新消息',
-            body: messages.length == 1 ? content : '来自 $senderName 等人',
-            notificationDetails: const NotificationDetails(
-              android: AndroidNotificationDetails(
-                kMsgNotificationChannelId,
-                kMsgNotificationChannelName,
-                channelDescription: '接收来自其他用户的新消息通知',
-                importance: Importance.high,
-                priority: Priority.high,
-                icon: '@mipmap/ic_launcher',
+          
+          // 通知去重：检查时间间隔（避免 3 秒内重复通知）
+          final now = DateTime.now().millisecondsSinceEpoch;
+          if (now - lastNotificationTimestamp > minNotificationIntervalMs) {
+            // 展示通知
+            await notifications.show(
+              id: maxId % 9999, // 通知 ID 取模，避免无限增长
+              title: messages.length == 1
+                  ? '来自 $senderName 的新消息'
+                  : '您有 ${messages.length} 条新消息',
+              body: messages.length == 1 ? content : '来自 $senderName 等人',
+              notificationDetails: const NotificationDetails(
+                android: AndroidNotificationDetails(
+                  kMsgNotificationChannelId,
+                  kMsgNotificationChannelName,
+                  channelDescription: '接收来自其他用户的新消息通知',
+                  importance: Importance.high,
+                  priority: Priority.high,
+                  icon: '@mipmap/ic_launcher',
+                ),
               ),
-            ),
-            payload: 'messages',
-          );
-
-          log('[BG] 收到 ${messages.length} 条新消息，已发送通知 (maxId=$maxId)');
+              payload: 'messages',
+            );
+            lastNotificationTimestamp = now;
+            log('[BG] 收到 ${messages.length} 条新消息，已发送通知 (maxId=$maxId)');
+          } else {
+            log('[BG] 收到 ${messages.length} 条新消息，但距离上次通知 < 3 秒，跳过通知 (maxId=$maxId)');
+          }
 
           // 通知主引擎：
           // 1. 告知消息数量（计数）

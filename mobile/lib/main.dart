@@ -146,8 +146,7 @@ void _setupBackgroundServiceAuthListener() {
     final status = AuthService().authState.value;
     final bgService = BackgroundMessageService();
     if (status == AuthStatus.authenticated) {
-      // 请求通知权限（首次弹窗）
-      await NotificationService().requestPermission();
+      // 不再立即请求通知权限，改为首次收到消息时再请求（提升用户体验）
       // 启动后台轮询服务
       await bgService.start();
       // 启动蓝牙转发服务（主引擎监听 ImService 并转发到 BLE 设备）
@@ -170,7 +169,7 @@ void _setupBackgroundServiceAuthListener() {
   // ValueNotifier 不会重复触发，需手动检查并触发一次启动流程
   if (AuthService().authState.value == AuthStatus.authenticated) {
     unawaited(() async {
-      await NotificationService().requestPermission();
+      // 不再立即请求通知权限，改为首次收到消息时再请求
       await BackgroundMessageService().start();
       BluetoothForwardService().start();
       NotificationService().onNotificationTap = (id, payload) {

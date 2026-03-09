@@ -1,9 +1,54 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'unified_bluetooth_protocol.dart';
+
+/// 消息发送状态
+enum MessageSendState {
+  pending,      // 等待发送
+  sending,      // 正在发送
+  waitingAck,   // 等待确认
+  completed,    // 已完成（收到 ACK）
+  failed,       // 发送失败
+  timeout,      // 超时
+}
+
+/// 待发送消息项
+class QueuedMessage {
+  final int messageId;
+  final String body;
+  final String sender;
+  final Uint8List packet;
+  MessageSendState state;
+  final DateTime createdAt;
+  DateTime? sentAt;
+  int retryCount;
+  String? errorMessage;
+
+  QueuedMessage({
+    required this.messageId,
+    required this.body,
+    this.sender = 'App',
+    required this.packet,
+    this.state = MessageSendState.pending,
+    DateTime? createdAt,
+    this.sentAt,
+    this.retryCount = 0,
+    this.errorMessage,
+  }) : createdAt = createdAt ?? DateTime.now();
+
+  bool get canRetry => retryCount < QueuedMessage.maxRetries;
+
+  static const int maxRetries = 3;
+  static const Duration timeout = Duration(seconds: 5);
+
+  bool get isTimeout =>
+      sentAt != null &&
+      DateTime.now().difference(sentAt!) > timeout;
+}
 
 /// 蓝牙设备服务 - 增强版
 ///
@@ -21,6 +66,8 @@ class BluetoothDeviceService {
   BluetoothDeviceService._internal() {
     // 异步初始化绑定信息
     _initBindingInfo();
+    // 启动消息队列处理定时器
+    _startMessageQueueProcessor();
   }
 
   // ========== 协议服务 ==========
@@ -37,6 +84,10 @@ class BluetoothDeviceService {
   static const String _bindingPrefsKey = 'bluetooth_binding_info';
   final ValueNotifier<bool> isBound = ValueNotifier(false);
   final ValueNotifier<String?> boundDeviceName = ValueNotifier(null);
+  
+  // 绑定操作的 Completer
+  Completer<bool>? _bindingCompleter;
+  Completer<bool>? _unbindingCompleter;
 
   // ========== 订阅管理 ==========
   final _subscriptions = <StreamSubscription<dynamic>>[];
@@ -44,11 +95,29 @@ class BluetoothDeviceService {
   bool _isReconnecting = false;
   Timer? _reconnectTimer;
 
+  // ========== 消息队列管理 ==========
+  final _messageQueue = Queue<QueuedMessage>();
+  final Map<int, Completer<bool>> _pendingMessageCompleters = {};
+  Timer? _messageQueueTimer;
+  int _nextMessageId = 1;
+  
+  // ========== 已接收消息去重 ==========
+  // 使用 LRU 缓存记录已处理的消息，避免重复处理
+  // 键：timestamp + 内容哈希（防止 ESP32 时间重置导致重复）
+  // 值：处理时间
+  final _processedMessageCache = LinkedHashMap<String, DateTime>(
+    equals: (a, b) => a == b,
+    hashCode: (e) => e.hashCode,
+  );
+  static const int _maxProcessedCacheSize = 200;
+  static const Duration _processedCacheExpiry = Duration(minutes: 10);
+
   // ========== 配置参数 ==========
   static const Duration _connectionTimeout = Duration(seconds: 15);
   static const Duration _reconnectDelay = Duration(seconds: 5);
   static const int _maxReconnectAttempts = 3;
   int _reconnectAttempts = 0;
+  static const Duration _messageQueueInterval = Duration(milliseconds: 100);
 
   // ========== 状态通知 ==========
   final ValueNotifier<BluetoothConnectionState> connectionState = ValueNotifier(
@@ -170,34 +239,54 @@ class BluetoothDeviceService {
     await _cleanupInternalState();
   }
 
-  /// 发送文本消息
+  /// 发送文本消息（带 ACK 确认机制）
   ///
   /// [body] 消息正文；[sender] 发送者显示名（默认 `'App'`，即直接蓝牙发送）。
-  /// 两者由 [UnifiedBluetoothProtocol.createTextPacket] 编码为长度前缀二进制格式，
-  /// ESP32 侧在协议层直接解析，无字符串拼接/分割。
-  Future<void> sendTextMessage(String body, {String sender = 'App'}) async {
+  /// 返回：true 表示消息成功发送并收到 ACK，false 表示发送失败或超时
+  Future<bool> sendTextMessage(String body, {String sender = 'App'}) async {
     if (!isConnected || _nusTxCharacteristic == null) {
       throw StateError('蓝牙未连接或特征值未找到');
     }
 
     try {
       final packet = _protocol.createTextPacket(body, sender: sender);
+      final messageId = _nextMessageId++;
 
-      await _nusTxCharacteristic!.write(
-        packet,
-        withoutResponse: _nusTxCharacteristic!.properties.writeWithoutResponse,
+      // 创建队列消息
+      final queuedMessage = QueuedMessage(
+        messageId: messageId,
+        body: body,
+        sender: sender,
+        packet: packet,
       );
 
+      // 创建 Completer 用于等待 ACK
+      final completer = Completer<bool>();
+      _pendingMessageCompleters[messageId] = completer;
+
+      // 添加到队列
+      _messageQueue.add(queuedMessage);
+
       if (kDebugMode) {
-        print('文本消息已发送: sender="$sender" body="$body"');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('发送文本消息失败: $e');
+        print('消息 $messageId 已加入队列：sender="$sender" body="$body"');
       }
 
-      // 发送失败，检查连接状态
-      _checkConnectionHealth();
+      // 等待 ACK 或超时
+      final result = await completer.future.timeout(
+        QueuedMessage.timeout * QueuedMessage.maxRetries,
+        onTimeout: () {
+          if (kDebugMode) {
+            print('消息 $messageId 等待 ACK 超时');
+          }
+          return false;
+        },
+      );
+
+      return result;
+    } catch (e) {
+      if (kDebugMode) {
+        print('发送文本消息失败：$e');
+      }
       rethrow;
     }
   }
@@ -508,29 +597,57 @@ class BluetoothDeviceService {
 
   /// 处理文本消息
   void _handleTextMessage(Map<String, dynamic> packet) {
-    if (kDebugMode) {
-      print('收到文本消息: ${packet['text']}');
+    final timestamp = packet['timestamp'] as int?;
+    final content = packet['text'] as String?;
+    
+    // 去重检查（使用 timestamp + 内容哈希）
+    if (timestamp != null && _isMessageProcessed(timestamp, content)) {
+      if (kDebugMode) {
+        print('收到重复消息，已忽略：timestamp=$timestamp');
+      }
+      return;
     }
+    
+    // 标记为已处理
+    if (timestamp != null) {
+      _markMessageAsProcessed(timestamp, content);
+    }
+    
+    if (kDebugMode) {
+      print('收到文本消息：${packet['text']}');
+    }
+    
+    // 发送 ACK 确认收到消息
+    // 注意：当前协议中 ESP32 不会发送 TEXT 消息给手机，这是预留功能
   }
 
   /// 处理确认响应
   void _handleAcknowledgement(Map<String, dynamic> packet) {
+    final originalMessageId = packet['originalMessageId'] as int?;
+    final timestamp = packet['timestamp'] as int?;
+
     if (kDebugMode) {
-      print('收到确认响应: ${packet['originalMessageId']}');
+      print('收到确认响应：originalMessageId=$originalMessageId, timestamp=$timestamp');
     }
-  }
 
-  /// 检查连接健康状态
-  void _checkConnectionHealth() {
-    if (isConnected && _lastConnectionTime != null) {
-      final duration = DateTime.now().difference(_lastConnectionTime!);
-
-      // 如果连接时间超过30分钟，主动断开重连
-      if (duration > Duration(minutes: 30)) {
-        if (kDebugMode) {
-          print('连接时间过长，主动重连以保持稳定性');
+    // 使用时间戳作为消息标识来匹配待确认消息
+    // 遍历队列查找等待 ACK 的消息
+    for (final message in _messageQueue) {
+      if (message.state == MessageSendState.waitingAck) {
+        // 使用时间戳匹配（因为 ESP32 使用 timestamp 作为 original_message_id）
+        if (timestamp != null && message.packet.length > 5) {
+          final packetTimestamp = Uint8List.fromList(
+            message.packet.sublist(1, 5),
+          ).buffer.asByteData().getUint32(0, Endian.little);
+          
+          if (packetTimestamp == timestamp) {
+            message.state = MessageSendState.completed;
+            if (kDebugMode) {
+              print('消息 ${message.messageId} 已确认');
+            }
+            break;
+          }
         }
-        _scheduleReconnect();
       }
     }
   }
@@ -740,7 +857,7 @@ class BluetoothDeviceService {
     }
   }
 
-  /// 发送绑定信息到设备
+  /// 发送绑定信息到设备（带 ACK 确认）
   Future<bool> sendBindingInfo(String appId, String userName) async {
     if (!isConnected || _nusTxCharacteristic == null) {
       if (kDebugMode) {
@@ -750,7 +867,7 @@ class BluetoothDeviceService {
     }
 
     try {
-      // 创建绑定信息JSON
+      // 创建绑定信息 JSON
       final bindingInfo = {
         'appId': appId,
         'userName': userName,
@@ -767,19 +884,210 @@ class BluetoothDeviceService {
         data: Uint8List.fromList(data),
       );
 
+      // 创建 Completer 用于等待 ACK
+      _bindingCompleter = Completer<bool>();
+
       // 发送绑定信息
       await _nusTxCharacteristic!.write(packet, withoutResponse: true);
 
       if (kDebugMode) {
-        print('绑定信息已发送到设备: $jsonString');
+        print('绑定信息已发送到设备：$jsonString，等待 ACK');
       }
 
-      return true;
+      // 等待 ACK 或超时（10 秒）
+      final result = await _bindingCompleter!.future.timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          if (kDebugMode) {
+            print('绑定等待 ACK 超时');
+          }
+          return false;
+        },
+      );
+
+      return result;
     } catch (e) {
       if (kDebugMode) {
-        print('发送绑定信息失败: $e');
+        print('发送绑定信息失败：$e');
       }
       return false;
+    } finally {
+      _bindingCompleter = null;
+    }
+  }
+
+  /// 启动消息队列处理器
+  void _startMessageQueueProcessor() {
+    _messageQueueTimer = Timer.periodic(_messageQueueInterval, (_) {
+      _processMessageQueue();
+    });
+  }
+
+  /// 处理消息队列
+  void _processMessageQueue() {
+    // 蓝牙断开时，清空队列并标记所有等待中消息为失败
+    if (!isConnected || _nusTxCharacteristic == null) {
+      if (_messageQueue.isNotEmpty) {
+        _failAllMessages('蓝牙已断开');
+      }
+      return;
+    }
+
+    if (_messageQueue.isEmpty) {
+      return;
+    }
+
+    // 检查队列头部消息状态
+    final message = _messageQueue.first;
+
+    switch (message.state) {
+      case MessageSendState.pending:
+        _sendQueuedMessage(message);
+        break;
+
+      case MessageSendState.waitingAck:
+        // 检查是否超时
+        if (message.isTimeout) {
+          if (message.canRetry) {
+            // 重试
+            message.retryCount++;
+            message.state = MessageSendState.pending;
+            message.sentAt = null;
+            if (kDebugMode) {
+              print('消息 ${message.messageId} 超时，重试 ${message.retryCount}/${QueuedMessage.maxRetries}');
+            }
+          } else {
+            // 达到最大重试次数，标记失败
+            message.state = MessageSendState.failed;
+            message.errorMessage = 'Timeout after ${QueuedMessage.maxRetries} retries';
+            _pendingMessageCompleters[message.messageId]?.complete(false);
+            _pendingMessageCompleters.remove(message.messageId);
+            _messageQueue.removeFirst();
+            if (kDebugMode) {
+              print('消息 ${message.messageId} 发送失败：${message.errorMessage}');
+            }
+          }
+        }
+        break;
+
+      case MessageSendState.completed:
+      case MessageSendState.failed:
+      case MessageSendState.timeout:
+        // 已完成或失败的消息，从队列移除
+        _pendingMessageCompleters[message.messageId]?.complete(
+          message.state == MessageSendState.completed,
+        );
+        _pendingMessageCompleters.remove(message.messageId);
+        _messageQueue.removeFirst();
+        break;
+
+      default:
+        break;
+    }
+
+    // 清理过期的已处理消息缓存
+    _cleanupProcessedCache();
+  }
+
+  /// 蓝牙断开时，失败所有待处理消息
+  void _failAllMessages(String reason) {
+    for (final message in _messageQueue.toList()) {
+      if (message.state == MessageSendState.waitingAck ||
+          message.state == MessageSendState.pending ||
+          message.state == MessageSendState.sending) {
+        message.state = MessageSendState.failed;
+        message.errorMessage = reason;
+        
+        // 完成对应的 Completer
+        final completer = _pendingMessageCompleters[message.messageId];
+        if (completer != null && !completer.isCompleted) {
+          completer.complete(false);
+        }
+        _pendingMessageCompleters.remove(message.messageId);
+        
+        if (kDebugMode) {
+          print('消息 ${message.messageId} 标记为失败：$reason');
+        }
+      }
+    }
+    _messageQueue.clear();
+  }
+
+  /// 发送队列中的消息
+  Future<void> _sendQueuedMessage(QueuedMessage message) async {
+    message.state = MessageSendState.sending;
+
+    try {
+      await _nusTxCharacteristic!.write(
+        message.packet,
+        withoutResponse: _nusTxCharacteristic!.properties.writeWithoutResponse,
+      );
+
+      message.state = MessageSendState.waitingAck;
+      message.sentAt = DateTime.now();
+
+      if (kDebugMode) {
+        print('消息 ${message.messageId} 已发送，等待 ACK');
+      }
+    } catch (e) {
+      message.state = MessageSendState.failed;
+      message.errorMessage = e.toString();
+      _pendingMessageCompleters[message.messageId]?.complete(false);
+      _pendingMessageCompleters.remove(message.messageId);
+      _messageQueue.removeFirst();
+
+      if (kDebugMode) {
+        print('消息 ${message.messageId} 发送失败：$e');
+      }
+    }
+  }
+
+  /// 清理过期的已处理消息缓存
+  void _cleanupProcessedCache() {
+    final now = DateTime.now();
+    final keysToRemove = <String>[];
+
+    for (final entry in _processedMessageCache.entries) {
+      if (now.difference(entry.value) > _processedCacheExpiry) {
+        keysToRemove.add(entry.key);
+      }
+    }
+
+    for (final key in keysToRemove) {
+      _processedMessageCache.remove(key);
+    }
+
+    // 如果缓存过大，移除最旧的条目
+    while (_processedMessageCache.length > _maxProcessedCacheSize) {
+      final firstKey = _processedMessageCache.keys.first;
+      _processedMessageCache.remove(firstKey);
+    }
+  }
+
+  /// 生成消息唯一标识（timestamp + 内容哈希）
+  String _createMessageKey(int timestamp, String? content) {
+    // 使用时间戳和内容前 50 字符的哈希组合
+    final contentHash = content != null && content.isNotEmpty
+        ? content.substring(0, content.length.clamp(0, 50)).hashCode
+        : 0;
+    return '${timestamp}_$contentHash';
+  }
+
+  /// 检查消息是否已处理（去重）
+  bool _isMessageProcessed(int timestamp, String? content) {
+    final key = _createMessageKey(timestamp, content);
+    return _processedMessageCache.containsKey(key);
+  }
+
+  /// 标记消息为已处理
+  void _markMessageAsProcessed(int timestamp, String? content) {
+    final key = _createMessageKey(timestamp, content);
+    _processedMessageCache[key] = DateTime.now();
+    
+    // 立即清理，保持缓存大小
+    if (_processedMessageCache.length > _maxProcessedCacheSize) {
+      final firstKey = _processedMessageCache.keys.first;
+      _processedMessageCache.remove(firstKey);
     }
   }
 
@@ -789,6 +1097,19 @@ class BluetoothDeviceService {
 
     switch (messageType) {
       case UnifiedBluetoothProtocol.MESSAGE_TYPE_BINDING_INFO:
+        // 收到设备的绑定确认（ACK）
+        if (kDebugMode) {
+          print('收到设备绑定确认');
+        }
+        // 完成绑定操作的 Future
+        if (_bindingCompleter != null && !_bindingCompleter!.isCompleted) {
+          _bindingCompleter!.complete(true);
+          if (kDebugMode) {
+            print('绑定操作已确认');
+          }
+        }
+        
+        // 如果是设备主动发来的绑定信息（JSON 数据），解析并处理
         if (packet['data'] != null && packet['data'].isNotEmpty) {
           try {
             final jsonString = utf8.decode(
@@ -798,14 +1119,11 @@ class BluetoothDeviceService {
             final bindingInfo = jsonDecode(jsonString);
 
             if (kDebugMode) {
-              print('收到设备绑定信息: $bindingInfo');
+              print('收到设备绑定信息：$bindingInfo');
             }
-
-            // 可以在这里处理设备发来的绑定信息
-            // 例如：显示设备信息、更新UI等
           } catch (e) {
             if (kDebugMode) {
-              print('解析绑定信息失败: $e');
+              print('解析绑定信息失败：$e');
             }
           }
         }
@@ -816,10 +1134,13 @@ class BluetoothDeviceService {
           print('收到设备解绑命令');
         }
 
-        // 设备请求解绑，清除本地绑定
-        clearBinding();
+        // 完成解绑操作的 Future
+        if (_unbindingCompleter != null && !_unbindingCompleter!.isCompleted) {
+          _unbindingCompleter!.complete(true);
+        }
 
-        // 可以在这里添加UI通知等
+        // 清除本地绑定
+        clearBinding();
         break;
     }
   }
@@ -827,6 +1148,28 @@ class BluetoothDeviceService {
   /// 销毁服务
   Future<void> dispose() async {
     _isDisposing = true;
+    
+    // 停止消息队列处理
+    _messageQueueTimer?.cancel();
+    _messageQueueTimer = null;
+    
+    // 取消所有待处理的消息
+    for (final completer in _pendingMessageCompleters.values) {
+      if (!completer.isCompleted) {
+        completer.complete(false);
+      }
+    }
+    _pendingMessageCompleters.clear();
+    _messageQueue.clear();
+    
+    // 取消绑定操作的 Future
+    if (_bindingCompleter != null && !_bindingCompleter!.isCompleted) {
+      _bindingCompleter!.complete(false);
+    }
+    if (_unbindingCompleter != null && !_unbindingCompleter!.isCompleted) {
+      _unbindingCompleter!.complete(false);
+    }
+    
     await disconnect();
     _cancelAllSubscriptions();
     _stopReconnectTimer();
