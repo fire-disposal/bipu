@@ -190,7 +190,7 @@ class _SubscriptionsManagementPageState
     return UserAvatar(
       avatarUrl: service.avatarUrl,
       displayName: service.name,
-      backgroundColor: Colors.grey.withOpacity(0.3),
+      backgroundColor: Colors.grey.withValues(alpha: 0.3),
     );
   }
 }

@@ -98,7 +98,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.green.withOpacity(0.1),
+                              color: Colors.green.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Icon(
@@ -146,8 +146,8 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                         ),
                         decoration: BoxDecoration(
                           color: _isBound
-                              ? Colors.blue.withOpacity(0.1)
-                              : Colors.grey.withOpacity(0.1),
+                              ? Colors.blue.withValues(alpha: 0.1)
+                              : Colors.grey.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: _isBound ? Colors.blue : Colors.grey,
@@ -405,7 +405,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 28),

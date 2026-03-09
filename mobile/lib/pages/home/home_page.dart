@@ -147,7 +147,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       decoration: BoxDecoration(
         color: isDarkMode
             ? colorScheme.surface
-            : colorScheme.primary.withOpacity(0.05),
+            : colorScheme.primary.withValues(alpha: 0.05),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
       ),
       child: Column(
@@ -211,7 +211,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           borderRadius: BorderRadius.circular(16),
           color: Theme.of(
             context,
-          ).colorScheme.surfaceContainerHighest.withOpacity(0.4),
+          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
@@ -252,7 +252,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Colors.transparent, Colors.black.withOpacity(0.6)],
+              colors: [Colors.transparent, Colors.black.withValues(alpha: 0.6)],
             ),
           ),
         ),
@@ -311,7 +311,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
+        side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -320,7 +320,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: statusColor.withOpacity(0.1),
+                  backgroundColor: statusColor.withValues(alpha: 0.1),
                   child: Icon(
                     _isConnected
                         ? Icons.bluetooth_connected
@@ -360,7 +360,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -443,7 +443,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.4),
+          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
         ),
       ),
       child: InkWell(

@@ -130,7 +130,7 @@ class _TopBar extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: cs.outlineVariant.withOpacity(0.12),
+            color: cs.outlineVariant.withValues(alpha: 0.12),
             width: 1,
           ),
         ),
@@ -146,7 +146,7 @@ class _TopBar extends StatelessWidget {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: themeColor.withOpacity(0.5),
+                  color: themeColor.withValues(alpha: 0.5),
                   blurRadius: 6,
                   spreadRadius: 1,
                 ),
@@ -174,7 +174,7 @@ class _TopBar extends StatelessWidget {
                 Text(
                   'LINE ACTIVE',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: themeColor.withOpacity(0.6),
+                    color: themeColor.withValues(alpha: 0.6),
                     fontWeight: FontWeight.w600,
                     fontSize: 9,
                     letterSpacing: 1.2,
@@ -197,7 +197,7 @@ class _TopBar extends StatelessWidget {
             ),
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              backgroundColor: cs.errorContainer.withOpacity(0.2),
+              backgroundColor: cs.errorContainer.withValues(alpha: 0.2),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -245,12 +245,12 @@ class _OperatorPresenceSection extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
-                      color: themeColor.withOpacity(0.25),
+                      color: themeColor.withValues(alpha: 0.25),
                       width: 1.5,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: themeColor.withOpacity(0.12),
+                        color: themeColor.withValues(alpha: 0.12),
                         blurRadius: 16,
                         offset: const Offset(0, 4),
                       ),
@@ -274,9 +274,9 @@ class _OperatorPresenceSection extends StatelessWidget {
                     ? Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(10),
-                          color: cs.primary.withOpacity(0.06),
+                          color: cs.primary.withValues(alpha: 0.06),
                           border: Border.all(
-                            color: cs.primary.withOpacity(0.15),
+                            color: cs.primary.withValues(alpha: 0.15),
                           ),
                         ),
                         child: WaveformAnimationWidget(
@@ -323,7 +323,7 @@ class _SpeechHistoryStream extends StatelessWidget {
         child: Text(
           '等待接线员...',
           style: theme.textTheme.bodySmall?.copyWith(
-            color: cs.outline.withOpacity(0.4),
+            color: cs.outline.withValues(alpha: 0.4),
           ),
         ),
       );
@@ -354,7 +354,7 @@ class _SpeechHistoryStream extends StatelessWidget {
                 color: cs.primaryContainer,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: themeColor.withOpacity(0.28),
+                  color: themeColor.withValues(alpha: 0.28),
                   width: 1.5,
                 ),
               ),
@@ -375,7 +375,7 @@ class _SpeechHistoryStream extends StatelessWidget {
               color: cs.surfaceContainerLow,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: cs.outlineVariant.withOpacity(0.18),
+                color: cs.outlineVariant.withValues(alpha: 0.18),
                 width: 0.8,
               ),
             ),
@@ -417,7 +417,7 @@ class _PhasePanelContainer extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         boxShadow: [
           BoxShadow(
-            color: cs.shadow.withOpacity(0.06),
+            color: cs.shadow.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, -4),
           ),
@@ -588,7 +588,7 @@ class _SkeletonLine extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withOpacity(0.4),
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(12),
       ),
     );
@@ -650,15 +650,15 @@ class _EnterTargetPanel extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             decoration: BoxDecoration(
               color: hasError
-                  ? cs.errorContainer.withOpacity(0.3)
-                  : cs.surfaceContainerHighest.withOpacity(0.5),
+                  ? cs.errorContainer.withValues(alpha: 0.3)
+                  : cs.surfaceContainerHighest.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: hasError
-                    ? cs.error.withOpacity(0.5)
+                    ? cs.error.withValues(alpha: 0.5)
                     : (hasId
-                          ? themeColor.withOpacity(0.4)
-                          : cs.outlineVariant.withOpacity(0.3)),
+                          ? themeColor.withValues(alpha: 0.4)
+                          : cs.outlineVariant.withValues(alpha: 0.3)),
                 width: hasId ? 1.5 : 1,
               ),
             ),
@@ -669,7 +669,7 @@ class _EnterTargetPanel extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: hasId ? cs.onSurface : cs.outline.withOpacity(0.4),
+                    color: hasId ? cs.onSurface : cs.outline.withValues(alpha: 0.4),
                     letterSpacing: hasId ? 5 : 0,
                   ),
                 ),
@@ -818,10 +818,10 @@ class _NumpadKey extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           color: isFunc
               ? Colors.transparent
-              : cs.surfaceContainerHighest.withOpacity(0.4),
+              : cs.surfaceContainerHighest.withValues(alpha: 0.4),
           border: isFunc
               ? null
-              : Border.all(color: cs.outlineVariant.withOpacity(0.4)),
+              : Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
         ),
         child: Center(
           child: isFunc
@@ -831,7 +831,7 @@ class _NumpadKey extends StatelessWidget {
                       : Icons.delete_sweep_rounded,
                   size: 22,
                   color: label == 'C'
-                      ? cs.error.withOpacity(0.8)
+                      ? cs.error.withValues(alpha: 0.8)
                       : cs.onSurfaceVariant,
                 )
               : Text(
@@ -883,13 +883,13 @@ class _InputMessagePanel extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: isRecording
-                  ? cs.primaryContainer.withOpacity(0.35)
-                  : cs.surfaceContainerHighest.withOpacity(0.4),
+                  ? cs.primaryContainer.withValues(alpha: 0.35)
+                  : cs.surfaceContainerHighest.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isRecording
-                    ? cs.primary.withOpacity(0.4)
-                    : cs.outlineVariant.withOpacity(0.25),
+                    ? cs.primary.withValues(alpha: 0.4)
+                    : cs.outlineVariant.withValues(alpha: 0.25),
                 width: isRecording ? 1.5 : 1,
               ),
             ),
@@ -918,7 +918,7 @@ class _InputMessagePanel extends StatelessWidget {
                       size: 26,
                       color: isRecording
                           ? cs.primary
-                          : cs.onSurfaceVariant.withOpacity(0.5),
+                          : cs.onSurfaceVariant.withValues(alpha: 0.5),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -966,7 +966,7 @@ class _InputMessagePanel extends StatelessWidget {
                     boxShadow: [
                       BoxShadow(
                         color: (isRecording ? cs.error : themeColor)
-                            .withOpacity(0.4),
+                            .withValues(alpha: 0.4),
                         blurRadius: isRecording ? 20 : 12,
                         spreadRadius: isRecording ? 4 : 0,
                       ),
@@ -1077,12 +1077,12 @@ class _ReviewPanelState extends State<_ReviewPanel> {
           // 消息编辑框
           Container(
             decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withOpacity(0.5),
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: _focus.hasFocus
-                    ? themeColor.withOpacity(0.5)
-                    : cs.outlineVariant.withOpacity(0.3),
+                    ? themeColor.withValues(alpha: 0.5)
+                    : cs.outlineVariant.withValues(alpha: 0.3),
                 width: 1.5,
               ),
             ),
@@ -1100,7 +1100,7 @@ class _ReviewPanelState extends State<_ReviewPanel> {
                 border: InputBorder.none,
                 hintText: '请输入或编辑要发送的消息...',
                 hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                  color: cs.onSurfaceVariant.withOpacity(0.5),
+                  color: cs.onSurfaceVariant.withValues(alpha: 0.5),
                 ),
               ),
               onChanged: null,
@@ -1244,9 +1244,9 @@ class _SuccessPanel extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: cs.primaryContainer.withOpacity(0.25),
+              color: cs.primaryContainer.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: cs.primary.withOpacity(0.3)),
+              border: Border.all(color: cs.primary.withValues(alpha: 0.3)),
             ),
             child: Row(
               children: [
@@ -1316,7 +1316,7 @@ class _SuccessPanel extends StatelessWidget {
                   label: const Text('挂断'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: cs.error,
-                    side: BorderSide(color: cs.error.withOpacity(0.6)),
+                    side: BorderSide(color: cs.error.withValues(alpha: 0.6)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -1381,7 +1381,7 @@ class _HangupButton extends StatelessWidget {
         ),
         style: OutlinedButton.styleFrom(
           foregroundColor: cs.error,
-          side: BorderSide(color: cs.error.withOpacity(0.5)),
+          side: BorderSide(color: cs.error.withValues(alpha: 0.5)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
@@ -1477,7 +1477,7 @@ class _IdlePulseBarsState extends State<_IdlePulseBars>
               height: height,
               margin: const EdgeInsets.symmetric(horizontal: 2),
               decoration: BoxDecoration(
-                color: widget.color.withOpacity(0.5 + 0.4 * _ctrl.value),
+                color: widget.color.withValues(alpha: 0.5 + 0.4 * _ctrl.value),
                 borderRadius: BorderRadius.circular(2),
               ),
             );

@@ -77,7 +77,7 @@ class _ConnectingPageState extends State<ConnectingPage>
                         color: colorScheme.primaryContainer,
                         boxShadow: [
                           BoxShadow(
-                            color: colorScheme.primary.withOpacity(0.2),
+                            color: colorScheme.primary.withValues(alpha: 0.2),
                             blurRadius: 20,
                             spreadRadius: 5,
                           ),
@@ -134,7 +134,7 @@ class _ConnectingPageState extends State<ConnectingPage>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: colorScheme.primary.withOpacity(0.5),
+                  color: colorScheme.primary.withValues(alpha: 0.5),
                   width: 2,
                 ),
               ),

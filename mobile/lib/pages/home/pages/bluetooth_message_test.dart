@@ -155,8 +155,8 @@ class _BluetoothMessageTestPageState extends State<BluetoothMessageTestPage> {
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: _isConnected
-                            ? Colors.green.withOpacity(0.1)
-                            : Colors.orange.withOpacity(0.1),
+                            ? Colors.green.withValues(alpha: 0.1)
+                            : Colors.orange.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
@@ -325,10 +325,10 @@ class _BluetoothMessageTestPageState extends State<BluetoothMessageTestPage> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.1),
+                            color: Colors.blue.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(
-                              color: Colors.blue.withOpacity(0.3),
+                              color: Colors.blue.withValues(alpha: 0.3),
                             ),
                           ),
                           child: Text(

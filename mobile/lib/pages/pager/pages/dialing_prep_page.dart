@@ -97,9 +97,9 @@ class _PrepView extends StatelessWidget {
                   horizontal: 18,
                 ),
                 decoration: BoxDecoration(
-                  color: cs.surfaceContainerHighest.withOpacity(0.4),
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: cs.outlineVariant.withOpacity(0.3)),
+                  border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
                 ),
                 child: Column(
                   children: [
@@ -179,7 +179,7 @@ class _HeroVisual extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: themeColor.withOpacity(0.08),
+                    color: themeColor.withValues(alpha: 0.08),
                     width: 1,
                   ),
                 ),
@@ -191,7 +191,7 @@ class _HeroVisual extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: themeColor.withOpacity(0.18),
+                    color: themeColor.withValues(alpha: 0.18),
                     width: 1.5,
                   ),
                 ),
@@ -202,9 +202,9 @@ class _HeroVisual extends StatelessWidget {
                 height: 80,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: themeColor.withOpacity(0.1),
+                  color: themeColor.withValues(alpha: 0.1),
                   border: Border.all(
-                    color: themeColor.withOpacity(0.3),
+                    color: themeColor.withValues(alpha: 0.3),
                     width: 2,
                   ),
                 ),
@@ -229,7 +229,7 @@ class _HeroVisual extends StatelessWidget {
         Text(
           '接通后为您随机分配一位接线员',
           style: theme.textTheme.bodySmall?.copyWith(
-            color: cs.onSurfaceVariant.withOpacity(0.7),
+            color: cs.onSurfaceVariant.withValues(alpha: 0.7),
           ),
         ),
       ],
@@ -257,7 +257,7 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: cs.primary.withOpacity(0.7)),
+        Icon(icon, size: 16, color: cs.primary.withValues(alpha: 0.7)),
         const SizedBox(width: 10),
         Text(
           text,
@@ -303,7 +303,7 @@ class _DialButton extends StatelessWidget {
           color: themeColor,
           boxShadow: [
             BoxShadow(
-              color: themeColor.withOpacity(0.35),
+              color: themeColor.withValues(alpha: 0.35),
               blurRadius: 14,
               offset: const Offset(0, 5),
             ),

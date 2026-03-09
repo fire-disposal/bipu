@@ -220,7 +220,7 @@ class _PulseAnimationWidgetState extends State<PulseAnimationWidget>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: widget.pulseColor.withOpacity(
+                  color: widget.pulseColor.withValues(alpha: 
                     1.0 - _animationController.value,
                   ),
                   width: 2,
@@ -235,7 +235,7 @@ class _PulseAnimationWidgetState extends State<PulseAnimationWidget>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: widget.pulseColor.withOpacity(
+                  color: widget.pulseColor.withValues(alpha: 
                     0.5 * (1.0 - _animationController.value),
                   ),
                   width: 1.5,

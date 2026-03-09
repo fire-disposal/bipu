@@ -225,7 +225,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     radius: 50,
                     backgroundColor: Theme.of(
                       context,
-                    ).primaryColor.withOpacity(0.1),
+                    ).primaryColor.withValues(alpha: 0.1),
                     fallbackIcon: Icon(
                       Icons.person,
                       size: 50,
@@ -381,7 +381,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         prefixIcon: icon != null ? Icon(icon, size: 20) : null,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
-        fillColor: Colors.grey.withOpacity(0.05),
+        fillColor: Colors.grey.withValues(alpha: 0.05),
       ),
     );
   }
@@ -399,7 +399,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         prefixIcon: icon != null ? Icon(icon, size: 20) : null,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
-        fillColor: Colors.grey.withOpacity(0.05),
+        fillColor: Colors.grey.withValues(alpha: 0.05),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<T>(
@@ -426,7 +426,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           prefixIcon: icon != null ? Icon(icon, size: 20) : null,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           filled: true,
-          fillColor: Colors.grey.withOpacity(0.05),
+          fillColor: Colors.grey.withValues(alpha: 0.05),
           suffixIcon: const Icon(Icons.calendar_today, size: 20),
         ),
         child: Text(

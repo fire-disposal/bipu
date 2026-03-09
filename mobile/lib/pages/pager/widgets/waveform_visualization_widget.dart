@@ -299,7 +299,7 @@ class WaveformVisualizationPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final fillPaint = Paint()
-      ..color = waveColor.withOpacity(0.1)
+      ..color = waveColor.withValues(alpha: 0.1)
       ..style = PaintingStyle.fill;
 
     final centerY = size.height / 2;

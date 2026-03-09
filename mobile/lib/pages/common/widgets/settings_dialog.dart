@@ -176,7 +176,7 @@ class SettingsDialog {
               Text(
                 '我们重视您的隐私保护，所有数据都经过加密处理，不会与第三方共享您的个人信息。',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurface.withOpacity(0.8),
+                  color: colorScheme.onSurface.withValues(alpha: 0.8),
                 ),
               ),
               const SizedBox(height: 16),
@@ -316,14 +316,14 @@ class SettingsDialog {
               Text(
                 '版本 1.0.0',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurface.withOpacity(0.8),
+                  color: colorScheme.onSurface.withValues(alpha: 0.8),
                 ),
               ),
               const SizedBox(height: 16),
               Text(
                 'Bipupu 是一个现代化的寻呼机应用程序，将传统的寻呼机体验与现代移动技术相结合。',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurface.withOpacity(0.8),
+                  color: colorScheme.onSurface.withValues(alpha: 0.8),
                 ),
               ),
             ],
@@ -368,7 +368,7 @@ class SettingsDialog {
                 Text(
                   description,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurface.withOpacity(0.6),
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],

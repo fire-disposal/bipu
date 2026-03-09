@@ -121,7 +121,7 @@ class _UserLoginPageState extends State<UserLoginPage>
                         fontSize: 16,
                         color: Theme.of(
                           context,
-                        ).colorScheme.onSurface.withOpacity(0.6),
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
                         letterSpacing: 1.1,
                       ),
                     ),
@@ -133,10 +133,10 @@ class _UserLoginPageState extends State<UserLoginPage>
                         padding: const EdgeInsets.all(12),
                         margin: const EdgeInsets.only(bottom: 24),
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
+                          color: Colors.red.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: Colors.red.withOpacity(0.3),
+                            color: Colors.red.withValues(alpha: 0.3),
                             width: 1,
                           ),
                         ),
@@ -197,7 +197,7 @@ class _UserLoginPageState extends State<UserLoginPage>
                         style: TextStyle(
                           color: Theme.of(
                             context,
-                          ).colorScheme.primary.withOpacity(0.8),
+                          ).colorScheme.primary.withValues(alpha: 0.8),
                         ),
                       ),
                     ),
@@ -289,7 +289,7 @@ class _UserLoginPageState extends State<UserLoginPage>
 
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withOpacity(0.7),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(16),
       ),
       child: TextField(
@@ -331,7 +331,7 @@ class _UserLoginPageState extends State<UserLoginPage>
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0072FF).withOpacity(0.3),
+            color: const Color(0xFF0072FF).withValues(alpha: 0.3),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),

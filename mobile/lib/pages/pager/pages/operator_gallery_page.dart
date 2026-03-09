@@ -85,11 +85,11 @@ class _OperatorGalleryPageState extends State<OperatorGalleryPage> {
           color: colorScheme.surfaceContainer,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: colorScheme.outlineVariant.withOpacity(0.5),
+            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -183,12 +183,12 @@ class _OperatorGalleryPageState extends State<OperatorGalleryPage> {
           border: Border.all(
             color: operator.isUnlocked
                 ? colorScheme.outlineVariant
-                : colorScheme.outlineVariant.withOpacity(0.5),
+                : colorScheme.outlineVariant.withValues(alpha: 0.5),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -222,7 +222,7 @@ class _OperatorGalleryPageState extends State<OperatorGalleryPage> {
               fit: StackFit.expand,
               children: [
                 // 背景装饰
-                Container(color: operator.themeColor.withOpacity(0.1)),
+                Container(color: operator.themeColor.withValues(alpha: 0.1)),
                 // 图片
                 operator.portraitUrl.startsWith('http')
                     ? Image.network(
@@ -281,7 +281,7 @@ class _OperatorGalleryPageState extends State<OperatorGalleryPage> {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: operator.themeColor.withOpacity(0.15),
+                      color: operator.themeColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
@@ -310,7 +310,7 @@ class _OperatorGalleryPageState extends State<OperatorGalleryPage> {
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -329,14 +329,14 @@ class _OperatorGalleryPageState extends State<OperatorGalleryPage> {
                     decoration: BoxDecoration(
                       shape: BoxShape.rectangle,
                       borderRadius: BorderRadius.circular(12),
-                      color: colorScheme.onSurfaceVariant.withOpacity(0.2),
+                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.2),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
                           Icons.person_rounded,
-                          color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                           size: 32,
                         ),
                         const SizedBox(height: 8),
@@ -345,7 +345,7 @@ class _OperatorGalleryPageState extends State<OperatorGalleryPage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: colorScheme.onSurfaceVariant.withOpacity(
+                            color: colorScheme.onSurfaceVariant.withValues(alpha: 
                               0.4,
                             ),
                           ),
@@ -364,7 +364,7 @@ class _OperatorGalleryPageState extends State<OperatorGalleryPage> {
                       shape: BoxShape.circle,
                       color: colorScheme.surfaceContainerHighest,
                       border: Border.all(
-                        color: colorScheme.outline.withOpacity(0.5),
+                        color: colorScheme.outline.withValues(alpha: 0.5),
                         width: 1,
                       ),
                     ),
@@ -392,7 +392,7 @@ class _OperatorGalleryPageState extends State<OperatorGalleryPage> {
                   height: 8,
                   width: 50,
                   decoration: BoxDecoration(
-                    color: colorScheme.onSurfaceVariant.withOpacity(0.1),
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(3),
                   ),
                 ),
@@ -400,7 +400,7 @@ class _OperatorGalleryPageState extends State<OperatorGalleryPage> {
                 Text(
                   '???',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                     fontStyle: FontStyle.italic,
                     fontSize: 9,
                     height: 1.0,
@@ -463,13 +463,13 @@ class _OperatorGalleryPageState extends State<OperatorGalleryPage> {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: operator.themeColor.withOpacity(0.2),
+                          color: operator.themeColor.withValues(alpha: 0.2),
                           blurRadius: 16,
                           offset: const Offset(0, 4),
                         ),
                       ],
                       border: Border.all(
-                        color: operator.themeColor.withOpacity(0.3),
+                        color: operator.themeColor.withValues(alpha: 0.3),
                         width: 2,
                       ),
                     ),
@@ -517,7 +517,7 @@ class _OperatorGalleryPageState extends State<OperatorGalleryPage> {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: operator.themeColor.withOpacity(0.1),
+                      color: operator.themeColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
@@ -552,7 +552,7 @@ class _OperatorGalleryPageState extends State<OperatorGalleryPage> {
                       color: colorScheme.surfaceContainerLow,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: colorScheme.outlineVariant.withOpacity(0.5),
+                        color: colorScheme.outlineVariant.withValues(alpha: 0.5),
                       ),
                     ),
                     child: Row(
