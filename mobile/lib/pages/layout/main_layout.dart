@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/state/app_state_management.dart';
-import '../pager/state/pager_cubit.dart';
-import '../pager/state/pager_state_machine.dart';
 import 'enhanced_bottom_navigation.dart';
 
-/// 重构后的主布局
+/// 新架构主布局 - 使用 PagerVM
 class MainLayout extends StatefulWidget {
   final Widget child;
 
@@ -17,19 +14,9 @@ class MainLayout extends StatefulWidget {
 }
 
 class _MainLayoutState extends State<MainLayout> {
-  /// PagerCubit 持久化在此层，确保切换 Tab 时通话状态不被销毁
-  late final PagerCubit _pagerCubit;
-
   @override
   void initState() {
     super.initState();
-    _pagerCubit = PagerCubit()..initializeDialingPrep();
-  }
-
-  @override
-  void dispose() {
-    _pagerCubit.close();
-    super.dispose();
   }
 
   int _getCurrentIndex(BuildContext context) {
@@ -65,18 +52,10 @@ class _MainLayoutState extends State<MainLayout> {
     }
   }
 
-  /// 长按传呼按钮：跳转到 pager 页面并立即开始呼叫接线员
-  /// 注意：触觉反馈由 _PagerNavButton 的蓄力动画完成时统一触发，此处不再重复
+  /// 长按传呼按钮：跳转到 pager 页面并初始化
   void _onPagerLongPressed(BuildContext context) {
-    // 先导航到 pager 页面
     if (!GoRouterState.of(context).uri.path.startsWith('/pager')) {
       context.go('/pager');
-    }
-
-    // 仅在准备阶段（未在通话中）才触发拨号，等效于点击"呼叫接线员"按钮
-    final state = _pagerCubit.state;
-    if (state is DialingPrepState && !state.isLoading) {
-      _pagerCubit.startDialing();
     }
   }
 
@@ -84,15 +63,12 @@ class _MainLayoutState extends State<MainLayout> {
   Widget build(BuildContext context) {
     final currentIndex = _getCurrentIndex(context);
 
-    return BlocProvider<PagerCubit>.value(
-      value: _pagerCubit,
-      child: Scaffold(
-        body: widget.child,
-        bottomNavigationBar: EnhancedBottomNavigation(
-          currentIndex: currentIndex,
-          onTap: (index) => _onItemTapped(index, context),
-          onPagerLongPress: () => _onPagerLongPressed(context),
-        ),
+    return Scaffold(
+      body: widget.child,
+      bottomNavigationBar: EnhancedBottomNavigation(
+        currentIndex: currentIndex,
+        onTap: (index) => _onItemTapped(index, context),
+        onPagerLongPress: () => _onPagerLongPressed(context),
       ),
     );
   }

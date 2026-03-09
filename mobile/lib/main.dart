@@ -10,7 +10,7 @@ import 'core/utils/interaction_optimizer.dart';
 import 'core/network/network.dart';
 import 'core/api/export.dart';
 import 'pages/layout/main_layout.dart';
-import 'pages/pager/pager_page.dart';
+import 'pages/pager/new_pager_page.dart';
 import 'pages/profile/profile_page.dart';
 import 'pages/profile/pages/security_page.dart';
 import 'pages/profile/pages/edit_profile_page.dart';
@@ -45,7 +45,7 @@ import 'pages/profile/pages/bluetooth/bluetooth_scan_page.dart';
 import 'pages/profile/pages/bluetooth/device_detail_page.dart';
 import 'pages/home/home_page.dart';
 import 'pages/home/pages/bluetooth_message_test.dart';
-import 'core/voice/voice_service_unified.dart'; // 预热语音模型
+import 'core/voice/voice_service.dart'; // 新架构语音服务
 
 Future<void> main() async {
   // Catch errors
@@ -221,7 +221,7 @@ final GoRouter _router = GoRouter(
       builder: (context, state, child) => MainLayout(child: child),
       routes: [
         GoRoute(path: '/home', builder: (context, state) => const HomePage()),
-        GoRoute(path: '/pager', builder: (context, state) => const PagerPage()),
+        GoRoute(path: '/pager', builder: (context, state) => const NewPagerPage()),
         GoRoute(
           path: '/messages',
           builder: (context, state) => const MessagesPage(),

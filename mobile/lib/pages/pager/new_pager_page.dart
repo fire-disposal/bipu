@@ -9,8 +9,8 @@ import 'widgets/new_reviewing_view.dart';
 
 /// Pager 页面 - 新架构版本
 /// 使用 PagerVM 替代 PagerCubit，简化状态管理
-class PagerPage extends StatelessWidget {
-  const PagerPage({super.key});
+class NewPagerPage extends StatelessWidget {
+  const NewPagerPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +60,7 @@ class _PagerView extends StatelessWidget {
         child: switch (vm.phase) {
           PagerPhase.prep => const NewPrepView(key: ValueKey('prep')),
           PagerPhase.connecting => const NewConnectingView(key: ValueKey('connecting')),
-          PagerPhase.inCall => NewInCallView(key: const ValueKey('in_call')),
+          PagerPhase.inCall => const NewInCallView(key: ValueKey('in_call')),
           PagerPhase.reviewing => const NewReviewingView(key: ValueKey('reviewing')),
         },
       ),
