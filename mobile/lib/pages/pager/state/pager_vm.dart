@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import '../../../core/utils/logger.dart';
+import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/im_service.dart' show ImService;
 import '../../../core/api/models/message_type.dart';
@@ -80,7 +80,7 @@ class PagerVM extends ChangeNotifier {
   
   void _selectRandomOperator() {
     _operator = _operatorService.getRandomOperator();
-    logger.i('PagerVM: 选择接线员 - ${_operator!.name}');
+    debugPrint('[PagerVM] 选择接线员 - ${_operator!.name}');
   }
   
   void selectOperator(OperatorPersonality op) {
@@ -98,7 +98,7 @@ class PagerVM extends ChangeNotifier {
     _phase = PagerPhase.connecting;
     notifyListeners();
     
-    logger.i('PagerVM: 开始连接，接线员 = ${_operator!.name}');
+    debugPrint('[PagerVM] 开始连接，接线员 = ${_operator!.name}');
     
     // 连接动画（2 秒）
     await Future.delayed(const Duration(seconds: 2));
@@ -168,7 +168,7 @@ class PagerVM extends ChangeNotifier {
         await ApiClient.instance.api.users.getApiUsersUsersBipupuId(
           bipupuId: _targetId,
         );
-        logger.i('PagerVM: 目标用户存在');
+        debugPrint('[PagerVM] 目标用户存在');
         
         // 成功 → 进入消息录入
         final askMsg = _operator!.dialogues.getRequestMessage();
@@ -176,7 +176,7 @@ class PagerVM extends ChangeNotifier {
         
         await Future.delayed(const Duration(milliseconds: 300));
       } catch (e) {
-        logger.w('PagerVM: 目标用户不存在');
+        debugPrint('[PagerVM WARN] 目标用户不存在');
         
         final notFound = _operator!.dialogues.getUserNotFound();
         await _voice.speak(notFound);
@@ -218,13 +218,13 @@ class PagerVM extends ChangeNotifier {
       }
       
       if (_asrTranscript.isEmpty) {
-        logger.w('PagerVM: 未识别到语音');
+        debugPrint('[PagerVM WARN] 未识别到语音');
         _isRecording = false;
         notifyListeners();
         return;
       }
       
-      logger.i('PagerVM: 识别结果 "${_asrTranscript}"');
+      debugPrint('[PagerVM] 识别结果 "${_asrTranscript}"');
       
       // 进入确认阶段
       _messageContent = _asrTranscript;
@@ -234,7 +234,7 @@ class PagerVM extends ChangeNotifier {
       notifyListeners();
       
     } catch (e) {
-      logger.e('PagerVM: 录音失败', error: e);
+      debugPrint('[PagerVM ERROR] 录音失败：$e');
       _isRecording = false;
       notifyListeners();
     }
@@ -286,7 +286,7 @@ class PagerVM extends ChangeNotifier {
       );
       
       if (result != null) {
-        logger.i('PagerVM: 消息发送成功');
+        debugPrint('[PagerVM] 消息发送成功');
         
         _sentHistory.add(SendRecord(
           targetId: _targetId,
@@ -343,7 +343,7 @@ class PagerVM extends ChangeNotifier {
   
   /// 挂断通话
   Future<void> hangup() async {
-    logger.i('PagerVM: 挂断通话');
+    debugPrint('[PagerVM] 挂断通话');
     
     await _voice.stopSpeaking();
     await _voice.stopListening();
@@ -352,7 +352,7 @@ class PagerVM extends ChangeNotifier {
   }
   
   void _error(String message) {
-    logger.e('PagerVM 错误：$message');
+    debugPrint('[PagerVM ERROR] 错误：$message');
     _errorMessage = message;
     notifyListeners();
   }
