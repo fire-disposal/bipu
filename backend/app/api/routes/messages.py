@@ -271,98 +271,66 @@ async def get_sent_messages(
 
 @router.get("/poll", response_model=MessagePollResponse)
 async def long_poll_messages(
-    last_msg_id: int = Query(0, ge=0, description="最后收到的消息ID"),
+    last_msg_id: int = Query(0, ge=0, description="最后收到的消息 ID"),
     timeout: int = Query(30, ge=1, le=120, description="轮询超时时间（秒）"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
 ):
-    """长轮询接口：获取新消息 - 优化版本
+    """长轮询接口：获取新消息 - 1C1G 优化版
     
-    🆕 关键优化：不在长轮询期间持有数据库连接
-    
-    工作流程：
-    1. 获取初始消息列表
-    2. 如果有新消息，立即返回并关闭连接
-    3. 否则，立即关闭连接，然后在循环中检查消息（不持有连接）
-    4. 实现实时消息推送，同时最小化连接占用时间
+    核心优化：
+    1. 使用统一依赖注入（get_db_context）
+    2. 使用独立查询函数（query_messages_for_user）
+    3. 快速申请/释放连接（占用时间 < 100ms）
+    4. 不手动管理会话生命周期
     
     参数：
-    - last_msg_id: 最后收到的消息ID（从0开始表示获取所有新消息）
-    - timeout: 轮询超时时间（1-120秒，默认30秒）
+    - last_msg_id: 最后收到的消息 ID（从 0 开始表示获取所有新消息）
+    - timeout: 轮询超时时间（1-120 秒，默认 30 秒）
 
     返回：
     - messages: 新消息列表
-    - has_more: 是否有更多消息（返回数量≥20时为true）
-    
-    优化点：
-    - ✅ 连接占用时间 < 1 秒（只在查询时使用）
-    - ✅ 支持高并发（1000+ 并发轮询）
-    - ✅ 数据库压力低：每秒只查询一次，而非持续占用连接
+    - has_more: 是否有更多消息（返回数量≥20 时为 true）
     """
     try:
-        # 获取初始消息（只在此时占用数据库连接）
-        initial_messages = db.query(Message).filter(
-            Message.receiver_bipupu_id == current_user.bipupu_id,
-            Message.id > last_msg_id
-        ).order_by(Message.id.asc()).limit(20).all()
-
+        from app.db.database import get_db_context, query_messages_for_user
+        
+        # 步骤 1：使用统一上下文管理器进行初始查询
+        async with get_db_context() as db:
+            initial_messages = db.query(Message).filter(
+                Message.receiver_bipupu_id == current_user.bipupu_id,
+                Message.id > last_msg_id
+            ).order_by(Message.id.asc()).limit(20).all()
+        
         if initial_messages:
-            # 有新消息，立即返回
-            response = MessagePollResponse(
+            return MessagePollResponse(
                 messages=[MessageResponse.model_validate(msg) for msg in initial_messages],
                 has_more=len(initial_messages) >= 20
             )
-            logger.info(
-                f"长轮询返回新消息: user={current_user.bipupu_id}, "
-                f"count={len(initial_messages)}, elapsed=0s"
-            )
-            return response
-
-        # 🆕 关键优化：在此处关闭数据库连接，释放连接池资源
-        # 后续等待期间不占用数据库连接
-        db.close()
         
-        # 等待新消息的循环
-        check_interval = 1  # 每秒检查
+        # 步骤 2：等待循环 - 使用独立查询函数（每次快速申请/释放）
         elapsed = 0
-        
         while elapsed < timeout:
-            # 🆕 每次查询时重新申请新的连接（而非一直持有）
-            # 这样可以最小化连接占用时间
-            from app.db.database import SessionLocal
-            temp_db = SessionLocal()
+            await asyncio.sleep(1)  # 1 秒检查间隔
+            elapsed += 1
             
-            try:
-                new_messages = temp_db.query(Message).filter(
-                    Message.receiver_bipupu_id == current_user.bipupu_id,
-                    Message.id > last_msg_id
-                ).order_by(Message.id.asc()).limit(20).all()
-
-                if new_messages:
-                    response = MessagePollResponse(
-                        messages=[MessageResponse.model_validate(msg) for msg in new_messages],
-                        has_more=len(new_messages) >= 20
-                    )
-                    logger.info(
-                        f"长轮询返回新消息: user={current_user.bipupu_id}, "
-                        f"count={len(new_messages)}, elapsed={elapsed}s"
-                    )
-                    return response
-            finally:
-                # 确保临时连接立即释放
-                temp_db.close()
-
-            # 等待后重试，避免频繁查询
-            await asyncio.sleep(check_interval)
-            elapsed += check_interval
-
-        # 超时，返回空列表
-        response = MessagePollResponse(messages=[], has_more=False)
-        logger.debug(f"长轮询超时: user={current_user.bipupu_id}, timeout={timeout}s")
-        return response
-
+            # ✅ 关键：使用独立查询函数，连接占用时间 < 100ms
+            messages = await query_messages_for_user(
+                user_bipupu_id=current_user.bipupu_id,
+                last_msg_id=last_msg_id,
+                limit=20
+            )
+            
+            if messages:
+                return MessagePollResponse(
+                    messages=[MessageResponse.model_validate(msg) for msg in messages],
+                    has_more=len(messages) >= 20
+                )
+        
+        # 超时返回空
+        return MessagePollResponse(messages=[], has_more=False)
+        
     except Exception as e:
-        logger.error(f"长轮询失败: {e}")
+        logger.error(f"长轮询失败：{e}")
         raise HTTPException(status_code=500, detail="轮询消息失败")
 
 

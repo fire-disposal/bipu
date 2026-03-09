@@ -37,6 +37,25 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "text"
 
+    # ========== 1C1G 轻量化配置 ==========
+    # 数据库连接池配置（1C1G 优化）
+    DB_POOL_SIZE: int = int(os.getenv("DB_POOL_SIZE", "5"))
+    DB_MAX_OVERFLOW: int = int(os.getenv("DB_MAX_OVERFLOW", "10"))
+    DB_POOL_TIMEOUT: int = int(os.getenv("DB_POOL_TIMEOUT", "10"))
+    DB_POOL_RECYCLE: int = int(os.getenv("DB_POOL_RECYCLE", "1800"))
+
+    # Redis 配置（1C1G 优化）
+    REDIS_MAX_CONNECTIONS: int = int(os.getenv("REDIS_MAX_CONNECTIONS", "10"))
+    REDIS_SOCKET_TIMEOUT: int = int(os.getenv("REDIS_SOCKET_TIMEOUT", "3"))
+
+    # 缓存配置
+    CACHE_DEFAULT_TTL: int = int(os.getenv("CACHE_DEFAULT_TTL", "300"))
+    CACHE_MESSAGE_TTL: int = int(os.getenv("CACHE_MESSAGE_TTL", "120"))
+
+    # 长轮询配置
+    POLL_DEFAULT_TIMEOUT: int = int(os.getenv("POLL_DEFAULT_TIMEOUT", "30"))
+    POLL_CHECK_INTERVAL: int = int(os.getenv("POLL_CHECK_INTERVAL", "1"))
+
     # 分页配置
     DEFAULT_PAGE_SIZE: int = 20
     MAX_PAGE_SIZE: int = 100

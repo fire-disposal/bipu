@@ -42,6 +42,21 @@ services:
     container_name: bipupu-backend
     environment:
       CONTAINER_ROLE: backend
+      # ========== 1C1G 轻量化配置 ==========
+      # 数据库连接池
+      DB_POOL_SIZE: "5"
+      DB_MAX_OVERFLOW: "10"
+      DB_POOL_TIMEOUT: "10"
+      DB_POOL_RECYCLE: "1800"
+      # Redis 配置
+      REDIS_MAX_CONNECTIONS: "10"
+      REDIS_SOCKET_TIMEOUT: "3"
+      # 缓存配置
+      CACHE_DEFAULT_TTL: "300"
+      CACHE_MESSAGE_TTL: "120"
+      # 长轮询配置
+      POLL_DEFAULT_TIMEOUT: "30"
+      POLL_CHECK_INTERVAL: "1"
     volumes:
       - upload_data:/app/uploads
       - logs_data:/app/logs
@@ -66,6 +81,10 @@ services:
     container_name: bipupu-celery-worker
     environment:
       CONTAINER_ROLE: worker
+      # ========== 1C1G 轻量化配置 ==========
+      DB_POOL_SIZE: "5"
+      DB_MAX_OVERFLOW: "10"
+      REDIS_MAX_CONNECTIONS: "10"
     volumes:
       - logs_data:/app/logs
     depends_on:
@@ -82,6 +101,10 @@ services:
     container_name: bipupu-celery-beat
     environment:
       CONTAINER_ROLE: beat
+      # ========== 1C1G 轻量化配置 ==========
+      DB_POOL_SIZE: "5"
+      DB_MAX_OVERFLOW: "10"
+      REDIS_MAX_CONNECTIONS: "10"
     volumes:
       - logs_data:/app/logs
     depends_on:
@@ -92,11 +115,20 @@ services:
       backend:
         condition: service_healthy
 
-  # 4. PostgreSQL
+  # 4. PostgreSQL（1C1G 优化配置）
   db:
     image: postgres:15
     container_name: bipupu-db
     restart: on-failure:1
+    command: >
+      postgres
+      -c max_connections=20
+      -c shared_buffers=128MB
+      -c effective_cache_size=256MB
+      -c work_mem=3MB
+      -c maintenance_work_mem=16MB
+      -c checkpoint_timeout=10min
+      -c wal_buffers=4MB
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -115,11 +147,17 @@ services:
       retries: 10
       start_period: 10s
 
-  # 5. Redis
+  # 5. Redis（1C1G 优化配置）
   redis:
     image: redis:7-alpine
     container_name: bipupu-redis
     restart: on-failure:1
+    command: >
+      redis-server
+      --maxmemory 64mb
+      --maxmemory-policy allkeys-lru
+      --appendonly no
+      --save ""
     volumes:
       - redis_data:/data
     networks:
