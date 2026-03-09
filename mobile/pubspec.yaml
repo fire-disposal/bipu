@@ -14,15 +14,15 @@ dependencies:
   flutter_bloc: ^9.1.1
   go_router: ^17.0.1
   equatable: ^2.0.7
+  collection: ^1.18.0
 
   # 蓝牙与硬件通信
   flutter_blue_plus: ^2.0.2
   permission_handler: ^12.0.1
   connectivity_plus: ^7.0.0
 
-  # 音频处理与 ASR (ONNX)
-  sherpa_onnx: ^1.12.20
-  sound_stream: ^0.4.2
+  # 音频处理与 ASR
+  speech_to_text: ^7.3.0
   just_audio: ^0.10.5
   audio_session: ^0.1.6
 
@@ -51,6 +51,7 @@ dependencies:
   flutter_local_notifications: ^20.0.0
   flutter_background_service: ^5.1.0
   flutter_background_service_android: ^6.2.0
+  sherpa_onnx: ^1.12.28
 
 dev_dependencies:
   flutter_test:
