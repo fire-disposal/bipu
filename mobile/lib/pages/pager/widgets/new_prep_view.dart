@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/pager_vm.dart';
-import '../state/pager_phase.dart';
 
 /// 新架构拨号准备视图
 class NewPrepView extends StatelessWidget {
@@ -37,7 +36,10 @@ class NewPrepView extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: cs.primaryContainer,
                         borderRadius: BorderRadius.circular(6),
@@ -104,7 +106,10 @@ class _HeroVisual extends StatelessWidget {
                 height: 160,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: themeColor.withValues(alpha: 0.08), width: 1),
+                  border: Border.all(
+                    color: themeColor.withValues(alpha: 0.08),
+                    width: 1,
+                  ),
                 ),
               ),
               Container(
@@ -112,7 +117,10 @@ class _HeroVisual extends StatelessWidget {
                 height: 116,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: themeColor.withValues(alpha: 0.18), width: 1.5),
+                  border: Border.all(
+                    color: themeColor.withValues(alpha: 0.18),
+                    width: 1.5,
+                  ),
                 ),
               ),
               Container(
@@ -121,9 +129,16 @@ class _HeroVisual extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: themeColor.withValues(alpha: 0.1),
-                  border: Border.all(color: themeColor.withValues(alpha: 0.3), width: 2),
+                  border: Border.all(
+                    color: themeColor.withValues(alpha: 0.3),
+                    width: 2,
+                  ),
                 ),
-                child: Icon(Icons.phone_in_talk_rounded, size: 34, color: themeColor),
+                child: Icon(
+                  Icons.phone_in_talk_rounded,
+                  size: 34,
+                  color: themeColor,
+                ),
               ),
             ],
           ),
@@ -165,11 +180,26 @@ class _InfoCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _InfoRow(icon: Icons.keyboard_rounded, text: '接通后输入目标用户号码', theme: theme, cs: cs),
+          _InfoRow(
+            icon: Icons.keyboard_rounded,
+            text: '接通后输入目标用户号码',
+            theme: theme,
+            cs: cs,
+          ),
           const SizedBox(height: 8),
-          _InfoRow(icon: Icons.mic_rounded, text: '语音或文字录入传呼消息', theme: theme, cs: cs),
+          _InfoRow(
+            icon: Icons.mic_rounded,
+            text: '语音或文字录入传呼消息',
+            theme: theme,
+            cs: cs,
+          ),
           const SizedBox(height: 8),
-          _InfoRow(icon: Icons.send_rounded, text: '确认后一键发送，可续发多人', theme: theme, cs: cs),
+          _InfoRow(
+            icon: Icons.send_rounded,
+            text: '确认后一键发送，可续发多人',
+            theme: theme,
+            cs: cs,
+          ),
         ],
       ),
     );
@@ -181,7 +211,12 @@ class _InfoRow extends StatelessWidget {
   final String text;
   final ThemeData theme;
   final ColorScheme cs;
-  const _InfoRow({required this.icon, required this.text, required this.theme, required this.cs});
+  const _InfoRow({
+    required this.icon,
+    required this.text,
+    required this.theme,
+    required this.cs,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -205,13 +240,17 @@ class _DialButton extends StatelessWidget {
   final bool isLoading;
   final Color themeColor;
   final VoidCallback onTap;
-  const _DialButton({required this.isLoading, required this.themeColor, required this.onTap});
+  const _DialButton({
+    required this.isLoading,
+    required this.themeColor,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    
+
     return InkWell(
       onTap: isLoading ? null : onTap,
       borderRadius: BorderRadius.circular(32),
@@ -224,7 +263,9 @@ class _DialButton extends StatelessWidget {
           color: isLoading ? cs.primary : themeColor,
           boxShadow: [
             BoxShadow(
-              color: (isLoading ? cs.primary : themeColor).withValues(alpha: 0.35),
+              color: (isLoading ? cs.primary : themeColor).withValues(
+                alpha: 0.35,
+              ),
               blurRadius: 14,
               offset: const Offset(0, 5),
             ),
@@ -238,22 +279,39 @@ class _DialButton extends StatelessWidget {
                     SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
                     ),
                     const SizedBox(width: 12),
-                    Text('初始化中...', style: theme.textTheme.titleMedium?.copyWith(
-                      color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 0.8,
-                    )),
+                    Text(
+                      '初始化中...',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
                   ],
                 )
               : Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.phone_in_talk_rounded, color: Colors.white, size: 22),
+                    const Icon(
+                      Icons.phone_in_talk_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                     const SizedBox(width: 12),
-                    Text('呼叫接线员', style: theme.textTheme.titleMedium?.copyWith(
-                      color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 0.8,
-                    )),
+                    Text(
+                      '呼叫接线员',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
                   ],
                 ),
         ),

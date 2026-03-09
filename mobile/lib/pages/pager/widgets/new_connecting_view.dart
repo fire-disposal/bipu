@@ -19,6 +19,7 @@ class NewConnectingView extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(28),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const Spacer(),
               // 连接动画
@@ -33,7 +34,10 @@ class NewConnectingView extends StatelessWidget {
                       height: 120,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: themeColor.withValues(alpha: 0.2), width: 2),
+                        border: Border.all(
+                          color: themeColor.withValues(alpha: 0.2),
+                          width: 2,
+                        ),
                       ),
                       child: CircularProgressIndicator(
                         color: themeColor.withValues(alpha: 0.3),
@@ -47,7 +51,11 @@ class NewConnectingView extends StatelessWidget {
                         shape: BoxShape.circle,
                         color: themeColor.withValues(alpha: 0.15),
                       ),
-                      child: Icon(Icons.phone_in_talk_rounded, size: 36, color: themeColor),
+                      child: Icon(
+                        Icons.phone_in_talk_rounded,
+                        size: 36,
+                        color: themeColor,
+                      ),
                     ),
                   ],
                 ),
@@ -63,9 +71,9 @@ class NewConnectingView extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 '请稍候',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
               const Spacer(flex: 2),
             ],

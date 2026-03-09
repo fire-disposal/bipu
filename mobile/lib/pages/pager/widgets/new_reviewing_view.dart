@@ -21,11 +21,26 @@ class NewReviewingView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 16),
-              Text(
-                '确认消息',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const SizedBox(width: 40),
+                  Text(
+                    '确认消息',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  GestureDetector(
+                    onTap: () => _showHangupDialog(context, vm),
+                    child: Icon(
+                      Icons.call_end_rounded,
+                      size: 20,
+                      color: Colors.red.shade600,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
               _InfoChip(label: '目标号码', value: vm.targetId, cs: cs),
@@ -54,13 +69,19 @@ class NewReviewingView extends StatelessWidget {
                 height: 52,
                 child: FilledButton.icon(
                   onPressed: vm.isSending ? null : () => vm.sendMessage(),
-                  icon: vm.isSending 
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5))
+                  icon: vm.isSending
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2.5),
+                        )
                       : const Icon(Icons.send),
                   label: Text(vm.isSending ? '发送中...' : '发送'),
                   style: FilledButton.styleFrom(
                     backgroundColor: themeColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
@@ -68,6 +89,30 @@ class NewReviewingView extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showHangupDialog(BuildContext context, PagerVM vm) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('确认挂断'),
+        content: const Text('是否确定要挂断通话？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('继续通话'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              vm.hangup();
+            },
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade600),
+            child: const Text('挂断'),
+          ),
+        ],
       ),
     );
   }
@@ -91,14 +136,20 @@ class _InfoChip extends StatelessWidget {
           ),
           child: Text(
             label,
-            style: TextStyle(color: cs.onPrimaryContainer, fontWeight: FontWeight.w600, fontSize: 12),
+            style: TextStyle(
+              color: cs.onPrimaryContainer,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
             value,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
         ),
       ],

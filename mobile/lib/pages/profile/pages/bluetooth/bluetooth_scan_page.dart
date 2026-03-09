@@ -18,6 +18,7 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
   final BluetoothDeviceService _bluetoothService = BluetoothDeviceService();
   List<ScanResult> _scanResults = [];
   bool _isScanning = false;
+  bool _showAllDevices = false; // ✅ 新增：诊断模式开关
   BluetoothAdapterState _adapterState = BluetoothAdapterState.unknown;
   BluetoothDevice? _connectingDevice;
 
@@ -36,10 +37,22 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
   void _setupListeners() {
     _adapterStateSubscription = FlutterBluePlus.adapterState.listen((state) {
       _adapterState = state;
+      debugPrint('[BLE_DEBUG] 蓝牙适配器状态: $state');
       if (mounted) setState(() {});
     });
 
     _scanResultsSubscription = FlutterBluePlus.scanResults.listen((results) {
+      // ✅ DEBUG: 打印所有扫描到的设备
+      for (var result in results) {
+        final name = result.device.platformName;
+        final id = result.device.remoteId;
+        final rssi = result.rssi;
+        final isPager = _isPagerDevice(result.device);
+        debugPrint(
+          '[BLE_DEBUG] 扫描设备: 名称=$name, ID=$id, RSSI=$rssi, 是寻呼机=$isPager',
+        );
+      }
+
       results.sort((a, b) => b.rssi.compareTo(a.rssi));
       _scanResults = results;
       if (mounted) setState(() {});
@@ -47,6 +60,7 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
 
     _isScanningSubscription = FlutterBluePlus.isScanning.listen((state) {
       _isScanning = state;
+      debugPrint('[BLE_DEBUG] 扫描状态: $_isScanning');
       if (mounted) setState(() {});
     });
 
@@ -100,7 +114,10 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
   }
 
   Future<void> _startScan() async {
+    debugPrint('[BLE_DEBUG] 开始扫描...');
+
     if (_adapterState != BluetoothAdapterState.on) {
+      debugPrint('[BLE_DEBUG] 蓝牙未开启，尝试启用...');
       if (Platform.isAndroid) {
         await FlutterBluePlus.turnOn();
       } else {
@@ -114,8 +131,11 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
     }
 
     try {
+      debugPrint('[BLE_DEBUG] 开始扫描（15秒超时）...');
       await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
+      debugPrint('[BLE_DEBUG] 扫描完成');
     } catch (e) {
+      debugPrint('[BLE_DEBUG] 扫描异常: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -143,6 +163,11 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
   }
 
   List<ScanResult> get _filteredScanResults {
+    if (_showAllDevices) {
+      // ✅ 诊断模式：显示所有设备
+      return _scanResults;
+    }
+    // 正常模式：只显示寻呼机设备
     return _scanResults
         .where((result) => _isPagerDevice(result.device))
         .toList();
@@ -319,6 +344,15 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
         foregroundColor: colorScheme.onPrimaryContainer,
         elevation: 0,
         actions: [
+          // ✅ 诊断模式开关
+          Tooltip(
+            message: '切换诊断模式 (显示所有设备)',
+            child: IconButton(
+              icon: Icon(_showAllDevices ? Icons.bug_report : Icons.search),
+              onPressed: () =>
+                  setState(() => _showAllDevices = !_showAllDevices),
+            ),
+          ),
           Container(
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

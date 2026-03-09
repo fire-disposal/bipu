@@ -3,8 +3,37 @@ import 'package:provider/provider.dart';
 import '../state/pager_vm.dart';
 
 /// 新架构通话中视图
-class NewInCallView extends StatelessWidget {
+class NewInCallView extends StatefulWidget {
   const NewInCallView({super.key});
+
+  @override
+  State<NewInCallView> createState() => _NewInCallViewState();
+}
+
+class _NewInCallViewState extends State<NewInCallView> {
+  late TextEditingController _targetIdController;
+
+  @override
+  void initState() {
+    super.initState();
+    _targetIdController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _targetIdController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(NewInCallView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 监听视图刷新，如果返回到此视图且 targetId 被清空，清空输入框
+    final vm = Provider.of<PagerVM>(context, listen: false);
+    if (_targetIdController.text.isNotEmpty && vm.targetId.isEmpty) {
+      _targetIdController.clear();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +49,7 @@ class NewInCallView extends StatelessWidget {
           children: [
             // 顶部状态栏
             _buildTopBar(cs, themeColor),
-            
+
             // 接线员信息区域（可滚动）
             Expanded(
               child: SingleChildScrollView(
@@ -46,7 +75,10 @@ class NewInCallView extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 12, 16, 12),
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.12), width: 1),
+          bottom: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: 0.12),
+            width: 1,
+          ),
         ),
       ),
       child: Row(
@@ -58,14 +90,59 @@ class NewInCallView extends StatelessWidget {
               color: themeColor,
               shape: BoxShape.circle,
               boxShadow: [
-                BoxShadow(color: themeColor.withValues(alpha: 0.5), blurRadius: 6, spreadRadius: 2),
+                BoxShadow(
+                  color: themeColor.withValues(alpha: 0.5),
+                  blurRadius: 6,
+                  spreadRadius: 2,
+                ),
               ],
             ),
           ),
           const SizedBox(width: 12),
-          Text('通话中', style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w600)),
+          Text(
+            '通话中',
+            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w600),
+          ),
           const Spacer(),
-          Icon(Icons.signal_cellular_4_bar, size: 18, color: cs.onSurfaceVariant),
+          Icon(
+            Icons.signal_cellular_4_bar,
+            size: 18,
+            color: cs.onSurfaceVariant,
+          ),
+          const SizedBox(width: 16),
+          GestureDetector(
+            onTap: () => _showHangupDialog(cs),
+            child: Icon(
+              Icons.call_end_rounded,
+              size: 20,
+              color: Colors.red.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showHangupDialog(ColorScheme cs) {
+    final vm = context.read<PagerVM>();
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('确认挂断'),
+        content: const Text('是否确定要挂断通话？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('继续通话'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              vm.hangup();
+            },
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade600),
+            child: const Text('挂断'),
+          ),
         ],
       ),
     );
@@ -73,7 +150,7 @@ class NewInCallView extends StatelessWidget {
 
   Widget _buildOperatorInfo(BuildContext context, dynamic op, ColorScheme cs) {
     if (op == null) return const SizedBox.shrink();
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -85,7 +162,11 @@ class NewInCallView extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 12, offset: const Offset(0, 4)),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
               ],
             ),
             child: ClipRRect(
@@ -93,13 +174,19 @@ class NewInCallView extends StatelessWidget {
               child: Image.network(
                 op.portraitUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(color: cs.surfaceContainerHighest),
+                errorBuilder: (_, __, ___) =>
+                    Container(color: cs.surfaceContainerHighest),
               ),
             ),
           ),
           const SizedBox(height: 20),
           // 名字
-          Text(op.name, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            op.name,
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           // 台词
           Container(
@@ -111,7 +198,9 @@ class NewInCallView extends StatelessWidget {
             child: Text(
               '请输入目标用户号码',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: cs.onSurface),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: cs.onSurface),
             ),
           ),
         ],
@@ -120,13 +209,16 @@ class NewInCallView extends StatelessWidget {
   }
 
   Widget _buildInputArea(PagerVM vm, ColorScheme cs, Color themeColor) {
-    debugPrint('[NewInCallView] isConfirming=${vm.isConfirming}, targetId=${vm.targetId}');
-    
+    debugPrint(
+      '[NewInCallView] isConfirming=${vm.isConfirming}, targetId=${vm.targetId}',
+    );
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
           TextField(
+            controller: _targetIdController,
             onChanged: (v) {
               debugPrint('[NewInCallView] targetId changed: $v');
               vm.updateTargetId(v);
@@ -148,18 +240,26 @@ class NewInCallView extends StatelessWidget {
             height: 52,
             child: FilledButton.icon(
               onPressed: () {
-                debugPrint('[NewInCallView] 确认号码 clicked, isConfirming=${vm.isConfirming}, targetId=${vm.targetId}');
+                debugPrint(
+                  '[NewInCallView] 确认号码 clicked, isConfirming=${vm.isConfirming}, targetId=${vm.targetId}, inputValue=${_targetIdController.text}',
+                );
                 if (!vm.isConfirming && vm.targetId.isNotEmpty) {
                   vm.confirmTargetId();
                 }
               },
-              icon: vm.isConfirming 
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5))
+              icon: vm.isConfirming
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    )
                   : const Icon(Icons.check),
               label: Text(vm.isConfirming ? '确认中...' : '确认号码'),
               style: FilledButton.styleFrom(
                 backgroundColor: themeColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ),
