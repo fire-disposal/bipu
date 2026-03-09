@@ -31,7 +31,10 @@ class PagerVM extends ChangeNotifier {
     _instance ??= PagerVM._();
     return _instance!;
   }
-  PagerVM._();
+  PagerVM._() {
+    // 自动初始化
+    initializePrep();
+  }
 
   final VoiceService _voice = VoiceService();
   final OperatorService _operatorService = OperatorService();

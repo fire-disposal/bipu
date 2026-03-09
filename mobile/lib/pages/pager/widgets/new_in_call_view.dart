@@ -120,13 +120,17 @@ class NewInCallView extends StatelessWidget {
   }
 
   Widget _buildInputArea(PagerVM vm, ColorScheme cs, Color themeColor) {
+    debugPrint('[NewInCallView] isConfirming=${vm.isConfirming}, targetId=${vm.targetId}');
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
-          // 目标 ID 输入框
           TextField(
-            onChanged: (v) => vm.updateTargetId(v),
+            onChanged: (v) {
+              debugPrint('[NewInCallView] targetId changed: $v');
+              vm.updateTargetId(v);
+            },
             decoration: InputDecoration(
               hintText: '目标用户号码',
               prefixIcon: const Icon(Icons.person_outline),
@@ -139,14 +143,20 @@ class NewInCallView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          // 确认按钮
           SizedBox(
             width: double.infinity,
             height: 52,
             child: FilledButton.icon(
-              onPressed: vm.isConfirming ? null : () => vm.confirmTargetId(),
-              icon: const Icon(Icons.check),
-              label: const Text('确认号码'),
+              onPressed: () {
+                debugPrint('[NewInCallView] 确认号码 clicked, isConfirming=${vm.isConfirming}, targetId=${vm.targetId}');
+                if (!vm.isConfirming && vm.targetId.isNotEmpty) {
+                  vm.confirmTargetId();
+                }
+              },
+              icon: vm.isConfirming 
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5))
+                  : const Icon(Icons.check),
+              label: Text(vm.isConfirming ? '确认中...' : '确认号码'),
               style: FilledButton.styleFrom(
                 backgroundColor: themeColor,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
