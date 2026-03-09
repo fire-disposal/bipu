@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/im_service.dart' show ImService;
 import '../../../core/api/models/message_type.dart';
