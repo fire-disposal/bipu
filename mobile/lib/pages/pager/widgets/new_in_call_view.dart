@@ -26,9 +26,9 @@ class NewInCallView extends StatelessWidget {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    const Spacer(flex: 2),
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.08),
                     _buildOperatorInfo(context, op, cs),
-                    const Spacer(flex: 2),
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.08),
                     _buildInputArea(vm, cs, themeColor),
                     const SizedBox(height: 28),
                   ],
