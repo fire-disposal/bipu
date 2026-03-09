@@ -284,9 +284,6 @@ final GoRouter _router = GoRouter(
           builder: (context, state) => const SubscriptionsManagementPage(),
         ),
         GoRoute(
-          path: '/home/voice_test',
-        ),
-        GoRoute(
           path: '/home/bluetooth_message_test',
           builder: (context, state) => const BluetoothMessageTestPage(),
         ),

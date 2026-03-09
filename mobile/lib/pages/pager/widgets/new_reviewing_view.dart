@@ -22,30 +22,29 @@ class NewReviewingView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 16),
-              // 标题
               Text(
                 '确认消息',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              // 目标号码
               _InfoChip(label: '目标号码', value: vm.targetId, cs: cs),
               const SizedBox(height: 12),
-              // 消息内容
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  vm.messageContent,
-                  style: Theme.of(context).textTheme.bodyLarge,
+                constraints: BoxConstraints(maxHeight: 200),
+                child: SingleChildScrollView(
+                  child: Text(
+                    vm.messageContent,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
                 ),
               ),
               const Spacer(),
-              // 操作按钮
               OutlinedButton(
                 onPressed: () => vm.backToVoiceInput(),
                 child: const Text('重新录制'),
@@ -56,7 +55,7 @@ class NewReviewingView extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: vm.isSending ? null : () => vm.sendMessage(),
                   icon: vm.isSending 
-                      ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5))
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5))
                       : const Icon(Icons.send),
                   label: Text(vm.isSending ? '发送中...' : '发送'),
                   style: FilledButton.styleFrom(

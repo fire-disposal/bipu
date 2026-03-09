@@ -21,17 +21,20 @@ class NewInCallView extends StatelessWidget {
             // 顶部状态栏
             _buildTopBar(cs, themeColor),
             
-            const Spacer(),
-            
-            // 接线员信息
-            _buildOperatorInfo(context, op, cs),
-            
-            const Spacer(),
-            
-            // 输入区域
-            _buildInputArea(vm, cs, themeColor),
-            
-            const SizedBox(height: 28),
+            // 接线员信息区域（可滚动）
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    const Spacer(flex: 2),
+                    _buildOperatorInfo(context, op, cs),
+                    const Spacer(flex: 2),
+                    _buildInputArea(vm, cs, themeColor),
+                    const SizedBox(height: 28),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
