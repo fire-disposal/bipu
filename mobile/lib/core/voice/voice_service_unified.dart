@@ -4,7 +4,7 @@ import 'asr_engine.dart';
 import 'audio_player.dart';
 import '../utils/logger.dart';
 
-/// 统一语音服务：TTS 顺序播放 + ASR 录音识别
+/// 统一语音服务：TTS顺序播放 + ASR录音识别
 ///
 /// 设计原则：
 /// - TTS 顺序执行：每次 speak() 等待上次播放完成后再执行
@@ -38,12 +38,6 @@ class VoiceService {
 
   // ============ 初始化 ============
 
-  /// 初始化语音服务（TTS + ASR + AudioPlayer）
-  /// 
-  /// 🔑 关键修复：
-  /// - 添加超时保护，防止模型加载卡死
-  /// - 支持重复调用（幂等性）
-  /// - 失败后可重试
   Future<void> init() async {
     if (_initialized) return;
     if (_initCompleter != null) return _initCompleter!.future;
@@ -51,22 +45,8 @@ class VoiceService {
     _initCompleter = Completer<void>();
     try {
       logger.i('VoiceService: 初始化...');
-      
-      // 🔑 添加超时保护：模型加载最多 60 秒
-      await Future.wait([
-        _tts.init().timeout(
-          const Duration(seconds: 60),
-          onTimeout: () => throw TimeoutException('TTS 模型加载超时'),
-        ),
-        _asr.init().timeout(
-          const Duration(seconds: 60),
-          onTimeout: () => throw TimeoutException('ASR 模型加载超时'),
-        ),
-      ]).timeout(
-        const Duration(seconds: 90),
-        onTimeout: () => throw TimeoutException('语音服务初始化总超时'),
-      );
-      
+      // TTS 与 ASR 的模型文件完全独立（tts/ vs asr/），并行初始化可节约 40~50% 时间
+      await Future.wait([_tts.init(), _asr.init()]);
       await _player.init();
       _initialized = true;
       _initCompleter!.complete();
@@ -75,37 +55,17 @@ class VoiceService {
       logger.e('VoiceService: 初始化失败', error: e, stackTrace: st);
       _initCompleter!.completeError(e, st);
       _initCompleter = null;
-      _initialized = false; // 失败后允许重试
       rethrow;
     }
   }
-
-  /// 检查服务是否已初始化并可安全使用
-  bool get isReady => _initialized && _initCompleter != null && _initCompleter!.isCompleted;
 
   // ============ TTS API ============
 
   /// 播放 TTS 语音，顺序执行，await 返回表示播放完毕
   ///
   /// 多次并发调用时按顺序串行执行，不会互相覆盖。
-  /// 
-  /// 🔑 关键修复：
-  /// - 使用前检查初始化状态
-  /// - 添加超时保护
   Future<void> speak(String text, {int sid = 0, double speed = 1.0}) async {
-    // 🔑 如果未初始化，先初始化
-    if (!_initialized) {
-      logger.i('VoiceService.speak: 检测到未初始化，自动初始化');
-      try {
-        await init().timeout(
-          const Duration(seconds: 90),
-          onTimeout: () => throw TimeoutException('TTS 初始化超时'),
-        );
-      } catch (e) {
-        logger.e('VoiceService.speak: 初始化失败', error: e);
-        return; // 直接返回，不执行后续逻辑
-      }
-    }
+    if (!_initialized) await init();
 
     // ✅ 安全联锁：TTS 播放前必须确保 ASR 已停止，防止麦克风拾入 TTS 音频造成回路
     if (_isAudioRecording) {
@@ -126,7 +86,7 @@ class VoiceService {
 
     _speakDone = Completer<void>();
     try {
-      logger.i('VoiceService.speak: 生成 TTS "$text" sid=$sid spd=$speed');
+      logger.i('VoiceService.speak: 生成TTS "$text" sid=$sid spd=$speed');
       final pcmBytes = await _tts.generate(
         text: text,
         sid: sid,
@@ -134,7 +94,7 @@ class VoiceService {
         timeout: const Duration(seconds: 30),
       );
       if (pcmBytes == null) {
-        logger.w('VoiceService.speak: TTS 生成失败 "$text"');
+        logger.w('VoiceService.speak: TTS生成失败 "$text"');
         return;
       }
 
@@ -168,18 +128,7 @@ class VoiceService {
   ///
   /// ✅ 安全联锁：录音前自动停止正在播放的 TTS，防止接线员声音被误录入。
   Future<void> startRecording() async {
-    if (!_initialized) {
-      logger.i('VoiceService.startRecording: 检测到未初始化，自动初始化');
-      try {
-        await init().timeout(
-          const Duration(seconds: 90),
-          onTimeout: () => throw TimeoutException('ASR 初始化超时'),
-        );
-      } catch (e) {
-        logger.e('VoiceService.startRecording: 初始化失败', error: e);
-        return;
-      }
-    }
+    if (!_initialized) await init();
 
     // 若 TTS 正在播放，先中断它再录音
     if (!_speakDone.isCompleted) {

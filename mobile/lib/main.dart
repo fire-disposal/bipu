@@ -43,7 +43,6 @@ import 'pages/auth/login_page.dart';
 import 'pages/auth/register_page.dart';
 import 'pages/profile/pages/bluetooth/bluetooth_scan_page.dart';
 import 'pages/profile/pages/bluetooth/device_detail_page.dart';
-import 'pages/home/pages/quick_actions/voice_test_page.dart';
 import 'pages/home/home_page.dart';
 import 'pages/home/pages/bluetooth_message_test.dart';
 import 'core/voice/voice_service_unified.dart'; // 预热语音模型
@@ -286,7 +285,6 @@ final GoRouter _router = GoRouter(
         ),
         GoRoute(
           path: '/home/voice_test',
-          builder: (context, state) => const VoiceTestPage(),
         ),
         GoRoute(
           path: '/home/bluetooth_message_test',
