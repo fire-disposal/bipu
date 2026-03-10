@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/state/app_state_management.dart';
+import '../pager/state/pager_vm.dart';
+import '../pager/state/pager_phase.dart';
 import 'enhanced_bottom_navigation.dart';
 
 /// 新架构主布局 - 使用 PagerVM
@@ -52,10 +54,20 @@ class _MainLayoutState extends State<MainLayout> {
     }
   }
 
-  /// 长按传呼按钮：跳转到 pager 页面并初始化
-  void _onPagerLongPressed(BuildContext context) {
+  /// 长按传呼按钮：跳转到 pager 页面并直接开始拨号
+  Future<void> _onPagerLongPressed(BuildContext context) async {
+    // 先跳转到 pager 页面
     if (!GoRouterState.of(context).uri.path.startsWith('/pager')) {
       context.go('/pager');
+    }
+
+    // 延迟一帧后开始拨号（确保页面已渲染）
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    // 获取 PagerVM 单例并开始拨号
+    final pagerVm = PagerVM.instance;
+    if (pagerVm.phase == PagerPhase.prep) {
+      await pagerVm.startDialing();
     }
   }
 

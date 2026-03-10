@@ -5,6 +5,7 @@ import '../../../core/services/im_service.dart' show ImService;
 import '../../../core/api/models/message_type.dart';
 import '../models/operator_model.dart';
 import '../services/operator_service.dart';
+import '../services/operator_voice.dart';
 import '../../../core/voice/voice_service.dart';
 import 'pager_phase.dart';
 
@@ -39,6 +40,9 @@ class PagerVM extends ChangeNotifier {
   final VoiceService _voice = VoiceService();
   final OperatorService _operatorService = OperatorService();
 
+  // 台词播放器（接线员 + 后端在 _selectRandomOperator 后初始化）
+  late OperatorVoice _operatorVoice;
+
   // ASR 流管理
   StreamSubscription<String>? _asrSubscription;
 
@@ -52,6 +56,10 @@ class PagerVM extends ChangeNotifier {
   bool _isSending = false;
   bool _isConfirming = false;
   bool _isRecording = false;
+  String _currentDialogue = '';
+
+  // 本次录音的振幅包络（随消息一起发送）
+  List<int>? _capturedWaveform;
 
   // 通话记录
   final List<SendRecord> _sentHistory = [];
@@ -66,6 +74,7 @@ class PagerVM extends ChangeNotifier {
   bool get isSending => _isSending;
   bool get isConfirming => _isConfirming;
   bool get isRecording => _isRecording;
+  String get currentDialogue => _currentDialogue;
   List<SendRecord> get sentHistory => List.unmodifiable(_sentHistory);
   OperatorService get operatorService => _operatorService;
 
@@ -76,6 +85,9 @@ class PagerVM extends ChangeNotifier {
   /// 初始化拨号准备
   Future<void> initializePrep() async {
     try {
+      // 初始化语音服务（TTS/ASR）
+      await _voice.init();
+
       await _operatorService.init();
       _selectRandomOperator();
       _phase = PagerPhase.prep;
@@ -87,11 +99,16 @@ class PagerVM extends ChangeNotifier {
 
   void _selectRandomOperator() {
     _operator = _operatorService.getRandomOperator();
+    _operatorVoice = OperatorVoice(
+      operator: _operator!,
+      backend: TtsVoiceBackend(_voice),
+    );
     debugPrint('[PagerVM] 选择接线员 - ${_operator!.name}');
   }
 
   void selectOperator(OperatorPersonality op) {
     _operator = op;
+    _operatorVoice.setOperator(op);
     notifyListeners();
   }
 
@@ -122,17 +139,13 @@ class PagerVM extends ChangeNotifier {
     if (_phase != PagerPhase.inCall || _operator == null) return;
 
     // ① 问候语
-    final greeting = _operator!.dialogues.getGreeting();
-    await _voice.speak(greeting);
+    await _operatorVoice.say(OperatorLine.greeting, onText: _updateDialogue);
 
     if (_phase != PagerPhase.inCall) return;
-
-    // 短暂停顿
     await Future.delayed(const Duration(milliseconds: 400));
 
     // ② 询问目标 ID
-    final askTarget = _operator!.dialogues.getAskTarget();
-    await _voice.speak(askTarget);
+    await _operatorVoice.say(OperatorLine.askTarget, onText: _updateDialogue);
 
     await Future.delayed(const Duration(milliseconds: 400));
   }
@@ -163,34 +176,47 @@ class PagerVM extends ChangeNotifier {
     _isConfirming = true;
     notifyListeners();
 
+    final targetSnapshot = _targetId;
+
     try {
-      // 播报确认台词
-      final confirmText = _operator!.dialogues.getConfirmId(_targetId);
-      await _voice.speak(confirmText);
+      bool userExists = false;
+      final apiCallFuture = () async {
+        try {
+          await ApiClient.instance.api.users.getApiUsersUsersBipupuId(
+            bipupuId: targetSnapshot,
+          );
+          userExists = true;
+        } catch (_) {
+          userExists = false;
+        }
+      }();
+
+      // TTS + API 并行：onText 在播放前同步回调，UI 立即更新
+      await Future.wait([
+        _operatorVoice.say(
+          OperatorLine.confirmId,
+          param: targetSnapshot,
+          onText: _updateDialogue,
+        ),
+        apiCallFuture,
+      ]);
 
       if (_phase != PagerPhase.inCall) return;
-      await Future.delayed(const Duration(milliseconds: 300));
 
-      // 检查用户是否存在
-      try {
-        await ApiClient.instance.api.users.getApiUsersUsersBipupuId(
-          bipupuId: _targetId,
-        );
+      if (userExists) {
         debugPrint('[PagerVM] 目标用户存在');
-
-        // 成功 → 进入消息录入
-        final askMsg = _operator!.dialogues.getRequestMessage();
-        await _voice.speak(askMsg);
-
-        await Future.delayed(const Duration(milliseconds: 300));
-      } catch (e) {
+        await _operatorVoice.say(
+          OperatorLine.requestMessage,
+          onText: _updateDialogue,
+        );
+      } else {
         debugPrint('[PagerVM WARN] 目标用户不存在');
-
-        final notFound = _operator!.dialogues.getUserNotFound();
-        await _voice.speak(notFound);
+        await _operatorVoice.say(
+          OperatorLine.userNotFound,
+          onText: _updateDialogue,
+        );
 
         if (_phase != PagerPhase.inCall) return;
-        await Future.delayed(const Duration(milliseconds: 300));
 
         _errorMessage = '该用户不存在，请重新输入 ID';
         _targetId = '';
@@ -247,6 +273,11 @@ class PagerVM extends ChangeNotifier {
         onDone: () {
           if (_isRecording && resultReceived) {
             _isRecording = false;
+            // 录音流结束后立即取回振幅包络
+            _capturedWaveform = _voice.lastWaveform;
+            debugPrint(
+              '[PagerVM] 捕获 waveform：${_capturedWaveform?.length ?? 0} 点',
+            );
             _phase = PagerPhase.reviewing;
             notifyListeners();
           }
@@ -293,6 +324,7 @@ class PagerVM extends ChangeNotifier {
     _messageContent = '';
     _asrTranscript = '';
     _errorMessage = null;
+    _capturedWaveform = null;
     _phase = PagerPhase.inCall;
     notifyListeners();
   }
@@ -334,6 +366,7 @@ class PagerVM extends ChangeNotifier {
         receiverId: targetIdSnapshot,
         content: content,
         messageType: MessageType.voice,
+        waveform: _capturedWaveform,
       );
 
       // 网络请求后，重新检查状态
@@ -354,22 +387,27 @@ class PagerVM extends ChangeNotifier {
         );
 
         // 成功提示（使用快照）
-        final successText = operatorSnapshot.dialogues.getSuccessMessage();
-        await _voice.speak(successText);
+        await _operatorVoice.say(
+          OperatorLine.successMessage,
+          onText: _updateDialogue,
+        );
 
         // 再次检查状态
         if (_phase != PagerPhase.reviewing) return;
         await Future.delayed(const Duration(milliseconds: 300));
 
         // 询问是否继续
-        final askContinue = operatorSnapshot.dialogues.getAskContinue();
-        await _voice.speak(askContinue);
+        await _operatorVoice.say(
+          OperatorLine.askContinue,
+          onText: _updateDialogue,
+        );
 
         // 最后检查才更新状态
         if (_phase == PagerPhase.reviewing) {
           await _operatorService.unlockOperator(operatorSnapshot.id);
           _targetId = '';
           _messageContent = '';
+          _capturedWaveform = null;
           _isSending = false;
           notifyListeners();
         } else {
@@ -405,8 +443,7 @@ class PagerVM extends ChangeNotifier {
     notifyListeners();
 
     // 播报询问下一个目标
-    final askTarget = _operator!.dialogues.getAskTarget();
-    await _voice.speak(askTarget);
+    await _operatorVoice.say(OperatorLine.askTarget, onText: _updateDialogue);
 
     await Future.delayed(const Duration(milliseconds: 300));
   }
@@ -429,6 +466,8 @@ class PagerVM extends ChangeNotifier {
     _messageContent = '';
     _asrTranscript = '';
     _errorMessage = null;
+    _currentDialogue = '';
+    _capturedWaveform = null;
     _isSending = false;
     _isConfirming = false;
     _isRecording = false;
@@ -441,6 +480,12 @@ class PagerVM extends ChangeNotifier {
   void _error(String message) {
     debugPrint('[PagerVM ERROR] 错误：$message');
     _errorMessage = message;
+    notifyListeners();
+  }
+
+  /// 更新 UI 台词文字（用作 OperatorVoice.say 的 onText 回调）
+  void _updateDialogue(String text) {
+    _currentDialogue = text;
     notifyListeners();
   }
 

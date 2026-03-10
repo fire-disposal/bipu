@@ -27,7 +27,7 @@ class AboutPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '关于 Bipupu',
+                      'about_bipupu_title'.tr(),
                       style: theme.textTheme.headlineSmall?.copyWith(
                         color: colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
@@ -35,15 +35,15 @@ class AboutPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Bipupu 是一个现代化的寻呼机应用程序，将传统的寻呼机体验与现代移动技术相结合。',
+                      'about_bipupu_description'.tr(),
                       style: theme.textTheme.bodyLarge?.copyWith(
                         color: colorScheme.onSurface.withValues(alpha: 0.8),
                       ),
                     ),
                     const SizedBox(height: 24),
-                    _buildInfoRow(context, '版本', '1.0.0'),
-                    _buildInfoRow(context, '开发者', 'Bipupu Team'),
-                    _buildInfoRow(context, '发布日期', '2024年'),
+                    _buildInfoRow(context, 'version'.tr(), '1.0.1'),
+                    _buildInfoRow(context, 'developer'.tr(), 'Bipupu Team'),
+                    _buildInfoRow(context, 'release_date'.tr(), '2026'),
                   ],
                 ),
               ),
@@ -56,17 +56,33 @@ class AboutPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '功能特色',
+                      'features'.tr(),
                       style: theme.textTheme.titleLarge?.copyWith(
                         color: colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 12),
-                    _buildFeatureItem(context, '蓝牙连接', '支持蓝牙寻呼机设备连接'),
-                    _buildFeatureItem(context, '消息管理', '智能消息分类和管理'),
-                    _buildFeatureItem(context, '语音功能', '支持语音消息和识别'),
-                    _buildFeatureItem(context, '多语言', '支持中英文切换'),
+                    _buildFeatureItem(
+                      context,
+                      'feature_bluetooth'.tr(),
+                      'feature_bluetooth_desc'.tr(),
+                    ),
+                    _buildFeatureItem(
+                      context,
+                      'feature_messages'.tr(),
+                      'feature_messages_desc'.tr(),
+                    ),
+                    _buildFeatureItem(
+                      context,
+                      'feature_voice'.tr(),
+                      'feature_voice_desc'.tr(),
+                    ),
+                    _buildFeatureItem(
+                      context,
+                      'feature_multilang'.tr(),
+                      'feature_multilang_desc'.tr(),
+                    ),
                   ],
                 ),
               ),

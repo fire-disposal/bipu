@@ -9,6 +9,19 @@ class NewOperatorGalleryView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 使用 ChangeNotifierProvider.value 提供 PagerVM.instance
+    return ChangeNotifierProvider.value(
+      value: PagerVM.instance,
+      child: const _GalleryContent(),
+    );
+  }
+}
+
+class _GalleryContent extends StatelessWidget {
+  const _GalleryContent();
+
+  @override
+  Widget build(BuildContext context) {
     final vm = context.watch<PagerVM>();
     final cs = Theme.of(context).colorScheme;
     final theme = Theme.of(context);

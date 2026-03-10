@@ -73,6 +73,12 @@ flutter:
     - assets/models/tts/
     - assets/models/asr/
     - assets/icon/
+    - assets/voices/
+    - assets/voices/op_001/
+    - assets/voices/op_002/
+    - assets/voices/op_003/
+    - assets/voices/op_004/
+    - assets/voices/op_005/
 
 flutter_launcher_icons:
   android: true

@@ -63,10 +63,7 @@ class UserAvatar extends StatelessWidget {
     this.radius = 20,
     this.backgroundColor,
     this.foregroundColor,
-  }) : assert(
-         bipupuId != null || avatarUrl != null || displayName != null,
-         'At least one of bipupuId, avatarUrl, or displayName must be provided',
-       );
+  });
 
   /// 解析最终完整的头像 URL
   String? _resolveUrl() {

@@ -222,6 +222,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 children: [
                   UserAvatar(
                     avatarUrl: _avatarUrl,
+                    displayName: _nicknameController.text.isNotEmpty
+                        ? _nicknameController.text
+                        : '?',
                     radius: 50,
                     backgroundColor: Theme.of(
                       context,

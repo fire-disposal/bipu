@@ -21,7 +21,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
   Widget _buildUserAvatar({double radius = 40}) {
     return UserAvatar(
       avatarUrl: _user?.avatarUrl,
-      displayName: _user?.nickname ?? _user?.username,
+      displayName: _user?.nickname ?? _user?.username ?? '?',
       radius: radius,
       backgroundColor: Colors.grey.withValues(alpha: 0.3),
     );

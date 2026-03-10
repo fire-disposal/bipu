@@ -56,7 +56,7 @@ class _NewInCallViewState extends State<NewInCallView> {
                 child: Column(
                   children: [
                     SizedBox(height: MediaQuery.of(context).size.height * 0.08),
-                    _buildOperatorInfo(context, op, cs),
+                    _buildOperatorInfo(context, op, cs, vm.currentDialogue),
                     SizedBox(height: MediaQuery.of(context).size.height * 0.08),
                     _buildInputArea(vm, cs, themeColor),
                     const SizedBox(height: 28),
@@ -148,7 +148,12 @@ class _NewInCallViewState extends State<NewInCallView> {
     );
   }
 
-  Widget _buildOperatorInfo(BuildContext context, dynamic op, ColorScheme cs) {
+  Widget _buildOperatorInfo(
+    BuildContext context,
+    dynamic op,
+    ColorScheme cs,
+    String currentDialogue,
+  ) {
     if (op == null) return const SizedBox.shrink();
 
     return Padding(
@@ -188,7 +193,7 @@ class _NewInCallViewState extends State<NewInCallView> {
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          // 台词
+          // 台词气泡
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -196,7 +201,7 @@ class _NewInCallViewState extends State<NewInCallView> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              '请输入目标用户号码',
+              currentDialogue.isNotEmpty ? currentDialogue : '请输入目标用户号码',
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,

@@ -26,6 +26,10 @@ class VoiceService {
   bool _initialized = false;
   bool _isListening = false;
 
+  // 振幅包络采集
+  final List<double> _amplitudeSamples = [];
+  List<int>? _lastWaveform;
+
   // 音频播放器
   final AudioPlayer _player = AudioPlayer();
   bool _isSpeaking = false;
@@ -33,6 +37,9 @@ class VoiceService {
   bool get isReady => _initialized;
   bool get isSpeaking => _isSpeaking;
   bool get isListening => _isListening;
+
+  /// 最近一次录音的振幅包络（1-255，最多128点）
+  List<int>? get lastWaveform => _lastWaveform;
 
   /// 初始化语音服务（应用启动时调用一次）
   Future<void> init() async {
@@ -128,6 +135,8 @@ class VoiceService {
     if (!_initialized) await init();
 
     _isListening = true;
+    _amplitudeSamples.clear();
+    _lastWaveform = null;
     final stopWatch = Stopwatch()..start();
     final effectiveTimeout = timeout ?? const Duration(seconds: 30);
 
@@ -137,6 +146,11 @@ class VoiceService {
           if (result.finalResult && result.recognizedWords.isNotEmpty) {
             _asrController.add(result.recognizedWords);
           }
+        },
+        onSoundLevelChange: (level) {
+          // speech_to_text 返回 dB 值，Android 约 0~12，iOS 约 -160~0
+          // 统一转为线性能量后入队
+          _amplitudeSamples.add(level);
         },
         localeId: 'zh-CN',
         listenFor: effectiveTimeout,
@@ -156,6 +170,11 @@ class VoiceService {
     } finally {
       _isListening = false;
       stopWatch.stop();
+      // 录音结束后计算振幅包络
+      _lastWaveform = _computeWaveform(_amplitudeSamples);
+      debugPrint(
+        '[Voice] waveform 采样点：${_amplitudeSamples.length} → ${_lastWaveform?.length ?? 0} 点',
+      );
     }
   }
 
@@ -170,6 +189,52 @@ class VoiceService {
     } finally {
       _isListening = false;
     }
+  }
+
+  /// 将原始振幅采样归一化为 1-255 的整数包络（低保真，最多 128 点）
+  ///
+  /// - 平均分桶降采样到 ≤128 点
+  /// - Android soundLevel 为正 dB (0~12)；iOS 为负 dB (-160~0)；统一转线性后归一
+  List<int> _computeWaveform(List<double> samples) {
+    if (samples.isEmpty) return [];
+
+    // 将 dB 转线性能量（负值平台补偿）
+    final linear = samples.map((db) {
+      // 如果都是负值（iOS），偏移到正值域
+      final adjusted = db < 0 ? db + 160.0 : db;
+      return adjusted.clamp(0.0, 200.0);
+    }).toList();
+
+    // 平均分桶降采样到最多 128 点
+    const maxPoints = 128;
+    final List<double> downsampled;
+    if (linear.length <= maxPoints) {
+      downsampled = List.of(linear);
+    } else {
+      downsampled = [];
+      final bucketSize = linear.length / maxPoints;
+      for (int i = 0; i < maxPoints; i++) {
+        final start = (i * bucketSize).floor();
+        final end = ((i + 1) * bucketSize).ceil().clamp(0, linear.length);
+        final bucket = linear.sublist(start, end);
+        downsampled.add(bucket.reduce((a, b) => a + b) / bucket.length);
+      }
+    }
+
+    // 归一化到 1-255
+    final maxVal = downsampled.reduce((a, b) => a > b ? a : b);
+    final minVal = downsampled.reduce((a, b) => a < b ? a : b);
+    final range = maxVal - minVal;
+
+    if (range < 0.01) {
+      // 全静音，返回低水位平坦值
+      return List.filled(downsampled.length, 8);
+    }
+
+    return downsampled.map((v) {
+      final norm = (v - minVal) / range; // 0.0~1.0
+      return (norm * 254 + 1).round().clamp(1, 255);
+    }).toList();
   }
 
   /// PCM 转 WAV（16-bit LE, 单声道）

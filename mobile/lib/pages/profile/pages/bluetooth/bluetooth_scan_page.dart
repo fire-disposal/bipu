@@ -41,17 +41,6 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
     });
 
     _scanResultsSubscription = FlutterBluePlus.scanResults.listen((results) {
-      // DEBUG: 打印所有扫描到的设备
-      for (var result in results) {
-        final name = result.device.platformName;
-        final id = result.device.remoteId;
-        final rssi = result.rssi;
-        final isBipupu = _isBipupuDevice(result.device);
-        debugPrint(
-          '[BLE_DEBUG] 扫描设备: 名称=$name, ID=$id, RSSI=$rssi, 是Bipupu=$isBipupu',
-        );
-      }
-
       results.sort((a, b) => b.rssi.compareTo(a.rssi));
       _scanResults = results;
       if (mounted) setState(() {});

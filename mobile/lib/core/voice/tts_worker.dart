@@ -6,6 +6,7 @@ import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show ServicesBinding;
 
 /// 简化版 TTS Worker - 使用 Isolate 后台生成
 class TtsWorker {
@@ -20,21 +21,21 @@ class TtsWorker {
     if (_ready) return;
 
     debugPrint('[TTS] TtsWorker: 启动 Isolate...');
-    
+
     final setupPort = ReceivePort();
-    _isolate = await Isolate.spawn(
-      _entryPoint,
+    final token = RootIsolateToken.instance!;
+    _isolate = await Isolate.spawn(_entryPoint, (
       setupPort.sendPort,
-      debugName: 'TTS-Worker',
-    );
-    
+      token,
+    ), debugName: 'TTS-Worker');
+
     _sendPort = await setupPort.first as SendPort;
     setupPort.close();
 
     // 加载模型
     final initPort = ReceivePort();
     _sendPort!.send({'type': 'init', 'reply': initPort.sendPort});
-    
+
     final result = await initPort.first;
     initPort.close();
 
@@ -47,7 +48,11 @@ class TtsWorker {
   }
 
   /// 生成 TTS 音频
-  Future<Uint8List?> generate(String text, {int sid = 0, double speed = 1.0}) async {
+  Future<Uint8List?> generate(
+    String text, {
+    int sid = 0,
+    double speed = 1.0,
+  }) async {
     if (!_ready) await init();
 
     final replyPort = ReceivePort();
@@ -90,15 +95,21 @@ class TtsWorker {
 // Isolate 入口
 // ─────────────────────────────────────────────────────────────────────────────
 
-void _entryPoint(SendPort mainPort) {
+void _entryPoint((SendPort, RootIsolateToken) args) {
+  final mainPort = args.$1;
+  final token = args.$2;
+
+  // 初始化 BackgroundIsolateBinaryMessenger 以支持 rootBundle
+  BackgroundIsolateBinaryMessenger.ensureInitialized(token);
+
   final port = ReceivePort();
   mainPort.send(port.sendPort);
 
   sherpa.OfflineTts? tts;
 
-  port.listen((msg) async {
+  port.listen((msg) {
     if (msg is! Map) return;
-    
+
     final type = msg['type'] as String?;
     final reply = msg['reply'] as SendPort?;
 
@@ -106,25 +117,27 @@ void _entryPoint(SendPort mainPort) {
       case 'init':
         try {
           sherpa.initBindings();
-          
-          // 从 assets 复制模型
-          final dir = await _getModelsDir();
+
+          // 从 assets 复制模型（同步）
+          final dir = _getModelsDirSync();
           final modelPath = '$dir/vits-zh-hf-fanchen-C.onnx';
           final tokensPath = '$dir/tokens.txt';
           final lexiconPath = '$dir/lexicon.txt';
-          
-          tts = sherpa.OfflineTts(sherpa.OfflineTtsConfig(
-            model: sherpa.OfflineTtsModelConfig(
-              vits: sherpa.OfflineTtsVitsModelConfig(
-                model: modelPath,
-                lexicon: lexiconPath,
-                tokens: tokensPath,
+
+          tts = sherpa.OfflineTts(
+            sherpa.OfflineTtsConfig(
+              model: sherpa.OfflineTtsModelConfig(
+                vits: sherpa.OfflineTtsVitsModelConfig(
+                  model: modelPath,
+                  lexicon: lexiconPath,
+                  tokens: tokensPath,
+                ),
+                numThreads: 4,
+                debug: false,
               ),
-              numThreads: 1,
-              debug: false,
             ),
-          ));
-          
+          );
+
           reply?.send({'success': true});
         } catch (e) {
           reply?.send({'success': false, 'error': e.toString()});
@@ -136,12 +149,12 @@ void _entryPoint(SendPort mainPort) {
           reply?.send(null);
           return;
         }
-        
+
         try {
           final text = msg['text'] as String;
           final sid = msg['sid'] as int;
           final speed = msg['speed'] as double;
-          
+
           final audio = tts!.generate(text: text, sid: sid, speed: speed);
           reply!.send(_floatToPcm(audio.samples));
         } catch (e) {
@@ -162,23 +175,37 @@ void _entryPoint(SendPort mainPort) {
 Future<String> _getModelsDir() async {
   final dir = await getApplicationSupportDirectory();
   final modelsDir = Directory('${dir.path}/models/tts');
-  
+
   if (!await modelsDir.exists()) {
     await modelsDir.create(recursive: true);
-    
+
     // 复制模型文件
-    await _copyAsset('assets/models/tts/vits-zh-hf-fanchen-C.onnx', modelsDir.path);
+    await _copyAsset(
+      'assets/models/tts/vits-zh-hf-fanchen-C.onnx',
+      modelsDir.path,
+    );
     await _copyAsset('assets/models/tts/tokens.txt', modelsDir.path);
     await _copyAsset('assets/models/tts/lexicon.txt', modelsDir.path);
   }
-  
+
+  return modelsDir.path;
+}
+
+String _getModelsDirSync() {
+  final appDir = Directory.systemTemp.path; // 使用系统临时目录作为fallback
+  final modelsDir = Directory('$appDir/bipupu/models/tts');
+
+  if (!modelsDir.existsSync()) {
+    modelsDir.createSync(recursive: true);
+  }
+
   return modelsDir.path;
 }
 
 Future<void> _copyAsset(String assetPath, String destDir) async {
   final fileName = assetPath.split('/').last;
   final dest = File('$destDir/$fileName');
-  
+
   if (!await dest.exists()) {
     final data = await rootBundle.load(assetPath);
     await dest.create(recursive: true);

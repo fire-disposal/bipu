@@ -24,7 +24,6 @@ class EnhancedBottomNavigation extends StatefulWidget {
 }
 
 class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation> {
-  late List<NavItem> _navItems;
   late ImService _imService;
 
   @override
@@ -33,8 +32,21 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation> {
 
     _imService = ImService();
     _imService.addListener(_onImServiceChanged);
+  }
 
-    _navItems = [
+  @override
+  void dispose() {
+    _imService.removeListener(_onImServiceChanged);
+    super.dispose();
+  }
+
+  void _onImServiceChanged() {
+    setState(() {}); // 触发重建以更新 badge
+  }
+
+  /// 构建导航项 - 每次 build 时重新生成以支持 i18n 动态切换
+  List<NavItem> _buildNavItems() {
+    return [
       NavItem(
         index: 0,
         icon: Icons.home_outlined,
@@ -69,20 +81,9 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation> {
   }
 
   @override
-  void dispose() {
-    _imService.removeListener(_onImServiceChanged);
-    super.dispose();
-  }
-
-  void _onImServiceChanged() {
-    setState(() {
-      _navItems[2] = _navItems[2].copyWith(badge: _imService.unreadCount);
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final navItems = _buildNavItems();
     final colorScheme = theme.colorScheme;
 
     return RepaintBoundary(
@@ -111,7 +112,7 @@ class _EnhancedBottomNavigationState extends State<EnhancedBottomNavigation> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: _navItems.map((item) {
+              children: navItems.map((item) {
                 return _buildNavItem(context, item, colorScheme);
               }).toList(),
             ),

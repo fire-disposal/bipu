@@ -188,9 +188,11 @@ class _SecurityPageState extends State<SecurityPage> {
     } catch (e) {
       if (context.mounted) Navigator.pop(context);
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('更新失败: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('update_failed_message'.tr(args: [e.toString()])),
+          ),
+        );
       }
     }
   }
