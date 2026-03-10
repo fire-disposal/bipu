@@ -214,3 +214,6 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 docker-compose.override.yml
+
+# TTS tools (contains sensitive tokens)
+tools/tts.py
