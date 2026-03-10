@@ -1,3 +1,18 @@
+/// 语音模式编译时配置
+///
+/// 在编译前修改此常量，以彻底切换语音模式：
+/// - `true`: 仅使用预录制语音（TTS 代码完全禁用）
+/// - `false`: 使用 Fallback 模式（优先预录制，无则 TTS）
+///
+/// ✅ 语音包已合成完毕，强制启用预录制模式，彻底关闭本地 TTS 引擎
+const bool kUsePrerecordedVoiceOnly = true;
+
+/// 是否启用语音资源检查
+///
+/// 如果为 true，在初始化时会检查 manifest.json 是否存在
+/// 如果为 false，跳过检查直接使用 TTS
+const bool kCheckVoiceResources = true;
+
 /// 语音服务配置文件：集中管理所有模型文件名和路径
 class VoiceConfig {
   // ============ ASR 模型配置 ============

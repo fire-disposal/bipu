@@ -3,20 +3,22 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
-import 'tts_worker.dart';
+// ✅ 预录制模式已启用，本地 TTS 引擎已注释关闭
+// import 'tts_worker.dart';
+// import 'voice_config.dart' show kUsePrerecordedVoiceOnly;
 
 /// 简化版语音服务 - 单例设计，仅供 Pager 页面使用
 ///
 /// 职责：
-/// - TTS: 播放文本（使用后台 Isolate 生成 PCM）
+/// - TTS: 已注释（预录制模式启用，本地 TTS 引擎彻底关闭）
 /// - ASR: 录音识别（使用系统 speech_to_text）
 class VoiceService {
   static final VoiceService _instance = VoiceService._();
   factory VoiceService() => _instance;
   VoiceService._();
 
-  // TTS
-  final TtsWorker _tts = TtsWorker();
+  // TTS Worker 已关闭（预录制模式）
+  // final TtsWorker _tts = TtsWorker();
 
   // ASR
   final stt.SpeechToText _asr = stt.SpeechToText();
@@ -48,8 +50,11 @@ class VoiceService {
     debugPrint('[Voice] 初始化...');
 
     try {
-      // 初始化 TTS Worker
-      await _tts.init();
+      // ✅ 预录制模式：本地 TTS 引擎已注释，节省资源
+      // if (!kUsePrerecordedVoiceOnly) {
+      //   await _tts.init();
+      // }
+      debugPrint('[Voice] 预录制模式：TTS 引擎已禁用，仅初始化 ASR');
 
       // 初始化系统 ASR
       final available = await _asr.initialize(
@@ -74,31 +79,23 @@ class VoiceService {
     }
   }
 
-  /// TTS: 播放文本并等待完成
+  /// TTS: 已禁用（预录制模式）
+  ///
+  /// 台词播放由 [PrerecordedVoiceBackend] 直接播放 mp3，此方法为空桩保留接口兼容性。
   Future<void> speak(String text, {int sid = 0, double speed = 1.0}) async {
-    if (!_initialized) await init();
-
-    try {
-      _isSpeaking = true;
-
-      // 生成 PCM 数据
-      final pcm = await _tts.generate(text, sid: sid, speed: speed);
-      if (pcm == null) {
-        debugPrint('[Voice WARN] TTS 生成失败');
-        _isSpeaking = false;
-        return;
-      }
-
-      // 播放 PCM
-      await _playPcm(pcm);
-
-      debugPrint('[Voice] ✅ 播放完成');
-    } catch (e, st) {
-      debugPrint('[Voice ERROR] 失败：$e');
-      debugPrint('$st');
-    } finally {
-      _isSpeaking = false;
-    }
+    // ✅ 预录制模式下 TTS 完全禁用，以下代码已注释
+    debugPrint('[Voice] speak() 已禁用（预录制模式），忽略调用');
+    // if (!_initialized) await init();
+    // try {
+    //   _isSpeaking = true;
+    //   final pcm = await _tts.generate(text, sid: sid, speed: speed);
+    //   if (pcm == null) { _isSpeaking = false; return; }
+    //   await _playPcm(pcm);
+    // } catch (e, st) {
+    //   debugPrint('[Voice ERROR] 失败：$e');
+    // } finally {
+    //   _isSpeaking = false;
+    // }
   }
 
   /// 播放 PCM 数据（16-bit LE, 24kHz, 单声道）
@@ -281,7 +278,7 @@ class VoiceService {
     await stopSpeaking();
     await stopListening();
     await _player.dispose();
-    _tts.dispose();
+    // _tts.dispose(); // TTS Worker 已注释（预录制模式）
     _asrController.close();
     _initialized = false;
     debugPrint('[Voice] 已清理');

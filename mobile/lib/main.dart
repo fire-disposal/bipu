@@ -78,8 +78,7 @@ Future<void> main() async {
     logger.e('Initialization error', error: e);
   }
 
-  // Non-blocking initialization
-  _setupBackgroundServiceAuthListener();
+  // 预录制模式下提前预热语音服务（仅初始化 ASR，TTS 已注释）
   unawaited(VoiceService().init());
 
   runApp(

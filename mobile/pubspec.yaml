@@ -15,6 +15,7 @@ dependencies:
   go_router: ^17.0.1
   equatable: ^2.0.7
   collection: ^1.18.0
+  yaml: ^3.1.2
 
   # 蓝牙与硬件通信
   flutter_blue_plus: ^2.0.2
@@ -73,12 +74,14 @@ flutter:
     - assets/models/tts/
     - assets/models/asr/
     - assets/icon/
-    - assets/voices/
+    - assets/config/
+    - assets/operators/
+    # 预录制接线员语音包
+    - assets/voices/voice_manifest.json
     - assets/voices/op_001/
     - assets/voices/op_002/
     - assets/voices/op_003/
     - assets/voices/op_004/
-    - assets/voices/op_005/
 
 flutter_launcher_icons:
   android: true

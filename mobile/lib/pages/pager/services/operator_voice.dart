@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:just_audio/just_audio.dart';
@@ -68,69 +69,99 @@ class TtsVoiceBackend implements OperatorVoiceBackend {
   Future<void> stop() => _voice.stopSpeaking();
 }
 
-/// 预录制音频后端
+/// 预录制音频后端（正式版）
 ///
-/// 通过 [manifest.json] 将台词文本映射到对应的 asset 文件路径，
-/// 使用 just_audio 播放。
+/// 直接从 [voice_manifest.json] 加载台词索引，按接线员 ID 分组精准定位 mp3。
 ///
-/// manifest.json 格式（由 tools/generate_voices.py 生成）:
+/// voice_manifest.json 格式（由 tools/tts.py 批量合成后写入）：
 /// ```json
 /// {
-///   "version": 1,
-///   "by_text": {
-///     "您好，这里是 Bipupu 接线台。": "op_001/greeting_0.mp3",
+///   "op_001": {
+///     "greeting_variants_000": "您好，这里是 Bipupu 接线台。很高兴为您服务。",
 ///     ...
 ///   }
 /// }
 /// ```
+///
+/// 内部构建双层索引：opId → (text → relPath)，调用 [play] 时通过
+/// `op.id + text` 精准命中对应 mp3 文件，避免跨接线员台词文本碰撞。
 class PrerecordedVoiceBackend implements OperatorVoiceBackend {
   final String assetBasePath;
 
   final AudioPlayer _player = AudioPlayer();
-  Map<String, String>? _byText;
+
+  /// 双层索引：opId → (台词文本 → 相对路径)
+  /// e.g. {"op_001": {"您好，这里是 Bipupu 接线台。": "op_001/greeting_variants_000.mp3"}}
+  Map<String, Map<String, String>>? _opTextIndex;
   bool _loaded = false;
 
   PrerecordedVoiceBackend({this.assetBasePath = 'assets/voices'});
 
-  /// 懒加载 manifest.json
+  /// 懒加载 voice_manifest.json，构建双层文本→路径索引
   Future<void> _ensureLoaded() async {
     if (_loaded) return;
     try {
-      final raw = await rootBundle.loadString('$assetBasePath/manifest.json');
-      final data = jsonDecode(raw) as Map<String, dynamic>;
-      _byText = Map<String, String>.from(
-        (data['by_text'] as Map<String, dynamic>).map(
-          (k, v) => MapEntry(k, v as String),
-        ),
+      final raw = await rootBundle.loadString(
+        '$assetBasePath/voice_manifest.json',
       );
-      debugPrint('[PrerecordedVoice] manifest 加载完成，共 ${_byText!.length} 条');
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+
+      _opTextIndex = {};
+      for (final opEntry in data.entries) {
+        final opId = opEntry.key; // e.g. "op_001"
+        final lines = opEntry.value as Map<String, dynamic>;
+
+        final textMap = <String, String>{};
+        for (final lineEntry in lines.entries) {
+          final key = lineEntry.key; // e.g. "greeting_variants_000"
+          final text = lineEntry.value as String; // 台词文本
+          // relPath: "op_001/greeting_variants_000.mp3"
+          textMap[text] = '$opId/$key.mp3';
+        }
+        _opTextIndex![opId] = textMap;
+      }
+
+      debugPrint(
+        '[PrerecordedVoice] 索引构建完成：'
+        '${_opTextIndex!.length} 位接线员，'
+        '共 ${_opTextIndex!.values.fold(0, (s, m) => s + m.length)} 条台词',
+      );
+      for (final entry in _opTextIndex!.entries) {
+        debugPrint('  - ${entry.key}: ${entry.value.length} 条');
+      }
     } catch (e) {
-      debugPrint('[PrerecordedVoice] manifest 加载失败（将全部依赖 TTS）：$e');
-      _byText = {};
+      debugPrint('[PrerecordedVoice] voice_manifest.json 加载失败：$e');
+      _opTextIndex = {};
     }
     _loaded = true;
   }
 
-  /// 检查指定文本是否有对应预录制音频
-  Future<bool> hasAudio(String text) async {
+  /// 检查指定接线员是否有该文本的预录制音频
+  Future<bool> hasAudio(String text, {String? opId}) async {
     await _ensureLoaded();
-    return _byText?.containsKey(text) ?? false;
+    if (opId != null) {
+      return _opTextIndex?[opId]?.containsKey(text) ?? false;
+    }
+    // 无接线员限定时：全局查找
+    return _opTextIndex?.values.any((m) => m.containsKey(text)) ?? false;
   }
 
   @override
   Future<void> play(OperatorPersonality op, String text) async {
     await _ensureLoaded();
 
-    final relPath = _byText?[text];
+    // 按接线员 ID 精准查找
+    final relPath = _opTextIndex?[op.id]?[text];
     if (relPath == null) {
       debugPrint(
-        '[PrerecordedVoice] 无预录制文件，跳过："${text.substring(0, text.length.clamp(0, 20))}…"',
+        '[PrerecordedVoice] 无预录制 [${op.id}] '
+        '"${text.substring(0, text.length.clamp(0, 20))}…"',
       );
       return;
     }
 
     final assetPath = '$assetBasePath/$relPath';
-    debugPrint('[PrerecordedVoice] 播放：$assetPath');
+    debugPrint('[PrerecordedVoice] ▶ $assetPath');
 
     try {
       await _player.setAudioSource(AudioSource.asset(assetPath));
@@ -155,7 +186,7 @@ class PrerecordedVoiceBackend implements OperatorVoiceBackend {
     } catch (_) {}
   }
 
-  /// 释放 AudioPlayer 资源（OperatorVoice 生命周期结束时调用）
+  /// 释放 AudioPlayer 资源
   Future<void> dispose() async {
     await _player.dispose();
   }
@@ -167,14 +198,8 @@ class PrerecordedVoiceBackend implements OperatorVoiceBackend {
 
 /// 降级后端：优先播放预录制音频，无对应文件时自动 fallback 到 TTS。
 ///
-/// 适合过渡期：部分台词已预录，动态台词（如 confirmId）仍走 TTS。
-///
-/// ```dart
-/// final backend = FallbackVoiceBackend(
-///   prerecorded: PrerecordedVoiceBackend(),
-///   tts: TtsVoiceBackend(_voice),
-/// );
-/// ```
+/// ⚠️ 当前系统已启用纯预录制模式（[kUsePrerecordedVoiceOnly] = true），
+/// 此后端保留仅作兼容性备用，PagerVM 不再实例化该类。
 class FallbackVoiceBackend implements OperatorVoiceBackend {
   final PrerecordedVoiceBackend prerecorded;
   final TtsVoiceBackend tts;
@@ -183,7 +208,8 @@ class FallbackVoiceBackend implements OperatorVoiceBackend {
 
   @override
   Future<void> play(OperatorPersonality op, String text) async {
-    if (await prerecorded.hasAudio(text)) {
+    // hasAudio 现在需要 opId 参数以支持接线员分组索引
+    if (await prerecorded.hasAudio(text, opId: op.id)) {
       await prerecorded.play(op, text);
     } else {
       debugPrint(
@@ -238,6 +264,8 @@ class OperatorVoice {
   OperatorPersonality _operator;
   final OperatorVoiceBackend _backend;
 
+  static final Random _rnd = Random();
+
   OperatorVoice({
     required OperatorPersonality operator,
     required OperatorVoiceBackend backend,
@@ -271,15 +299,20 @@ class OperatorVoice {
   /// 适用于需要提前知道台词内容（如并行显示与播放）的场景。
   String resolve(OperatorLine line, {String? param}) {
     final d = _operator.dialogues;
+    String pick(List<String> variants) =>
+        variants[_rnd.nextInt(variants.length)];
     return switch (line) {
-      OperatorLine.greeting => d.getGreeting(),
-      OperatorLine.askTarget => d.getAskTarget(),
-      OperatorLine.confirmId => d.getConfirmId(param ?? ''),
-      OperatorLine.requestMessage => d.getRequestMessage(),
-      OperatorLine.userNotFound => d.getUserNotFound(),
-      OperatorLine.successMessage => d.getSuccessMessage(),
-      OperatorLine.askContinue => d.getAskContinue(),
-      OperatorLine.randomPhrase => d.getRandomPhrase(),
+      OperatorLine.greeting => pick(d.greetingVariants),
+      OperatorLine.askTarget => pick(d.askTargetVariants),
+      OperatorLine.confirmId => pick(
+        d.confirmIdVariants,
+      ).replaceAll('{id}', param ?? ''),
+      OperatorLine.requestMessage => pick(d.requestMessageVariants),
+      OperatorLine.userNotFound => pick(d.userNotFoundVariants),
+      OperatorLine.successMessage => pick(d.successMessageVariants),
+      OperatorLine.askContinue => pick(d.askContinueVariants),
+      OperatorLine.randomPhrase =>
+        d.randomPhrases.isNotEmpty ? pick(d.randomPhrases) : '',
     };
   }
 
