@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/im_service.dart' show ImService;
@@ -48,9 +49,11 @@ class PagerVM extends ChangeNotifier {
 
   // ASR 流管理
   StreamSubscription<String>? _asrSubscription;
+  Timer? _asrTimeoutTimer;
 
   // 状态
   PagerPhase _phase = PagerPhase.prep;
+  InCallSubPhase _inCallSubPhase = InCallSubPhase.inputTarget;
   OperatorPersonality? _operator;
   String _targetId = '';
   String _messageContent = '';
@@ -61,21 +64,24 @@ class PagerVM extends ChangeNotifier {
   bool _isRecording = false;
   String _currentDialogue = '';
 
-  /// inCall 子状态：目标 ID 是否已确认
-  /// false → 展示号码输入面板；true → 展示录音面板
-  bool _targetConfirmed = false;
-
   /// 台词历史（最近 8 条，供气泡流展示用）
   final List<String> _dialogueHistory = [];
 
   // 本次录音的振幅包络（随消息一起发送）
   List<int>? _capturedWaveform;
 
+  // 实时振幅数据（用于波形动画）
+  List<double> _realtimeAmplitudes = [];
+
+  // 是否检测到表情符号
+  bool _hasEmoji = false;
+
   // 通话记录
   final List<SendRecord> _sentHistory = [];
 
   // Getters
   PagerPhase get phase => _phase;
+  InCallSubPhase get inCallSubPhase => _inCallSubPhase;
   OperatorPersonality? get operator => _operator;
   String get targetId => _targetId;
   String get messageContent => _messageContent;
@@ -85,10 +91,13 @@ class PagerVM extends ChangeNotifier {
   bool get isConfirming => _isConfirming;
   bool get isRecording => _isRecording;
   String get currentDialogue => _currentDialogue;
-  bool get targetConfirmed => _targetConfirmed;
+  bool get targetConfirmed => _inCallSubPhase != InCallSubPhase.inputTarget;
   List<String> get dialogueHistory => List.unmodifiable(_dialogueHistory);
   List<SendRecord> get sentHistory => List.unmodifiable(_sentHistory);
   OperatorService get operatorService => _operatorService;
+  List<int>? get capturedWaveform => _capturedWaveform;
+  List<double> get realtimeAmplitudes => List.unmodifiable(_realtimeAmplitudes);
+  bool get hasEmoji => _hasEmoji;
 
   // ───────────────────────────────────────────────────────────────────────────
   // 拨号准备
@@ -116,8 +125,8 @@ class PagerVM extends ChangeNotifier {
     _operator = _operatorService.getRandomOperator();
     await _initBackend();
     _operatorVoice = OperatorVoice(operator: _operator!, backend: _backend);
-    debugPrint('[PagerVM] 选择接线员 - ${_operator!.name}');
-    debugPrint('[PagerVM] 语音模式 - ${_voiceModeManager.mode}');
+    log('[PagerVM] 选择接线员 - ${_operator!.name}');
+    log('[PagerVM] 语音模式 - ${_voiceModeManager.mode}');
   }
 
   /// 初始化播放后端
@@ -130,17 +139,17 @@ class PagerVM extends ChangeNotifier {
     if (mode == VoiceMode.ttsOnly) {
       // TTS 已注释，正常情况下不应进入此分支
       _backend = TtsVoiceBackend(_voice);
-      debugPrint('[PagerVM] ❗ TTS 后端（TTS 已禁用，延迟请检查 kUsePrerecordedVoiceOnly）');
+      log('[PagerVM] ❗ TTS 后端（TTS 已禁用，延迟请检查 kUsePrerecordedVoiceOnly）');
     } else if (mode == VoiceMode.prerecordedOnly) {
       _backend = PrerecordedVoiceBackend();
-      debugPrint('[PagerVM] ✅ 预录制后端（voice_manifest.json 索引）');
+      log('[PagerVM] ✅ 预录制后端（voice_manifest.json 索引）');
     } else {
       // Fallback 模式（不应再触及，保留兼容）
       _backend = FallbackVoiceBackend(
         prerecorded: PrerecordedVoiceBackend(),
         tts: TtsVoiceBackend(_voice),
       );
-      debugPrint('[PagerVM] ⚠️ Fallback 后端（TTS 已禁用，请检查语音模式配置）');
+      log('[PagerVM] ⚠️ Fallback 后端（TTS 已禁用，请检查语音模式配置）');
     }
   }
 
@@ -169,7 +178,7 @@ class PagerVM extends ChangeNotifier {
     _phase = PagerPhase.connecting;
     notifyListeners();
 
-    debugPrint('[PagerVM] 开始连接，接线员 = ${_operator!.name}');
+    log('[PagerVM] 开始连接，接线员 = ${_operator!.name}');
 
     // 连接动画（2 秒）
     await Future.delayed(const Duration(seconds: 2));
@@ -215,7 +224,7 @@ class PagerVM extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 确认目标 ID
+  /// 确认目标 ID - 进入确认阶段（调度员复诵）
   Future<void> confirmTargetId() async {
     if (_isConfirming || _targetId.isEmpty || _phase != PagerPhase.inCall)
       return;
@@ -223,61 +232,84 @@ class PagerVM extends ChangeNotifier {
     _isConfirming = true;
     notifyListeners();
 
-    final targetSnapshot = _targetId;
-
     try {
-      bool userExists = false;
-      final apiCallFuture = () async {
-        try {
-          await ApiClient.instance.api.users.getApiUsersUsersBipupuId(
-            bipupuId: targetSnapshot,
-          );
-          userExists = true;
-        } catch (_) {
-          userExists = false;
-        }
-      }();
-
-      // TTS + API 并行：onText 在播放前同步回调，UI 立即更新
-      await Future.wait([
-        _operatorVoice.say(
-          OperatorLine.confirmId,
-          param: targetSnapshot,
-          onText: _updateDialogue,
-        ),
-        apiCallFuture,
-      ]);
+      // 调度员复诵确认
+      await _operatorVoice.say(
+        OperatorLine.confirmId,
+        param: _targetId,
+        onText: _updateDialogue,
+      );
 
       if (_phase != PagerPhase.inCall) return;
 
-      if (userExists) {
-        debugPrint('[PagerVM] 目标用户存在，切换到录音阶段');
-        await _operatorVoice.say(
-          OperatorLine.requestMessage,
-          onText: _updateDialogue,
-        );
-        if (_phase != PagerPhase.inCall) return;
-        // ✅ 关键：切换到录音子阶段
-        _targetConfirmed = true;
-        notifyListeners();
-      } else {
-        debugPrint('[PagerVM WARN] 目标用户不存在');
-        await _operatorVoice.say(
-          OperatorLine.userNotFound,
-          onText: _updateDialogue,
-        );
-
-        if (_phase != PagerPhase.inCall) return;
-
-        _errorMessage = '该用户不存在，请重新输入 ID';
-        _targetId = '';
-        _targetConfirmed = false;
-        notifyListeners();
-      }
+      // 切换到确认目标ID子阶段，等待用户确认
+      _inCallSubPhase = InCallSubPhase.confirmTarget;
+      _isConfirming = false;
+      notifyListeners();
     } finally {
       _isConfirming = false;
       notifyListeners();
     }
+  }
+
+  /// 用户确认目标ID正确，验证用户存在性
+  Future<void> confirmTargetIdCorrect() async {
+    if (_phase != PagerPhase.inCall || _inCallSubPhase != InCallSubPhase.confirmTarget) return;
+
+    _isConfirming = true;
+    notifyListeners();
+
+    try {
+      // 验证用户是否存在
+      bool userExists = false;
+      try {
+        await ApiClient.instance.api.users.getApiUsersUsersBipupuId(
+          bipupuId: _targetId,
+        );
+        userExists = true;
+      } catch (_) {
+        userExists = false;
+      }
+
+      if (!userExists) {
+        await _operatorVoice.say(OperatorLine.userNotFound, onText: _updateDialogue);
+        _errorMessage = '该用户不存在，请重新输入 ID';
+        _inCallSubPhase = InCallSubPhase.inputTarget;
+        _targetId = '';
+        _isConfirming = false;
+        notifyListeners();
+        return;
+      }
+
+      // 用户存在，请求录入消息
+      await _operatorVoice.say(OperatorLine.requestMessage, onText: _updateDialogue);
+
+      if (_phase != PagerPhase.inCall) return;
+
+      _inCallSubPhase = InCallSubPhase.recording;
+      _isConfirming = false;
+      notifyListeners();
+    } finally {
+      _isConfirming = false;
+      notifyListeners();
+    }
+  }
+
+  /// 用户要求重新输入目标ID
+  Future<void> rejectTargetId() async {
+    if (_phase != PagerPhase.inCall) return;
+
+    _targetId = '';
+    _errorMessage = null;
+    _inCallSubPhase = InCallSubPhase.inputTarget;
+    notifyListeners();
+
+    await _operatorVoice.say(OperatorLine.askTarget, onText: _updateDialogue);
+  }
+
+  /// 提交目标ID（供新InCallView调用）
+  Future<void> submitTargetId() async {
+    await confirmTargetId();
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -287,7 +319,7 @@ class PagerVM extends ChangeNotifier {
   /// 开始语音录音
   Future<void> startVoiceRecording() async {
     if (_phase != PagerPhase.inCall || _targetId.isEmpty) {
-      debugPrint('[PagerVM WARN] 非 inCall 阶段或无目标 ID，无法开始录音');
+      log('[PagerVM WARN] 非 inCall 阶段或无目标 ID，无法开始录音');
       return;
     }
 
@@ -315,7 +347,7 @@ class PagerVM extends ChangeNotifier {
           notifyListeners();
         },
         onError: (e) {
-          debugPrint('[PagerVM ERROR] ASR 错误：$e');
+          log('[PagerVM ERROR] ASR 错误：$e');
           if (_isRecording) {
             _error('录音失败，请重试');
             _isRecording = false;
@@ -323,11 +355,12 @@ class PagerVM extends ChangeNotifier {
           }
         },
         onDone: () {
+          _asrTimeoutTimer?.cancel();
           if (_isRecording && resultReceived) {
             _isRecording = false;
             // 录音流结束后立即取回振幅包络
             _capturedWaveform = _voice.lastWaveform;
-            debugPrint(
+            log(
               '[PagerVM] 捕获 waveform：${_capturedWaveform?.length ?? 0} 点',
             );
             _phase = PagerPhase.reviewing;
@@ -337,17 +370,20 @@ class PagerVM extends ChangeNotifier {
         cancelOnError: true,
       );
 
-      // 添加超时保护
-      await Future.delayed(const Duration(seconds: 31));
-      if (_isRecording) {
-        debugPrint('[PagerVM WARN] ASR 超时，强制停止');
-        await _asrSubscription?.cancel();
-        _isRecording = false;
-        _error('录音超时，请重试');
-        notifyListeners();
-      }
+      // 添加可取消的超时保护
+      _asrTimeoutTimer?.cancel();
+      _asrTimeoutTimer = Timer(const Duration(seconds: 31), () async {
+        if (_isRecording) {
+          log('[PagerVM WARN] ASR 超时，强制停止');
+          await _asrSubscription?.cancel();
+          _isRecording = false;
+          _error('录音超时，请重试');
+          notifyListeners();
+        }
+      });
     } catch (e) {
-      debugPrint('[PagerVM ERROR] startVoiceRecording 异常：$e');
+      log('[PagerVM ERROR] startVoiceRecording 异常：$e');
+      _asrTimeoutTimer?.cancel();
       _isRecording = false;
       _error('录音异常：$e');
       notifyListeners();
@@ -367,9 +403,42 @@ class PagerVM extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 用户确认消息内容，进入最终确认界面
+  Future<void> confirmMessageContent() async {
+    if (_phase != PagerPhase.inCall || _inCallSubPhase != InCallSubPhase.confirmMessage) return;
+    _phase = PagerPhase.reviewing;
+    notifyListeners();
+  }
+
+  /// 用户要求重新录制消息
+  Future<void> rerecordMessage() async {
+    if (_phase != PagerPhase.inCall) return;
+
+    _messageContent = '';
+    _asrTranscript = '';
+    _capturedWaveform = null;
+    _hasEmoji = false;
+    _realtimeAmplitudes = [];
+    _inCallSubPhase = InCallSubPhase.recording;
+    notifyListeners();
+
+    await _operatorVoice.say(OperatorLine.requestMessage, onText: _updateDialogue);
+  }
+
   void updateMessageContent(String content) {
     _messageContent = content;
+    _hasEmoji = _checkForEmoji(content);
     notifyListeners();
+  }
+
+  /// 检查文本中是否包含表情符号
+  bool _checkForEmoji(String text) {
+    if (text.isEmpty) return false;
+    final emojiRegex = RegExp(
+      r'[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]',
+      unicode: true,
+    );
+    return emojiRegex.hasMatch(text);
   }
 
   void backToVoiceInput() {
@@ -377,9 +446,17 @@ class PagerVM extends ChangeNotifier {
     _asrTranscript = '';
     _errorMessage = null;
     _capturedWaveform = null;
-    // 保留 _targetConfirmed = true，回到录音面板而非重新输入号码
-    _targetConfirmed = true;
+    // 回到录音子阶段
+    _inCallSubPhase = InCallSubPhase.recording;
     _phase = PagerPhase.inCall;
+    notifyListeners();
+  }
+
+  /// 从Reviewing返回修改消息
+  void backToEditMessage() {
+    if (_phase != PagerPhase.reviewing) return;
+    _phase = PagerPhase.inCall;
+    _inCallSubPhase = InCallSubPhase.confirmMessage;
     notifyListeners();
   }
 
@@ -430,7 +507,7 @@ class PagerVM extends ChangeNotifier {
       }
 
       if (result != null) {
-        debugPrint('[PagerVM] 消息发送成功');
+        log('[PagerVM] 消息发送成功');
 
         _sentHistory.add(
           SendRecord(
@@ -462,12 +539,12 @@ class PagerVM extends ChangeNotifier {
           _targetId = '';
           _messageContent = '';
           _capturedWaveform = null;
-          _targetConfirmed = false; // 重置子阶段
+          _inCallSubPhase = InCallSubPhase.inputTarget; // 重置子阶段
           _isSending = false;
           _phase = PagerPhase.inCall;
           notifyListeners();
         } else {
-          debugPrint('[PagerVM] 发送完成但状态已变化，不更新');
+          log('[PagerVM] 发送完成但状态已变化，不更新');
           _isSending = false;
         }
       } else {
@@ -492,7 +569,7 @@ class PagerVM extends ChangeNotifier {
     _messageContent = '';
     _errorMessage = null;
     _isSending = false;
-    _targetConfirmed = false; // 重置到号码输入面板
+    _inCallSubPhase = InCallSubPhase.inputTarget; // 重置到号码输入面板
 
     _phase = PagerPhase.inCall;
     notifyListeners();
@@ -507,11 +584,15 @@ class PagerVM extends ChangeNotifier {
 
   /// 挂断通话
   Future<void> hangup() async {
-    debugPrint('[PagerVM] 挂断通话');
+    log('[PagerVM] 挂断通话');
 
     // 停止所有语音操作
     await _voice.stopSpeaking();
     await _voice.stopListening();
+
+    // 取消 ASR 超时定时器
+    _asrTimeoutTimer?.cancel();
+    _asrTimeoutTimer = null;
 
     // 重置所有状态
     _phase = PagerPhase.prep;
@@ -524,7 +605,7 @@ class PagerVM extends ChangeNotifier {
     _isSending = false;
     _isConfirming = false;
     _isRecording = false;
-    _targetConfirmed = false;
+    _inCallSubPhase = InCallSubPhase.inputTarget;
     _dialogueHistory.clear();
     notifyListeners();
 
@@ -533,7 +614,7 @@ class PagerVM extends ChangeNotifier {
   }
 
   void _error(String message) {
-    debugPrint('[PagerVM ERROR] 错误：$message');
+    log('[PagerVM ERROR] 错误：$message');
     _errorMessage = message;
     notifyListeners();
   }
@@ -552,6 +633,7 @@ class PagerVM extends ChangeNotifier {
   @override
   void dispose() {
     _asrSubscription?.cancel(); // 清理 ASR 流
+    _asrTimeoutTimer?.cancel(); // 清理 ASR 超时定时器
 
     // 清理后端资源
     if (_backend is FallbackVoiceBackend) {

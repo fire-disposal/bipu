@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/pager_vm.dart';
+import '../state/pager_phase.dart';
+import 'realtime_waveform_widget.dart';
 
 /// 新架构通话中视图
+/// 支持完整的交互流程：输入ID → 确认ID → 录音 → 确认消息
 class NewInCallView extends StatefulWidget {
   const NewInCallView({super.key});
 
@@ -28,7 +31,6 @@ class _NewInCallViewState extends State<NewInCallView> {
   @override
   void didUpdateWidget(NewInCallView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // 监听视图刷新，如果返回到此视图且 targetId 被清空，清空输入框
     final vm = Provider.of<PagerVM>(context, listen: false);
     if (_targetIdController.text.isNotEmpty && vm.targetId.isEmpty) {
       _targetIdController.clear();
@@ -47,18 +49,15 @@ class _NewInCallViewState extends State<NewInCallView> {
       body: SafeArea(
         child: Column(
           children: [
-            // 顶部状态栏
-            _buildTopBar(cs, themeColor),
-
-            // 接线员信息区域（可滚动）
+            _buildTopBar(cs, themeColor, vm.inCallSubPhase),
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    SizedBox(height: MediaQuery.of(context).size.height * 0.08),
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.06),
                     _buildOperatorInfo(context, op, cs, vm.currentDialogue),
-                    SizedBox(height: MediaQuery.of(context).size.height * 0.08),
-                    _buildInputArea(vm, cs, themeColor),
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.06),
+                    _buildSubPhaseContent(vm, cs, themeColor),
                     const SizedBox(height: 28),
                   ],
                 ),
@@ -70,7 +69,14 @@ class _NewInCallViewState extends State<NewInCallView> {
     );
   }
 
-  Widget _buildTopBar(ColorScheme cs, Color themeColor) {
+  Widget _buildTopBar(ColorScheme cs, Color themeColor, InCallSubPhase subPhase) {
+    String statusText = switch (subPhase) {
+      InCallSubPhase.inputTarget => '等待输入号码',
+      InCallSubPhase.confirmTarget => '确认目标用户',
+      InCallSubPhase.recording => '录音录入消息',
+      InCallSubPhase.confirmMessage => '确认消息内容',
+    };
+
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 16, 12),
       decoration: BoxDecoration(
@@ -100,7 +106,7 @@ class _NewInCallViewState extends State<NewInCallView> {
           ),
           const SizedBox(width: 12),
           Text(
-            '通话中',
+            statusText,
             style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w600),
           ),
           const Spacer(),
@@ -160,7 +166,6 @@ class _NewInCallViewState extends State<NewInCallView> {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
-          // 立绘
           Container(
             width: 120,
             height: 160,
@@ -184,16 +189,14 @@ class _NewInCallViewState extends State<NewInCallView> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
-          // 名字
+          const SizedBox(height: 16),
           Text(
             op.name,
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          const SizedBox(height: 8),
-          // 台词气泡
+          const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -203,9 +206,9 @@ class _NewInCallViewState extends State<NewInCallView> {
             child: Text(
               currentDialogue.isNotEmpty ? currentDialogue : '请输入目标用户号码',
               textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(color: cs.onSurface),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: cs.onSurface,
+              ),
             ),
           ),
         ],
@@ -213,12 +216,19 @@ class _NewInCallViewState extends State<NewInCallView> {
     );
   }
 
-  Widget _buildInputArea(PagerVM vm, ColorScheme cs, Color themeColor) {
-    debugPrint(
-      '[NewInCallView] isConfirming=${vm.isConfirming}, targetId=${vm.targetId}',
-    );
+  /// 根据子阶段显示不同的UI内容
+  Widget _buildSubPhaseContent(PagerVM vm, ColorScheme cs, Color themeColor) {
+    return switch (vm.inCallSubPhase) {
+      InCallSubPhase.inputTarget => _buildInputTargetPanel(vm, cs, themeColor),
+      InCallSubPhase.confirmTarget => _buildConfirmTargetPanel(vm, cs, themeColor),
+      InCallSubPhase.recording => _buildRecordingPanel(vm, cs, themeColor),
+      InCallSubPhase.confirmMessage => _buildConfirmMessagePanel(vm, cs, themeColor),
+    };
+  }
 
-    // 同步 controller 和 vm 的 targetId
+  // ========== 输入目标ID面板 ==========
+  Widget _buildInputTargetPanel(PagerVM vm, ColorScheme cs, Color themeColor) {
+    // 同步 controller
     if (_targetIdController.text != vm.targetId) {
       _targetIdController.text = vm.targetId;
       _targetIdController.selection = TextSelection.fromPosition(
@@ -226,7 +236,7 @@ class _NewInCallViewState extends State<NewInCallView> {
       );
     }
 
-    final canConfirm = !vm.isConfirming && vm.targetId.isNotEmpty;
+    final canSubmit = !vm.isConfirming && vm.targetId.isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -234,12 +244,9 @@ class _NewInCallViewState extends State<NewInCallView> {
         children: [
           TextField(
             controller: _targetIdController,
-            onChanged: (v) {
-              debugPrint('[NewInCallView] targetId changed: $v');
-              vm.updateTargetId(v);
-            },
+            onChanged: vm.updateTargetId,
             decoration: InputDecoration(
-              hintText: '目标用户号码',
+              hintText: '输入目标用户号码',
               prefixIcon: const Icon(Icons.person_outline),
               filled: true,
               fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.3),
@@ -254,14 +261,7 @@ class _NewInCallViewState extends State<NewInCallView> {
             width: double.infinity,
             height: 52,
             child: FilledButton.icon(
-              onPressed: canConfirm
-                  ? () {
-                      debugPrint(
-                        '[NewInCallView] 确认号码 clicked, targetId=${vm.targetId}',
-                      );
-                      vm.confirmTargetId();
-                    }
-                  : null,
+              onPressed: canSubmit ? vm.submitTargetId : null,
               icon: vm.isConfirming
                   ? const SizedBox(
                       width: 20,
@@ -286,6 +286,358 @@ class _NewInCallViewState extends State<NewInCallView> {
               style: TextStyle(color: cs.error, fontSize: 13),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  // ========== 确认目标ID面板 ==========
+  Widget _buildConfirmTargetPanel(PagerVM vm, ColorScheme cs, Color themeColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: themeColor.withValues(alpha: 0.2),
+                width: 2,
+              ),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  '确认发送给',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  vm.targetId,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: cs.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: vm.isConfirming ? null : vm.rejectTargetId,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('重新输入'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: vm.isConfirming ? null : vm.confirmTargetIdCorrect,
+                  icon: vm.isConfirming
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2.5),
+                        )
+                      : const Icon(Icons.check_circle),
+                  label: Text(vm.isConfirming ? '验证中...' : '正确'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: themeColor,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (vm.errorMessage != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: cs.errorContainer.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline, color: cs.error, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      vm.errorMessage!,
+                      style: TextStyle(color: cs.error, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ========== 录音面板 ==========
+  Widget _buildRecordingPanel(PagerVM vm, ColorScheme cs, Color themeColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          // 实时转写文字显示
+          if (vm.asrTranscript.isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: themeColor.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Text(
+                vm.asrTranscript,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: cs.onSurface,
+                ),
+              ),
+            ),
+          
+          // 实时波形显示
+          if (vm.isRecording)
+            Container(
+              width: double.infinity,
+              height: 80,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: RealtimeWaveformWidget(
+                amplitudes: vm.realtimeAmplitudes,
+                isRecording: vm.isRecording,
+                waveColor: themeColor,
+                height: 80,
+              ),
+            ),
+          
+          // 录音按钮
+          _buildRecordingButton(vm, cs, themeColor),
+          
+          const SizedBox(height: 20),
+          
+          // 提示文字
+          Text(
+            vm.isRecording ? '录音中，松开结束' : '按住麦克风按钮开始录音',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // 切换文字输入
+          TextButton.icon(
+            onPressed: vm.isRecording ? null : vm.switchToTextInput,
+            icon: const Icon(Icons.keyboard),
+            label: const Text('切换文字输入'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecordingButton(PagerVM vm, ColorScheme cs, Color themeColor) {
+    return GestureDetector(
+      onTapDown: (_) {
+        if (!vm.isRecording) {
+          vm.startVoiceRecording();
+        }
+      },
+      onTapUp: (_) {
+        if (vm.isRecording) {
+          vm.stopRecording();
+        }
+      },
+      onTapCancel: () {
+        if (vm.isRecording) {
+          vm.stopRecording();
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: vm.isRecording ? 140 : 120,
+        height: vm.isRecording ? 140 : 120,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: vm.isRecording 
+              ? Colors.red.withValues(alpha: 0.1)
+              : themeColor.withValues(alpha: 0.1),
+          border: Border.all(
+            color: vm.isRecording ? Colors.red : themeColor,
+            width: vm.isRecording ? 3 : 2,
+          ),
+          boxShadow: [
+            if (vm.isRecording)
+              BoxShadow(
+                color: Colors.red.withValues(alpha: 0.3),
+                blurRadius: 20,
+                spreadRadius: 5,
+              ),
+          ],
+        ),
+        child: Center(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: vm.isRecording
+                ? Icon(
+                    Icons.mic,
+                    size: 48,
+                    color: Colors.red,
+                  )
+                : Icon(
+                    Icons.mic_none,
+                    size: 40,
+                    color: themeColor,
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ========== 确认消息面板 ==========
+  Widget _buildConfirmMessagePanel(PagerVM vm, ColorScheme cs, Color themeColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          // 消息内容卡片
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: vm.hasEmoji 
+                    ? Colors.orange.withValues(alpha: 0.5)
+                    : themeColor.withValues(alpha: 0.2),
+                width: 2,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.message_outlined,
+                      size: 18,
+                      color: cs.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '消息内容',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    if (vm.hasEmoji) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '包含表情',
+                          style: TextStyle(
+                            color: Colors.orange.shade800,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  vm.messageContent.isEmpty ? '（无内容）' : vm.messageContent,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // 操作按钮
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: vm.rerecordMessage,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('重新录制'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: vm.confirmMessageContent,
+                  icon: const Icon(Icons.check_circle),
+                  label: const Text('确认发送'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: themeColor,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 12),
+          
+          // 文字编辑选项
+          TextButton.icon(
+            onPressed: vm.switchToTextInput,
+            icon: const Icon(Icons.edit),
+            label: const Text('文字编辑'),
+          ),
         ],
       ),
     );

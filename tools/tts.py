@@ -21,8 +21,9 @@ ACCESS_TOKEN = "5zmuJOVf5oBsgsi_eqB3a5NOCRVWjXbk" # 您的Access Token
 RESOURCE_ID = "seed-tts-2.0"        # 请根据实际情况修改！
 URL = "https://openspeech.bytedance.com/api/v3/tts/unidirectional" # HTTP Chunked 接口
 
-YAML_FILE = "operators.yaml"
-OUTPUT_DIR = Path("voices")
+_SCRIPT_DIR = Path(__file__).parent
+YAML_FILE = _SCRIPT_DIR.parent / "mobile" / "assets" / "config" / "operators.yaml"
+OUTPUT_DIR = _SCRIPT_DIR.parent / "mobile" / "assets" / "voices"
 THREADS = 8                         # 并发线程数
 
 # =========================
@@ -128,9 +129,12 @@ def generate_one(op_id, speaker_id, category, index, text):
 def main():
     print("--- 火山引擎 Seed-TTS 批量生成脚本 (流式修正版) ---")
 
-    if not Path(YAML_FILE).exists():
+    if not YAML_FILE.exists():
         print(f"✘ 错误: 找不到配置文件 {YAML_FILE}")
         return
+
+    print(f"配置文件: {YAML_FILE}")
+    print(f"输出目录: {OUTPUT_DIR}")
 
     with open(YAML_FILE, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)

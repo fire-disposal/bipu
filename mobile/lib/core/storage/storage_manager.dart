@@ -135,6 +135,12 @@ class StorageManager {
       }
 
       return cacheItem.data;
+    } on StateError catch (e) {
+      // 类型不匹配，删除损坏的缓存
+      debugPrint('Cache type mismatch for key $key: $e');
+      final box = await _getBox(_cacheBoxName);
+      await box.delete(key);
+      return null;
     } catch (e) {
       debugPrint('Error getting cache for key $key: $e');
       return null;
@@ -180,14 +186,33 @@ class StorageManager {
     }
   }
 
-  /// 获取用户数据
-  static Future<T?> getUserData<T>(String key) async {
+  /// 获取用户数据（类型安全版本）
+  /// 
+  /// [fromJson] 参数用于提供从 JSON 转换到目标类型的函数，
+  /// 确保类型安全。如果为 null，则返回原始解码后的数据。
+  static Future<T?> getUserData<T>(
+    String key, {
+    T Function(dynamic json)? fromJson,
+  }) async {
     try {
       final box = await _getBox(_userDataBoxName);
       final jsonString = box.get(key);
 
       if (jsonString == null) return null;
-      return json.decode(jsonString) as T;
+      
+      final decoded = json.decode(jsonString);
+      
+      if (fromJson != null) {
+        return fromJson(decoded);
+      }
+      
+      // 如果没有提供转换函数，尝试直接转换
+      if (decoded is T) {
+        return decoded;
+      }
+      
+      debugPrint('Type mismatch for key $key: expected ${T.toString()}, got ${decoded.runtimeType}');
+      return null;
     } catch (e) {
       debugPrint('Error getting user data for key $key: $e');
       return null;
@@ -278,8 +303,14 @@ class StorageManager {
         try {
           final jsonData = box.get(key);
           if (jsonData != null) {
-            final cacheItem = CacheItem.fromJson<dynamic>(jsonData);
-            if (cacheItem.isExpired) {
+            try {
+              final cacheItem = CacheItem.fromJson<dynamic>(jsonData);
+              if (cacheItem.isExpired) {
+                keysToDelete.add(key as String);
+              }
+            } on StateError catch (e) {
+              // 类型不匹配，标记为删除
+              debugPrint('Cache type mismatch during cleanup: $e');
               keysToDelete.add(key as String);
             }
           }
@@ -439,9 +470,33 @@ class CacheItem<T> {
     };
   }
 
-  static CacheItem<T> fromJson<T>(Map<dynamic, dynamic> json) {
+  /// 从 JSON 反序列化缓存项（类型安全版本）
+  /// 
+  /// [dataFromJson] 参数用于提供从 JSON 转换到目标数据类型的函数，
+  /// 确保类型安全。如果为 null，则直接尝试转换。
+  static CacheItem<T> fromJson<T>(
+    Map<dynamic, dynamic> json, {
+    T Function(dynamic json)? dataFromJson,
+  }) {
+    T data;
+    final rawData = json['data'];
+    
+    if (dataFromJson != null) {
+      data = dataFromJson(rawData);
+    } else {
+      // 尝试直接转换，如果类型不匹配会抛出异常
+      try {
+        data = rawData as T;
+      } catch (e) {
+        throw StateError(
+          'CacheItem type mismatch: expected ${T.toString()}, got ${rawData.runtimeType}. '
+          'Consider providing a dataFromJson converter.',
+        );
+      }
+    }
+    
     return CacheItem<T>(
-      data: json['data'] as T,
+      data: data,
       timestamp: DateTime.parse(json['timestamp']),
       expiry: DateTime.parse(json['expiry']),
       category: json['category'] as String?,

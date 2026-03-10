@@ -1270,11 +1270,16 @@ class BluetoothDeviceService {
     // 取消所有待处理的消息
     for (final completer in _pendingMessageCompleters.values) {
       if (!completer.isCompleted) {
-        completer.complete(false);
+        try {
+          completer.complete(false);
+        } catch (e) {
+          // 忽略已完成的 Completer 的错误
+        }
       }
     }
     _pendingMessageCompleters.clear();
     _messageQueue.clear();
+    _processedMessageCache.clear();
 
     // 取消绑定操作的 Future
     if (_bindingCompleter != null && !_bindingCompleter!.isCompleted) {
