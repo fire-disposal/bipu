@@ -61,30 +61,26 @@ Future<void> main() async {
 
   WidgetsFlutterBinding.ensureInitialized();
 
-  await StorageManager.initialize();
+  // Parallel initialization for faster startup
+  await Future.wait([
+    StorageManager.initialize(),
+    InteractionOptimizer.initialize(),
+    EasyLocalization.ensureInitialized(),
+  ]);
 
-  // Initialize Optimizer
-  await InteractionOptimizer.initialize();
+  // Sequential initialization with proper error handling
+  try {
+    await AuthService().initialize();
+    await ImService().init();
+    await NotificationService().initialize();
+    await BackgroundMessageService().configure();
+  } catch (e) {
+    logger.e('Initialization error', error: e);
+  }
 
-  // Initialize Auth
-  await AuthService().initialize();
-
-  // Initialize IM Service
-  await ImService().init();
-
-  // 初始化本地通知服务（频道 + 权限提示准备）
-  await NotificationService().initialize();
-
-  // 配置后台消息轮询服务（仅注册入口点，不立即启动）
-  await BackgroundMessageService().configure();
-
-  // 监听认证状态：登录后启动后台服务 / 登出后停止
+  // Non-blocking initialization
   _setupBackgroundServiceAuthListener();
-
-  // 后台预热语音模型，避免用户首次拨号时才初始化
   unawaited(VoiceService().init());
-
-  await EasyLocalization.ensureInitialized();
 
   runApp(
     EasyLocalization(

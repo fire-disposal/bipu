@@ -67,6 +67,8 @@ class BluetoothDeviceService {
     _initBindingInfo();
     // 启动消息队列处理定时器
     _startMessageQueueProcessor();
+    // 检查已绑定设备的连接状态（APP 重启后恢复）
+    _checkBoundDeviceConnection();
   }
 
   // ========== 协议服务 ==========
@@ -763,10 +765,118 @@ class BluetoothDeviceService {
     if (boundId != null) {
       isBound.value = true;
       boundDeviceName.value = boundName;
+      _lastConnectedDeviceId = boundId;
 
       if (kDebugMode) {
         print('加载绑定信息: $boundName ($boundId)');
       }
+    }
+  }
+
+  /// 检查已绑定设备是否仍然连接（APP 重启后恢复连接状态）
+  Future<void> _checkBoundDeviceConnection() async {
+    // 等待绑定信息加载完成
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (_lastConnectedDeviceId == null) {
+      if (kDebugMode) {
+        print('[BLE] 无已绑定设备，跳过连接状态检查');
+      }
+      return;
+    }
+
+    try {
+      // 获取系统已连接的蓝牙设备列表
+      final connectedDevices = await FlutterBluePlus.systemDevices([]);
+
+      if (kDebugMode) {
+        print('[BLE] 系统已连接设备数量: ${connectedDevices.length}');
+        for (final d in connectedDevices) {
+          print('[BLE]   - ${d.platformName} (${d.remoteId})');
+        }
+      }
+
+      // 查找已绑定的设备
+      BluetoothDevice? boundDevice;
+      for (final device in connectedDevices) {
+        if (device.remoteId.str == _lastConnectedDeviceId) {
+          boundDevice = device;
+          break;
+        }
+      }
+
+      if (boundDevice != null) {
+        if (kDebugMode) {
+          print('[BLE] 发现已绑定设备仍在连接状态，恢复连接...');
+        }
+
+        // 设备已在系统层面连接，恢复 Flutter 端的连接状态
+        await _restoreConnection(boundDevice);
+      } else {
+        if (kDebugMode) {
+          print('[BLE] 已绑定设备当前未连接');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('[BLE] 检查已连接设备失败: $e');
+      }
+    }
+  }
+
+  /// 恢复与已连接设备的连接状态
+  Future<void> _restoreConnection(BluetoothDevice device) async {
+    try {
+      _connectedDevice = device;
+      _lastConnectionTime = DateTime.now();
+
+      // 设置连接状态监听
+      _setupConnectionListener(device);
+
+      // 发现服务并设置特征值
+      connectionStatus.value = '恢复连接中...';
+      final services = await device.discoverServices();
+
+      // 查找 Nordic UART Service
+      final nusService = services.firstWhere(
+        (service) =>
+            service.uuid.toString().toLowerCase() ==
+            '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
+        orElse: () => throw StateError('未找到 NUS 服务'),
+      );
+
+      // 查找写入特征值
+      _nusTxCharacteristic = nusService.characteristics.firstWhere(
+        (characteristic) =>
+            characteristic.uuid.toString().toLowerCase() ==
+            '6e400002-b5a3-f393-e0a9-e50e24dcca9e',
+        orElse: () => throw StateError('未找到写入特征值'),
+      );
+
+      // 查找通知特征值
+      _nusRxCharacteristic = nusService.characteristics.firstWhere(
+        (characteristic) =>
+            characteristic.uuid.toString().toLowerCase() ==
+            '6e400003-b5a3-f393-e0a9-e50e24dcca9e',
+        orElse: () => throw StateError('未找到通知特征值'),
+      );
+
+      // 设置接收监听
+      await _setupReceiveListener();
+
+      // 更新连接状态
+      connectionState.value = BluetoothConnectionState.connected;
+      connectionStatus.value = '已连接';
+
+      if (kDebugMode) {
+        print('[BLE] 连接状态已恢复: ${device.platformName}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('[BLE] 恢复连接失败: $e');
+      }
+      // 恢复失败，清理状态
+      await _cleanupInternalState();
     }
   }
 

@@ -28,8 +28,6 @@ import '../api/models/message_type.dart';
 ///
 /// ESP32 端（app_ble.c）会解析此前缀，分离出发送者名与正文后再显示。
 /// 直接从测试页发送的消息无此前缀，ESP32 端显示为 "App"。
-///
-/// 系统消息（[MessageType.system]）不转发，以免打扰。
 class BluetoothForwardService {
   static final BluetoothForwardService _instance =
       BluetoothForwardService._internal();
@@ -118,8 +116,6 @@ class BluetoothForwardService {
       final content = (raw['content'] as String?) ?? '';
       final typeStr = raw['message_type'] as String? ?? '';
 
-      if (typeStr.toUpperCase() == 'SYSTEM') continue;
-
       if (id > maxProcessedId) maxProcessedId = id;
 
       final displayName = _getSenderDisplayName(senderId);
@@ -169,9 +165,8 @@ class BluetoothForwardService {
     // 先更新游标，防止重入时重复转发
     _lastForwardedId = pending.map((m) => m.id).reduce((a, b) => a > b ? a : b);
 
-    // 过滤系统消息，逐条异步转发
+    // 逐条异步转发所有消息
     for (final msg in pending) {
-      if (msg.messageType == MessageType.system) continue;
       // 将 bipupuId 转换为可读显示名，未命中缓存时退化为 ID 本身
       final displayName = _getSenderDisplayName(msg.senderBipupuId);
       unawaited(
@@ -213,9 +208,7 @@ class BluetoothForwardService {
         '[BtForward] 消息 $id [from: $senderDisplayName] → 蓝牙 ${sent ? "✓ 成功 (ACK 确认)" : "✗ 失败 (未收到 ACK)"}',
       );
     } catch (e) {
-      log(
-        '[BtForward] 消息 $id [from: $senderDisplayName] → 蓝牙 ✗ 异常：$e',
-      );
+      log('[BtForward] 消息 $id [from: $senderDisplayName] → 蓝牙 ✗ 异常：$e');
     }
   }
 
@@ -230,7 +223,7 @@ class BluetoothForwardService {
       // 已经在加载中，跳过
       return;
     }
-    
+
     try {
       const pageSize = 100;
       int page = 1;
@@ -274,16 +267,18 @@ class BluetoothForwardService {
     if (_cacheLoaded) {
       return _senderDisplayNameCache[bipupuId] ?? bipupuId;
     }
-    
+
     // 如果正在加载，返回 ID（加载完成后会更新）
     if (_cacheLoading) {
       return bipupuId;
     }
-    
+
     // 首次需要时触发加载
     _cacheLoading = true;
-    unawaited(_refreshContactsCache().whenComplete(() => _cacheLoading = false));
-    
+    unawaited(
+      _refreshContactsCache().whenComplete(() => _cacheLoading = false),
+    );
+
     return bipupuId;
   }
 

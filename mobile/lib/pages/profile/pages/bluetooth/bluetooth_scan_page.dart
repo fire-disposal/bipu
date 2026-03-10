@@ -18,7 +18,6 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
   final BluetoothDeviceService _bluetoothService = BluetoothDeviceService();
   List<ScanResult> _scanResults = [];
   bool _isScanning = false;
-  bool _showAllDevices = false; // ✅ 新增：诊断模式开关
   BluetoothAdapterState _adapterState = BluetoothAdapterState.unknown;
   BluetoothDevice? _connectingDevice;
 
@@ -42,14 +41,14 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
     });
 
     _scanResultsSubscription = FlutterBluePlus.scanResults.listen((results) {
-      // ✅ DEBUG: 打印所有扫描到的设备
+      // DEBUG: 打印所有扫描到的设备
       for (var result in results) {
         final name = result.device.platformName;
         final id = result.device.remoteId;
         final rssi = result.rssi;
-        final isPager = _isPagerDevice(result.device);
+        final isBipupu = _isBipupuDevice(result.device);
         debugPrint(
-          '[BLE_DEBUG] 扫描设备: 名称=$name, ID=$id, RSSI=$rssi, 是寻呼机=$isPager',
+          '[BLE_DEBUG] 扫描设备: 名称=$name, ID=$id, RSSI=$rssi, 是Bipupu=$isBipupu',
         );
       }
 
@@ -152,25 +151,16 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
     await _bluetoothService.connect(device);
   }
 
-  bool _isPagerDevice(BluetoothDevice device) {
+  /// 检查是否是 Bipupu 设备（仅用于高亮显示，不影响列表）
+  bool _isBipupuDevice(BluetoothDevice device) {
     final name = device.platformName.toLowerCase();
-    return name.contains('pager') ||
-        name.contains('beeper') ||
-        name.contains('bp-') ||
-        name.contains('bipupu') ||
-        name.startsWith('bp') ||
-        name.startsWith('pg');
+    return name.contains('bipupu');
   }
 
+  /// 获取扫描结果列表（不再筛选，显示所有设备）
   List<ScanResult> get _filteredScanResults {
-    if (_showAllDevices) {
-      // ✅ 诊断模式：显示所有设备
-      return _scanResults;
-    }
-    // 正常模式：只显示寻呼机设备
-    return _scanResults
-        .where((result) => _isPagerDevice(result.device))
-        .toList();
+    // 直接返回所有扫描结果，不进行筛选
+    return _scanResults;
   }
 
   Widget _buildScanResultTile(ScanResult result) {
@@ -344,15 +334,6 @@ class _BluetoothScanPageState extends State<BluetoothScanPage> {
         foregroundColor: colorScheme.onPrimaryContainer,
         elevation: 0,
         actions: [
-          // ✅ 诊断模式开关
-          Tooltip(
-            message: '切换诊断模式 (显示所有设备)',
-            child: IconButton(
-              icon: Icon(_showAllDevices ? Icons.bug_report : Icons.search),
-              onPressed: () =>
-                  setState(() => _showAllDevices = !_showAllDevices),
-            ),
-          ),
           Container(
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:bipupu/core/services/auth_service.dart';
 import 'package:bipupu/core/services/bluetooth_device_service.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -15,26 +16,34 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
   final TextEditingController _messageController = TextEditingController();
   bool _isSending = false;
 
-  // 直接从服务的 ValueNotifier 读取绑定状态，无需本地副本
+  // 直接从服务的 ValueNotifier 读取状态，无需本地副本
   bool get _isBound => _bluetoothService.isBound.value;
   String? get _boundDeviceName => _bluetoothService.boundDeviceName.value;
+  bool get _isConnected =>
+      _bluetoothService.connectionState.value ==
+      BluetoothConnectionState.connected;
+  String get _connectionStatus => _bluetoothService.connectionStatus.value;
 
-  void _onBindingChanged() {
+  void _onStateChanged() {
     if (mounted) setState(() {});
   }
 
   @override
   void initState() {
     super.initState();
-    // 订阅绑定状态变化，UI 自动跟随更新
-    _bluetoothService.isBound.addListener(_onBindingChanged);
-    _bluetoothService.boundDeviceName.addListener(_onBindingChanged);
+    // 订阅绑定状态和连接状态变化，UI 自动跟随更新
+    _bluetoothService.isBound.addListener(_onStateChanged);
+    _bluetoothService.boundDeviceName.addListener(_onStateChanged);
+    _bluetoothService.connectionState.addListener(_onStateChanged);
+    _bluetoothService.connectionStatus.addListener(_onStateChanged);
   }
 
   @override
   void dispose() {
-    _bluetoothService.isBound.removeListener(_onBindingChanged);
-    _bluetoothService.boundDeviceName.removeListener(_onBindingChanged);
+    _bluetoothService.isBound.removeListener(_onStateChanged);
+    _bluetoothService.boundDeviceName.removeListener(_onStateChanged);
+    _bluetoothService.connectionState.removeListener(_onStateChanged);
+    _bluetoothService.connectionStatus.removeListener(_onStateChanged);
     _messageController.dispose();
     super.dispose();
   }
@@ -98,12 +107,18 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.green.withValues(alpha: 0.1),
+                              color: _isConnected
+                                  ? Colors.green.withValues(alpha: 0.1)
+                                  : Colors.orange.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(
-                              Icons.bluetooth_connected,
-                              color: Colors.green,
+                            child: Icon(
+                              _isConnected
+                                  ? Icons.bluetooth_connected
+                                  : Icons.bluetooth_searching,
+                              color: _isConnected
+                                  ? Colors.green
+                                  : Colors.orange,
                               size: 28,
                             ),
                           ),
@@ -113,7 +128,9 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'device_connected'.tr(),
+                                  _isConnected
+                                      ? 'device_connected'.tr()
+                                      : _connectionStatus,
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -124,7 +141,9 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'can_send_text_messages'.tr(),
+                                  _isConnected
+                                      ? 'can_send_text_messages'.tr()
+                                      : '等待蓝牙连接...',
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Theme.of(
@@ -571,7 +590,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     try {
       // 发送解绑命令并等待设备 ACK 确认（10 秒超时）
       final success = await _bluetoothService.sendUnbindCommand();
-      
+
       if (success) {
         // 只有收到设备 ACK 后才清除本地绑定
         await _bluetoothService.clearBinding();
