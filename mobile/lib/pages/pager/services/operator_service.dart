@@ -18,12 +18,16 @@ class OperatorService {
   bool _firstLaunchCompleted = false;
 
   OperatorService() {
-    _allOperators = List.from(OperatorFactory.defaultOperators);
+    _allOperators = [];
   }
 
   /// 初始化服务
   Future<void> init() async {
     if (_initialized) return;
+
+    // 初始化 OperatorFactory 并加载配置
+    await OperatorFactory.initialize();
+    _allOperators = await OperatorFactory.getAllOperators();
 
     // 初始化 Hive
     await Hive.initFlutter();

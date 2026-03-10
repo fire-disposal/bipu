@@ -45,8 +45,10 @@ async def upload_avatar(
         if file_size > settings.MAX_FILE_SIZE:
             raise ValidationException(f"文件过大，最大支持 {settings.MAX_FILE_SIZE // (1024*1024)}MB")
 
-        # 验证文件类型
-        if not file.content_type or not file.content_type.startswith('image/'):
+        # 验证文件类型（宽松检查：Dio 移动端可能上报 application/octet-stream）
+        # 实际图片格式由 StorageService.save_avatar() 通过 PIL image.verify() 验证
+        if file.content_type and not file.content_type.startswith('image/') \
+                and file.content_type not in ('application/octet-stream', 'binary/octet-stream'):
             raise ValidationException("请上传图片文件（支持JPG、PNG等格式）")
 
         # 重新创建文件对象用于后续处理
@@ -117,8 +119,8 @@ async def update_profile(
 ):
     """更新个人资料"""
     try:
-        # 更新用户信息
-        update_dict = update_data.model_dump(exclude_unset=True)
+        # 更新用户信息（exclude_none 防止客户端发来的 null 覆盖数据库现有值）
+        update_dict = update_data.model_dump(exclude_unset=True, exclude_none=True)
 
         for field, value in update_dict.items():
             setattr(current_user, field, value)

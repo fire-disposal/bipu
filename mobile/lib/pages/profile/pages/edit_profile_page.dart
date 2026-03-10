@@ -142,16 +142,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
 
     Future<void> saveProfile() async {
-      if (_nicknameController.text.trim().isEmpty) {
-        ToastService.validationError('nickname');
-        return;
-      }
-
       setState(() => _isLoading = true);
 
       try {
         final updateData = UserUpdate(
-          nickname: _nicknameController.text.trim(),
+          nickname: _nicknameController.text.trim().isEmpty
+              ? null
+              : _nicknameController.text.trim(),
           birthday: _birthday,
           gender: _gender,
           mbti: _mbtiController.text.trim().isEmpty
