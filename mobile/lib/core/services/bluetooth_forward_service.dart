@@ -3,7 +3,7 @@ import 'dart:developer';
 
 import 'package:bipupu/core/network/network.dart';
 
-import 'im_service.dart';
+import 'unified_message_service.dart';
 import 'bluetooth_device_service.dart';
 import 'unified_bluetooth_protocol.dart';
 import '../api/models/message_response.dart';
@@ -34,7 +34,7 @@ class BluetoothForwardService {
   factory BluetoothForwardService() => _instance;
   BluetoothForwardService._internal();
 
-  final ImService _imService = ImService();
+  final UnifiedMessageService _unifiedService = UnifiedMessageService();
   final BluetoothDeviceService _btService = BluetoothDeviceService();
 
   bool _running = false;
@@ -71,14 +71,14 @@ class BluetoothForwardService {
       (_) => unawaited(_refreshContactsCache()),
     );
 
-    _imService.addListener(_onImServiceChanged);
+    _unifiedService.addListener(_onImServiceChanged);
     log('[BtForward] 转发服务已启动，初始游标：$_lastForwardedId');
   }
 
   /// 停止转发服务（用户登出时调用）
   void stop() {
     if (!_running) return;
-    _imService.removeListener(_onImServiceChanged);
+    _unifiedService.removeListener(_onImServiceChanged);
     _cacheRefreshTimer?.cancel();
     _cacheRefreshTimer = null;
     _running = false;
@@ -136,7 +136,7 @@ class BluetoothForwardService {
   // ── 私有方法 ──────────────────────────────────────────────────────────────
 
   void _initCursorFromCurrentMessages() {
-    final msgs = _imService.receivedMessages;
+    final msgs = _unifiedService.receivedMessages;
     if (msgs.isEmpty) return;
 
     int maxId = 0;
@@ -149,7 +149,7 @@ class BluetoothForwardService {
 
   /// ImService 通知监听回调（每次 notifyListeners 触发）
   void _onImServiceChanged() {
-    final msgs = _imService.receivedMessages;
+    final msgs = _unifiedService.receivedMessages;
     if (msgs.isEmpty) return;
 
     // 找出比当前游标新的消息

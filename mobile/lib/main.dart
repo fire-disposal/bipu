@@ -28,7 +28,7 @@ import 'pages/home/pages/quick_actions/contacts_page.dart';
 import 'pages/home/pages/quick_actions/user_search_page.dart';
 import 'pages/home/pages/quick_send_page.dart';
 import 'pages/profile/pages/user_detail_page.dart';
-import 'core/services/im_service.dart';
+import 'core/services/unified_message_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/background_service.dart';
 import 'core/services/bluetooth_forward_service.dart';
@@ -71,7 +71,7 @@ Future<void> main() async {
   // Sequential initialization with proper error handling
   try {
     await AuthService().initialize();
-    await ImService().init();
+    await UnifiedMessageService().init();
     await NotificationService().initialize();
     await BackgroundMessageService().configure();
   } catch (e) {
@@ -86,13 +86,57 @@ Future<void> main() async {
       supportedLocales: const [Locale('zh', 'CN'), Locale('en', 'US')],
       path: 'assets/translations',
       fallbackLocale: const Locale('zh', 'CN'),
-      child: const MyApp(),
+      child: MyApp(),
     ),
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // 设置后台服务认证监听器
+    _setupBackgroundServiceAuthListener();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final unifiedService = UnifiedMessageService();
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // 应用回到前台
+        unifiedService.setForegroundState(true);
+        break;
+      case AppLifecycleState.paused:
+        // 应用进入后台
+        unifiedService.setForegroundState(false);
+        break;
+      case AppLifecycleState.inactive:
+        // 应用非活动状态
+        break;
+      case AppLifecycleState.detached:
+        // 应用分离
+        break;
+      case AppLifecycleState.hidden:
+        // 应用隐藏（仅iOS）
+        unifiedService.setForegroundState(false);
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
