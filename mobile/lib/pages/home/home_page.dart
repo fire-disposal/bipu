@@ -19,6 +19,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   BluetoothConnectionState _connectionState =
       BluetoothConnectionState.disconnected;
 
+  // 保存监听器引用，确保 dispose 时能正确移除
+  VoidCallback? _connectionStateListener;
+
   // 进场动画控制器
   late AnimationController _titleAnimationController;
   late Animation<double> _titleFadeAnimation;
@@ -67,6 +70,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    // 移除蓝牙状态监听器，防止内存泄漏
+    if (_connectionStateListener != null) {
+      _bluetoothService.connectionState.removeListener(
+        _connectionStateListener!,
+      );
+    }
     _titleAnimationController.dispose();
     _gradientController.dispose(); // 记得释放
     _posterController.dispose();
@@ -85,13 +94,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void _setupBluetoothListener() {
-    _bluetoothService.connectionState.addListener(() {
+    _connectionStateListener = () {
       if (mounted) {
         setState(
           () => _connectionState = _bluetoothService.connectionState.value,
         );
       }
-    });
+    };
+    _bluetoothService.connectionState.addListener(_connectionStateListener!);
   }
 
   bool get _isConnected =>
