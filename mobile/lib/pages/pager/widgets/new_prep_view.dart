@@ -69,11 +69,14 @@ class NewPrepView extends StatelessWidget {
 
               const Spacer(flex: 1),
 
-              // 呼叫按钮
+              // 呼叫按钮 - prep 阶段不需要 loading 状态
               _DialButton(
-                isLoading: vm.isSending,
+                isLoading: false,
                 themeColor: themeColor,
-                onTap: () => vm.startDialing(),
+                onTap: () {
+                  debugPrint('[NewPrepView] 呼叫按钮点击');
+                  vm.startDialing();
+                },
               ),
 
               const SizedBox(height: 28),
@@ -251,69 +254,73 @@ class _DialButton extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    return InkWell(
-      onTap: isLoading ? null : onTap,
-      borderRadius: BorderRadius.circular(32),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        height: 62,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(32),
-          color: isLoading ? cs.primary : themeColor,
-          boxShadow: [
-            BoxShadow(
-              color: (isLoading ? cs.primary : themeColor).withValues(
-                alpha: 0.35,
-              ),
-              blurRadius: 14,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Center(
-          child: isLoading
-              ? Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2.5,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      '初始化中...',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                  ],
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.phone_in_talk_rounded,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      '呼叫接线员',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                  ],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: isLoading ? null : onTap,
+        borderRadius: BorderRadius.circular(32),
+        splashColor: Colors.white.withValues(alpha: 0.2),
+        highlightColor: Colors.white.withValues(alpha: 0.1),
+        child: Ink(
+          height: 62,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(32),
+            color: isLoading ? cs.primary : themeColor,
+            boxShadow: [
+              BoxShadow(
+                color: (isLoading ? cs.primary : themeColor).withValues(
+                  alpha: 0.35,
                 ),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Center(
+            child: isLoading
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        '初始化中...',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.phone_in_talk_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        '呼叫接线员',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
         ),
       ),
     );

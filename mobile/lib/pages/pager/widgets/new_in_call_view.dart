@@ -213,6 +213,16 @@ class _NewInCallViewState extends State<NewInCallView> {
       '[NewInCallView] isConfirming=${vm.isConfirming}, targetId=${vm.targetId}',
     );
 
+    // 同步 controller 和 vm 的 targetId
+    if (_targetIdController.text != vm.targetId) {
+      _targetIdController.text = vm.targetId;
+      _targetIdController.selection = TextSelection.fromPosition(
+        TextPosition(offset: vm.targetId.length),
+      );
+    }
+
+    final canConfirm = !vm.isConfirming && vm.targetId.isNotEmpty;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -239,14 +249,14 @@ class _NewInCallViewState extends State<NewInCallView> {
             width: double.infinity,
             height: 52,
             child: FilledButton.icon(
-              onPressed: () {
-                debugPrint(
-                  '[NewInCallView] 确认号码 clicked, isConfirming=${vm.isConfirming}, targetId=${vm.targetId}, inputValue=${_targetIdController.text}',
-                );
-                if (!vm.isConfirming && vm.targetId.isNotEmpty) {
-                  vm.confirmTargetId();
-                }
-              },
+              onPressed: canConfirm
+                  ? () {
+                      debugPrint(
+                        '[NewInCallView] 确认号码 clicked, targetId=${vm.targetId}',
+                      );
+                      vm.confirmTargetId();
+                    }
+                  : null,
               icon: vm.isConfirming
                   ? const SizedBox(
                       width: 20,
@@ -257,12 +267,20 @@ class _NewInCallViewState extends State<NewInCallView> {
               label: Text(vm.isConfirming ? '确认中...' : '确认号码'),
               style: FilledButton.styleFrom(
                 backgroundColor: themeColor,
+                disabledBackgroundColor: themeColor.withValues(alpha: 0.3),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
           ),
+          if (vm.errorMessage != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              vm.errorMessage!,
+              style: TextStyle(color: cs.error, fontSize: 13),
+            ),
+          ],
         ],
       ),
     );
