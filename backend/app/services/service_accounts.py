@@ -82,9 +82,10 @@ async def send_push(
         try:
             ws_message = {
                 "type": "new_message",
-                "payload": {
+                "message": {
                     "id": new_message.id,
-                    "sender_id": new_message.sender_bipupu_id,
+                    "sender_bipupu_id": new_message.sender_bipupu_id,
+                    "receiver_bipupu_id": receiver_bipupu_id,
                     "content": new_message.content,
                     "message_type": str(new_message.message_type) if new_message.message_type else None,
                     "pattern": new_message.pattern,

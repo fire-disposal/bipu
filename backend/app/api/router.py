@@ -47,7 +47,7 @@ api_router.include_router(modern_push_router, prefix="/push", tags=["push"])
 api_router.include_router(posters_router, prefix="/posters", tags=["posters"])
 
 # WebSocket routes
-api_router.include_router(websocket_router, prefix="/ws", tags=["websocket"])
+api_router.include_router(websocket_router, tags=["websocket"])
 
 # Admin web routes (web interface)
 api_router.include_router(admin_web_router, prefix="/admin", tags=["admin"])

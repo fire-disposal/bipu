@@ -136,9 +136,10 @@ class MessageService:
         try:
             ws_payload = {
                 "type": "new_message",
-                "data": {
+                "message": {
                     "id": message.id,
-                    "sender_id": message.sender_bipupu_id,
+                    "sender_bipupu_id": message.sender_bipupu_id,
+                    "receiver_bipupu_id": message.receiver_bipupu_id,
                     "content": message.content,
                     "message_type": message.message_type,
                     "created_at": message.created_at.isoformat()
