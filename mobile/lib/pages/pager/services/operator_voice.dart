@@ -123,7 +123,9 @@ class PrerecordedVoiceBackend implements OperatorVoiceBackend {
 
     final relPath = _byText?[text];
     if (relPath == null) {
-      debugPrint('[PrerecordedVoice] 无预录制文件，跳过："${text.substring(0, text.length.clamp(0, 20))}…"');
+      debugPrint(
+        '[PrerecordedVoice] 无预录制文件，跳过："${text.substring(0, text.length.clamp(0, 20))}…"',
+      );
       return;
     }
 
@@ -177,17 +179,16 @@ class FallbackVoiceBackend implements OperatorVoiceBackend {
   final PrerecordedVoiceBackend prerecorded;
   final TtsVoiceBackend tts;
 
-  const FallbackVoiceBackend({
-    required this.prerecorded,
-    required this.tts,
-  });
+  const FallbackVoiceBackend({required this.prerecorded, required this.tts});
 
   @override
   Future<void> play(OperatorPersonality op, String text) async {
     if (await prerecorded.hasAudio(text)) {
       await prerecorded.play(op, text);
     } else {
-      debugPrint('[FallbackVoice] 无预录制，转 TTS："${text.substring(0, text.length.clamp(0, 20))}…"');
+      debugPrint(
+        '[FallbackVoice] 无预录制，转 TTS："${text.substring(0, text.length.clamp(0, 20))}…"',
+      );
       await tts.play(op, text);
     }
   }
