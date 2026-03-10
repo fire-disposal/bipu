@@ -26,6 +26,7 @@ import 'pages/messages/pages/sent_messages_page.dart';
 import 'pages/messages/pages/system_messages_page.dart';
 import 'pages/home/pages/quick_actions/contacts_page.dart';
 import 'pages/home/pages/quick_actions/user_search_page.dart';
+import 'pages/home/pages/quick_send_page.dart';
 import 'pages/profile/pages/user_detail_page.dart';
 import 'core/services/im_service.dart';
 import 'core/services/notification_service.dart';
@@ -221,7 +222,10 @@ final GoRouter _router = GoRouter(
       builder: (context, state, child) => MainLayout(child: child),
       routes: [
         GoRoute(path: '/home', builder: (context, state) => const HomePage()),
-        GoRoute(path: '/pager', builder: (context, state) => const NewPagerPage()),
+        GoRoute(
+          path: '/pager',
+          builder: (context, state) => const NewPagerPage(),
+        ),
         GoRoute(
           path: '/messages',
           builder: (context, state) => const MessagesPage(),
@@ -278,6 +282,10 @@ final GoRouter _router = GoRouter(
               builder: (context, state) => const UserSearchPage(),
             ),
           ],
+        ),
+        GoRoute(
+          path: '/home/quick_send',
+          builder: (context, state) => const QuickSendPage(),
         ),
         GoRoute(
           path: '/messages/subscriptions',

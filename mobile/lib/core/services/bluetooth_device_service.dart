@@ -3,17 +3,17 @@ import 'dart:convert';
 import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'unified_bluetooth_protocol.dart';
 
 /// 消息发送状态
 enum MessageSendState {
-  pending,      // 等待发送
-  sending,      // 正在发送
-  waitingAck,   // 等待确认
-  completed,    // 已完成（收到 ACK）
-  failed,       // 发送失败
-  timeout,      // 超时
+  pending, // 等待发送
+  sending, // 正在发送
+  waitingAck, // 等待确认
+  completed, // 已完成（收到 ACK）
+  failed, // 发送失败
+  timeout, // 超时
 }
 
 /// 待发送消息项
@@ -46,8 +46,7 @@ class QueuedMessage {
   static const Duration timeout = Duration(seconds: 5);
 
   bool get isTimeout =>
-      sentAt != null &&
-      DateTime.now().difference(sentAt!) > timeout;
+      sentAt != null && DateTime.now().difference(sentAt!) > timeout;
 }
 
 /// 蓝牙设备服务 - 增强版
@@ -84,7 +83,7 @@ class BluetoothDeviceService {
   static const String _bindingPrefsKey = 'bluetooth_binding_info';
   final ValueNotifier<bool> isBound = ValueNotifier(false);
   final ValueNotifier<String?> boundDeviceName = ValueNotifier(null);
-  
+
   // 绑定操作的 Completer
   Completer<bool>? _bindingCompleter;
   Completer<bool>? _unbindingCompleter;
@@ -100,7 +99,7 @@ class BluetoothDeviceService {
   final Map<int, Completer<bool>> _pendingMessageCompleters = {};
   Timer? _messageQueueTimer;
   int _nextMessageId = 1;
-  
+
   // ========== 已接收消息去重 ==========
   // 使用 LRU 缓存记录已处理的消息，避免重复处理
   // 键：timestamp + 内容哈希（防止 ESP32 时间重置导致重复）
@@ -599,7 +598,7 @@ class BluetoothDeviceService {
   void _handleTextMessage(Map<String, dynamic> packet) {
     final timestamp = packet['timestamp'] as int?;
     final content = packet['text'] as String?;
-    
+
     // 去重检查（使用 timestamp + 内容哈希）
     if (timestamp != null && _isMessageProcessed(timestamp, content)) {
       if (kDebugMode) {
@@ -607,16 +606,16 @@ class BluetoothDeviceService {
       }
       return;
     }
-    
+
     // 标记为已处理
     if (timestamp != null) {
       _markMessageAsProcessed(timestamp, content);
     }
-    
+
     if (kDebugMode) {
       print('收到文本消息：${packet['text']}');
     }
-    
+
     // 发送 ACK 确认收到消息
     // 注意：当前协议中 ESP32 不会发送 TEXT 消息给手机，这是预留功能
   }
@@ -627,7 +626,9 @@ class BluetoothDeviceService {
     final timestamp = packet['timestamp'] as int?;
 
     if (kDebugMode) {
-      print('收到确认响应：originalMessageId=$originalMessageId, timestamp=$timestamp');
+      print(
+        '收到确认响应：originalMessageId=$originalMessageId, timestamp=$timestamp',
+      );
     }
 
     // 使用时间戳作为消息标识来匹配待确认消息
@@ -639,7 +640,7 @@ class BluetoothDeviceService {
           final packetTimestamp = Uint8List.fromList(
             message.packet.sublist(1, 5),
           ).buffer.asByteData().getUint32(0, Endian.little);
-          
+
           if (packetTimestamp == timestamp) {
             message.state = MessageSendState.completed;
             if (kDebugMode) {
@@ -755,9 +756,9 @@ class BluetoothDeviceService {
 
   /// 加载绑定信息
   Future<void> _loadBindingInfo() async {
-    final prefs = await SharedPreferences.getInstance();
-    final boundId = prefs.getString(_bindingPrefsKey);
-    final boundName = prefs.getString('${_bindingPrefsKey}_name');
+    final box = await Hive.openBox('bluetooth_binding');
+    final boundId = box.get(_bindingPrefsKey);
+    final boundName = box.get('${_bindingPrefsKey}_name');
 
     if (boundId != null) {
       isBound.value = true;
@@ -771,8 +772,8 @@ class BluetoothDeviceService {
 
   /// 检查并更新绑定状态
   Future<void> _checkAndUpdateBinding(BluetoothDevice newDevice) async {
-    final prefs = await SharedPreferences.getInstance();
-    final boundId = prefs.getString(_bindingPrefsKey);
+    final box = await Hive.openBox('bluetooth_binding');
+    final boundId = box.get(_bindingPrefsKey);
 
     // 如果已经有绑定的设备，且不是当前要连接的设备
     if (boundId != null && boundId != newDevice.remoteId.toString()) {
@@ -786,8 +787,8 @@ class BluetoothDeviceService {
     // 保存新绑定
     final deviceName = newDevice.platformName;
     final safeDeviceName = deviceName.isNotEmpty ? deviceName : '未知设备';
-    await prefs.setString(_bindingPrefsKey, newDevice.remoteId.toString());
-    await prefs.setString('${_bindingPrefsKey}_name', safeDeviceName);
+    await box.put(_bindingPrefsKey, newDevice.remoteId.toString());
+    await box.put('${_bindingPrefsKey}_name', safeDeviceName);
 
     isBound.value = true;
     boundDeviceName.value = safeDeviceName;
@@ -799,9 +800,9 @@ class BluetoothDeviceService {
 
   /// 获取绑定信息
   Future<Map<String, dynamic>> getBindingInfo() async {
-    final prefs = await SharedPreferences.getInstance();
-    final boundId = prefs.getString(_bindingPrefsKey);
-    final boundName = prefs.getString('${_bindingPrefsKey}_name');
+    final box = await Hive.openBox('bluetooth_binding');
+    final boundId = box.get(_bindingPrefsKey);
+    final boundName = box.get('${_bindingPrefsKey}_name');
 
     return {
       'isBound': boundId != null,
@@ -813,9 +814,9 @@ class BluetoothDeviceService {
 
   /// 清除绑定（本地解绑）
   Future<void> clearBinding() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_bindingPrefsKey);
-    await prefs.remove('${_bindingPrefsKey}_name');
+    final box = await Hive.openBox('bluetooth_binding');
+    await box.delete(_bindingPrefsKey);
+    await box.delete('${_bindingPrefsKey}_name');
 
     isBound.value = false;
     boundDeviceName.value = null;
@@ -954,12 +955,15 @@ class BluetoothDeviceService {
             message.state = MessageSendState.pending;
             message.sentAt = null;
             if (kDebugMode) {
-              print('消息 ${message.messageId} 超时，重试 ${message.retryCount}/${QueuedMessage.maxRetries}');
+              print(
+                '消息 ${message.messageId} 超时，重试 ${message.retryCount}/${QueuedMessage.maxRetries}',
+              );
             }
           } else {
             // 达到最大重试次数，标记失败
             message.state = MessageSendState.failed;
-            message.errorMessage = 'Timeout after ${QueuedMessage.maxRetries} retries';
+            message.errorMessage =
+                'Timeout after ${QueuedMessage.maxRetries} retries';
             _pendingMessageCompleters[message.messageId]?.complete(false);
             _pendingMessageCompleters.remove(message.messageId);
             _messageQueue.removeFirst();
@@ -997,14 +1001,14 @@ class BluetoothDeviceService {
           message.state == MessageSendState.sending) {
         message.state = MessageSendState.failed;
         message.errorMessage = reason;
-        
+
         // 完成对应的 Completer
         final completer = _pendingMessageCompleters[message.messageId];
         if (completer != null && !completer.isCompleted) {
           completer.complete(false);
         }
         _pendingMessageCompleters.remove(message.messageId);
-        
+
         if (kDebugMode) {
           print('消息 ${message.messageId} 标记为失败：$reason');
         }
@@ -1083,7 +1087,7 @@ class BluetoothDeviceService {
   void _markMessageAsProcessed(int timestamp, String? content) {
     final key = _createMessageKey(timestamp, content);
     _processedMessageCache[key] = DateTime.now();
-    
+
     // 立即清理，保持缓存大小
     if (_processedMessageCache.length > _maxProcessedCacheSize) {
       final firstKey = _processedMessageCache.keys.first;
@@ -1108,7 +1112,7 @@ class BluetoothDeviceService {
             print('绑定操作已确认');
           }
         }
-        
+
         // 如果是设备主动发来的绑定信息（JSON 数据），解析并处理
         if (packet['data'] != null && packet['data'].isNotEmpty) {
           try {
@@ -1148,11 +1152,11 @@ class BluetoothDeviceService {
   /// 销毁服务
   Future<void> dispose() async {
     _isDisposing = true;
-    
+
     // 停止消息队列处理
     _messageQueueTimer?.cancel();
     _messageQueueTimer = null;
-    
+
     // 取消所有待处理的消息
     for (final completer in _pendingMessageCompleters.values) {
       if (!completer.isCompleted) {
@@ -1161,7 +1165,7 @@ class BluetoothDeviceService {
     }
     _pendingMessageCompleters.clear();
     _messageQueue.clear();
-    
+
     // 取消绑定操作的 Future
     if (_bindingCompleter != null && !_bindingCompleter!.isCompleted) {
       _bindingCompleter!.complete(false);
@@ -1169,7 +1173,7 @@ class BluetoothDeviceService {
     if (_unbindingCompleter != null && !_unbindingCompleter!.isCompleted) {
       _unbindingCompleter!.complete(false);
     }
-    
+
     await disconnect();
     _cancelAllSubscriptions();
     _stopReconnectTimer();

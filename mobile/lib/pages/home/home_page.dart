@@ -175,7 +175,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         Color(0xFF0072FF),
                         Color(0xFF00C6FF),
                         Color(0xFF0072FF),
-                      ],  
+                      ],
                     ).createShader(bounds),
                     child: const Text(
                       'Bipupu',
@@ -311,7 +311,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+        side: BorderSide(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -420,10 +422,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ),
         _buildActionCard(
           context,
-          'voice_test_title'.tr(),
-          Icons.mic,
+          'quick_send'.tr(),
+          Icons.send_rounded,
           const Color(0xFF49FF61),
-          () => context.push('/home/voice_test'),
+          () => context.push('/home/quick_send'),
         ),
       ],
     );
@@ -443,7 +445,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
+          color: Theme.of(
+            context,
+          ).colorScheme.outlineVariant.withValues(alpha: 0.4),
         ),
       ),
       child: InkWell(

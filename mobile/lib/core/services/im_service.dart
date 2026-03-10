@@ -699,7 +699,7 @@ class ImService extends ChangeNotifier {
     if (newId > _lastReceivedMessageId) {
       _lastReceivedMessageId = newId;
       _imSettingsBox?.put(_lastReceivedMsgIdKey, _lastReceivedMessageId);
-      // 同步到 SharedPreferences，使后台服务能读取最新游标，避免重复推送通知
+      // 同步到 Hive，使后台服务能读取最新游标，避免重复推送通知
       unawaited(BackgroundMessageService.syncLastMessageId(newId));
     }
   }

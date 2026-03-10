@@ -39,6 +39,9 @@ class PagerVM extends ChangeNotifier {
   final VoiceService _voice = VoiceService();
   final OperatorService _operatorService = OperatorService();
 
+  // ASR 流管理
+  StreamSubscription<String>? _asrSubscription;
+
   // 状态
   PagerPhase _phase = PagerPhase.prep;
   OperatorPersonality? _operator;
@@ -211,41 +214,59 @@ class PagerVM extends ChangeNotifier {
     }
 
     await _voice.stopSpeaking();
+
+    // 清理前一个 ASR 订阅
+    await _asrSubscription?.cancel();
+
     _isRecording = true;
     _asrTranscript = '';
     notifyListeners();
 
     try {
-      // 监听 ASR 结果
       final results = _voice.startListening(
         timeout: const Duration(seconds: 30),
       );
 
-      await for (final text in results) {
-        _asrTranscript = text;
-        notifyListeners();
-        break; // 收到一个结果就停止
-      }
+      // 显式管理订阅，防止流泄漏
+      bool resultReceived = false;
+      _asrSubscription = results.listen(
+        (text) {
+          _asrTranscript = text;
+          _messageContent = text;
+          resultReceived = true;
+          notifyListeners();
+        },
+        onError: (e) {
+          debugPrint('[PagerVM ERROR] ASR 错误：$e');
+          if (_isRecording) {
+            _error('录音失败，请重试');
+            _isRecording = false;
+            notifyListeners();
+          }
+        },
+        onDone: () {
+          if (_isRecording && resultReceived) {
+            _isRecording = false;
+            _phase = PagerPhase.reviewing;
+            notifyListeners();
+          }
+        },
+        cancelOnError: true,
+      );
 
-      if (_asrTranscript.isEmpty) {
-        debugPrint('[PagerVM WARN] 未识别到语音');
+      // 添加超时保护
+      await Future.delayed(const Duration(seconds: 31));
+      if (_isRecording) {
+        debugPrint('[PagerVM WARN] ASR 超时，强制停止');
+        await _asrSubscription?.cancel();
         _isRecording = false;
+        _error('录音超时，请重试');
         notifyListeners();
-        return;
       }
-
-      debugPrint('[PagerVM] 识别结果 "${_asrTranscript}"');
-
-      // 进入确认阶段
-      _messageContent = _asrTranscript;
-      _asrTranscript = '';
-      _isRecording = false;
-      _phase = PagerPhase.reviewing;
-      notifyListeners();
     } catch (e) {
-      debugPrint('[PagerVM ERROR] 录音失败：$e');
+      debugPrint('[PagerVM ERROR] startVoiceRecording 异常：$e');
       _isRecording = false;
-      _errorMessage = '录音失败，请重试';
+      _error('录音异常：$e');
       notifyListeners();
     }
   }
@@ -282,7 +303,7 @@ class PagerVM extends ChangeNotifier {
 
   /// 发送消息
   Future<void> sendMessage({String? message}) async {
-    // 检查前置条件
+    // 第一层：预检查
     if (_phase != PagerPhase.reviewing) {
       debugPrint('[PagerVM WARN] 不在 reviewing 阶段，无法发送消息');
       return;
@@ -294,56 +315,80 @@ class PagerVM extends ChangeNotifier {
       return;
     }
 
+    // 第二层：操作符检查
+    if (_operator == null) {
+      _error('接线员数据丢失');
+      return;
+    }
+
     _isSending = true;
     _errorMessage = null;
     notifyListeners();
 
+    // 快照保存，防止 await 期间变量被修改
+    final targetIdSnapshot = _targetId;
+    final operatorSnapshot = _operator!;
+
     try {
       final result = await ImService().sendMessage(
-        receiverId: _targetId,
+        receiverId: targetIdSnapshot,
         content: content,
         messageType: MessageType.voice,
       );
+
+      // 网络请求后，重新检查状态
+      if (_phase != PagerPhase.reviewing) {
+        debugPrint('[PagerVM] 发送中状态已变化，放弃');
+        return;
+      }
 
       if (result != null) {
         debugPrint('[PagerVM] 消息发送成功');
 
         _sentHistory.add(
           SendRecord(
-            targetId: _targetId,
+            targetId: targetIdSnapshot,
             content: content,
             sentAt: DateTime.now(),
           ),
         );
 
-        // 成功提示
-        final successText = _operator!.dialogues.getSuccessMessage();
+        // 成功提示（使用快照）
+        final successText = operatorSnapshot.dialogues.getSuccessMessage();
         await _voice.speak(successText);
 
+        // 再次检查状态
         if (_phase != PagerPhase.reviewing) return;
         await Future.delayed(const Duration(milliseconds: 300));
 
         // 询问是否继续
-        final askContinue = _operator!.dialogues.getAskContinue();
+        final askContinue = operatorSnapshot.dialogues.getAskContinue();
         await _voice.speak(askContinue);
 
-        // 解锁接线员
-        await _operatorService.unlockOperator(_operator!.id);
-
-        // 重置状态
-        _targetId = '';
-        _messageContent = '';
-        _isSending = false;
-        notifyListeners();
+        // 最后检查才更新状态
+        if (_phase == PagerPhase.reviewing) {
+          await _operatorService.unlockOperator(operatorSnapshot.id);
+          _targetId = '';
+          _messageContent = '';
+          _isSending = false;
+          notifyListeners();
+        } else {
+          debugPrint('[PagerVM] 发送完成但状态已变化，不更新');
+          _isSending = false;
+        }
       } else {
         _error('发送失败');
-        _phase = PagerPhase.reviewing;
-        notifyListeners();
+        if (_phase == PagerPhase.reviewing) {
+          notifyListeners();
+        }
       }
     } catch (e) {
       _error('发送异常：$e');
-      _phase = PagerPhase.reviewing;
-      notifyListeners();
+      if (_phase == PagerPhase.reviewing) {
+        notifyListeners();
+      }
+    } finally {
+      _isSending = false;
     }
   }
 
@@ -401,6 +446,7 @@ class PagerVM extends ChangeNotifier {
 
   @override
   void dispose() {
+    _asrSubscription?.cancel(); // 清理 ASR 流
     _voice.dispose();
     super.dispose();
   }

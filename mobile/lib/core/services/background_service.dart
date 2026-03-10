@@ -6,13 +6,12 @@ import 'package:dio/dio.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_config.dart';
 import 'notification_service.dart';
 
 // ── 共享常量 ──────────────────────────────────────────────────────────────────
-/// SharedPreferences 中用于前后台同步消息游标的键
+/// FlutterSecureStorage 中用于前后台同步消息游标的键
 const String kBgLastMsgIdKey = 'bipupu_bg_last_msg_id';
 
 /// 后台服务保活通知 ID（与频道配置对应）
@@ -86,7 +85,7 @@ void onBackgroundStart(ServiceInstance service) async {
 
   int consecutiveErrors = 0;
   const maxConsecutiveErrors = 5;
-  
+
   // 最后通知时间戳，用于去重（避免短时间重复通知）
   int lastNotificationTimestamp = 0;
   const minNotificationIntervalMs = 3000; // 最短通知间隔 3 秒
@@ -95,8 +94,8 @@ void onBackgroundStart(ServiceInstance service) async {
   while (true) {
     try {
       // 读取前后台同步的消息游标
-      final prefs = await SharedPreferences.getInstance();
-      final lastMsgId = prefs.getInt(kBgLastMsgIdKey) ?? 0;
+      final lastMsgIdStr = await secureStorage.read(key: kBgLastMsgIdKey);
+      final lastMsgId = int.tryParse(lastMsgIdStr ?? '0') ?? 0;
 
       // 读取访问 Token（与主 App 共用 secure storage）
       final token = await secureStorage.read(key: 'access_token');
@@ -127,7 +126,10 @@ void onBackgroundStart(ServiceInstance service) async {
             if (id > maxId) maxId = id;
           }
           if (maxId > lastMsgId) {
-            await prefs.setInt(kBgLastMsgIdKey, maxId);
+            await secureStorage.write(
+              key: kBgLastMsgIdKey,
+              value: maxId.toString(),
+            );
           }
 
           // 取第一条消息信息用于通知文本
@@ -137,7 +139,7 @@ void onBackgroundStart(ServiceInstance service) async {
               (first['content'] as String?)?.trim().isNotEmpty == true
               ? first['content'] as String
               : '新消息';
-          
+
           // 通知去重：检查时间间隔（避免 3 秒内重复通知）
           final now = DateTime.now().millisecondsSinceEpoch;
           if (now - lastNotificationTimestamp > minNotificationIntervalMs) {
@@ -163,7 +165,9 @@ void onBackgroundStart(ServiceInstance service) async {
             lastNotificationTimestamp = now;
             log('[BG] 收到 ${messages.length} 条新消息，已发送通知 (maxId=$maxId)');
           } else {
-            log('[BG] 收到 ${messages.length} 条新消息，但距离上次通知 < 3 秒，跳过通知 (maxId=$maxId)');
+            log(
+              '[BG] 收到 ${messages.length} 条新消息，但距离上次通知 < 3 秒，跳过通知 (maxId=$maxId)',
+            );
           }
 
           // 通知主引擎：
@@ -300,15 +304,24 @@ class BackgroundMessageService {
   /// 检查后台服务是否正在运行
   Future<bool> isRunning() => FlutterBackgroundService().isRunning();
 
-  /// 同步消息游标到 SharedPreferences
+  /// 同步消息游标到 FlutterSecureStorage
   ///
   /// 由前台 [ImService] 在收到新消息时调用，确保后台服务不重复推送通知
   static Future<void> syncLastMessageId(int messageId) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final current = prefs.getInt(kBgLastMsgIdKey) ?? 0;
+      const secureStorage = FlutterSecureStorage(
+        aOptions: AndroidOptions(
+          sharedPreferencesName: 'bipupu_secure_prefs',
+          preferencesKeyPrefix: 'bipupu_',
+        ),
+      );
+      final currentStr = await secureStorage.read(key: kBgLastMsgIdKey);
+      final current = int.tryParse(currentStr ?? '0') ?? 0;
       if (messageId > current) {
-        await prefs.setInt(kBgLastMsgIdKey, messageId);
+        await secureStorage.write(
+          key: kBgLastMsgIdKey,
+          value: messageId.toString(),
+        );
       }
     } catch (e) {
       log('[BackgroundMessageService] syncLastMessageId 失败: $e');

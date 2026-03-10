@@ -24,31 +24,30 @@ dependencies:
   # 音频处理与 ASR
   speech_to_text: ^7.3.0
   just_audio: ^0.10.5
-  audio_session: ^0.1.6
+  audio_session: ^0.2.2
 
   # 网络与 API
   dio: ^5.9.0
   retrofit: ^4.9.2
   json_annotation: ^4.11.0
-  web_socket_channel: ^2.2.0
+  web_socket_channel: ^3.0.0
 
   # 持久化存储
   hive: ^2.2.3
   hive_flutter: ^1.1.0
-  shared_preferences: ^2.3.2
   flutter_secure_storage: ^10.0.0
   path_provider: ^2.1.2
 
   # 国际化与日志
   intl: ^0.20.2
-  easy_localization: ^3.0.7
+  easy_localization: ^3.0.8
   logger: ^2.6.2
 
   # 图像处理与通知
   image_picker: ^1.1.2
   image_cropper: ^11.0.0
   cached_network_image: ^3.4.1
-  flutter_local_notifications: ^20.0.0
+  flutter_local_notifications: ^21.0.0
   flutter_background_service: ^5.1.0
   flutter_background_service_android: ^6.2.0
   sherpa_onnx: ^1.12.28
@@ -62,7 +61,7 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
 
   # 代码生成工具
-  build_runner: ^2.4.8
+  build_runner: ^2.12.2
   retrofit_generator: ^10.2.3
   json_serializable: ^6.13.0
   swagger_parser: ^1.42.0
