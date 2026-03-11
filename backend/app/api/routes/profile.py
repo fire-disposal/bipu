@@ -71,7 +71,6 @@ async def upload_avatar(
         # 更新数据库
         current_user.avatar_data = avatar_data
 
-        db.add(current_user)
         try:
             db.commit()
             db.refresh(current_user)
@@ -153,7 +152,6 @@ async def update_profile(
                         - ((today.month, today.day) < (birthday.month, birthday.day))
                     )
 
-        db.add(current_user)
         db.commit()
         db.refresh(current_user)
 
@@ -186,7 +184,6 @@ async def update_password(
         # 更新密码
         current_user.hashed_password = get_password_hash(password_data.new_password)
 
-        db.add(current_user)
         db.commit()
 
         logger.info(f"用户密码更新成功: user_id={current_user.id}")
@@ -211,7 +208,6 @@ async def update_timezone(
         # 更新时区
         current_user.timezone = timezone_data.timezone
 
-        db.add(current_user)
         db.commit()
 
         logger.info(f"用户时区更新成功: user_id={current_user.id}, timezone={timezone_data.timezone}")

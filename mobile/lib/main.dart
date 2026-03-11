@@ -60,27 +60,10 @@ Future<void> main() async {
   };
 
   WidgetsFlutterBinding.ensureInitialized();
+  // Only ensure localization before first frame; postpone other heavy inits.
+  await EasyLocalization.ensureInitialized();
 
-  // Parallel initialization for faster startup
-  await Future.wait([
-    StorageManager.initialize(),
-    InteractionOptimizer.initialize(),
-    EasyLocalization.ensureInitialized(),
-  ]);
-
-  // Sequential initialization with proper error handling
-  try {
-    await AuthService().initialize();
-    await UnifiedMessageService().init();
-    await NotificationService().initialize();
-    await BackgroundMessageService().configure();
-  } catch (e) {
-    logger.e('Initialization error', error: e);
-  }
-
-  // 预录制模式下提前预热语音服务（仅初始化 ASR，TTS 已注释）
-  unawaited(VoiceService().init());
-
+  // Start app ASAP to render first frame, then initialize other services in background.
   runApp(
     EasyLocalization(
       supportedLocales: const [Locale('zh', 'CN'), Locale('en', 'US')],
@@ -89,6 +72,84 @@ Future<void> main() async {
       child: MyApp(),
     ),
   );
+
+  // 非阻塞后台初始化：有超时与错误捕获，避免阻塞 UI
+  unawaited(() async {
+    try {
+      final sw = Stopwatch()..start();
+      try {
+        await StorageManager.initialize().timeout(const Duration(seconds: 10));
+        logger.i('StorageManager initialized in ${sw.elapsedMilliseconds}ms');
+      } catch (e) {
+        logger.e('StorageManager init failed or timed out: $e');
+      }
+
+      final sw2 = Stopwatch()..start();
+      try {
+        await InteractionOptimizer.initialize().timeout(
+          const Duration(seconds: 3),
+        );
+        logger.i(
+          'InteractionOptimizer initialized in ${sw2.elapsedMilliseconds}ms',
+        );
+      } catch (e) {
+        logger.e('InteractionOptimizer init failed or timed out: $e');
+      }
+
+      // Auth and message services: start in background without blocking UI
+      unawaited(() async {
+        final sw3 = Stopwatch()..start();
+        try {
+          await AuthService().initialize();
+          logger.i(
+            'AuthService.initialize completed in ${sw3.elapsedMilliseconds}ms',
+          );
+        } catch (e) {
+          logger.e('AuthService.initialize error: $e');
+        }
+      }());
+
+      unawaited(() async {
+        try {
+          await UnifiedMessageService().init().timeout(
+            const Duration(seconds: 10),
+          );
+          logger.i('UnifiedMessageService.init completed');
+        } catch (e) {
+          logger.e('UnifiedMessageService.init failed or timed out: $e');
+        }
+      }());
+
+      unawaited(() async {
+        try {
+          await NotificationService().initialize().timeout(
+            const Duration(seconds: 5),
+          );
+          logger.i('NotificationService initialized');
+        } catch (e) {
+          logger.e('NotificationService init failed or timed out: $e');
+        }
+      }());
+
+      unawaited(() async {
+        try {
+          await BackgroundMessageService().configure().timeout(
+            const Duration(seconds: 5),
+          );
+          logger.i('BackgroundMessageService configured');
+        } catch (e) {
+          logger.e(
+            'BackgroundMessageService configure failed or timed out: $e',
+          );
+        }
+      }());
+
+      // 语音服务预热保持非阻塞
+      unawaited(VoiceService().init());
+    } catch (e) {
+      logger.e('Background initialization encountered unexpected error: $e');
+    }
+  }());
 }
 
 class MyApp extends StatefulWidget {
