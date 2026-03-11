@@ -69,6 +69,15 @@ class _ReceivedMessagesPageState extends State<ReceivedMessagesPage> {
     await _imService.markAsRead(messageId);
   }
 
+  Future<void> _markAllAsRead() async {
+    final unreadIds = _messages
+        .where((m) => !_imService.isMessageRead(m.id))
+        .map((m) => m.id)
+        .toList();
+    if (unreadIds.isEmpty) return;
+    await _imService.markAsReadBatch(unreadIds);
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUser = _authService.currentUser;
@@ -88,6 +97,11 @@ class _ReceivedMessagesPageState extends State<ReceivedMessagesPage> {
         title: Text('messages_menu_received'.tr()),
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.done_all),
+            tooltip: '全部已读',
+            onPressed: _markAllAsRead,
+          ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
         ],
       ),

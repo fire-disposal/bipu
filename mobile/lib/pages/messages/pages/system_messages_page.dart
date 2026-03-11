@@ -111,6 +111,15 @@ class _SystemMessagesPageState extends State<SystemMessagesPage> {
     _loadMessages();
   }
 
+  Future<void> _markAllAsRead() async {
+    final unreadIds = _messages
+        .where((m) => !_imService.isMessageRead(m.id))
+        .map((m) => m.id)
+        .toList();
+    if (unreadIds.isEmpty) return;
+    await _imService.markAsReadBatch(unreadIds);
+  }
+
   @override
   Widget build(BuildContext context) {
     // Sort messages by latest first
@@ -122,6 +131,11 @@ class _SystemMessagesPageState extends State<SystemMessagesPage> {
         title: Text('messages_menu_system'.tr()),
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.done_all),
+            tooltip: '全部已读',
+            onPressed: _markAllAsRead,
+          ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
         ],
       ),
