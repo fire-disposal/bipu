@@ -33,8 +33,10 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
   Color get _primaryColor => Theme.of(context).colorScheme.primary;
   Color get _dividerColor => Theme.of(context).dividerColor;
   Color get _iconColor => Theme.of(context).iconTheme.color ?? Colors.black;
-  Color get _surfaceContainerHigh => Theme.of(context).colorScheme.surfaceContainerHighest;
-  Color get _surfaceContainerLow => Theme.of(context).colorScheme.surfaceContainerLow;
+  Color get _surfaceContainerHigh =>
+      Theme.of(context).colorScheme.surfaceContainerHighest;
+  Color get _surfaceContainerLow =>
+      Theme.of(context).colorScheme.surfaceContainerLow;
 
   @override
   void initState() {
@@ -189,9 +191,9 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
   void _copyMessage() {
     Clipboard.setData(ClipboardData(text: widget.message.content));
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('message_copied'.tr())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('message_copied'.tr())));
     }
   }
 
@@ -226,7 +228,10 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
               ),
             if (!isSender && !isServiceAccount)
               ListTile(
-                leading: Icon(Icons.block, color: Theme.of(context).colorScheme.error),
+                leading: Icon(
+                  Icons.block,
+                  color: Theme.of(context).colorScheme.error,
+                ),
                 title: Text('block_user_button'.tr()),
                 onTap: () {
                   Navigator.pop(context);
@@ -260,7 +265,9 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
               color: _isFavorited ? Colors.red : null,
             ),
             onPressed: _isLoadingFavorite ? null : _toggleFavorite,
-            tooltip: _isFavorited ? 'action_unfavorite'.tr() : 'action_favorite'.tr(),
+            tooltip: _isFavorited
+                ? 'action_unfavorite'.tr()
+                : 'action_favorite'.tr(),
           ),
           IconButton(
             icon: const Icon(Icons.more_vert),
@@ -321,25 +328,34 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                           msg.senderBipupuId,
                           style: TextStyle(
                             fontSize: 13,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
-                            color: isServiceAccount 
+                            color: isServiceAccount
                                 ? Colors.purple.withValues(alpha: 0.1)
                                 : Colors.blue.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            isServiceAccount ? 'service_account'.tr() : 'user'.tr(),
+                            isServiceAccount
+                                ? 'service_account'.tr()
+                                : 'user'.tr(),
                             style: TextStyle(
                               fontSize: 11,
-                              color: isServiceAccount ? Colors.purple : Colors.blue,
+                              color: isServiceAccount
+                                  ? Colors.purple
+                                  : Colors.blue,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -349,7 +365,9 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                           DateFormat('yyyy-MM-dd HH:mm').format(msg.createdAt),
                           style: TextStyle(
                             fontSize: 12,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -376,62 +394,66 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
               ),
             ),
 
-            // 声纹信息区域 - 重点优化
+            // 声纹可视化区域
             if (msg.waveform != null && msg.waveform!.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: _primaryColor.withValues(alpha: 0.07),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                        child: Row(
                           children: [
-                            Text(
-                              'voice_waveform'.tr(),
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: _onSurfaceColor,
-                              ),
+                            Icon(
+                              Icons.graphic_eq_rounded,
+                              size: 14,
+                              color: _primaryColor.withValues(alpha: 0.7),
                             ),
-                            TextButton.icon(
-                              onPressed: () {
-                                // 显示波形详细信息
-                                _showWaveformInfo(msg.waveform!);
-                              },
-                              icon: const Icon(Icons.info_outline, size: 16),
-                              label: Text('details'.tr(), style: const TextStyle(fontSize: 14)),
+                            const SizedBox(width: 6),
+                            Text(
+                              '语音声纹',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _primaryColor.withValues(alpha: 0.7),
+                                letterSpacing: 0.8,
+                              ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        Center(
-                          child: WaveformVisualizationWidget(
-                            waveformData: msg.waveform!,
-                            width: MediaQuery.of(context).size.width - 64,
-                            height: 140,
-                            waveColor: _primaryColor,
-                            backgroundColor: _surfaceContainerLow,
-                            showGrid: true,
-                            showLabels: true,
-                            onCopyImage: () {
-                              // 波形图复制成功提示
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('waveform_copied'.tr())),
-                              );
-                            },
+                      ),
+                      const SizedBox(height: 8),
+                      WaveformVisualizationWidget(
+                        waveformData: msg.waveform!,
+                        width: MediaQuery.of(context).size.width - 32,
+                        height: 88,
+                        waveColor: _primaryColor,
+                        backgroundColor: Colors.transparent,
+                        showGrid: false,
+                        showLabels: false,
+                        smooth: true,
+                        onCopyImage: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('waveform_copied'.tr())),
+                          );
+                        },
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(0, 4, 0, 10),
+                        child: Text(
+                          '长按声纹图可复制',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: _primaryColor.withValues(alpha: 0.45),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        // 声纹统计信息
-                        _buildWaveformStats(msg.waveform!),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -457,7 +479,9 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                     decoration: BoxDecoration(
                       color: _surfaceContainerLow,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: _dividerColor.withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: _dividerColor.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: SelectionArea(
                       child: Text(
@@ -502,12 +526,16 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            _isFavorited ? Icons.favorite : Icons.favorite_outline,
+                            _isFavorited
+                                ? Icons.favorite
+                                : Icons.favorite_outline,
                             size: 18,
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            _isFavorited ? 'action_unfavorite'.tr() : 'action_favorite'.tr(),
+                            _isFavorited
+                                ? 'action_unfavorite'.tr()
+                                : 'action_favorite'.tr(),
                           ),
                         ],
                       ),
@@ -520,130 +548,6 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
             const SizedBox(height: 24),
           ],
         ),
-      ),
-    );
-  }
-
-  /// 构建波形统计信息
-  Widget _buildWaveformStats(List<int> waveformData) {
-    if (waveformData.isEmpty) return const SizedBox();
-
-    final min = waveformData.reduce((a, b) => a < b ? a : b);
-    final max = waveformData.reduce((a, b) => a > b ? a : b);
-    final avg = waveformData.reduce((a, b) => a + b) / waveformData.length;
-    final dynamicRange = max - min;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'waveform_stats'.tr(),
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 16,
-            runSpacing: 8,
-            children: [
-              _buildStatItem('points'.tr(), '${waveformData.length}'),
-              _buildStatItem('max_amplitude'.tr(), '$max'),
-              _buildStatItem('min_amplitude'.tr(), '$min'),
-              _buildStatItem('avg_amplitude'.tr(), avg.toStringAsFixed(1)),
-              _buildStatItem('dynamic_range'.tr(), '$dynamicRange'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 构建统计项
-  Widget _buildStatItem(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: _onSurfaceColor,
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// 显示波形详细信息对话框
-  void _showWaveformInfo(List<int> waveformData) {
-    final min = waveformData.reduce((a, b) => a < b ? a : b);
-    final max = waveformData.reduce((a, b) => a > b ? a : b);
-    final avg = waveformData.reduce((a, b) => a + b) / waveformData.length;
-    final dynamicRange = max - min;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('waveform_details'.tr()),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildInfoRow('data_points'.tr(), '${waveformData.length}'),
-              _buildInfoRow('max_value'.tr(), '$max'),
-              _buildInfoRow('min_value'.tr(), '$min'),
-              _buildInfoRow('average_value'.tr(), avg.toStringAsFixed(2)),
-              _buildInfoRow('dynamic_range'.tr(), '$dynamicRange'),
-              _buildInfoRow('data_size'.tr(), '${waveformData.length} bytes'),
-              const SizedBox(height: 16),
-              Text(
-                'waveform_tip'.tr(),
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('close'.tr()),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-          Text(value, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-        ],
       ),
     );
   }

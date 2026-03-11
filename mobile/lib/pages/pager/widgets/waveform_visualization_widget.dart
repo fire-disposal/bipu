@@ -13,6 +13,8 @@ class WaveformVisualizationWidget extends StatefulWidget {
   final Color backgroundColor;
   final bool showGrid;
   final bool showLabels;
+  final bool smooth;
+  final Color? borderColor;
   final VoidCallback? onCopyImage;
 
   const WaveformVisualizationWidget({
@@ -24,6 +26,8 @@ class WaveformVisualizationWidget extends StatefulWidget {
     this.backgroundColor = Colors.white,
     this.showGrid = true,
     this.showLabels = true,
+    this.smooth = false,
+    this.borderColor,
     this.onCopyImage,
   });
 
@@ -90,7 +94,9 @@ class _WaveformVisualizationWidgetState
             height: widget.height,
             decoration: BoxDecoration(
               color: widget.backgroundColor,
-              border: Border.all(color: Colors.grey.shade300),
+              border: widget.borderColor != null
+                  ? Border.all(color: widget.borderColor!)
+                  : null,
               borderRadius: BorderRadius.circular(8),
             ),
             child: CustomPaint(
@@ -99,6 +105,7 @@ class _WaveformVisualizationWidgetState
                 waveColor: widget.waveColor,
                 showGrid: widget.showGrid,
                 showLabels: widget.showLabels,
+                smooth: widget.smooth,
               ),
               size: Size(widget.width, widget.height),
             ),
@@ -115,12 +122,14 @@ class WaveformVisualizationPainter extends CustomPainter {
   final Color waveColor;
   final bool showGrid;
   final bool showLabels;
+  final bool smooth;
 
   WaveformVisualizationPainter({
     required this.waveformData,
     required this.waveColor,
     required this.showGrid,
     required this.showLabels,
+    this.smooth = false,
   });
 
   @override
@@ -139,7 +148,7 @@ class WaveformVisualizationPainter extends CustomPainter {
     _drawCenterLine(canvas, size);
 
     // 绘制波形
-    _drawWaveform(canvas, size);
+    _drawWaveform(canvas, size, smooth: smooth);
 
     // 绘制标签
     if (showLabels) {
@@ -195,7 +204,7 @@ class WaveformVisualizationPainter extends CustomPainter {
   /// 绘制中心线
   void _drawCenterLine(Canvas canvas, Size size) {
     final centerPaint = Paint()
-      ..color = Colors.grey.shade400
+      ..color = waveColor.withValues(alpha: 0.25)
       ..strokeWidth = 1;
 
     final centerY = size.height / 2;
@@ -213,38 +222,54 @@ class WaveformVisualizationPainter extends CustomPainter {
   }
 
   /// 绘制波形
-  void _drawWaveform(Canvas canvas, Size size) {
+  void _drawWaveform(Canvas canvas, Size size, {bool smooth = false}) {
     final paint = Paint()
       ..color = waveColor
-      ..strokeWidth = 2
+      ..strokeWidth = 1.8
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke;
 
     final fillPaint = Paint()
-      ..color = waveColor.withValues(alpha: 0.1)
+      ..color = waveColor.withValues(alpha: 0.12)
       ..style = PaintingStyle.fill;
 
     final centerY = size.height / 2;
     final pointWidth =
         size.width / (waveformData.length - 1).clamp(1, double.infinity);
 
+    // 预计算所有点坐标
+    final xs = List<double>.generate(
+      waveformData.length,
+      (i) => i * pointWidth,
+    );
+    final ys = List<double>.generate(waveformData.length, (i) {
+      final amplitude = waveformData[i] / 255.0;
+      return centerY - (amplitude * centerY);
+    });
+
     // 构建路径
     final path = Path();
     final fillPath = Path();
 
-    for (int i = 0; i < waveformData.length; i++) {
-      final x = i * pointWidth;
-      final amplitude = waveformData[i] / 255.0; // 归一化到 0-1
-      final y = centerY - (amplitude * centerY);
+    path.moveTo(xs[0], ys[0]);
+    fillPath.moveTo(xs[0], centerY);
+    fillPath.lineTo(xs[0], ys[0]);
 
-      if (i == 0) {
-        path.moveTo(x, y);
-        fillPath.moveTo(x, centerY);
-        fillPath.lineTo(x, y);
-      } else {
-        path.lineTo(x, y);
-        fillPath.lineTo(x, y);
+    if (smooth && waveformData.length > 2) {
+      // 平滑曲线：通过中点的二次贝塞尔曲线
+      for (int i = 0; i < waveformData.length - 1; i++) {
+        final midX = (xs[i] + xs[i + 1]) / 2;
+        final midY = (ys[i] + ys[i + 1]) / 2;
+        path.quadraticBezierTo(xs[i], ys[i], midX, midY);
+        fillPath.quadraticBezierTo(xs[i], ys[i], midX, midY);
+      }
+      path.lineTo(xs.last, ys.last);
+      fillPath.lineTo(xs.last, ys.last);
+    } else {
+      for (int i = 1; i < waveformData.length; i++) {
+        path.lineTo(xs[i], ys[i]);
+        fillPath.lineTo(xs[i], ys[i]);
       }
     }
 
@@ -258,8 +283,10 @@ class WaveformVisualizationPainter extends CustomPainter {
     // 绘制线条
     canvas.drawPath(path, paint);
 
-    // 绘制数据点
-    _drawDataPoints(canvas, size, centerY, pointWidth);
+    // 非平滑模式下绘制数据点
+    if (!smooth) {
+      _drawDataPoints(canvas, size, centerY, pointWidth);
+    }
   }
 
   /// 绘制数据点
@@ -321,7 +348,8 @@ class WaveformVisualizationPainter extends CustomPainter {
   @override
   bool shouldRepaint(WaveformVisualizationPainter oldDelegate) {
     return oldDelegate.waveformData != waveformData ||
-        oldDelegate.waveColor != waveColor;
+        oldDelegate.waveColor != waveColor ||
+        oldDelegate.smooth != smooth;
   }
 }
 
