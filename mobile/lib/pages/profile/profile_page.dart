@@ -94,6 +94,7 @@ class _ProfilePageState extends State<ProfilePage> {
     String bipupuId,
     ColorScheme cs,
   ) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: EdgeInsets.only(
         left: 20,
@@ -102,11 +103,10 @@ class _ProfilePageState extends State<ProfilePage> {
         bottom: 24,
       ),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [cs.primary, cs.primaryContainer],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: isDarkMode
+            ? cs.surface
+            : cs.primary.withValues(alpha: 0.05),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
       ),
       child: Row(
         children: [
@@ -119,7 +119,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 avatarUrl: user?.avatarUrl,
                 displayName: user?.nickname ?? user?.username ?? '?',
                 radius: 40,
-                backgroundColor: cs.surface,
+                backgroundColor: cs.primaryContainer,
                 fallbackIcon: Icon(Icons.person, size: 40, color: cs.primary),
               ),
             ),
@@ -135,7 +135,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
-                    color: cs.onPrimary,
+                    color: cs.onSurface,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -148,7 +148,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: cs.onPrimary.withOpacity(0.15),
+                        color: cs.primaryContainer.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
@@ -157,7 +157,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           Text(
                             'ID: $bipupuId',
                             style: TextStyle(
-                              color: cs.onPrimary.withOpacity(0.9),
+                              color: cs.onSurfaceVariant,
                               fontSize: 13,
                             ),
                           ),
@@ -165,7 +165,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           Icon(
                             Icons.copy_rounded,
                             size: 14,
-                            color: cs.onPrimary.withOpacity(0.7),
+                            color: cs.outline,
                           ),
                         ],
                       ),
@@ -179,7 +179,7 @@ class _ProfilePageState extends State<ProfilePage> {
             onPressed: () => _navigateToEditProfile(context),
             icon: Icon(
               Icons.edit_rounded,
-              color: cs.onPrimary.withOpacity(0.8),
+              color: cs.onSurfaceVariant,
             ),
             tooltip: 'edit_profile'.tr(),
           ),
@@ -367,7 +367,7 @@ class _ProfilePageState extends State<ProfilePage> {
           // 退出登录
           Card(
             elevation: 0,
-            color: cs.errorContainer.withOpacity(0.3),
+            color: cs.errorContainer.withValues(alpha: 0.3),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
@@ -418,7 +418,7 @@ class _ProfilePageState extends State<ProfilePage> {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(icon, color: color, size: 22),
@@ -441,7 +441,7 @@ class _ProfilePageState extends State<ProfilePage> {
       height: 1,
       indent: 56,
       endIndent: 16,
-      color: cs.outlineVariant.withOpacity(0.5),
+      color: cs.outlineVariant.withValues(alpha: 0.5),
     );
   }
 
