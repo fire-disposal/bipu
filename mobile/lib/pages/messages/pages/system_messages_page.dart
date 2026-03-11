@@ -56,8 +56,9 @@ class _SystemMessagesPageState extends State<SystemMessagesPage> {
 
   /// 构建服务号头像
   Widget _buildServiceAvatar(ServiceAccountResponse service) {
+    // 使用 bipupuId（服务名）让 UserAvatar 统一解析并请求服务端头像接口
     return UserAvatar(
-      avatarUrl: service.avatarUrl,
+      bipupuId: service.name,
       displayName: service.name,
       radius: 24,
       backgroundColor: Colors.orange.withValues(alpha: 0.2),

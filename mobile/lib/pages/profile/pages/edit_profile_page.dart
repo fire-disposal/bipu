@@ -218,7 +218,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               child: Stack(
                 children: [
                   UserAvatar(
-                    avatarUrl: _avatarUrl,
+                    bipupuId: _authService.currentUser?.bipupuId,
                     displayName: _nicknameController.text.isNotEmpty
                         ? _nicknameController.text
                         : '?',

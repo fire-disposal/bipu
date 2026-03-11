@@ -188,8 +188,9 @@ class _SubscriptionsManagementPageState
 
   Widget _buildServiceAvatar(ServiceAccountResponse service) {
     return UserAvatar(
-      avatarUrl: service.avatarUrl,
+      bipupuId: service.name,
       displayName: service.name,
+      radius: 24,
       backgroundColor: Colors.grey.withValues(alpha: 0.3),
     );
   }

@@ -434,7 +434,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           context,
           'quick_send'.tr(),
           Icons.send_rounded,
-          const Color(0xFF49FF61),
+          Colors.blue,
           () => context.push('/home/quick_send'),
         ),
       ],

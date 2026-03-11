@@ -292,10 +292,8 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
               : null)
         : msg.senderBipupuId;
 
-    // 头像 URL：用户和服务号使用不同接口返回的 avatarUrl
-    final String? avatarUrl = isServiceAccount
-        ? _senderServiceInfo?.avatarUrl
-        : _senderUserInfo?.avatarUrl;
+    // 优先使用 bipupuId 让 `UserAvatar` 统一解析并加载头像
+    final String senderId = widget.message.senderBipupuId;
 
     return Scaffold(
       appBar: AppBar(
@@ -348,7 +346,7 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                             '/user/detail/${msg.senderBipupuId}',
                           ),
                     child: UserAvatar(
-                      avatarUrl: avatarUrl,
+                      bipupuId: senderId,
                       displayName: displayName,
                       radius: 36,
                     ),

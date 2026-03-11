@@ -455,9 +455,13 @@ final GoRouter _router = GoRouter(
             GoRoute(
               path: 'about',
               builder: (context, state) {
-                // 显示关于对话框
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  SettingsDialog.showAboutDialog(context);
+                // 显示关于对话框，关闭后自动返回
+                WidgetsBinding.instance.addPostFrameCallback((_) async {
+                  await SettingsDialog.showAboutDialog(context);
+                  // 对话框关闭后，返回上一页
+                  if (context.mounted) {
+                    GoRouter.of(context).pop();
+                  }
                 });
                 return const SizedBox.shrink();
               },

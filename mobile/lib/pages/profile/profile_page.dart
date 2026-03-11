@@ -63,8 +63,7 @@ class _ProfilePageState extends State<ProfilePage> {
             child: _buildUserHeader(context, user, username, bipupuId, cs),
           ),
 
-          // 快捷信息卡片
-          SliverToBoxAdapter(child: _buildQuickInfoCard(context, user, cs)),
+          // 快捷信息卡片（已隐藏，主页面不再展开显示用户详细信息）
 
           // 设置列表
           SliverToBoxAdapter(child: _buildSettingsSection(context, cs)),
@@ -103,9 +102,7 @@ class _ProfilePageState extends State<ProfilePage> {
         bottom: 24,
       ),
       decoration: BoxDecoration(
-        color: isDarkMode
-            ? cs.surface
-            : cs.primary.withValues(alpha: 0.05),
+        color: isDarkMode ? cs.surface : cs.primary.withValues(alpha: 0.05),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
       ),
       child: Row(
@@ -116,7 +113,7 @@ class _ProfilePageState extends State<ProfilePage> {
             child: Hero(
               tag: 'user_avatar',
               child: UserAvatar(
-                avatarUrl: user?.avatarUrl,
+                bipupuId: user?.bipupuId,
                 displayName: user?.nickname ?? user?.username ?? '?',
                 radius: 40,
                 backgroundColor: cs.primaryContainer,
@@ -162,11 +159,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                           ),
                           const SizedBox(width: 4),
-                          Icon(
-                            Icons.copy_rounded,
-                            size: 14,
-                            color: cs.outline,
-                          ),
+                          Icon(Icons.copy_rounded, size: 14, color: cs.outline),
                         ],
                       ),
                     ),
@@ -177,10 +170,7 @@ class _ProfilePageState extends State<ProfilePage> {
           // 编辑按钮
           IconButton(
             onPressed: () => _navigateToEditProfile(context),
-            icon: Icon(
-              Icons.edit_rounded,
-              color: cs.onSurfaceVariant,
-            ),
+            icon: Icon(Icons.edit_rounded, color: cs.onSurfaceVariant),
             tooltip: 'edit_profile'.tr(),
           ),
         ],

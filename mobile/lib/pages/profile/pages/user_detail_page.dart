@@ -20,7 +20,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
   /// 构建用户头像
   Widget _buildUserAvatar({double radius = 40}) {
     return UserAvatar(
-      avatarUrl: _user?.avatarUrl,
+      bipupuId: widget.bipupuId,
       displayName: _user?.nickname ?? _user?.username ?? '?',
       radius: radius,
       backgroundColor: Colors.grey.withValues(alpha: 0.3),
