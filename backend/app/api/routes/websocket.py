@@ -37,16 +37,21 @@ async def websocket_endpoint(
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
 
-        user_id = payload.get("sub")
-        if not user_id:
+        # sub 字段存储的是 username（字符串），与 public.py 登录接口保持一致
+        username = payload.get("sub")
+        if not username:
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
 
         # 获取用户信息 - 创建独立的数据库会话
         db = SessionLocal()
         try:
-            user = db.query(User).filter(User.id == int(user_id)).first()
-            if not user or not user.is_active:
+            user = db.query(User).filter(
+                User.username == username,
+                User.is_active == True,
+            ).first()
+            if not user:
+                logger.warning(f"WebSocket 认证失败: 用户不存在或已禁用 username={username}")
                 await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
                 return
 

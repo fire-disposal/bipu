@@ -159,13 +159,30 @@ class UnifiedMessageService extends ChangeNotifier {
       // WebSocket URL 已包含完整路径
       final wsUrl = '${AppConfig.wsBaseUrl}?token=$token';
 
-      _webSocketChannel = IOWebSocketChannel.connect(Uri.parse(wsUrl));
-      // 监听WebSocket消息
-      _webSocketChannel!.stream.listen(
-        _handleWebSocketMessage,
-        onError: _handleWebSocketError,
+      final channel = IOWebSocketChannel.connect(Uri.parse(wsUrl));
+
+      // 用 Completer 等待首条消息或首个错误，确认握手是否真正成功
+      final completer = Completer<bool>();
+
+      channel.stream.listen(
+        (message) {
+          // 收到第一条消息说明握手成功
+          if (!completer.isCompleted) completer.complete(true);
+          _handleWebSocketMessage(message);
+        },
+        onError: (error) {
+          log('WebSocket error: $error');
+          if (!completer.isCompleted) completer.complete(false);
+          _cleanupWebSocket();
+          // 握手失败时触发 fallback
+          _reconnectAttempts++;
+          if (_reconnectAttempts > _maxReconnectAttempts) {
+            _startLongPolling();
+          }
+        },
         onDone: () {
           log('WebSocket connection closed');
+          if (!completer.isCompleted) completer.complete(false);
           _cleanupWebSocket();
           _reconnectAttempts++;
           if (_reconnectAttempts <= _maxReconnectAttempts) {
@@ -175,8 +192,22 @@ class UnifiedMessageService extends ChangeNotifier {
             _startLongPolling();
           }
         },
+        cancelOnError: true,
       );
 
+      // 等待握手结果（最多 10 秒）
+      final connected = await completer.future.timeout(
+        AppConfig.websocketConnectTimeout,
+        onTimeout: () {
+          log('WebSocket handshake timed out');
+          channel.sink.close();
+          return false;
+        },
+      );
+
+      if (!connected) return false;
+
+      _webSocketChannel = channel;
       // 启动心跳
       _startHeartbeat();
       _reconnectAttempts = 0;
