@@ -162,15 +162,32 @@ class _NewInCallViewState extends State<NewInCallView> {
   ) {
     if (op == null) return const SizedBox.shrink();
 
+    // 根据URL类型选择正确的图片加载方式
+    final isNetworkImage = op.portraitUrl.startsWith('http');
+    final imageWidget = isNetworkImage
+        ? Image.network(
+            op.portraitUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) =>
+                Container(color: cs.surfaceContainerHighest),
+          )
+        : Image.asset(
+            op.portraitUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) =>
+                Container(color: cs.surfaceContainerHighest),
+          );
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
+          // 1:1 圆形头像，圆角90°
           Container(
-            width: 120,
-            height: 160,
+            width: 140,
+            height: 140,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.2),
@@ -179,14 +196,8 @@ class _NewInCallViewState extends State<NewInCallView> {
                 ),
               ],
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                op.portraitUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    Container(color: cs.surfaceContainerHighest),
-              ),
+            child: ClipOval(
+              child: imageWidget,
             ),
           ),
           const SizedBox(height: 16),

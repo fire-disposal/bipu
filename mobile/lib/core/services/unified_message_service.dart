@@ -156,14 +156,10 @@ class UnifiedMessageService extends ChangeNotifier {
       final token = await TokenManager.getAccessToken();
       if (token == null) return false;
 
-      // 将 http/https 转换为 ws/wss，并移除可能的端口号
-      final baseUrl = AppConfig.apiBaseUrl;
-      final wsScheme = baseUrl.startsWith('https') ? 'wss' : 'ws';
-      final wsHost = baseUrl.replaceFirst(RegExp(r'^https?://'), '');
-      final wsUrl = '$wsScheme://$wsHost/api/ws?token=$token';
+      // WebSocket URL 已包含完整路径
+      final wsUrl = '${AppConfig.wsBaseUrl}?token=$token';
 
       _webSocketChannel = IOWebSocketChannel.connect(Uri.parse(wsUrl));
-
       // 监听WebSocket消息
       _webSocketChannel!.stream.listen(
         _handleWebSocketMessage,

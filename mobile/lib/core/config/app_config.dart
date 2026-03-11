@@ -22,6 +22,16 @@ class AppConfig {
     defaultValue: 'https://api.205716.xyz',
   );
 
+  /// WebSocket Base URL
+  /// 支持通过编译时环境变量 WS_BASE_URL 覆盖
+  /// 
+  /// 运行方式：
+  /// flutter run --dart-define=WS_BASE_URL=wss://ws.example.com
+  static const String wsBaseUrl = String.fromEnvironment(
+    'WS_BASE_URL',
+    defaultValue: 'wss://api.205716.xyz/api/ws',
+  );
+
   // ========== 超时配置 ==========
   /// 普通请求超时时间
   static const Duration requestTimeout = Duration(seconds: 30);
