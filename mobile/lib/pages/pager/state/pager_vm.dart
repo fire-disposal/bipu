@@ -177,7 +177,8 @@ class PagerVM extends ChangeNotifier {
 
   /// 开始连接
   Future<void> startDialing() async {
-    _operator ??= _operatorService.getRandomOperator();
+    // 每次拨号时才执行随机抽签，保证每通电话都是全新的随机接线员
+    await _selectRandomOperator();
     _phase = PagerPhase.connecting;
     notifyListeners();
 
@@ -258,13 +259,18 @@ class PagerVM extends ChangeNotifier {
   /// 用户确认目标ID正确，直接进入录音阶段
   /// 用户存在性已在 submitTargetId 中验证
   Future<void> confirmTargetIdCorrect() async {
-    if (_phase != PagerPhase.inCall || _inCallSubPhase != InCallSubPhase.confirmTarget) return;
+    if (_phase != PagerPhase.inCall ||
+        _inCallSubPhase != InCallSubPhase.confirmTarget)
+      return;
 
     _isConfirming = true;
     notifyListeners();
 
     try {
-      await _operatorVoice.say(OperatorLine.requestMessage, onText: _updateDialogue);
+      await _operatorVoice.say(
+        OperatorLine.requestMessage,
+        onText: _updateDialogue,
+      );
 
       if (_phase != PagerPhase.inCall) return;
 
@@ -293,7 +299,8 @@ class PagerVM extends ChangeNotifier {
   /// 提交目标ID（供新InCallView调用）
   /// 在第一步就检查用户存在性并获取用户信息
   Future<void> submitTargetId() async {
-    if (_isConfirming || _targetId.isEmpty || _phase != PagerPhase.inCall) return;
+    if (_isConfirming || _targetId.isEmpty || _phase != PagerPhase.inCall)
+      return;
 
     _isConfirming = true;
     _errorMessage = null;
@@ -312,7 +319,10 @@ class PagerVM extends ChangeNotifier {
       }
 
       if (!userExists || user == null) {
-        await _operatorVoice.say(OperatorLine.userNotFound, onText: _updateDialogue);
+        await _operatorVoice.say(
+          OperatorLine.userNotFound,
+          onText: _updateDialogue,
+        );
         _errorMessage = '该用户不存在，请重新输入 ID';
         _targetId = '';
         _targetUser = null;
@@ -390,9 +400,7 @@ class PagerVM extends ChangeNotifier {
             _isRecording = false;
             // 录音流结束后立即取回振幅包络
             _capturedWaveform = _voice.lastWaveform;
-            log(
-              '[PagerVM] 捕获 waveform：${_capturedWaveform?.length ?? 0} 点',
-            );
+            log('[PagerVM] 捕获 waveform：${_capturedWaveform?.length ?? 0} 点');
             _phase = PagerPhase.reviewing;
             notifyListeners();
           }
@@ -435,7 +443,9 @@ class PagerVM extends ChangeNotifier {
 
   /// 用户确认消息内容，进入最终确认界面
   Future<void> confirmMessageContent() async {
-    if (_phase != PagerPhase.inCall || _inCallSubPhase != InCallSubPhase.confirmMessage) return;
+    if (_phase != PagerPhase.inCall ||
+        _inCallSubPhase != InCallSubPhase.confirmMessage)
+      return;
     _phase = PagerPhase.reviewing;
     notifyListeners();
   }
@@ -452,7 +462,10 @@ class PagerVM extends ChangeNotifier {
     _inCallSubPhase = InCallSubPhase.recording;
     notifyListeners();
 
-    await _operatorVoice.say(OperatorLine.requestMessage, onText: _updateDialogue);
+    await _operatorVoice.say(
+      OperatorLine.requestMessage,
+      onText: _updateDialogue,
+    );
   }
 
   void updateMessageContent(String content) {

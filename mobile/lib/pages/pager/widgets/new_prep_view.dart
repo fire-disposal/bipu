@@ -10,8 +10,8 @@ class NewPrepView extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = context.watch<PagerVM>();
     final cs = Theme.of(context).colorScheme;
-    final op = vm.operator;
-    final themeColor = op?.themeColor ?? cs.primary;
+    // 拨打前不泄露接线员身份，使用通用品牌蓝色
+    final themeColor = cs.primary;
 
     return Scaffold(
       backgroundColor: cs.surface,
