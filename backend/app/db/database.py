@@ -2,7 +2,7 @@
 
 独立的数据库连接，与 Redis 分离
 """
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
