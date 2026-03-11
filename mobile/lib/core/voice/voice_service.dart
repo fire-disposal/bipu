@@ -22,8 +22,9 @@ class VoiceService {
 
   // ASR
   final stt.SpeechToText _asr = stt.SpeechToText();
-  final StreamController<String> _asrController =
-      StreamController<String>.broadcast();
+
+  // 当前识别会话的 Completer（null 表示未识别）
+  Completer<String?>? _currentResultCompleter;
 
   bool _initialized = false;
   bool _isListening = false;
@@ -58,7 +59,14 @@ class VoiceService {
 
       // 初始化系统 ASR
       final available = await _asr.initialize(
-        onError: (e) => debugPrint('[Voice ERROR] ASR 初始化错误：$e'),
+        onError: (e) {
+          debugPrint('[Voice] ASR 运行时错误：$e');
+          // 将正在等待的识别请求标记为“无结果”，触发 onDone
+          if (_currentResultCompleter != null &&
+              !_currentResultCompleter!.isCompleted) {
+            _currentResultCompleter!.complete(null);
+          }
+        },
         onStatus: (s) => debugPrint('[Voice] ASR 状态：$s'),
       );
 
@@ -127,21 +135,23 @@ class VoiceService {
     _isSpeaking = false;
   }
 
-  /// ASR: 开始录音，返回文本流
+  /// ASR: 开始录音，返回文本流（最多产出一个识别结果，无识别时流直接完成）
   Stream<String> startListening({Duration? timeout}) async* {
     if (!_initialized) await init();
 
     _isListening = true;
     _amplitudeSamples.clear();
     _lastWaveform = null;
-    final stopWatch = Stopwatch()..start();
     final effectiveTimeout = timeout ?? const Duration(seconds: 30);
+    _currentResultCompleter = Completer<String?>();
 
     try {
       await _asr.listen(
         onResult: (result) {
           if (result.finalResult && result.recognizedWords.isNotEmpty) {
-            _asrController.add(result.recognizedWords);
+            if (!_currentResultCompleter!.isCompleted) {
+              _currentResultCompleter!.complete(result.recognizedWords);
+            }
           }
         },
         onSoundLevelChange: (level) {
@@ -155,18 +165,28 @@ class VoiceService {
         cancelOnError: true,
       );
 
-      // 等待结果或超时
-      while (_isListening && stopWatch.elapsed < effectiveTimeout) {
-        yield await _asrController.stream.first;
-        break; // 收到一个结果后就返回
+      // _asr.listen() 返回后 ASR 会话已启动，等待识别结果。
+      // 添加超时保护：error_no_match 时 onError 会 complete(null)，
+      // 若两者都未触发则 timeout 兜底，防止永久阻塞。
+      final result = await _currentResultCompleter!.future.timeout(
+        effectiveTimeout,
+        onTimeout: () {
+          debugPrint('[Voice WARN] ASR 等待结果超时');
+          return null;
+        },
+      );
+
+      if (result != null && result.isNotEmpty) {
+        yield result;
       }
+      // result 为 null 时流直接完成（不 yield），触发 pager_vm.dart 的 onDone
     } catch (e, st) {
       debugPrint('[Voice ERROR] startListening 失败：$e');
       debugPrint('$st');
       _isListening = false;
     } finally {
       _isListening = false;
-      stopWatch.stop();
+      _currentResultCompleter = null;
       // 录音结束后计算振幅包络
       _lastWaveform = _computeWaveform(_amplitudeSamples);
       debugPrint(
@@ -185,6 +205,12 @@ class VoiceService {
       debugPrint('[Voice WARN] stopListening: $e');
     } finally {
       _isListening = false;
+      // 如果此时 onResult 还没有完成 completer（用户说话了但引擎没识别到），
+      // 用 null 完成它以触发 onDone
+      if (_currentResultCompleter != null &&
+          !_currentResultCompleter!.isCompleted) {
+        _currentResultCompleter!.complete(null);
+      }
     }
   }
 
@@ -279,7 +305,10 @@ class VoiceService {
     await stopListening();
     await _player.dispose();
     // _tts.dispose(); // TTS Worker 已注释（预录制模式）
-    _asrController.close();
+    if (_currentResultCompleter != null &&
+        !_currentResultCompleter!.isCompleted) {
+      _currentResultCompleter!.complete(null);
+    }
     _initialized = false;
     debugPrint('[Voice] 已清理');
   }
