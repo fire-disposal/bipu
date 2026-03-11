@@ -19,63 +19,68 @@ import 'background_service.dart';
 
 /// 统一消息服务 - 集成WebSocket和长轮询的智能消息传递系统
 class UnifiedMessageService extends ChangeNotifier {
-  static final UnifiedMessageService _instance = UnifiedMessageService._internal();
+  static final UnifiedMessageService _instance =
+      UnifiedMessageService._internal();
   factory UnifiedMessageService() => _instance;
   UnifiedMessageService._internal();
 
   // 依赖服务
   final AuthService _authService = AuthService();
   final Connectivity _connectivity = Connectivity();
-  
+
   // 状态管理
   StreamSubscription<dynamic>? _connectivitySub;
   VoidCallback? _authListener;
   bool _isOnline = true;
   bool _isRunning = false;
-  
+
   // WebSocket相关
   IOWebSocketChannel? _webSocketChannel;
   Timer? _heartbeatTimer;
   int _reconnectAttempts = 0;
   static const int _maxReconnectAttempts = 5;
-  
+
   // 长轮询相关
   late Dio _pollingDio;
   bool _isPollingActive = false;
   bool _isStarting = false;
-  
+
   // 消息存储
   List<MessageResponse> _receivedMessages = [];
   List<MessageResponse> _sentMessages = [];
   Set<int> _cachedReadIds = {};
   int _lastReceivedMessageId = 0;
   int _lastSentMessageId = 0;
-  
+
   // 存储配置
   static const String _imSettingsBoxName = 'unified_im_settings_box';
   static const String _lastReceivedMsgIdKey = 'last_received_msg_id';
   static const String _readMessageIdsKey = 'read_message_ids';
   Box? _imSettingsBox;
-  
+
   // 应用状态
   bool _isInForeground = true;
   Timer? _backgroundTimer;
 
   // Getters
-  List<MessageResponse> get receivedMessages => List.unmodifiable(_receivedMessages);
+  List<MessageResponse> get receivedMessages =>
+      List.unmodifiable(_receivedMessages);
   List<MessageResponse> get sentMessages => List.unmodifiable(_sentMessages);
-  int get unreadCount => _receivedMessages
-      .where((m) => !_cachedReadIds.contains(m.id))
-      .length;
+  int get unreadCount =>
+      _receivedMessages.where((m) => !_cachedReadIds.contains(m.id)).length;
   int get unreadSystemCount => _receivedMessages
-      .where((m) => !_cachedReadIds.contains(m.id) && m.messageType == MessageType.system)
+      .where(
+        (m) =>
+            !_cachedReadIds.contains(m.id) &&
+            m.messageType == MessageType.system,
+      )
       .length;
   int get unreadNormalCount => unreadCount - unreadSystemCount;
 
   /// 初始化服务
   Future<void> init() async {
     if (_isRunning) return;
-    
+
     try {
       // 初始化存储
       _imSettingsBox = await Hive.openBox(_imSettingsBoxName);
@@ -86,16 +91,16 @@ class UnifiedMessageService extends ChangeNotifier {
       _cachedReadIds = (storedIds is List<int>)
           ? storedIds.toSet()
           : (storedIds as List).cast<int>().toSet();
-          
+
       // 设置监听器
       _setupConnectivityListener();
       _setupAuthListener();
-      
+
       // 检查初始状态
       if (_authService.authState.value == AuthStatus.authenticated) {
         await start();
       }
-      
+
       _isRunning = true;
       log('Unified Message Service initialized');
     } catch (e) {
@@ -105,14 +110,16 @@ class UnifiedMessageService extends ChangeNotifier {
 
   /// 启动消息服务
   Future<void> start() async {
-    if (!_isOnline || _isStarting || _authService.authState.value != AuthStatus.authenticated) {
+    if (!_isOnline ||
+        _isStarting ||
+        _authService.authState.value != AuthStatus.authenticated) {
       return;
     }
-    
+
     _isStarting = true;
     try {
       await _fetchInitialMessages();
-      
+
       // 优先尝试WebSocket连接
       if (await _connectWebSocket()) {
         log('WebSocket connected successfully');
@@ -121,7 +128,7 @@ class UnifiedMessageService extends ChangeNotifier {
         _startLongPolling();
         log('Falling back to long polling');
       }
-      
+
       // 如果在后台，设置后台优化
       if (!_isInForeground) {
         _optimizeForBackground();
@@ -148,12 +155,15 @@ class UnifiedMessageService extends ChangeNotifier {
     try {
       final token = await TokenManager.getAccessToken();
       if (token == null) return false;
-      
-      final wsUrl = AppConfig.apiBaseUrl
-          .replaceFirst('http', 'ws') + '/api/ws?token=$token';
-      
+
+      // 将 http/https 转换为 ws/wss，并移除可能的端口号
+      final baseUrl = AppConfig.apiBaseUrl;
+      final wsScheme = baseUrl.startsWith('https') ? 'wss' : 'ws';
+      final wsHost = baseUrl.replaceFirst(RegExp(r'^https?://'), '');
+      final wsUrl = '$wsScheme://$wsHost/api/ws?token=$token';
+
       _webSocketChannel = IOWebSocketChannel.connect(Uri.parse(wsUrl));
-      
+
       // 监听WebSocket消息
       _webSocketChannel!.stream.listen(
         _handleWebSocketMessage,
@@ -170,7 +180,7 @@ class UnifiedMessageService extends ChangeNotifier {
           }
         },
       );
-      
+
       // 启动心跳
       _startHeartbeat();
       _reconnectAttempts = 0;
@@ -220,7 +230,8 @@ class UnifiedMessageService extends ChangeNotifier {
   void _scheduleReconnect() {
     final delay = Duration(seconds: 2 * _reconnectAttempts);
     Timer(delay, () {
-      if (_isOnline && _authService.authState.value == AuthStatus.authenticated) {
+      if (_isOnline &&
+          _authService.authState.value == AuthStatus.authenticated) {
         _connectWebSocket();
       }
     });
@@ -236,7 +247,7 @@ class UnifiedMessageService extends ChangeNotifier {
   /// 启动长轮询
   void _startLongPolling() {
     if (_isPollingActive) return;
-    
+
     _initializePollingDio();
     _isPollingActive = true;
     _performLongPolling();
@@ -261,26 +272,28 @@ class UnifiedMessageService extends ChangeNotifier {
     );
 
     _pollingDio = Dio(baseOptions);
-    _pollingDio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        try {
-          final token = await TokenManager.getAccessToken();
-          if (token != null && token.isNotEmpty) {
-            options.headers['Authorization'] = 'Bearer $token';
+    _pollingDio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          try {
+            final token = await TokenManager.getAccessToken();
+            if (token != null && token.isNotEmpty) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
+          } catch (e) {
+            log('Failed to add token to polling request: $e');
           }
-        } catch (e) {
-          log('Failed to add token to polling request: $e');
-        }
-        handler.next(options);
-      },
-      onError: (error, handler) async {
-        if (error.response?.statusCode == 401) {
-          log('Polling encountered 401 error, stopping service');
-          stop();
-        }
-        handler.next(error);
-      },
-    ));
+          handler.next(options);
+        },
+        onError: (error, handler) async {
+          if (error.response?.statusCode == 401) {
+            log('Polling encountered 401 error, stopping service');
+            stop();
+          }
+          handler.next(error);
+        },
+      ),
+    );
   }
 
   /// 执行长轮询
@@ -294,21 +307,28 @@ class UnifiedMessageService extends ChangeNotifier {
     const maxRetries = 3;
     const baseRetryDelay = Duration(seconds: 1);
 
-    while (_isPollingActive && _isOnline && _authService.authState.value == AuthStatus.authenticated) {
+    while (_isPollingActive &&
+        _isOnline &&
+        _authService.authState.value == AuthStatus.authenticated) {
       try {
         final response = await _pollingDio.get<Map<String, dynamic>>(
           '/api/messages/poll',
-          queryParameters: {'last_msg_id': _lastReceivedMessageId, 'timeout': 30},
+          queryParameters: {
+            'last_msg_id': _lastReceivedMessageId,
+            'timeout': 30,
+          },
         );
 
         retryCount = 0;
         final data = response.data ?? {};
         final messages = (data['messages'] as List<dynamic>?) ?? [];
-        
+
         if (messages.isNotEmpty) {
-          final newMessages = messages.map((msg) => 
-            MessageResponse.fromJson(msg as Map<String, dynamic>)
-          ).toList();
+          final newMessages = messages
+              .map(
+                (msg) => MessageResponse.fromJson(msg as Map<String, dynamic>),
+              )
+              .toList();
           _addReceivedMessages(newMessages);
           log('✓ Long polling received ${newMessages.length} new messages');
         }
@@ -319,7 +339,7 @@ class UnifiedMessageService extends ChangeNotifier {
             stop();
             return;
           }
-          
+
           if (e.type == DioExceptionType.connectionTimeout ||
               e.type == DioExceptionType.receiveTimeout ||
               e.type == DioExceptionType.sendTimeout) {
@@ -327,14 +347,14 @@ class UnifiedMessageService extends ChangeNotifier {
             continue;
           }
         }
-        
+
         retryCount++;
         if (retryCount > maxRetries) {
           log('✗ Max retries exceeded, stopping polling');
           _isPollingActive = false;
           return;
         }
-        
+
         final delay = baseRetryDelay * (1 << (retryCount - 1));
         await Future.delayed(delay);
       }
@@ -384,7 +404,7 @@ class UnifiedMessageService extends ChangeNotifier {
       _updateLastReceivedMessageId(message.id);
     }
     notifyListeners();
-    
+
     // 同步到后台服务，避免重复通知
     unawaited(BackgroundMessageService.syncLastMessageId(message.id));
   }
@@ -392,12 +412,10 @@ class UnifiedMessageService extends ChangeNotifier {
   /// 批量添加接收到的消息
   void _addReceivedMessages(List<MessageResponse> messages) {
     _receivedMessages.insertAll(0, messages);
-    final maxId = messages
-        .map((m) => m.id)
-        .reduce((a, b) => a > b ? a : b);
+    final maxId = messages.map((m) => m.id).reduce((a, b) => a > b ? a : b);
     _updateLastReceivedMessageId(maxId);
     notifyListeners();
-    
+
     // 同步到后台服务
     unawaited(BackgroundMessageService.syncLastMessageId(maxId));
   }
@@ -554,7 +572,7 @@ class UnifiedMessageService extends ChangeNotifier {
   }) async {
     try {
       final apiClient = ApiClient.instance;
-      
+
       if (direction == 'sent') {
         final response = await apiClient.execute(
           () => apiClient.api.messages.getApiMessagesSent(
@@ -622,11 +640,13 @@ class UnifiedMessageService extends ChangeNotifier {
     if (_isPollingActive) {
       // 长轮询已经在运行，保持现有配置
     }
-    
+
     // 设置后台定时器，定期检查是否需要唤醒
     _backgroundTimer?.cancel();
     _backgroundTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
-      if (!_isInForeground && _isOnline && _authService.authState.value == AuthStatus.authenticated) {
+      if (!_isInForeground &&
+          _isOnline &&
+          _authService.authState.value == AuthStatus.authenticated) {
         // 可以在这里添加后台优化逻辑
         log('Background optimization check');
       }
@@ -640,7 +660,7 @@ class UnifiedMessageService extends ChangeNotifier {
       final isOnlineNow = !results.contains(ConnectivityResult.none);
       final wasOnline = _isOnline;
       _isOnline = isOnlineNow;
-      
+
       if (_isOnline && !wasOnline) {
         // 网络恢复，重新启动服务
         start();
@@ -669,12 +689,13 @@ class UnifiedMessageService extends ChangeNotifier {
   /// 设置应用前台/后台状态
   void setForegroundState(bool isInForeground) {
     if (_isInForeground == isInForeground) return;
-    
+
     _isInForeground = isInForeground;
-    
+
     if (_isInForeground) {
       // 回到前台，确保服务运行
-      if (_authService.authState.value == AuthStatus.authenticated && _isOnline) {
+      if (_authService.authState.value == AuthStatus.authenticated &&
+          _isOnline) {
         start();
       }
       _backgroundTimer?.cancel();

@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import os
 from app.api.router import api_router
@@ -111,6 +112,15 @@ def create_app() -> FastAPI:
 
     # 配置Jinja2模板
     Jinja2Templates(directory="templates")
+
+    # 配置 CORS 中间件 (允许所有来源，生产环境应限制为特定域名)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # 生产环境应改为具体域名
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     # 挂载静态文件 (替代 Nginx 功能)
     # 确保上传目录存在
