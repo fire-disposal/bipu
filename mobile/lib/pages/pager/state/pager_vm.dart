@@ -80,6 +80,7 @@ class PagerVM extends ChangeNotifier {
 
   // 通话记录
   final List<SendRecord> _sentHistory = [];
+  SendRecord? _lastSentRecord; // 最后一次成功发送的记录（sentSuccess 面板展示用）
 
   // Getters
   PagerPhase get phase => _phase;
@@ -97,6 +98,7 @@ class PagerVM extends ChangeNotifier {
   bool get targetConfirmed => _inCallSubPhase != InCallSubPhase.inputTarget;
   List<String> get dialogueHistory => List.unmodifiable(_dialogueHistory);
   List<SendRecord> get sentHistory => List.unmodifiable(_sentHistory);
+  SendRecord? get lastSentRecord => _lastSentRecord;
   OperatorService get operatorService => _operatorService;
   List<int>? get capturedWaveform => _capturedWaveform;
   List<double> get realtimeAmplitudes => List.unmodifiable(_realtimeAmplitudes);
@@ -590,14 +592,11 @@ class PagerVM extends ChangeNotifier {
         onText: _updateDialogue,
       );
 
-      // 成功后回到「输入号码」子阶段，等待下一条消息
+      // 进入「已送达」子阶段，等待用户主动选择挂断或继续
       if (_inCallSubPhase == InCallSubPhase.reviewing) {
-        await _operatorService.unlockOperator(operatorSnapshot.id);
-        _targetId = '';
-        _messageContent = '';
-        _capturedWaveform = null;
-        _inCallSubPhase = InCallSubPhase.inputTarget;
+        _lastSentRecord = _sentHistory.last;
         _isSending = false;
+        _inCallSubPhase = InCallSubPhase.sentSuccess;
         notifyListeners();
       } else {
         log('[PagerVM] 发送完成但状态已变化，不更新');
@@ -615,12 +614,17 @@ class PagerVM extends ChangeNotifier {
     }
   }
 
-  /// 继续发送给另一人
+  /// 继续发送给另一人（从 sentSuccess 面板调用）
   Future<void> continueToNextRecipient() async {
+    // 先解锁操作员（在 sendMessage 成功时未解锁，推迟到此处）
+    if (_operator != null) {
+      await _operatorService.unlockOperator(_operator!.id);
+    }
     _targetId = '';
     _targetUser = null;
     _messageContent = '';
     _errorMessage = null;
+    _capturedWaveform = null;
     _isSending = false;
     _inCallSubPhase = InCallSubPhase.inputTarget; // 重置到号码输入面板
 

@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import '../../../../core/api/models/message_response.dart';
 import '../../../../core/api/models/contact_create.dart';
 import '../../../../core/api/models/block_user_request.dart';
+import '../../../../core/api/models/user_public.dart';
+import '../../../../core/api/models/service_account_response.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import 'package:go_router/go_router.dart';
@@ -27,6 +29,10 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
   bool _isLoadingContact = false;
   bool _isLoadingBlock = false;
 
+  // 发送者信息（异步加载）
+  UserPublic? _senderUserInfo;
+  ServiceAccountResponse? _senderServiceInfo;
+
   Color get _onSurfaceColor => Theme.of(context).colorScheme.onSurface;
   Color get _cardColor =>
       Theme.of(context).cardTheme.color ?? Colors.transparent;
@@ -43,6 +49,7 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
     super.initState();
     _imService.addListener(_onImChanged);
     _checkFavoriteStatus();
+    _loadSenderInfo();
   }
 
   @override
@@ -180,6 +187,26 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
     }
   }
 
+  /// 异步加载发送者信息
+  /// 用户和服务号分别调用不同接口
+  Future<void> _loadSenderInfo() async {
+    final senderId = widget.message.senderBipupuId;
+    final isService = !_isNumeric(senderId);
+    try {
+      if (isService) {
+        final service = await ApiClient.instance.api.serviceAccounts
+            .getApiServiceAccountsName(name: senderId);
+        if (mounted) setState(() => _senderServiceInfo = service);
+      } else {
+        final user = await ApiClient.instance.api.users
+            .getApiUsersUsersBipupuId(bipupuId: senderId);
+        if (mounted) setState(() => _senderUserInfo = user);
+      }
+    } catch (e) {
+      debugPrint('Failed to load sender info for $senderId: $e');
+    }
+  }
+
   bool _isNumeric(String str) {
     // 检查是否为纯数字（不包含点号等特殊字符）
     // 000001 会被判定为用户（纯数字）
@@ -251,8 +278,24 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
     final isSender = msg.senderBipupuId == currentUser?.bipupuId;
     final isServiceAccount = !_isNumeric(msg.senderBipupuId);
 
-    // TODO: 从联系人缓存获取发送者信息，暂时使用消息中的 ID
-    final displayName = msg.senderBipupuId;
+    // 显示名：用户取昵称/用户名，服务号取 name
+    final String displayName = isServiceAccount
+        ? (_senderServiceInfo?.name ?? msg.senderBipupuId)
+        : (_senderUserInfo?.nickname ??
+              _senderUserInfo?.username ??
+              msg.senderBipupuId);
+
+    // 副标题：用户显示 ID，服务号显示描述
+    final String? subtitle = isServiceAccount
+        ? (_senderServiceInfo?.description?.isNotEmpty == true
+              ? _senderServiceInfo!.description
+              : null)
+        : msg.senderBipupuId;
+
+    // 头像 URL：用户和服务号使用不同接口返回的 avatarUrl
+    final String? avatarUrl = isServiceAccount
+        ? _senderServiceInfo?.avatarUrl
+        : _senderUserInfo?.avatarUrl;
 
     return Scaffold(
       appBar: AppBar(
@@ -299,11 +342,13 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
               child: Row(
                 children: [
                   GestureDetector(
-                    onTap: () {
-                      context.push('/user/detail/${msg.senderBipupuId}');
-                    },
+                    onTap: isServiceAccount
+                        ? null
+                        : () => context.push(
+                            '/user/detail/${msg.senderBipupuId}',
+                          ),
                     child: UserAvatar(
-                      bipupuId: msg.senderBipupuId,
+                      avatarUrl: avatarUrl,
                       displayName: displayName,
                       radius: 36,
                     ),
@@ -324,17 +369,18 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          msg.senderBipupuId,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
+                        if (subtitle != null)
+                          Text(
+                            subtitle,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
                         const SizedBox(height: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(

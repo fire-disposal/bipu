@@ -13,4 +13,5 @@ enum InCallSubPhase {
   recording, // 录音录入消息
   confirmMessage, // 确认消息内容（调度员播报后用户确认/调整）
   reviewing, // 最终确认发送（原独立页面，现统一为子阶段面板）
+  sentSuccess, // 传呼已完成，等待用户选择挂断或继续
 }

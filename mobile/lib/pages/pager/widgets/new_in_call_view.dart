@@ -106,6 +106,7 @@ class _NewInCallViewState extends State<NewInCallView> {
       InCallSubPhase.recording => ('录入传呼消息', '2 / 3'),
       InCallSubPhase.confirmMessage => ('确认消息内容', '2 / 3'),
       InCallSubPhase.reviewing => ('确认发送', '3 / 3'),
+      InCallSubPhase.sentSuccess => ('传呼已送达', '✓'),
     };
 
     return Container(
@@ -318,6 +319,11 @@ class _NewInCallViewState extends State<NewInCallView> {
             themeColor,
           ),
           InCallSubPhase.reviewing => _buildReviewingPanel(vm, cs, themeColor),
+          InCallSubPhase.sentSuccess => _buildSentSuccessPanel(
+            vm,
+            cs,
+            themeColor,
+          ),
         },
       ),
     );
@@ -1068,6 +1074,150 @@ class _NewInCallViewState extends State<NewInCallView> {
             const SizedBox(height: 12),
             _errorCard(vm.errorMessage!),
           ],
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // 子阶段面板：sentSuccess — 传呼已送达
+  // ─────────────────────────────────────────────────────────────────
+
+  Widget _buildSentSuccessPanel(PagerVM vm, ColorScheme cs, Color themeColor) {
+    const successGreen = Color(0xFF34C759);
+    final record = vm.lastSentRecord;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 8),
+
+          // 成功图标
+          Center(
+            child: Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: successGreen.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle_outline_rounded,
+                color: successGreen,
+                size: 44,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // 标题
+          Text(
+            '传呼已送达',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: cs.onSurface,
+            ),
+          ),
+          const SizedBox(height: 4),
+          if (record != null)
+            Text(
+              '已发送至 ${record.targetId}',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+            ),
+
+          const SizedBox(height: 20),
+
+          // 已发内容摘要卡
+          if (record != null)
+            _sectionCard(
+              cs: cs,
+              borderColor: successGreen.withValues(alpha: 0.45),
+              borderWidth: 1.2,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.mail_outline_rounded,
+                    size: 18,
+                    color: successGreen,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '已发内容',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          record.content,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: cs.onSurface,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          const Spacer(),
+
+          // 操作按钮行
+          Row(
+            children: [
+              // 挂断按钮
+              Expanded(
+                child: SizedBox(
+                  height: 52,
+                  child: OutlinedButton.icon(
+                    onPressed: vm.hangup,
+                    icon: const Icon(
+                      Icons.call_end_rounded,
+                      size: 18,
+                      color: Colors.red,
+                    ),
+                    label: const Text(
+                      '挂断',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.red, width: 1.2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // 继续发送按钮
+              Expanded(
+                flex: 2,
+                child: _primaryButton(
+                  label: '继续发送',
+                  icon: const Icon(Icons.navigate_next_rounded, size: 20),
+                  onPressed: vm.continueToNextRecipient,
+                  themeColor: themeColor,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
