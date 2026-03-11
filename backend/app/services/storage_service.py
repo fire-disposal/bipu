@@ -36,7 +36,19 @@ class StorageService:
         """
         # 读取文件内容到内存
         content = await file.read()
+        return await StorageService.save_avatar_bytes(content)
 
+    @staticmethod
+    async def save_avatar_bytes(content: bytes) -> bytes:
+        """从bytes数据保存头像，进行压缩处理
+
+        流程：
+        1. 验证文件大小
+        2. 验证图片格式、安全性和宽高比（强制1:1）
+        3. 裁剪并压缩图片到正方形（最大100x100像素）
+        4. 转换为JPEG格式，质量70%
+        5. 返回压缩后的二进制数据
+        """
         # 验证文件大小
         if len(content) > AVATAR_MAX_FILE_SIZE:
             raise ValueError(f"头像文件过大，最大支持 {AVATAR_MAX_FILE_SIZE // (1024*1024)}MB")

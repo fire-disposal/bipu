@@ -46,22 +46,18 @@ async def upload_avatar(
             raise ValidationException(f"文件过大，最大支持 {settings.MAX_FILE_SIZE // (1024*1024)}MB")
 
         # 验证文件类型（宽松检查：Dio 移动端可能上报 application/octet-stream）
-        # 实际图片格式由 StorageService.save_avatar() 通过 PIL image.verify() 验证
+        # 实际图片格式由 StorageService.save_avatar_bytes() 通过 PIL image.verify() 验证
         if file.content_type and not file.content_type.startswith('image/') \
                 and file.content_type not in ('application/octet-stream', 'binary/octet-stream'):
             raise ValidationException("请上传图片文件（支持JPG、PNG等格式）")
 
-        # 重新创建文件对象用于后续处理
-        from io import BytesIO
-        file.file = BytesIO(file_content)
-
-        # 使用存储服务处理头像
+        # 使用存储服务处理头像（直接传入已读取的字节数据，避免重复读取）
         user_id = current_user.id
         if not user_id:
             raise ValidationException("用户ID获取失败")
 
         try:
-            avatar_data = await StorageService.save_avatar(file)
+            avatar_data = await StorageService.save_avatar_bytes(file_content)
         except ValueError as e:
             raise ValidationException(str(e))
         except Exception as e:
