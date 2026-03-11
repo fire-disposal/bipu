@@ -163,18 +163,17 @@ async def get_current_user(
         if cached_user_data:
             try:
                 user_data = json.loads(cached_user_data) if isinstance(cached_user_data, str) else cached_user_data
-                # 安全地从缓存重建 User 对象 - 只读取认证所需的字段
-                user = User(
-                    id=user_data.get('id'),
-                    bipupu_id=user_data.get('bipupu_id'),
-                    username=user_data.get('username'),
-                    nickname=user_data.get('nickname'),
-                    is_active=user_data.get('is_active', True),
-                    is_superuser=user_data.get('is_superuser', False),
-                    timezone=user_data.get('timezone', 'Asia/Shanghai'),
-                )
-                logger.debug(f"User from cache: {username}")
-                return user
+                # 使用缓存中的 id 从数据库加载持久化 ORM 对象，避免构造瞬态 User 导致后续 db.add() 时执行 INSERT
+                user_id = user_data.get('id')
+                if user_id:
+                    try:
+                        user = db.query(User).filter(User.id == user_id, User.is_active).first()
+                        if user:
+                            logger.debug(f"User from cache: {username}")
+                            return user
+                    except Exception as e:
+                        logger.warning(f"DB lookup failed for cached user id {user_id}: {e}")
+                # 如果无法从 DB 加载（缓存过期或数据不一致），继续后续的数据库查询流程
             except Exception as e:
                 logger.warning(f"Failed to restore user from cache: {e}")
                 # 缓存损坏，继续从数据库查询

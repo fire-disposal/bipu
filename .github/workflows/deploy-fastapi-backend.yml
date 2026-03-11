@@ -11,6 +11,10 @@ on:
         description: "部署原因"
         required: false
         default: "手动触发部署"
+      clean_redis:
+        description: "是否在部署前清理 Redis（仅清理匹配 key，慎用，true/false）"
+        required: false
+        default: "false"
 
 env:
   IMAGE_BASE: ghcr.io/${{ github.repository }}/bipupu-backend
@@ -91,6 +95,22 @@ jobs:
         run: |
           # 仅推送主配置文件
           scp backend/docker/docker-compose.yml bipupu-server:~/bipupu-compose/
+
+      - name: 🧹 可选：在服务器上安全清理 Redis
+        if: ${{ github.event.inputs.clean_redis == 'true' }}
+        run: |
+          ssh -o BatchMode=yes -o ConnectTimeout=10 -T bipupu-server 'sh -s' <<'SSH_CLEAN'
+          set -e
+          # 列出将被删除的 key（仅用于记录）
+          echo "Listing keys matching 'user_auth:*' in Redis:"
+          docker compose -p bipupu-backend exec -T redis sh -c "redis-cli --scan --pattern 'user_auth:*' || true"
+
+          # 实际删除：使用容器内 redis-cli 的 SCAN + xargs 删除匹配的键，避免使用 FLUSHALL
+          echo "Deleting keys matching 'user_auth:*'..."
+          docker compose -p bipupu-backend exec -T redis sh -c "redis-cli --scan --pattern 'user_auth:*' | xargs -r -n1 redis-cli del || true"
+
+          echo "Redis cleanup completed."
+          SSH_CLEAN
 
       - name: 🚀 执行部署 (变量注入)
         run: |

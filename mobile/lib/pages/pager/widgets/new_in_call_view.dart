@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/pager_vm.dart';
 import '../state/pager_phase.dart';
-import 'realtime_waveform_widget.dart';
 import 'waveform_visualization_widget.dart';
 
 /// 通话中视图
@@ -687,29 +686,6 @@ class _NewInCallViewState extends State<NewInCallView> {
             ),
           ),
           const SizedBox(height: 14),
-
-          // 波形（录音时展开）
-          AnimatedSize(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            child: vm.isRecording
-                ? Container(
-                    width: double.infinity,
-                    height: 52,
-                    margin: const EdgeInsets.only(bottom: 14),
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainerHighest.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: RealtimeWaveformWidget(
-                      amplitudes: vm.realtimeAmplitudes,
-                      isRecording: vm.isRecording,
-                      waveColor: themeColor,
-                      height: 52,
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
 
           // 麦克风按钮
           _buildMicButton(vm, cs, themeColor),
