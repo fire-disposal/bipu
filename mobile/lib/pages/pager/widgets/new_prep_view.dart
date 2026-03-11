@@ -267,17 +267,6 @@ class _DialButton extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(32),
             color: isLoading ? cs.primary : themeColor,
-            boxShadow: [
-              BoxShadow(
-                color: (isLoading ? cs.primary : themeColor).withValues(
-                  alpha: 0.35,
-                ),
-                blurRadius: 20,
-                offset: const Offset(0, 6),
-                spreadRadius: 0,
-                blurStyle: BlurStyle.normal,
-              ),
-            ],
           ),
           child: Center(
             child: isLoading
