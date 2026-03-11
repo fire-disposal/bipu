@@ -8,7 +8,7 @@
 """
 
 from typing import Optional
-from app.db.database import get_redis
+from app.db.redis import get_redis
 from app.schemas.message import MessageListResponse
 from app.core.logging import get_logger
 import json

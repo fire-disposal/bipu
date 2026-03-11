@@ -37,8 +37,29 @@ class UserBase(BaseModel):
 class UserCreate(BaseModel):
     """创建用户请求"""
     username: str = Field(..., min_length=3, max_length=50, description="用户名")
-    password: str = Field(..., min_length=6, max_length=128, description="密码")
+    password: str = Field(
+        ...,
+        min_length=8,
+        max_length=128,
+        description="密码，至少 8 位，需包含大小写字母和数字"
+    )
     nickname: Optional[str] = Field(None, max_length=50, description="昵称")
+
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        """验证密码强度"""
+        if len(v) < 8:
+            raise ValueError('密码至少 8 位')
+        
+        has_upper = any(c.isupper() for c in v)
+        has_lower = any(c.islower() for c in v)
+        has_digit = any(c.isdigit() for c in v)
+        
+        if not (has_upper and has_lower and has_digit):
+            raise ValueError('密码需包含大小写字母和数字')
+        
+        return v
 
 
 class UserUpdate(BaseModel):
@@ -73,7 +94,28 @@ class UserUpdate(BaseModel):
 class UserPasswordUpdate(BaseModel):
     """更新密码请求"""
     old_password: str = Field(..., description="原密码")
-    new_password: str = Field(..., min_length=6, max_length=128, description="新密码")
+    new_password: str = Field(
+        ...,
+        min_length=8,
+        max_length=128,
+        description="新密码，至少 8 位，需包含大小写字母和数字"
+    )
+
+    @field_validator('new_password')
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        """验证密码强度"""
+        if len(v) < 8:
+            raise ValueError('密码至少 8 位')
+        
+        has_upper = any(c.isupper() for c in v)
+        has_lower = any(c.islower() for c in v)
+        has_digit = any(c.isdigit() for c in v)
+        
+        if not (has_upper and has_lower and has_digit):
+            raise ValueError('密码需包含大小写字母和数字')
+        
+        return v
 
 
 class TimezoneUpdate(BaseModel):

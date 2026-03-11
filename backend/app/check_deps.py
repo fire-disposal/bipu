@@ -3,7 +3,8 @@ import asyncio
 import time
 from app.core.config import settings
 from app.core.logging import get_logger
-from app.db.database import init_db, init_redis
+from app.db.database import init_db
+from app.db.redis import init_redis
 
 logger = get_logger(__name__)
 

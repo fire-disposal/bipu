@@ -6,7 +6,8 @@ import os
 from app.api.router import api_router
 from app.api.routes.root import router as root_router
 from app.core.config import settings
-from app.db.database import redis_client, MemoryCacheWrapper, init_redis
+from app.db.database import init_db
+from app.db.redis import redis_client, MemoryCacheWrapper, init_redis, close_redis
 from app.db.init_data import init_default_data
 from app.core.logging import get_logger
 import uvicorn
@@ -76,11 +77,9 @@ async def lifespan(app: FastAPI):
 
     # 清理资源
     try:
-        if redis_client and hasattr(redis_client, 'close'):
-            await redis_client.close()
-        logger.info("✅ Redis连接已关闭")
+        await close_redis()
     except Exception as e:
-        logger.error(f"❌ 关闭Redis连接时出错: {e}")
+        logger.error(f"❌ 关闭 Redis 连接时出错：{e}")
 
     logger.info("🛑 服务停止中")
 

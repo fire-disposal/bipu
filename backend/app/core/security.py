@@ -14,7 +14,8 @@ from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.core.config import settings
-from app.db.database import get_db, get_redis
+from app.db.database import get_db
+from app.db.redis import get_redis
 from app.models.user import User
 from app.core.logging import get_logger
 from app.services.redis_service import RedisService
@@ -162,11 +163,16 @@ async def get_current_user(
         if cached_user_data:
             try:
                 user_data = json.loads(cached_user_data) if isinstance(cached_user_data, str) else cached_user_data
-                # 从缓存数据重建User对象
-                user = User()
-                for key, value in user_data.items():
-                    if hasattr(user, key):
-                        setattr(user, key, value)
+                # 安全地从缓存重建 User 对象 - 只读取认证所需的字段
+                user = User(
+                    id=user_data.get('id'),
+                    bipupu_id=user_data.get('bipupu_id'),
+                    username=user_data.get('username'),
+                    nickname=user_data.get('nickname'),
+                    is_active=user_data.get('is_active', True),
+                    is_superuser=user_data.get('is_superuser', False),
+                    timezone=user_data.get('timezone', 'Asia/Shanghai'),
+                )
                 logger.debug(f"User from cache: {username}")
                 return user
             except Exception as e:
@@ -185,7 +191,8 @@ async def get_current_user(
         logger.warning(f"User not found: {username}")
         raise credentials_exception
 
-    # 🆕 优化：将用户信息缓存 1 小时，避免后续认证时的数据库查询
+    # 🆕 优化：将用户信息缓存 30 分钟，避免后续认证时的数据库查询
+    # 缩短缓存时间以减少一致性问题
     try:
         redis = await get_redis()
         user_dict = {
@@ -200,9 +207,9 @@ async def get_current_user(
         await redis.set(
             cache_key,
             json.dumps(user_dict, default=str),
-            ex=3600  # 1 小时过期
+            ex=1800  # 30 分钟过期
         )
-        logger.debug(f"User cached: {username} (TTL=3600s)")
+        logger.debug(f"User cached: {username} (TTL=1800s)")
     except Exception as e:
         logger.warning(f"Failed to cache user: {e}")
         # 缓存失败不影响认证流程

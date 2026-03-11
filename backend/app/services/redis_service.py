@@ -1,7 +1,7 @@
 import json
 import pickle
 from typing import Optional, Any, Union
-from app.db.database import get_redis
+from app.db.redis import get_redis
 from app.models.message import Message
 from app.core.logging import get_logger
 
@@ -222,11 +222,14 @@ class RedisService:
         """将令牌添加到黑名单"""
         try:
             redis = await get_redis()
-            # 使用令牌作为键，值为1，设置过期时间为令牌的剩余有效期
+            # 确保 expire > 0，防止 Redis setex 失败
+            if expire <= 0:
+                expire = 60  # 默认 60 秒
             await redis.setex(f"blacklist:{token}", expire, "1")
             return True
         except Exception as e:
             logger.error(f"Failed to add token to blacklist: {e}")
+            return False  # 失败时返回 False，但不阻断流程
             return False
 
     @staticmethod

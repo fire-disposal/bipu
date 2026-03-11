@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta, timezone
 from app.models.user import User
 from app.models.message import Message
 from app.models.service_account import ServiceAccount
-from app.db.database import get_redis
+from app.db.redis import get_redis
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)

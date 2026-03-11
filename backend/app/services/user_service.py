@@ -7,6 +7,7 @@
 """
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from typing import Optional
 from datetime import datetime, timezone
 from app.models.user import User
@@ -22,7 +23,12 @@ class UserService:
 
     @staticmethod
     def create_user(db: Session, user_data: UserCreate) -> User:
-        """创建用户"""
+        """创建用户
+        
+        注意：
+        - 并发情况下可能抛出 IntegrityError（bipupu_id 冲突）
+        - 调用方应捕获异常并重试
+        """
         try:
             # 生成 bipupu_id（4 位数字）
             from app.core.user_utils import generate_bipupu_id
@@ -42,12 +48,16 @@ class UserService:
             db.commit()
             db.refresh(user)
 
-            logger.info(f"用户创建成功: username={user.username}, id={user.id}")
+            logger.info(f"用户创建成功：username={user.username}, id={user.id}")
             return user
 
+        except IntegrityError as e:
+            db.rollback()
+            logger.error(f"创建用户失败 - 唯一约束冲突：{e}")
+            raise ValueError("用户名已存在或 ID 冲突")
         except Exception as e:
             db.rollback()
-            logger.error(f"创建用户失败: {e}")
+            logger.error(f"创建用户失败：{e}")
             raise
 
     @staticmethod
@@ -82,12 +92,21 @@ class UserService:
             db.commit()
             db.refresh(user)
 
-            logger.info(f"用户信息更新成功: user_id={user.id}")
+            # 🆕 使认证缓存失效
+            import asyncio
+            from app.services.redis_service import RedisService
+            cache_key = f"user_auth:{user.username}"
+            try:
+                asyncio.create_task(RedisService.delete_cache(cache_key))
+            except Exception as e:
+                logger.warning(f"Failed to invalidate auth cache: {e}")
+
+            logger.info(f"用户信息更新成功：user_id={user.id}")
             return user
 
         except Exception as e:
             db.rollback()
-            logger.error(f"更新用户信息失败: {e}")
+            logger.error(f"更新用户信息失败：{e}")
             raise
 
     @staticmethod
@@ -105,12 +124,21 @@ class UserService:
             db.add(user)
             db.commit()
 
-            logger.info(f"用户密码更新成功: user_id={user.id}")
+            # 🆕 使认证缓存失效（密码变更后强制重新认证）
+            import asyncio
+            from app.services.redis_service import RedisService
+            cache_key = f"user_auth:{user.username}"
+            try:
+                asyncio.create_task(RedisService.delete_cache(cache_key))
+            except Exception as e:
+                logger.warning(f"Failed to invalidate auth cache: {e}")
+
+            logger.info(f"用户密码更新成功：user_id={user.id}")
             return True
 
         except Exception as e:
             db.rollback()
-            logger.error(f"更新用户密码失败: {e}")
+            logger.error(f"更新用户密码失败：{e}")
             raise
 
     @staticmethod

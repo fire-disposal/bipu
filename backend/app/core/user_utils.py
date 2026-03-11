@@ -1,5 +1,6 @@
 """用户工具函数"""
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from app.models.user import User
 import random
 
@@ -10,42 +11,28 @@ def generate_bipupu_id(db: Session) -> str:
     策略：
     1. 从 0001 开始递增分配
     2. 如果有空洞（删除的用户），可以复用
-    3. 确保唯一性
+    3. 确保唯一性（使用数据库唯一约束兜底）
+    
+    线程安全：
+    - 使用数据库唯一约束防止并发冲突
+    - 调用方需要捕获 IntegrityError 并重试
     """
-    # 获取最大的 bipupu_id
-    max_user = db.query(User).order_by(User.bipupu_id.desc()).first()
+    # 先尝试获取最小的可用 ID（填补空洞）
+    # 查询所有已使用的 ID，找到第一个未使用的
+    used_ids = db.query(User.bipupu_id).filter(
+        User.bipupu_id.like('____')  # 只匹配 4 位数字
+    ).all()
     
-    if not max_user:
-        # 第一个用户
-        return "0001"
+    used_id_set = {str(row[0]) for row in used_ids if row[0] and str(row[0]).isdigit()}
     
-    try:
-        # 尝试递增
-        next_id = int(max_user.bipupu_id) + 1
-        if next_id > 9999:
-            # 如果超出范围，从头开始找空洞
-            raise ValueError("ID pool exhausted")
-        
-        bipupu_id = f"{next_id:04d}"
-        
-        # 确保唯一性
-        while db.query(User).filter(User.bipupu_id == bipupu_id).first():
-            next_id += 1
-            if next_id > 9999:
-                raise ValueError("ID pool exhausted")
-            bipupu_id = f"{next_id:04d}"
-        
-        return bipupu_id
-        
-    except (ValueError, AttributeError):
-        # 如果出错，随机生成并检查唯一性
-        max_attempts = 100
-        for _ in range(max_attempts):
-            bipupu_id = f"{random.randint(1, 9999):04d}"
-            if not db.query(User).filter(User.bipupu_id == bipupu_id).first():
-                return bipupu_id
-        
-        raise ValueError("无法生成唯一的 bipupu_id")
+    # 从 0001 开始找第一个未使用的 ID
+    for i in range(1, 10000):
+        bipupu_id = f"{i:04d}"
+        if bipupu_id not in used_id_set:
+            return bipupu_id
+    
+    # 如果所有 4 位数字都用完了，抛出异常
+    raise ValueError("ID pool exhausted: 所有 4 位数字 ID 已用尽")
 
 
 def is_service_account(bipupu_id: str) -> bool:
