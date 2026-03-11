@@ -28,9 +28,9 @@ class _GalleryContent extends StatelessWidget {
     final allOperators = vm.operatorService.getAllOperators();
     final unlockedCount = allOperators.where((op) => op.isUnlocked).length;
     final totalCount = allOperators.length;
-    final progressPercent = (unlockedCount / totalCount * 100).toStringAsFixed(
-      0,
-    );
+    final progressPercent = totalCount > 0
+        ? (unlockedCount / totalCount * 100).toStringAsFixed(0)
+        : '0';
 
     return Scaffold(
       appBar: AppBar(
@@ -57,11 +57,11 @@ class _GalleryContent extends StatelessWidget {
             SliverPadding(
               padding: const EdgeInsets.all(16),
               sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
                   mainAxisSpacing: 16,
                   crossAxisSpacing: 16,
-                  childAspectRatio: 0.85,
+                  childAspectRatio: MediaQuery.of(context).size.width > 600 ? 0.9 : 0.85,
                 ),
                 delegate: SliverChildBuilderDelegate((context, index) {
                   final operator = allOperators[index];
@@ -92,10 +92,10 @@ class _GalleryContent extends StatelessWidget {
         decoration: BoxDecoration(
           color: cs.surfaceContainer,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: cs.outlineVariant.withOpacity(0.5)),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -103,22 +103,23 @@ class _GalleryContent extends StatelessWidget {
         ),
         padding: const EdgeInsets.all(24),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(
+              '解锁进度',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '解锁进度',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
@@ -141,28 +142,28 @@ class _GalleryContent extends StatelessWidget {
                     ),
                   ],
                 ),
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    SizedBox(
-                      width: 80,
-                      height: 80,
-                      child: CircularProgressIndicator(
-                        value: unlockedCount / totalCount,
+                SizedBox(
+                  width: 80,
+                  height: 80,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        value: totalCount > 0 ? unlockedCount / totalCount : 0,
                         strokeWidth: 8,
                         backgroundColor: cs.surfaceContainerHighest,
                         valueColor: AlwaysStoppedAnimation(cs.primary),
                         strokeCap: StrokeCap.round,
                       ),
-                    ),
-                    Text(
-                      '$progressPercent%',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: cs.primary,
+                      Text(
+                        totalCount > 0 ? '$progressPercent%' : '0%',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: cs.primary,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -189,13 +190,13 @@ class _GalleryContent extends StatelessWidget {
           color: cs.surface,
           border: Border.all(
             color: operator.isUnlocked
-                ? cs.outline.withOpacity(0.5)
-                : cs.outlineVariant.withOpacity(0.5),
+                ? cs.outline.withValues(alpha: 0.5)
+                : cs.outlineVariant.withValues(alpha: 0.5),
             width: 1,
-          ),
+          ),  
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -229,19 +230,48 @@ class _GalleryContent extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 // 背景装饰
-                Container(color: operator.themeColor.withOpacity(0.1)),
+                Container(color: operator.themeColor.withValues(alpha: 0.1)),
                 // 图片
-                operator.portraitUrl.startsWith('http')
-                    ? Image.network(
-                        operator.portraitUrl,
-                        fit: BoxFit.cover,
-                        alignment: Alignment.topCenter,
-                      )
-                    : Image.asset(
-                        operator.portraitUrl,
-                        fit: BoxFit.cover,
-                        alignment: Alignment.topCenter,
-                      ),
+                SizedBox.expand(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    child: operator.portraitUrl.startsWith('http')
+                        ? Image.network(
+                            operator.portraitUrl,
+                            fit: BoxFit.cover,
+                            alignment: Alignment.topCenter,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: cs.surfaceContainerHighest,
+                                child: Center(
+                                  child: Icon(
+                                    Icons.help_outline,
+                                    color: cs.onSurfaceVariant,
+                                    size: 48,
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : Image.asset(
+                            operator.portraitUrl,
+                            fit: BoxFit.cover,
+                            alignment: Alignment.topCenter,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: cs.surfaceContainerHighest,
+                                child: Center(
+                                  child: Icon(
+                                    Icons.help_outline,
+                                    color: cs.onSurfaceVariant,
+                                    size: 48,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ),
                 // 渐变遮罩
                 Positioned(
                   bottom: 0,
@@ -279,6 +309,7 @@ class _GalleryContent extends StatelessWidget {
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 2),
                   Container(
@@ -287,7 +318,7 @@ class _GalleryContent extends StatelessWidget {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: operator.themeColor.withOpacity(0.15),
+                      color: operator.themeColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
@@ -297,6 +328,8 @@ class _GalleryContent extends StatelessWidget {
                         fontSize: 9,
                         fontWeight: FontWeight.bold,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -316,7 +349,7 @@ class _GalleryContent extends StatelessWidget {
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withOpacity(0.5),
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -324,41 +357,38 @@ class _GalleryContent extends StatelessWidget {
           // 黑影区域
           Expanded(
             flex: 3,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // 黑影效果
-                Center(
-                  child: Container(
-                    width: 72,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.rectangle,
-                      borderRadius: BorderRadius.circular(12),
-                      color: cs.onSurfaceVariant.withOpacity(0.2),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.person_rounded,
-                          color: cs.onSurfaceVariant.withOpacity(0.5),
-                          size: 32,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '未解锁',
-                          style: TextStyle(
-                            color: cs.onSurfaceVariant.withOpacity(0.5),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+            child: Center(
+              child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                decoration: BoxDecoration(
+                  shape: BoxShape.rectangle,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  color: cs.onSurfaceVariant.withValues(alpha: 0.1),
                 ),
-              ],
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.person_rounded,
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.5),
+                      size: 32,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '未解锁',
+                      style: TextStyle(
+                        color: cs.onSurfaceVariant.withValues(alpha: 0.5),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
           // 信息区域
@@ -375,7 +405,7 @@ class _GalleryContent extends StatelessWidget {
                     height: 8,
                     width: 50,
                     decoration: BoxDecoration(
-                      color: cs.onSurfaceVariant.withOpacity(0.1),
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(3),
                     ),
                   ),
@@ -383,11 +413,14 @@ class _GalleryContent extends StatelessWidget {
                   Text(
                     '???',
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: cs.onSurfaceVariant.withOpacity(0.5),
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.5),
                       fontStyle: FontStyle.italic,
                       fontSize: 9,
                       height: 1.0,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
@@ -427,28 +460,52 @@ class _GalleryContent extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: operator.themeColor.withOpacity(0.2),
+                          color: operator.themeColor.withValues(alpha: 0.2),
                           blurRadius: 16,
                           offset: const Offset(0, 4),
                         ),
                       ],
                       border: Border.all(
-                        color: operator.themeColor.withOpacity(0.3),
+                        color: operator.themeColor.withValues(alpha: 0.3),
                         width: 2,
                       ),
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: operator.portraitUrl.startsWith('http')
-                          ? Image.network(
-                              operator.portraitUrl,
-                              fit: BoxFit.cover,
-                            )
-                          : Image.asset(
-                              operator.portraitUrl,
-                              fit: BoxFit.cover,
-                            ),
-                    ),
+                     child: ClipRRect(
+                       borderRadius: BorderRadius.circular(14),
+                       child: operator.portraitUrl.startsWith('http')
+                           ? Image.network(
+                               operator.portraitUrl,
+                               fit: BoxFit.cover,
+                               errorBuilder: (context, error, stackTrace) {
+                                 return Container(
+                                   color: cs.surfaceContainerHighest,
+                                   child: Center(
+                                     child: Icon(
+                                       Icons.help_outline,
+                                       color: cs.onSurfaceVariant,
+                                       size: 32,
+                                     ),
+                                   ),
+                                 );
+                               },
+                             )
+                           : Image.asset(
+                               operator.portraitUrl,
+                               fit: BoxFit.cover,
+                               errorBuilder: (context, error, stackTrace) {
+                                 return Container(
+                                   color: cs.surfaceContainerHighest,
+                                   child: Center(
+                                     child: Icon(
+                                       Icons.help_outline,
+                                       color: cs.onSurfaceVariant,
+                                       size: 32,
+                                     ),
+                                   ),
+                                 );
+                               },
+                             ),
+                     ),
                   ),
                   const SizedBox(height: 20),
 
@@ -469,7 +526,7 @@ class _GalleryContent extends StatelessWidget {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: operator.themeColor.withOpacity(0.1),
+                      color: operator.themeColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
@@ -504,7 +561,7 @@ class _GalleryContent extends StatelessWidget {
                       color: cs.surfaceContainerLow,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: cs.outlineVariant.withOpacity(0.5),
+                        color: cs.outlineVariant.withValues(alpha: 0.5),
                       ),
                     ),
                     child: Row(

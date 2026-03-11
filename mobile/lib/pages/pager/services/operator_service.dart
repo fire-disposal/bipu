@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/operator_model.dart';
 import 'package:collection/collection.dart';
@@ -142,18 +143,18 @@ class OperatorService {
 
   /// 获取随机操作员（优先已解锁的操作员）
   OperatorPersonality getRandomOperator() {
+    final random = Random();
     final unlockedOperators = getUnlockedOperators();
 
     // 如果有已解锁的操作员，从已解锁中选
     if (unlockedOperators.isNotEmpty) {
-      final random =
-          DateTime.now().millisecondsSinceEpoch % unlockedOperators.length;
-      return unlockedOperators[random];
+      final index = random.nextInt(unlockedOperators.length);
+      return unlockedOperators[index];
     }
 
     // 否则随机选择任意操作员
-    final random = DateTime.now().millisecondsSinceEpoch % _allOperators.length;
-    return _allOperators[random];
+    final index = random.nextInt(_allOperators.length);
+    return _allOperators[index];
   }
 
   /// 检查操作员是否已解锁

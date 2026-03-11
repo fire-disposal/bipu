@@ -7,7 +7,7 @@ operators:
     name: 专业接线员青年男
     description: 专业、亲切的接线员（青年男声）。
     ssml_config : 'saturn_zh_male_tiancaitongzhuo_tob'
-    portrait_url: assets/operators/xiaohong.png
+    portrait_url: assets/operators/pro.png
     initials: XH
     tts_id: 1
     tts_speed: 1.0
@@ -62,7 +62,7 @@ operators:
     name: 冷漠高效机器人
     description: 冷静、简练的机器人风格接线员。
     ssml_config : 'zh_female_vv_uranus_bigtts'
-    portrait_url: assets/operators/xiaomei.png
+    portrait_url: assets/operators/rob.png
     initials: XM
     tts_id: 2
     tts_speed: 1.0
@@ -114,7 +114,7 @@ operators:
     name: 活泼话痨少女
     description: 活泼、热情、喜欢唠叨的接线员（少女声）。
     ssml_config : 'saturn_zh_female_keainvsheng_tob'
-    portrait_url: assets/operators/xiaogang.png
+    portrait_url: assets/operators/jk.png
     initials: XG
     tts_id: 3
     tts_speed: 1.1
@@ -168,7 +168,7 @@ operators:
     name: 黑帮顾问中年男
     description: 低沉沙哑、稳重威严的中年男声接线员。
     ssml_config : 'zh_male_ruyayichen_saturn_bigtts'
-    portrait_url: assets/operators/xiaoyue.png
+    portrait_url: assets/operators/maf.png
     initials: XY
     tts_id: 4
     tts_speed: 0.9

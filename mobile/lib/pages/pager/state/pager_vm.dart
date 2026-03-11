@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/im_service.dart' show ImService;
 import '../../../core/api/models/message_type.dart';
+import '../../../core/api/models/user_public.dart';
 import '../models/operator_model.dart';
 import '../services/operator_service.dart';
 import '../services/operator_voice.dart';
@@ -56,6 +57,7 @@ class PagerVM extends ChangeNotifier {
   InCallSubPhase _inCallSubPhase = InCallSubPhase.inputTarget;
   OperatorPersonality? _operator;
   String _targetId = '';
+  UserPublic? _targetUser;
   String _messageContent = '';
   String _asrTranscript = '';
   String? _errorMessage;
@@ -84,6 +86,7 @@ class PagerVM extends ChangeNotifier {
   InCallSubPhase get inCallSubPhase => _inCallSubPhase;
   OperatorPersonality? get operator => _operator;
   String get targetId => _targetId;
+  UserPublic? get targetUser => _targetUser;
   String get messageContent => _messageContent;
   String get asrTranscript => _asrTranscript;
   String? get errorMessage => _errorMessage;
@@ -252,7 +255,8 @@ class PagerVM extends ChangeNotifier {
     }
   }
 
-  /// 用户确认目标ID正确，验证用户存在性
+  /// 用户确认目标ID正确，直接进入录音阶段
+  /// 用户存在性已在 submitTargetId 中验证
   Future<void> confirmTargetIdCorrect() async {
     if (_phase != PagerPhase.inCall || _inCallSubPhase != InCallSubPhase.confirmTarget) return;
 
@@ -260,28 +264,6 @@ class PagerVM extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 验证用户是否存在
-      bool userExists = false;
-      try {
-        await ApiClient.instance.api.users.getApiUsersUsersBipupuId(
-          bipupuId: _targetId,
-        );
-        userExists = true;
-      } catch (_) {
-        userExists = false;
-      }
-
-      if (!userExists) {
-        await _operatorVoice.say(OperatorLine.userNotFound, onText: _updateDialogue);
-        _errorMessage = '该用户不存在，请重新输入 ID';
-        _inCallSubPhase = InCallSubPhase.inputTarget;
-        _targetId = '';
-        _isConfirming = false;
-        notifyListeners();
-        return;
-      }
-
-      // 用户存在，请求录入消息
       await _operatorVoice.say(OperatorLine.requestMessage, onText: _updateDialogue);
 
       if (_phase != PagerPhase.inCall) return;
@@ -300,6 +282,7 @@ class PagerVM extends ChangeNotifier {
     if (_phase != PagerPhase.inCall) return;
 
     _targetId = '';
+    _targetUser = null;
     _errorMessage = null;
     _inCallSubPhase = InCallSubPhase.inputTarget;
     notifyListeners();
@@ -308,8 +291,55 @@ class PagerVM extends ChangeNotifier {
   }
 
   /// 提交目标ID（供新InCallView调用）
+  /// 在第一步就检查用户存在性并获取用户信息
   Future<void> submitTargetId() async {
-    await confirmTargetId();
+    if (_isConfirming || _targetId.isEmpty || _phase != PagerPhase.inCall) return;
+
+    _isConfirming = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      UserPublic? user;
+      bool userExists = false;
+      try {
+        user = await ApiClient.instance.api.users.getApiUsersUsersBipupuId(
+          bipupuId: _targetId,
+        );
+        userExists = true;
+      } catch (_) {
+        userExists = false;
+      }
+
+      if (!userExists || user == null) {
+        await _operatorVoice.say(OperatorLine.userNotFound, onText: _updateDialogue);
+        _errorMessage = '该用户不存在，请重新输入 ID';
+        _targetId = '';
+        _targetUser = null;
+        _inCallSubPhase = InCallSubPhase.inputTarget;
+        _isConfirming = false;
+        notifyListeners();
+        return;
+      }
+
+      _targetUser = user;
+
+      await _operatorVoice.say(
+        OperatorLine.confirmId,
+        param: _targetId,
+        onText: _updateDialogue,
+      );
+
+      if (_phase != PagerPhase.inCall) return;
+
+      _inCallSubPhase = InCallSubPhase.confirmTarget;
+      _isConfirming = false;
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = '验证失败，请重试';
+      _isConfirming = false;
+      notifyListeners();
+    }
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -566,6 +596,7 @@ class PagerVM extends ChangeNotifier {
   /// 继续发送给另一人
   Future<void> continueToNextRecipient() async {
     _targetId = '';
+    _targetUser = null;
     _messageContent = '';
     _errorMessage = null;
     _isSending = false;
@@ -597,6 +628,7 @@ class PagerVM extends ChangeNotifier {
     // 重置所有状态
     _phase = PagerPhase.prep;
     _targetId = '';
+    _targetUser = null;
     _messageContent = '';
     _asrTranscript = '';
     _errorMessage = null;

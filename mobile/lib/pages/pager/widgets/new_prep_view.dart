@@ -272,8 +272,10 @@ class _DialButton extends StatelessWidget {
                 color: (isLoading ? cs.primary : themeColor).withValues(
                   alpha: 0.35,
                 ),
-                blurRadius: 14,
-                offset: const Offset(0, 5),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+                spreadRadius: 0,
+                blurStyle: BlurStyle.normal,
               ),
             ],
           ),

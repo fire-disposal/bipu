@@ -293,6 +293,8 @@ class _NewInCallViewState extends State<NewInCallView> {
 
   // ========== 确认目标ID面板 ==========
   Widget _buildConfirmTargetPanel(PagerVM vm, ColorScheme cs, Color themeColor) {
+    final targetUser = vm.targetUser;
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -315,14 +317,48 @@ class _NewInCallViewState extends State<NewInCallView> {
                     color: cs.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  vm.targetId,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: cs.onSurface,
+                const SizedBox(height: 12),
+                if (targetUser != null) ...[
+                  if (targetUser.avatarUrl != null) ...[
+                    CircleAvatar(
+                      radius: 32,
+                      backgroundImage: NetworkImage(targetUser.avatarUrl!),
+                      backgroundColor: cs.surfaceContainerHighest,
+                      onBackgroundImageError: (_, __) {},
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  if (targetUser.nickname != null && targetUser.nickname!.isNotEmpty)
+                    Text(
+                      targetUser.nickname!,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                  if (targetUser.username.isNotEmpty)
+                    Text(
+                      '@${targetUser.username}',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    vm.targetId,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                    ),
                   ),
-                ),
+                ] else ...[
+                  Text(
+                    vm.targetId,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -353,7 +389,7 @@ class _NewInCallViewState extends State<NewInCallView> {
                           child: CircularProgressIndicator(strokeWidth: 2.5),
                         )
                       : const Icon(Icons.check_circle),
-                  label: Text(vm.isConfirming ? '验证中...' : '正确'),
+                  label: Text(vm.isConfirming ? '确认中...' : '确认'),
                   style: FilledButton.styleFrom(
                     backgroundColor: themeColor,
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -398,26 +434,65 @@ class _NewInCallViewState extends State<NewInCallView> {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
-          // 实时转写文字显示
-          if (vm.asrTranscript.isNotEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: themeColor.withValues(alpha: 0.2),
-                ),
-              ),
-              child: Text(
-                vm.asrTranscript,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: cs.onSurface,
-                ),
+          // 实时语音输入预览
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: vm.isRecording 
+                    ? themeColor.withValues(alpha: 0.5)
+                    : themeColor.withValues(alpha: 0.2),
+                width: vm.isRecording ? 2 : 1,
               ),
             ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.text_fields,
+                      size: 16,
+                      color: cs.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '语音输入预览',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    if (vm.isRecording) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  vm.asrTranscript.isEmpty 
+                      ? (vm.isRecording ? '正在识别...' : '按住麦克风说话')
+                      : vm.asrTranscript,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: vm.asrTranscript.isEmpty 
+                        ? cs.onSurfaceVariant.withValues(alpha: 0.5)
+                        : cs.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
           
           // 实时波形显示
           if (vm.isRecording)
@@ -482,8 +557,8 @@ class _NewInCallViewState extends State<NewInCallView> {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width: vm.isRecording ? 140 : 120,
-        height: vm.isRecording ? 140 : 120,
+        width: vm.isRecording ? 80 : 72,
+        height: vm.isRecording ? 80 : 72,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: vm.isRecording 

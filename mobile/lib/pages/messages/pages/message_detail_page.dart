@@ -281,7 +281,7 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -457,7 +457,7 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                     decoration: BoxDecoration(
                       color: _surfaceContainerLow,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: _dividerColor.withOpacity(0.3)),
+                      border: Border.all(color: _dividerColor.withValues(alpha: 0.3)),
                     ),
                     child: SelectionArea(
                       child: Text(
