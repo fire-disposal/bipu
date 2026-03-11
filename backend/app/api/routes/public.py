@@ -66,8 +66,8 @@ async def register_user(
             raise ValidationException("用户名已存在")
 
         # 创建用户
-        import random
-        bipupu_id = str(random.randint(10000000, 99999999))
+        from app.core.user_utils import generate_bipupu_id
+        bipupu_id = generate_bipupu_id(db)
         user = User(
             username=user_data.username,
             hashed_password=get_password_hash(user_data.password),

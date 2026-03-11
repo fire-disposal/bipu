@@ -24,9 +24,9 @@ class UserService:
     def create_user(db: Session, user_data: UserCreate) -> User:
         """创建用户"""
         try:
-            # 生成bipupu_id（8位数字）
-            import random
-            bipupu_id = str(random.randint(10000000, 99999999))
+            # 生成 bipupu_id（4 位数字）
+            from app.core.user_utils import generate_bipupu_id
+            bipupu_id = generate_bipupu_id(db)
 
             # 创建用户对象
             user = User(
