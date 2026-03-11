@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../network/api_client.dart';
+import '../config/app_config.dart';
 
 /// 统一头像组件
 ///
@@ -67,7 +68,11 @@ class UserAvatar extends StatelessWidget {
 
   /// 解析最终完整的头像 URL
   String? _resolveUrl() {
-    final base = ApiClient.instance.dio.options.baseUrl;
+    // 确定 base（优先使用 ApiClient 配置，回退到 AppConfig）
+    var base = ApiClient.instance.dio.options.baseUrl;
+    if (base == null || base.isEmpty || !base.startsWith('http')) {
+      base = AppConfig.apiBaseUrl;
+    }
 
     // 模式 1：通过 bipupuId 构建端点
     if (bipupuId != null && bipupuId!.isNotEmpty) {
@@ -75,12 +80,21 @@ class UserAvatar extends StatelessWidget {
       final path = isNumeric
           ? '/api/users/users/$bipupuId/avatar'
           : '/api/service_accounts/$bipupuId/avatar';
-      return '$base$path';
+      try {
+        return Uri.parse(base).resolve(path).toString();
+      } catch (_) {
+        return '$base$path';
+      }
     }
 
     // 模式 2：使用已知 avatarUrl（可能是相对路径）
     if (avatarUrl != null && avatarUrl!.isNotEmpty) {
-      return avatarUrl!.startsWith('http') ? avatarUrl : '$base$avatarUrl';
+      if (avatarUrl!.startsWith('http')) return avatarUrl;
+      try {
+        return Uri.parse(base).resolve(avatarUrl!).toString();
+      } catch (_) {
+        return '$base$avatarUrl';
+      }
     }
 
     return null;
