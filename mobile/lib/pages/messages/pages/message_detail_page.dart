@@ -335,23 +335,35 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                   ),
                 ],
               ),
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: isServiceAccount
                         ? null
-                        : () => context.push(
-                            '/user/detail/${msg.senderBipupuId}',
-                          ),
+                        : () {
+                            try {
+                              final id = Uri.encodeComponent(
+                                msg.senderBipupuId,
+                              );
+                              context.push('/user/detail/$id');
+                            } catch (e, st) {
+                              debugPrint('导航到用户详情失败: $e\n$st');
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('navigation_failed'.tr()),
+                                ),
+                              );
+                            }
+                          },
                     child: UserAvatar(
                       bipupuId: senderId,
                       displayName: displayName,
-                      radius: 36,
+                      radius: 28,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -359,31 +371,31 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                         Text(
                           displayName,
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: _onSurfaceColor,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         if (subtitle != null)
                           Text(
                             subtitle,
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 12,
                               color: Theme.of(
                                 context,
                               ).colorScheme.onSurfaceVariant,
                             ),
-                            maxLines: 2,
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         const SizedBox(height: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
+                            horizontal: 6,
+                            vertical: 3,
                           ),
                           decoration: BoxDecoration(
                             color: isServiceAccount
@@ -396,7 +408,7 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                                 ? 'service_account'.tr()
                                 : 'user'.tr(),
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 10,
                               color: isServiceAccount
                                   ? Colors.purple
                                   : Colors.blue,
@@ -404,11 +416,11 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Text(
                           DateFormat('yyyy-MM-dd HH:mm').format(msg.createdAt),
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             color: Theme.of(
                               context,
                             ).colorScheme.onSurfaceVariant,
@@ -427,11 +439,11 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                         icon: Icon(
                           Icons.person_add_outlined,
                           color: _primaryColor,
-                          size: 20,
+                          size: 18,
                         ),
                         onPressed: _isLoadingContact ? null : _addContact,
                         tooltip: 'add_contact_button'.tr(),
-                        splashRadius: 20,
+                        splashRadius: 18,
                       ),
                     ),
                 ],

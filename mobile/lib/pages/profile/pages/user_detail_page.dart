@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:bipupu/core/network/network.dart';
+import '../../../../core/api/models/block_user_request.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../core/widgets/user_avatar.dart';
 
@@ -53,9 +54,12 @@ class _UserDetailPageState extends State<UserDetailPage> {
 
   Future<void> _blockUser() async {
     if (_user == null) return;
+    // 支持 Map 或者 model 对象
+    final bipupu = _user is Map ? _user['bipupuId'] : (_user.bipupuId ?? null);
+    if (bipupu == null) return;
     try {
       await ApiClient.instance.api.blacklist.postApiBlocks(
-        body: BlockUserRequest(bipupuId: _user.bipupuId),
+        body: BlockUserRequest(bipupuId: bipupu),
       );
       if (mounted) {
         ScaffoldMessenger.of(
@@ -66,6 +70,12 @@ class _UserDetailPageState extends State<UserDetailPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('block_failed'.tr(args: [e.message]))),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('block_failed'.tr(args: [e.toString()]))),
         );
       }
     }

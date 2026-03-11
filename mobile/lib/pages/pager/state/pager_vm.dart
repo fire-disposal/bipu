@@ -544,7 +544,6 @@ class PagerVM extends ChangeNotifier {
 
     // 快照保存，防止 await 期间变量被修改
     final targetIdSnapshot = _targetId;
-    final operatorSnapshot = _operator!;
 
     try {
       debugPrint(
