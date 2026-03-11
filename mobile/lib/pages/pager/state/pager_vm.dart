@@ -396,14 +396,17 @@ class PagerVM extends ChangeNotifier {
         },
         onDone: () {
           _asrTimeoutTimer?.cancel();
-          if (_isRecording && resultReceived) {
-            _isRecording = false;
-            // 录音流结束后立即取回振幅包络
-            _capturedWaveform = _voice.lastWaveform;
-            log('[PagerVM] 捕获 waveform：${_capturedWaveform?.length ?? 0} 点');
-            _phase = PagerPhase.reviewing;
-            notifyListeners();
+          _isRecording = false;
+          _capturedWaveform = _voice.lastWaveform;
+          log('[PagerVM] 捕获 waveform：${_capturedWaveform?.length ?? 0} 点');
+          if (resultReceived && _messageContent.isNotEmpty) {
+            // 进入消息确认子阶段，用户可以编辑识别结果后再发送
+            _inCallSubPhase = InCallSubPhase.confirmMessage;
+          } else {
+            // 未识别到语音，留在录音阶段并显示提示
+            _errorMessage = '未识别到语音，请重试或点击「文字输入」';
           }
+          notifyListeners();
         },
         cancelOnError: true,
       );
@@ -430,6 +433,9 @@ class PagerVM extends ChangeNotifier {
 
   /// 停止录音
   void stopRecording() {
+    if (!_isRecording) return;
+    _isRecording = false; // 立即反馈，不等 onDone 异步回调
+    notifyListeners();
     _voice.stopListening();
   }
 
@@ -437,7 +443,10 @@ class PagerVM extends ChangeNotifier {
   void switchToTextInput() {
     _voice.stopListening();
     _voice.stopSpeaking();
-    _phase = PagerPhase.reviewing;
+    _isRecording = false;
+    _errorMessage = null;
+    // 留在 inCall 阶段，进入消息编辑子阶段
+    _inCallSubPhase = InCallSubPhase.confirmMessage;
     notifyListeners();
   }
 

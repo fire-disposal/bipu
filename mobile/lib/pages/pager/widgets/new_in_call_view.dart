@@ -15,16 +15,19 @@ class NewInCallView extends StatefulWidget {
 
 class _NewInCallViewState extends State<NewInCallView> {
   late TextEditingController _targetIdController;
+  late TextEditingController _messageController;
 
   @override
   void initState() {
     super.initState();
     _targetIdController = TextEditingController();
+    _messageController = TextEditingController();
   }
 
   @override
   void dispose() {
     _targetIdController.dispose();
+    _messageController.dispose();
     super.dispose();
   }
 
@@ -32,8 +35,23 @@ class _NewInCallViewState extends State<NewInCallView> {
   void didUpdateWidget(NewInCallView oldWidget) {
     super.didUpdateWidget(oldWidget);
     final vm = Provider.of<PagerVM>(context, listen: false);
+    // 处理目标ID控制器
     if (_targetIdController.text.isNotEmpty && vm.targetId.isEmpty) {
       _targetIdController.clear();
+    }
+    // 切入 confirmMessage 子阶段时，将 ASR 识别结果填入消息控制器
+    if (vm.inCallSubPhase == InCallSubPhase.confirmMessage &&
+        _messageController.text.isEmpty &&
+        vm.messageContent.isNotEmpty) {
+      _messageController.text = vm.messageContent;
+      _messageController.selection = TextSelection.fromPosition(
+        TextPosition(offset: vm.messageContent.length),
+      );
+    }
+    // 回到录音阶段时清空消息控制器
+    if (vm.inCallSubPhase == InCallSubPhase.recording &&
+        vm.messageContent.isEmpty) {
+      _messageController.clear();
     }
   }
 
@@ -69,7 +87,11 @@ class _NewInCallViewState extends State<NewInCallView> {
     );
   }
 
-  Widget _buildTopBar(ColorScheme cs, Color themeColor, InCallSubPhase subPhase) {
+  Widget _buildTopBar(
+    ColorScheme cs,
+    Color themeColor,
+    InCallSubPhase subPhase,
+  ) {
     String statusText = switch (subPhase) {
       InCallSubPhase.inputTarget => '等待输入号码',
       InCallSubPhase.confirmTarget => '确认目标用户',
@@ -196,16 +218,14 @@ class _NewInCallViewState extends State<NewInCallView> {
                 ),
               ],
             ),
-            child: ClipOval(
-              child: imageWidget,
-            ),
+            child: ClipOval(child: imageWidget),
           ),
           const SizedBox(height: 16),
           Text(
             op.name,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           Container(
@@ -217,9 +237,9 @@ class _NewInCallViewState extends State<NewInCallView> {
             child: Text(
               currentDialogue.isNotEmpty ? currentDialogue : '请输入目标用户号码',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: cs.onSurface,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: cs.onSurface),
             ),
           ),
         ],
@@ -231,9 +251,17 @@ class _NewInCallViewState extends State<NewInCallView> {
   Widget _buildSubPhaseContent(PagerVM vm, ColorScheme cs, Color themeColor) {
     return switch (vm.inCallSubPhase) {
       InCallSubPhase.inputTarget => _buildInputTargetPanel(vm, cs, themeColor),
-      InCallSubPhase.confirmTarget => _buildConfirmTargetPanel(vm, cs, themeColor),
+      InCallSubPhase.confirmTarget => _buildConfirmTargetPanel(
+        vm,
+        cs,
+        themeColor,
+      ),
       InCallSubPhase.recording => _buildRecordingPanel(vm, cs, themeColor),
-      InCallSubPhase.confirmMessage => _buildConfirmMessagePanel(vm, cs, themeColor),
+      InCallSubPhase.confirmMessage => _buildConfirmMessagePanel(
+        vm,
+        cs,
+        themeColor,
+      ),
     };
   }
 
@@ -303,9 +331,13 @@ class _NewInCallViewState extends State<NewInCallView> {
   }
 
   // ========== 确认目标ID面板 ==========
-  Widget _buildConfirmTargetPanel(PagerVM vm, ColorScheme cs, Color themeColor) {
+  Widget _buildConfirmTargetPanel(
+    PagerVM vm,
+    ColorScheme cs,
+    Color themeColor,
+  ) {
     final targetUser = vm.targetUser;
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -324,9 +356,9 @@ class _NewInCallViewState extends State<NewInCallView> {
               children: [
                 Text(
                   '确认发送给',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
                 ),
                 const SizedBox(height: 12),
                 if (targetUser != null) ...[
@@ -339,7 +371,8 @@ class _NewInCallViewState extends State<NewInCallView> {
                     ),
                     const SizedBox(height: 8),
                   ],
-                  if (targetUser.nickname != null && targetUser.nickname!.isNotEmpty)
+                  if (targetUser.nickname != null &&
+                      targetUser.nickname!.isNotEmpty)
                     Text(
                       targetUser.nickname!,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -441,109 +474,145 @@ class _NewInCallViewState extends State<NewInCallView> {
 
   // ========== 录音面板 ==========
   Widget _buildRecordingPanel(PagerVM vm, ColorScheme cs, Color themeColor) {
+    final bool hasTranscript = vm.asrTranscript.isNotEmpty;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
-          // 实时语音输入预览
+          // ASR 转写预览框
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            margin: const EdgeInsets.only(bottom: 16),
+            constraints: const BoxConstraints(minHeight: 72),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
             decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(12),
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: vm.isRecording 
-                    ? themeColor.withValues(alpha: 0.5)
-                    : themeColor.withValues(alpha: 0.2),
-                width: vm.isRecording ? 2 : 1,
+                color: vm.isRecording
+                    ? themeColor.withValues(alpha: 0.55)
+                    : cs.outlineVariant.withValues(alpha: 0.4),
+                width: vm.isRecording ? 1.5 : 1,
               ),
             ),
-            child: Column(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.text_fields,
-                      size: 16,
-                      color: cs.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '语音输入预览',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: cs.onSurfaceVariant,
+                if (vm.isRecording)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, right: 8),
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
                       ),
                     ),
-                    if (vm.isRecording) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  vm.asrTranscript.isEmpty 
-                      ? (vm.isRecording ? '正在识别...' : '按住麦克风说话')
-                      : vm.asrTranscript,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: vm.asrTranscript.isEmpty 
-                        ? cs.onSurfaceVariant.withValues(alpha: 0.5)
-                        : cs.onSurface,
+                  ),
+                Expanded(
+                  child: Text(
+                    hasTranscript
+                        ? vm.asrTranscript
+                        : vm.isRecording
+                        ? '正在识别中……'
+                        : '轻触麦克风按钮开始录音',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: hasTranscript
+                          ? cs.onSurface
+                          : cs.onSurfaceVariant.withValues(alpha: 0.5),
+                      fontStyle: hasTranscript
+                          ? FontStyle.normal
+                          : FontStyle.italic,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          
-          // 实时波形显示
-          if (vm.isRecording)
-            Container(
-              width: double.infinity,
-              height: 80,
-              margin: const EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: RealtimeWaveformWidget(
-                amplitudes: vm.realtimeAmplitudes,
-                isRecording: vm.isRecording,
-                waveColor: themeColor,
-                height: 80,
-              ),
-            ),
-          
-          // 录音按钮
-          _buildRecordingButton(vm, cs, themeColor),
-          
-          const SizedBox(height: 20),
-          
-          // 提示文字
-          Text(
-            vm.isRecording ? '录音中，松开结束' : '按住麦克风按钮开始录音',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-          
+
           const SizedBox(height: 16),
-          
-          // 切换文字输入
-          TextButton.icon(
-            onPressed: vm.isRecording ? null : vm.switchToTextInput,
-            icon: const Icon(Icons.keyboard),
-            label: const Text('切换文字输入'),
+
+          // 波形动画区域（仅录音时展开）
+          AnimatedSize(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            child: vm.isRecording
+                ? Container(
+                    width: double.infinity,
+                    height: 56,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: RealtimeWaveformWidget(
+                      amplitudes: vm.realtimeAmplitudes,
+                      isRecording: vm.isRecording,
+                      waveColor: themeColor,
+                      height: 56,
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
+
+          // 麦克风按钮
+          _buildRecordingButton(vm, cs, themeColor),
+
+          const SizedBox(height: 10),
+
+          // 状态提示文字
+          Text(
+            vm.isRecording ? '录音中 · 再次轻触停止' : '轻触开始录音',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: vm.isRecording ? Colors.red.shade400 : cs.onSurfaceVariant,
+              fontWeight: vm.isRecording ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // 文字输入备选（非录音时显示）
+          if (!vm.isRecording)
+            OutlinedButton.icon(
+              onPressed: vm.switchToTextInput,
+              icon: const Icon(Icons.keyboard_rounded, size: 18),
+              label: const Text('文字输入'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            ),
+
+          // 错误信息
+          if (vm.errorMessage != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: cs.errorContainer.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.info_outline, color: cs.error, size: 16),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      vm.errorMessage!,
+                      style: TextStyle(color: cs.error, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -551,29 +620,21 @@ class _NewInCallViewState extends State<NewInCallView> {
 
   Widget _buildRecordingButton(PagerVM vm, ColorScheme cs, Color themeColor) {
     return GestureDetector(
-      onTapDown: (_) {
-        if (!vm.isRecording) {
+      onTap: () {
+        if (vm.isRecording) {
+          vm.stopRecording();
+        } else {
           vm.startVoiceRecording();
         }
       },
-      onTapUp: (_) {
-        if (vm.isRecording) {
-          vm.stopRecording();
-        }
-      },
-      onTapCancel: () {
-        if (vm.isRecording) {
-          vm.stopRecording();
-        }
-      },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: vm.isRecording ? 80 : 72,
-        height: vm.isRecording ? 80 : 72,
+        duration: const Duration(milliseconds: 180),
+        width: vm.isRecording ? 88 : 76,
+        height: vm.isRecording ? 88 : 76,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: vm.isRecording 
-              ? Colors.red.withValues(alpha: 0.1)
+          color: vm.isRecording
+              ? Colors.red.withValues(alpha: 0.12)
               : themeColor.withValues(alpha: 0.1),
           border: Border.all(
             color: vm.isRecording ? Colors.red : themeColor,
@@ -582,25 +643,27 @@ class _NewInCallViewState extends State<NewInCallView> {
           boxShadow: [
             if (vm.isRecording)
               BoxShadow(
-                color: Colors.red.withValues(alpha: 0.3),
-                blurRadius: 20,
-                spreadRadius: 5,
+                color: Colors.red.withValues(alpha: 0.35),
+                blurRadius: 24,
+                spreadRadius: 6,
               ),
           ],
         ),
         child: Center(
           child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
+            duration: const Duration(milliseconds: 180),
             child: vm.isRecording
-                ? Icon(
-                    Icons.mic,
-                    size: 48,
+                ? const Icon(
+                    Icons.stop_rounded,
+                    size: 40,
                     color: Colors.red,
+                    key: ValueKey('stop'),
                   )
                 : Icon(
-                    Icons.mic_none,
-                    size: 40,
+                    Icons.mic_rounded,
+                    size: 36,
                     color: themeColor,
+                    key: ValueKey('mic'),
                   ),
           ),
         ),
@@ -609,89 +672,144 @@ class _NewInCallViewState extends State<NewInCallView> {
   }
 
   // ========== 确认消息面板 ==========
-  Widget _buildConfirmMessagePanel(PagerVM vm, ColorScheme cs, Color themeColor) {
+  Widget _buildConfirmMessagePanel(
+    PagerVM vm,
+    ColorScheme cs,
+    Color themeColor,
+  ) {
+    // 切入本面板时尝试填充 controller（仅当 controller 为空时）
+    if (_messageController.text.isEmpty && vm.messageContent.isNotEmpty) {
+      _messageController.text = vm.messageContent;
+      _messageController.selection = TextSelection.fromPosition(
+        TextPosition(offset: vm.messageContent.length),
+      );
+    }
+
+    const int maxLength = 200;
+    final int contentLength = _messageController.text.length;
+    final bool isOverLimit = contentLength > maxLength;
+    final bool canSend = contentLength > 0 && !isOverLimit && !vm.hasEmoji;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 消息内容卡片
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: vm.hasEmoji 
-                    ? Colors.orange.withValues(alpha: 0.5)
-                    : themeColor.withValues(alpha: 0.2),
-                width: 2,
+          // 标题行 + 字数统计
+          Row(
+            children: [
+              Text(
+                '消息内容',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '$contentLength\u00a0/\u00a0$maxLength',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: isOverLimit
+                      ? cs.error
+                      : cs.onSurfaceVariant.withValues(alpha: 0.65),
+                  fontWeight: isOverLimit ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // 可编辑消息文本框
+          TextField(
+            controller: _messageController,
+            onChanged: (text) {
+              vm.updateMessageContent(text);
+              setState(() {});
+            },
+            maxLines: 5,
+            minLines: 3,
+            textInputAction: TextInputAction.newline,
+            decoration: InputDecoration(
+              hintText: '输入消息内容……',
+              filled: true,
+              fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+              contentPadding: const EdgeInsets.all(16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: isOverLimit
+                      ? cs.error.withValues(alpha: 0.6)
+                      : themeColor.withValues(alpha: 0.25),
+                  width: 1.5,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: isOverLimit ? cs.error : themeColor,
+                  width: 2,
+                ),
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.message_outlined,
-                      size: 18,
-                      color: cs.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '消息内容',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                    if (vm.hasEmoji) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          '包含表情',
-                          style: TextStyle(
-                            color: Colors.orange.shade800,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  vm.messageContent.isEmpty ? '（无内容）' : vm.messageContent,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: cs.onSurface,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
           ),
-          
-          const SizedBox(height: 24),
-          
+
+          // 超出限制警告
+          if (isOverLimit) ...[
+            const SizedBox(height: 6),
+            Text(
+              '消息过长，请精简到 $maxLength 字以内',
+              style: TextStyle(color: cs.error, fontSize: 12),
+            ),
+          ],
+
+          // 表情符号警告
+          if (vm.hasEmoji) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.orange.shade700,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '传呼机不支持表情符号，请删除后再发送',
+                      style: TextStyle(
+                        color: Colors.orange.shade800,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 20),
+
           // 操作按钮
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: vm.rerecordMessage,
-                  icon: const Icon(Icons.refresh),
+                  icon: const Icon(Icons.mic_rounded, size: 18),
                   label: const Text('重新录制'),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -700,13 +818,15 @@ class _NewInCallViewState extends State<NewInCallView> {
               ),
               const SizedBox(width: 12),
               Expanded(
+                flex: 2,
                 child: FilledButton.icon(
-                  onPressed: vm.confirmMessageContent,
-                  icon: const Icon(Icons.check_circle),
-                  label: const Text('确认发送'),
+                  onPressed: canSend ? vm.confirmMessageContent : null,
+                  icon: const Icon(Icons.send_rounded, size: 18),
+                  label: const Text('发送消息'),
                   style: FilledButton.styleFrom(
                     backgroundColor: themeColor,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    disabledBackgroundColor: themeColor.withValues(alpha: 0.3),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -714,15 +834,6 @@ class _NewInCallViewState extends State<NewInCallView> {
                 ),
               ),
             ],
-          ),
-          
-          const SizedBox(height: 12),
-          
-          // 文字编辑选项
-          TextButton.icon(
-            onPressed: vm.switchToTextInput,
-            icon: const Icon(Icons.edit),
-            label: const Text('文字编辑'),
           ),
         ],
       ),
