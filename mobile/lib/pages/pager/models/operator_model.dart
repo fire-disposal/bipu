@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'dart:math';
+import 'dart:developer';
+import 'dart:math' hide log;
 import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
@@ -176,26 +177,42 @@ class OperatorConfigLoader {
   /// 从 YAML 文件加载所有接线员配置
   static Future<List<OperatorPersonality>> loadOperators() async {
     if (_cachedOperators != null) {
+      log('[OperatorConfigLoader] 返回缓存的接线员配置，数量: ${_cachedOperators!.length}');
       return _cachedOperators!;
     }
 
     if (_loadLock.isCompleted) {
       await _loadLock.future;
+      log('[OperatorConfigLoader] 等待加载完成，数量: ${_cachedOperators!.length}');
       return _cachedOperators!;
     }
 
     try {
+      log('[OperatorConfigLoader] 开始加载 YAML: $_configPath');
       final yamlString = await rootBundle.loadString(_configPath);
       final yaml = loadYaml(yamlString) as YamlMap;
       final operatorsList = yaml['operators'] as YamlList;
+
+      log('[OperatorConfigLoader] YAML 解析成功，原始数据条目数: ${operatorsList.length}');
 
       _cachedOperators = operatorsList
           .map((op) => _parseOperator(op as YamlMap))
           .toList();
 
+      // 输出所有加载的接线员信息
+      log('[OperatorConfigLoader] ===== 接线员配置加载完成 =====');
+      log('[OperatorConfigLoader] 总计: ${_cachedOperators!.length} 位接线员');
+      for (var i = 0; i < _cachedOperators!.length; i++) {
+        final op = _cachedOperators![i];
+        log('[OperatorConfigLoader] [$i] ${op.id}: ${op.name} (颜色: ${op.themeColor})');
+      }
+      log('[OperatorConfigLoader] ===============================');
+
       _loadLock.complete();
       return _cachedOperators!;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      log('[OperatorConfigLoader] 加载失败: $e');
+      log('[OperatorConfigLoader] 堆栈: $stackTrace');
       _loadLock.completeError(e);
       rethrow;
     }

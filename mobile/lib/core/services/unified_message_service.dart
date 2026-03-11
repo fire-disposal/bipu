@@ -5,17 +5,16 @@ import 'package:flutter/widgets.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:dio/dio.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/io.dart';
 
 import '../config/app_config.dart';
 import '../network/network.dart';
 import '../api/models/message_response.dart';
-import '../api/models/message_poll_response.dart';
 import '../api/models/message_type.dart';
 import '../api/models/message_create.dart';
 import 'auth_service.dart';
 import 'background_service.dart';
+import 'toast_service.dart';
 
 /// 统一消息服务 - 集成WebSocket和长轮询的智能消息传递系统
 class UnifiedMessageService extends ChangeNotifier {
@@ -432,6 +431,11 @@ class UnifiedMessageService extends ChangeNotifier {
     }
     notifyListeners();
 
+    // 前台时弹出 in-app 提示
+    if (_isInForeground) {
+      ToastService().showMessage('📨 来自 ${message.senderBipupuId} 的新消息');
+    }
+
     // 同步到后台服务，避免重复通知
     unawaited(BackgroundMessageService.syncLastMessageId(message.id));
   }
@@ -442,6 +446,17 @@ class UnifiedMessageService extends ChangeNotifier {
     final maxId = messages.map((m) => m.id).reduce((a, b) => a > b ? a : b);
     _updateLastReceivedMessageId(maxId);
     notifyListeners();
+
+    // 前台时弹出 in-app 提示
+    if (_isInForeground) {
+      if (messages.length == 1) {
+        ToastService().showMessage(
+          '📨 来自 ${messages.first.senderBipupuId} 的新消息',
+        );
+      } else {
+        ToastService().showMessage('📨 收到 ${messages.length} 条新消息');
+      }
+    }
 
     // 同步到后台服务
     unawaited(BackgroundMessageService.syncLastMessageId(maxId));

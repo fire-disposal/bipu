@@ -5,7 +5,6 @@ import 'state/pager_phase.dart';
 import 'widgets/new_prep_view.dart';
 import 'widgets/new_connecting_view.dart';
 import 'widgets/new_in_call_view.dart';
-import 'widgets/new_reviewing_view.dart';
 import 'widgets/new_operator_gallery_view.dart';
 
 /// Pager 页面 - 新架构版本
@@ -110,9 +109,6 @@ class _PagerScaffold extends StatelessWidget {
             key: ValueKey('connecting'),
           ),
           PagerPhase.inCall => const NewInCallView(key: ValueKey('in_call')),
-          PagerPhase.reviewing => const NewReviewingView(
-            key: ValueKey('reviewing'),
-          ),
         },
       ),
     );

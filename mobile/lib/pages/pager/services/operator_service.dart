@@ -1,4 +1,5 @@
-import 'dart:math';
+import 'dart:developer';
+import 'dart:math' hide log;
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/operator_model.dart';
 import 'package:collection/collection.dart';
@@ -26,9 +27,21 @@ class OperatorService {
   Future<void> init() async {
     if (_initialized) return;
 
+    log('[OperatorService] 开始初始化接线员服务...');
+
     // 初始化 OperatorFactory 并加载配置
     await OperatorFactory.initialize();
     _allOperators = await OperatorFactory.getAllOperators();
+
+    log('[OperatorService] ===== 接线员服务初始化完成 =====');
+    log('[OperatorService] 总计接线员: ${_allOperators.length} 位');
+    for (var i = 0; i < _allOperators.length; i++) {
+      final op = _allOperators[i];
+      log('[OperatorService] [$i] ${op.id}: ${op.name} (解锁状态: ${op.isUnlocked})');
+    }
+    final unlockedCount = _allOperators.where((op) => op.isUnlocked).length;
+    log('[OperatorService] 已解锁: $unlockedCount / ${_allOperators.length}');
+    log('[OperatorService] =================================');
 
     // 初始化 Hive
     await Hive.initFlutter();
@@ -41,6 +54,7 @@ class OperatorService {
     _firstLaunchCompleted = _box.get(_firstLaunchKey, defaultValue: false);
 
     _initialized = true;
+    log('[OperatorService] 初始化完成');
   }
 
   /// 从 Hive 加载已解锁的操作员
@@ -141,20 +155,21 @@ class OperatorService {
     return _allOperators.firstWhereOrNull((op) => op.id == id);
   }
 
-  /// 获取随机操作员（优先已解锁的操作员）
-  OperatorPersonality getRandomOperator() {
-    final random = Random();
-    final unlockedOperators = getUnlockedOperators();
+  /// 静态 Random 实例，确保更好的随机性
+  static final Random _random = Random();
 
-    // 如果有已解锁的操作员，从已解锁中选
-    if (unlockedOperators.isNotEmpty) {
-      final index = random.nextInt(unlockedOperators.length);
-      return unlockedOperators[index];
+  /// 获取随机操作员（从所有接线员中随机选择，集卡制度：完成流程后才解锁）
+  OperatorPersonality getRandomOperator() {
+    if (_allOperators.isEmpty) {
+      throw StateError('接线员列表为空，请先调用 init()');
     }
 
-    // 否则随机选择任意操作员
-    final index = random.nextInt(_allOperators.length);
-    return _allOperators[index];
+    final index = _random.nextInt(_allOperators.length);
+    final selected = _allOperators[index];
+
+    log('[OperatorService] 随机选择接线员: ${selected.name} (ID: ${selected.id}, 索引: $index/${_allOperators.length})');
+
+    return selected;
   }
 
   /// 检查操作员是否已解锁

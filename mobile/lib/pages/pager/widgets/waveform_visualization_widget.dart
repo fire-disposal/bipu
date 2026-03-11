@@ -79,10 +79,11 @@ class _WaveformVisualizationWidgetState
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // 波形图
-        RepaintBoundary(
+    return Tooltip(
+      message: '长按复制波形图',
+      child: GestureDetector(
+        onLongPress: _copyWaveformImage,
+        child: RepaintBoundary(
           key: _repaintKey,
           child: Container(
             width: widget.width,
@@ -103,84 +104,6 @@ class _WaveformVisualizationWidgetState
             ),
           ),
         ),
-
-        const SizedBox(height: 12),
-
-        // 操作按钮
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // 复制按钮
-            ElevatedButton.icon(
-              onPressed: _copyWaveformImage,
-              icon: const Icon(Icons.copy),
-              label: const Text('复制图片'),
-            ),
-
-            const SizedBox(width: 12),
-
-            // 信息按钮
-            ElevatedButton.icon(
-              onPressed: () => _showWaveformInfo(),
-              icon: const Icon(Icons.info_outline),
-              label: const Text('详情'),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  /// 显示波形信息对话框
-  void _showWaveformInfo() {
-    if (widget.waveformData.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('没有波形数据')));
-      return;
-    }
-
-    final min = widget.waveformData.reduce((a, b) => a < b ? a : b);
-    final max = widget.waveformData.reduce((a, b) => a > b ? a : b);
-    final avg =
-        widget.waveformData.reduce((a, b) => a + b) /
-        widget.waveformData.length;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('波形信息'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoRow('数据点数', '${widget.waveformData.length}'),
-            _buildInfoRow('最小值', '$min'),
-            _buildInfoRow('最大值', '$max'),
-            _buildInfoRow('平均值', avg.toStringAsFixed(2)),
-            _buildInfoRow('动态范围', '${max - min}'),
-            _buildInfoRow('数据大小', '${widget.waveformData.length} 字节'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('关闭'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-          Text(value, style: TextStyle(color: Colors.grey.shade600)),
-        ],
       ),
     );
   }
@@ -408,14 +331,12 @@ class WaveformVisualizationCard extends StatelessWidget {
   final List<int> waveformData;
   final String title;
   final VoidCallback? onCopyImage;
-  final VoidCallback? onShare;
 
   const WaveformVisualizationCard({
     super.key,
     required this.waveformData,
     this.title = '波形图',
     this.onCopyImage,
-    this.onShare,
   });
 
   @override
@@ -428,15 +349,11 @@ class WaveformVisualizationCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 标题
             Text(
               title,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-
             const SizedBox(height: 16),
-
-            // 波形可视化
             Center(
               child: WaveformVisualizationWidget(
                 waveformData: waveformData,
@@ -448,21 +365,6 @@ class WaveformVisualizationCard extends StatelessWidget {
                 onCopyImage: onCopyImage,
               ),
             ),
-
-            const SizedBox(height: 16),
-
-            // 额外操作按钮
-            if (onShare != null)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: onShare,
-                    icon: const Icon(Icons.share),
-                    label: const Text('分享'),
-                  ),
-                ],
-              ),
           ],
         ),
       ),

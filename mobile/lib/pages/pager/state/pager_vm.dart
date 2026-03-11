@@ -450,12 +450,12 @@ class PagerVM extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 用户确认消息内容，进入最终确认界面
+  /// 用户确认消息内容，进入最终确认子阶段（面板留在接线员头像下方）
   Future<void> confirmMessageContent() async {
     if (_phase != PagerPhase.inCall ||
         _inCallSubPhase != InCallSubPhase.confirmMessage)
       return;
-    _phase = PagerPhase.reviewing;
+    _inCallSubPhase = InCallSubPhase.reviewing;
     notifyListeners();
   }
 
@@ -504,10 +504,9 @@ class PagerVM extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 从Reviewing返回修改消息
+  /// 从最终确认返回修改消息
   void backToEditMessage() {
-    if (_phase != PagerPhase.reviewing) return;
-    _phase = PagerPhase.inCall;
+    if (_inCallSubPhase != InCallSubPhase.reviewing) return;
     _inCallSubPhase = InCallSubPhase.confirmMessage;
     notifyListeners();
   }
@@ -519,8 +518,9 @@ class PagerVM extends ChangeNotifier {
   /// 发送消息
   Future<void> sendMessage({String? message}) async {
     // 第一层：预检查
-    if (_phase != PagerPhase.reviewing) {
-      debugPrint('[PagerVM WARN] 不在 reviewing 阶段，无法发送消息');
+    if (_phase != PagerPhase.inCall ||
+        _inCallSubPhase != InCallSubPhase.reviewing) {
+      debugPrint('[PagerVM WARN] 不在 reviewing 子阶段，无法发送消息');
       return;
     }
 
@@ -545,6 +545,11 @@ class PagerVM extends ChangeNotifier {
     final operatorSnapshot = _operator!;
 
     try {
+      debugPrint(
+        '[PagerVM] ▶ 发送消息 → 目标: $targetIdSnapshot，'
+        '内容长度: ${content.length}，波形点数: ${_capturedWaveform?.length ?? 0}',
+      );
+
       final result = await ImService().sendMessage(
         receiverId: targetIdSnapshot,
         content: content,
@@ -552,66 +557,61 @@ class PagerVM extends ChangeNotifier {
         waveform: _capturedWaveform,
       );
 
+      debugPrint('[PagerVM] ✅ 发送成功，服务器消息 ID: ${result?.id ?? "(无)"}');
+
       // 网络请求后，重新检查状态
-      if (_phase != PagerPhase.reviewing) {
-        debugPrint('[PagerVM] 发送中状态已变化，放弃');
+      if (_phase != PagerPhase.inCall ||
+          _inCallSubPhase != InCallSubPhase.reviewing) {
+        debugPrint('[PagerVM] 发送中状态已变化，放弃后续流程');
         return;
       }
 
-      if (result != null) {
-        log('[PagerVM] 消息发送成功');
+      _sentHistory.add(
+        SendRecord(
+          targetId: targetIdSnapshot,
+          content: content,
+          sentAt: DateTime.now(),
+        ),
+      );
 
-        _sentHistory.add(
-          SendRecord(
-            targetId: targetIdSnapshot,
-            content: content,
-            sentAt: DateTime.now(),
-          ),
-        );
+      // 成功提示（使用快照）
+      await _operatorVoice.say(
+        OperatorLine.successMessage,
+        onText: _updateDialogue,
+      );
 
-        // 成功提示（使用快照）
-        await _operatorVoice.say(
-          OperatorLine.successMessage,
-          onText: _updateDialogue,
-        );
+      // 再次检查状态
+      if (_inCallSubPhase != InCallSubPhase.reviewing) return;
+      await Future.delayed(const Duration(milliseconds: 300));
 
-        // 再次检查状态
-        if (_phase != PagerPhase.reviewing) return;
-        await Future.delayed(const Duration(milliseconds: 300));
+      // 询问是否继续
+      await _operatorVoice.say(
+        OperatorLine.askContinue,
+        onText: _updateDialogue,
+      );
 
-        // 询问是否继续
-        await _operatorVoice.say(
-          OperatorLine.askContinue,
-          onText: _updateDialogue,
-        );
-
-        // 成功后回到 inCall 的「输入号码」子阶段，等待下一条消息
-        if (_phase == PagerPhase.reviewing) {
-          await _operatorService.unlockOperator(operatorSnapshot.id);
-          _targetId = '';
-          _messageContent = '';
-          _capturedWaveform = null;
-          _inCallSubPhase = InCallSubPhase.inputTarget; // 重置子阶段
-          _isSending = false;
-          _phase = PagerPhase.inCall;
-          notifyListeners();
-        } else {
-          log('[PagerVM] 发送完成但状态已变化，不更新');
-          _isSending = false;
-        }
+      // 成功后回到「输入号码」子阶段，等待下一条消息
+      if (_inCallSubPhase == InCallSubPhase.reviewing) {
+        await _operatorService.unlockOperator(operatorSnapshot.id);
+        _targetId = '';
+        _messageContent = '';
+        _capturedWaveform = null;
+        _inCallSubPhase = InCallSubPhase.inputTarget;
+        _isSending = false;
+        notifyListeners();
       } else {
-        _error('发送失败');
-        if (_phase == PagerPhase.reviewing) {
-          notifyListeners();
-        }
+        log('[PagerVM] 发送完成但状态已变化，不更新');
       }
-    } catch (e) {
-      _error('发送异常：$e');
-      if (_phase == PagerPhase.reviewing) {
+    } catch (e, st) {
+      debugPrint('[PagerVM ERROR] 发送异常：$e');
+      debugPrint('$st');
+      _error('发送失败：$e');
+    } finally {
+      // 无论何种路径退出（含 early return、异常），确保 _isSending 被重置
+      if (_isSending) {
+        _isSending = false;
         notifyListeners();
       }
-    } finally {
-      _isSending = false;
     }
   }
 
