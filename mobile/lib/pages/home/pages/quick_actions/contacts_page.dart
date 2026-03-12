@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/network/network.dart';
+import '../../../../core/widgets/user_avatar.dart';
 
 class ContactsPage extends StatefulWidget {
   const ContactsPage({super.key});
@@ -50,34 +51,7 @@ class _ContactsPageState extends State<ContactsPage> {
     }
   }
 
-  /// 构建用户头像
-  Widget _buildUserAvatar(dynamic user, {double radius = 20}) {
-    final avatarUrl = user?.avatarUrl;
-    if (avatarUrl != null && avatarUrl.isNotEmpty) {
-      final fullUrl = avatarUrl.startsWith('http')
-          ? avatarUrl
-          : '${ApiClient.instance.dio.options.baseUrl}$avatarUrl';
-
-      return CircleAvatar(
-        radius: radius,
-        backgroundImage: NetworkImage(fullUrl),
-        onBackgroundImageError: (exception, stackTrace) {
-          debugPrint('Failed to load avatar: $exception');
-        },
-      );
-    }
-
-    // 默认头像：显示用户名首字母
-    final displayName = user?.nickname ?? user?.username ?? '?';
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: Colors.grey.withValues(alpha: 0.3),
-      child: Text(
-        displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
-    );
-  }
+  // 使用通用 UserAvatar 组件显示头像（见 core/widgets/user_avatar.dart）
 
   Future<void> _loadContacts() async {
     setState(() {
@@ -277,7 +251,12 @@ class _ContactsPageState extends State<ContactsPage> {
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ListTile(
-              leading: _buildUserAvatar(user),
+              leading: UserAvatar(
+                bipupuId: user?.bipupuId,
+                avatarUrl: user?.avatarUrl,
+                displayName: user?.nickname ?? user?.username,
+                radius: 20,
+              ),
               title: Text(user.nickname ?? user.username),
               subtitle: Text('ID: ${user.bipupuId}'),
               trailing: isContact
@@ -370,7 +349,15 @@ class _ContactsPageState extends State<ContactsPage> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                       )
-                    : _buildUserAvatar(user),
+                    : UserAvatar(
+                        bipupuId: contact.contactId,
+                        avatarUrl: user?.avatarUrl,
+                        displayName:
+                            contact.alias ??
+                            contact.contactNickname ??
+                            contact.contactUsername,
+                        radius: 20,
+                      ),
                 title: Text(
                   contact.alias ??
                       contact.contactNickname ??
