@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../state/pager_vm.dart';
 import '../state/pager_phase.dart';
 import 'waveform_visualization_widget.dart';
+import '../../../core/widgets/user_avatar.dart';
 
 /// 通话中视图
 /// 五个子阶段面板（inputTarget / confirmTarget / recording /
@@ -553,12 +554,12 @@ class _NewInCallViewState extends State<NewInCallView> {
                 _sectionLabel('确认发送目标'),
                 const SizedBox(height: 14),
                 if (targetUser != null) ...[
-                  if (targetUser.avatarUrl != null)
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundImage: NetworkImage(targetUser.avatarUrl!),
-                      backgroundColor: cs.surfaceContainerHighest,
-                    ),
+                  UserAvatar(
+                    bipupuId: vm.targetId,
+                    avatarUrl: targetUser.avatarUrl,
+                    displayName: targetUser.nickname ?? targetUser.username,
+                    radius: 30,
+                  ),
                   const SizedBox(height: 8),
                   if (targetUser.nickname?.isNotEmpty == true)
                     Text(
@@ -917,29 +918,15 @@ class _NewInCallViewState extends State<NewInCallView> {
             borderWidth: 1.5,
             child: Row(
               children: [
-                // 头像
-                if (targetUser?.avatarUrl != null)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 10),
-                    child: CircleAvatar(
-                      radius: 18,
-                      backgroundImage: NetworkImage(targetUser!.avatarUrl!),
-                      backgroundColor: cs.surfaceContainerHighest,
-                    ),
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.only(right: 10),
-                    child: CircleAvatar(
-                      radius: 18,
-                      backgroundColor: themeColor.withValues(alpha: 0.12),
-                      child: Icon(
-                        Icons.person_outline,
-                        size: 18,
-                        color: themeColor,
-                      ),
-                    ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: UserAvatar(
+                    bipupuId: vm.targetId,
+                    avatarUrl: targetUser?.avatarUrl,
+                    displayName: targetUser?.nickname ?? targetUser?.username,
+                    radius: 18,
                   ),
+                ),
                 // 姓名 + 用户名
                 Expanded(
                   child: Column(
