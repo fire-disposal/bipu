@@ -94,6 +94,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void _setupBluetoothListener() {
+    // 关键修复：立即同步一次当前状态，确保 UI 与实际情况一致
+    // 这解决了 APP 重启后已连接设备但首页显示未连接的问题
+    setState(() => _connectionState = _bluetoothService.connectionState.value);
+    
     _connectionStateListener = () {
       if (mounted) {
         setState(

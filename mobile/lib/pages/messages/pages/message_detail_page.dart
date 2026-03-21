@@ -490,9 +490,6 @@ class _MessageDetailPageState extends State<MessageDetailPage> {
                         height: 88,
                         waveColor: _primaryColor,
                         backgroundColor: Colors.transparent,
-                        showGrid: false,
-                        showLabels: false,
-                        smooth: true,
                         onCopyImage: () {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('waveform_copied'.tr())),

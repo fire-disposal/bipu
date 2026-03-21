@@ -268,8 +268,6 @@ class _NewReviewingViewState extends State<NewReviewingView> {
               width: double.infinity,
               height: 100,
               waveColor: themeColor,
-              showGrid: false,
-              showLabels: false,
             ),
           ),
         ],

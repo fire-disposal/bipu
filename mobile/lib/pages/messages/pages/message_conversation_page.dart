@@ -161,8 +161,6 @@ class _MessageConversationPageState extends State<MessageConversationPage> {
                                 WaveformVisualizationWidget(
                                   waveformData: msg.waveform!,
                                   height: 64,
-                                  showGrid: false,
-                                  showLabels: false,
                                 ),
                               ],
                             ),

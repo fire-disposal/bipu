@@ -67,8 +67,11 @@ class BluetoothDeviceService {
     _initBindingInfo();
     // 启动消息队列处理定时器
     _startMessageQueueProcessor();
-    // 检查已绑定设备的连接状态（APP 重启后恢复）
-    _checkBoundDeviceConnection();
+    // 关键修复：延迟检查已绑定设备的连接状态（APP 重启后恢复）
+    // 延迟 1 秒确保 Flutter 引擎和蓝牙栈完全初始化
+    Future.delayed(const Duration(seconds: 1), () {
+      _checkBoundDeviceConnection();
+    });
   }
 
   // ========== 协议服务 ==========
@@ -414,11 +417,29 @@ class BluetoothDeviceService {
   }
 
   /// 设置连接状态监听
+  ///
+  /// 修复：防止重复注册同一个设备的监听器
   void _setupConnectionListener(BluetoothDevice device) {
+    // 检查是否已为该设备注册过监听器
+    // 通过检查 _connectedDevice 是否相同来判断
+    if (_connectedDevice?.remoteId == device.remoteId) {
+      // 如果已经是同一个设备，且已有监听器，跳过注册
+      // 但需要确保监听器已正确设置（通过检查 _subscriptions）
+      final hasConnectionListener = _subscriptions.any((s) =>
+          s.toString().contains('connectionState'));
+      if (hasConnectionListener) {
+        if (kDebugMode) {
+          print('[BLE] 跳过重复的监听器注册：${device.remoteId}');
+        }
+        return;
+      }
+    }
+
     final subscription = device.connectionState.listen(
       (state) {
         if (_isDisposing) return;
 
+        // 始终更新 connectionState
         connectionState.value = state;
 
         // 发送连接状态变化事件
@@ -430,6 +451,9 @@ class BluetoothDeviceService {
             connectionStatus.value = '已连接';
             _reconnectAttempts = 0;
             isReconnecting.value = false;
+
+            // 修复：连接成功时，确保 _connectedDevice 已设置
+            _connectedDevice ??= device;
             break;
 
           case BluetoothConnectionState.disconnected:
@@ -451,12 +475,12 @@ class BluetoothDeviceService {
         }
 
         if (kDebugMode) {
-          print('蓝牙连接状态更新: $state');
+          print('[BLE] 蓝牙连接状态更新：$state');
         }
       },
       onError: (error) {
         if (kDebugMode) {
-          print('连接监听错误: $error');
+          print('[BLE] 连接监听错误：$error');
         }
 
         if (!_isDisposing) {
@@ -751,6 +775,47 @@ class BluetoothDeviceService {
     _receivedPacket.value = null;
   }
 
+  /// 主动检查并同步连接状态
+  ///
+  /// 用于确保 Flutter 端状态与实际设备连接状态一致
+  Future<void> syncConnectionState() async {
+    if (_connectedDevice != null) {
+      // 通过检查系统已连接设备列表来确定设备状态
+      final connectedDevices = await FlutterBluePlus.systemDevices([]);
+      final isDeviceConnected = connectedDevices.any(
+        (d) => d.remoteId == _connectedDevice!.remoteId,
+      );
+      final deviceState = isDeviceConnected
+          ? BluetoothConnectionState.connected
+          : BluetoothConnectionState.disconnected;
+      final currentState = connectionState.value;
+
+      if (kDebugMode) {
+        print('[BLE] 同步连接状态：设备=$deviceState, 当前=$currentState');
+      }
+
+      // 状态不一致时，强制同步
+      if (deviceState != currentState) {
+        connectionState.value = deviceState;
+
+        switch (deviceState) {
+          case BluetoothConnectionState.connected:
+            connectionStatus.value = '已连接';
+            break;
+          case BluetoothConnectionState.disconnected:
+            connectionStatus.value = '未连接';
+            break;
+          default:
+            connectionStatus.value = '连接中...';
+        }
+
+        if (kDebugMode) {
+          print('[BLE] 连接状态已同步：$deviceState');
+        }
+      }
+    }
+  }
+
   /// 异步初始化绑定信息
   Future<void> _initBindingInfo() async {
     await _loadBindingInfo();
@@ -812,6 +877,9 @@ class BluetoothDeviceService {
 
         // 设备已在系统层面连接，恢复 Flutter 端的连接状态
         await _restoreConnection(boundDevice);
+
+        // 主动同步一次连接状态
+        await syncConnectionState();
       } else {
         if (kDebugMode) {
           print('[BLE] 已绑定设备当前未连接');
@@ -830,8 +898,9 @@ class BluetoothDeviceService {
       _connectedDevice = device;
       _lastConnectionTime = DateTime.now();
 
-      // 设置连接状态监听
-      _setupConnectionListener(device);
+      if (kDebugMode) {
+        print('[BLE] 恢复连接：设备 = ${device.platformName}');
+      }
 
       // 发现服务并设置特征值
       connectionStatus.value = '恢复连接中...';
@@ -864,13 +933,18 @@ class BluetoothDeviceService {
       // 设置接收监听
       await _setupReceiveListener();
 
-      // 更新连接状态
-      connectionState.value = BluetoothConnectionState.connected;
-      connectionStatus.value = '已连接';
+      // 设置连接状态监听（在特征值设置完成后）
+      _setupConnectionListener(device);
 
+      // 不手动设置 connectionState，让监听器自动触发
+      // 但强制刷新一次 connectionStatus，确保 UI 立即更新
+      connectionStatus.value = '已连接';
       if (kDebugMode) {
-        print('[BLE] 连接状态已恢复: ${device.platformName}');
+        print('[BLE] 连接状态已恢复：${device.platformName}');
       }
+
+      // 主动同步一次连接状态
+      await syncConnectionState();
     } catch (e) {
       if (kDebugMode) {
         print('[BLE] 恢复连接失败: $e');

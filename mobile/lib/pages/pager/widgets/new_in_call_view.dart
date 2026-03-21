@@ -987,8 +987,6 @@ class _NewInCallViewState extends State<NewInCallView> {
                   width: double.infinity,
                   height: 72,
                   waveColor: themeColor,
-                  showGrid: false,
-                  showLabels: false,
                 ),
               ),
             ),
