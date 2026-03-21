@@ -11,9 +11,6 @@ class WaveformVisualizationWidget extends StatefulWidget {
   final double height;
   final Color waveColor;
   final Color backgroundColor;
-  final bool showGrid;
-  final bool showLabels;
-  final bool smooth;
   final Color? borderColor;
   final VoidCallback? onCopyImage;
 
@@ -24,9 +21,6 @@ class WaveformVisualizationWidget extends StatefulWidget {
     this.height = 150,
     this.waveColor = Colors.blue,
     this.backgroundColor = Colors.white,
-    this.showGrid = true,
-    this.showLabels = true,
-    this.smooth = false,
     this.borderColor,
     this.onCopyImage,
   });
@@ -103,9 +97,6 @@ class _WaveformVisualizationWidgetState
               painter: WaveformVisualizationPainter(
                 waveformData: widget.waveformData,
                 waveColor: widget.waveColor,
-                showGrid: widget.showGrid,
-                showLabels: widget.showLabels,
-                smooth: widget.smooth,
               ),
               size: Size(widget.width, widget.height),
             ),
@@ -117,19 +108,14 @@ class _WaveformVisualizationWidgetState
 }
 
 /// 波形可视化绘制器
+/// 采用类似苹果录音机的上下对称条状图案
 class WaveformVisualizationPainter extends CustomPainter {
   final List<int> waveformData;
   final Color waveColor;
-  final bool showGrid;
-  final bool showLabels;
-  final bool smooth;
 
   WaveformVisualizationPainter({
     required this.waveformData,
     required this.waveColor,
-    required this.showGrid,
-    required this.showLabels,
-    this.smooth = false,
   });
 
   @override
@@ -139,21 +125,8 @@ class WaveformVisualizationPainter extends CustomPainter {
       return;
     }
 
-    // 绘制网格
-    if (showGrid) {
-      _drawGrid(canvas, size);
-    }
-
-    // 绘制中心线
-    _drawCenterLine(canvas, size);
-
-    // 绘制波形
-    _drawWaveform(canvas, size, smooth: smooth);
-
-    // 绘制标签
-    if (showLabels) {
-      _drawLabels(canvas, size);
-    }
+    // 绘制波形 - 苹果录音机风格的上下对称条状
+    _drawSymmetricBars(canvas, size);
   }
 
   /// 绘制空状态
@@ -182,174 +155,86 @@ class WaveformVisualizationPainter extends CustomPainter {
     );
   }
 
-  /// 绘制网格
-  void _drawGrid(Canvas canvas, Size size) {
-    final gridPaint = Paint()
-      ..color = Colors.grey.shade200
-      ..strokeWidth = 0.5;
-
-    // 水平网格线（8 条）
-    for (int i = 1; i < 8; i++) {
-      final y = (size.height / 8) * i;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
-    }
-
-    // 竖直网格线（16 条）
-    for (int i = 1; i < 16; i++) {
-      final x = (size.width / 16) * i;
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
-    }
-  }
-
-  /// 绘制中心线
-  void _drawCenterLine(Canvas canvas, Size size) {
-    final centerPaint = Paint()
-      ..color = waveColor.withValues(alpha: 0.25)
-      ..strokeWidth = 1;
-
+  /// 绘制上下对称的条状波形（苹果录音机风格）
+  void _drawSymmetricBars(Canvas canvas, Size size) {
     final centerY = size.height / 2;
-
-    // 绘制虚线（使用多个短线段）
-    const dashWidth = 5.0;
-    const dashSpace = 5.0;
-    for (double x = 0; x < size.width; x += dashWidth + dashSpace) {
-      canvas.drawLine(
-        Offset(x, centerY),
-        Offset((x + dashWidth).clamp(0, size.width), centerY),
-        centerPaint,
-      );
-    }
-  }
-
-  /// 绘制波形
-  void _drawWaveform(Canvas canvas, Size size, {bool smooth = false}) {
-    final paint = Paint()
-      ..color = waveColor
-      ..strokeWidth = 1.8
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-
-    final fillPaint = Paint()
-      ..color = waveColor.withValues(alpha: 0.12)
-      ..style = PaintingStyle.fill;
-
-    final centerY = size.height / 2;
-    final pointWidth =
-        size.width / (waveformData.length - 1).clamp(1, double.infinity);
-
-    // 预计算所有点坐标
-    final xs = List<double>.generate(
-      waveformData.length,
-      (i) => i * pointWidth,
+    
+    // 计算条形数量和间距
+    const barCount = 60; // 条形数量
+    final dataStep = waveformData.length / barCount;
+    final barWidth = size.width / barCount;
+    final barSpacing = barWidth * 0.15; // 条形间距为宽度的 15%
+    final actualBarWidth = barWidth - barSpacing;
+    
+    // 创建渐变色
+    final gradient = LinearGradient(
+      colors: [
+        waveColor.withValues(alpha: 0.6),
+        waveColor,
+        waveColor.withValues(alpha: 0.8),
+      ],
+      stops: const [0.0, 0.5, 1.0],
     );
-    final ys = List<double>.generate(waveformData.length, (i) {
-      final amplitude = waveformData[i] / 255.0;
-      return centerY - (amplitude * centerY);
-    });
-
-    // 构建路径
-    final path = Path();
-    final fillPath = Path();
-
-    path.moveTo(xs[0], ys[0]);
-    fillPath.moveTo(xs[0], centerY);
-    fillPath.lineTo(xs[0], ys[0]);
-
-    if (smooth && waveformData.length > 2) {
-      // 平滑曲线：通过中点的二次贝塞尔曲线
-      for (int i = 0; i < waveformData.length - 1; i++) {
-        final midX = (xs[i] + xs[i + 1]) / 2;
-        final midY = (ys[i] + ys[i + 1]) / 2;
-        path.quadraticBezierTo(xs[i], ys[i], midX, midY);
-        fillPath.quadraticBezierTo(xs[i], ys[i], midX, midY);
-      }
-      path.lineTo(xs.last, ys.last);
-      fillPath.lineTo(xs.last, ys.last);
-    } else {
-      for (int i = 1; i < waveformData.length; i++) {
-        path.lineTo(xs[i], ys[i]);
-        fillPath.lineTo(xs[i], ys[i]);
-      }
-    }
-
-    // 闭合填充路径
-    fillPath.lineTo(size.width, centerY);
-    fillPath.close();
-
-    // 绘制填充
-    canvas.drawPath(fillPath, fillPaint);
-
-    // 绘制线条
-    canvas.drawPath(path, paint);
-
-    // 非平滑模式下绘制数据点
-    if (!smooth) {
-      _drawDataPoints(canvas, size, centerY, pointWidth);
-    }
-  }
-
-  /// 绘制数据点
-  void _drawDataPoints(
-    Canvas canvas,
-    Size size,
-    double centerY,
-    double pointWidth,
-  ) {
-    final pointPaint = Paint()
-      ..color = waveColor
-      ..style = PaintingStyle.fill;
-
-    for (int i = 0; i < waveformData.length; i++) {
-      final x = i * pointWidth;
-      final amplitude = waveformData[i] / 255.0;
-      final y = centerY - (amplitude * centerY);
-
-      // 只绘制部分点以避免过度拥挤
-      if (waveformData.length <= 32 || i % (waveformData.length ~/ 32) == 0) {
-        canvas.drawCircle(Offset(x, y), 2, pointPaint);
-      }
-    }
-  }
-
-  /// 绘制标签
-  void _drawLabels(Canvas canvas, Size size) {
-    final textPaint = TextPainter(textDirection: TextDirection.ltr);
-
-    // 绘制幅度标签
-    final amplitudes = ['255', '192', '128', '64', '0'];
-    for (int i = 0; i < amplitudes.length; i++) {
-      final y = (size.height / 4) * i;
-
-      textPaint.text = TextSpan(
-        text: amplitudes[i],
-        style: const TextStyle(fontSize: 10, color: Colors.grey),
+    
+    for (int i = 0; i < barCount; i++) {
+      // 采样波形数据（使用平均值）
+      final startIndex = (i * dataStep).floor();
+      final endIndex = ((i + 1) * dataStep).ceil();
+      final validIndices = [
+        for (int j = startIndex; j < endIndex && j < waveformData.length; j++)
+          waveformData[j]
+      ];
+      
+      final amplitude = validIndices.isNotEmpty
+          ? validIndices.reduce((a, b) => a + b) / validIndices.length / 255.0
+          : 0.0;
+      
+      // 计算条形高度（最大高度为中心到顶部/底部的 95%）
+      final maxBarHeight = centerY * 0.95;
+      final barHeight = amplitude * maxBarHeight;
+      
+      // 最小高度保证可见性
+      final minHeight = 2.0;
+      final finalBarHeight = barHeight < minHeight ? minHeight : barHeight;
+      
+      // 创建条形矩形（上半部分）
+      final topRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          i * barWidth + barSpacing / 2,
+          centerY - finalBarHeight,
+          actualBarWidth,
+          finalBarHeight,
+        ),
+        Radius.circular(actualBarWidth * 0.4),
       );
-
-      textPaint.layout();
-      textPaint.paint(canvas, Offset(5, y - 5));
-    }
-
-    // 绘制时间标签
-    final timeLabels = ['0%', '25%', '50%', '75%', '100%'];
-    for (int i = 0; i < timeLabels.length; i++) {
-      final x = (size.width / 4) * i;
-
-      textPaint.text = TextSpan(
-        text: timeLabels[i],
-        style: const TextStyle(fontSize: 10, color: Colors.grey),
+      
+      // 创建条形矩形（下半部分）
+      final bottomRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          i * barWidth + barSpacing / 2,
+          centerY,
+          actualBarWidth,
+          finalBarHeight,
+        ),
+        Radius.circular(actualBarWidth * 0.4),
       );
-
-      textPaint.layout();
-      textPaint.paint(canvas, Offset(x - 10, size.height - 15));
+      
+      // 绘制条形
+      final barPaint = Paint()
+        ..shader = gradient.createShader(
+          Rect.fromLTWH(i * barWidth, 0, barWidth, size.height),
+        )
+        ..style = PaintingStyle.fill;
+      
+      canvas.drawRRect(topRect, barPaint);
+      canvas.drawRRect(bottomRect, barPaint);
     }
   }
 
   @override
   bool shouldRepaint(WaveformVisualizationPainter oldDelegate) {
     return oldDelegate.waveformData != waveformData ||
-        oldDelegate.waveColor != waveColor ||
-        oldDelegate.smooth != smooth;
+        oldDelegate.waveColor != waveColor;
   }
 }
 
@@ -388,8 +273,6 @@ class WaveformVisualizationCard extends StatelessWidget {
                 width: 280,
                 height: 140,
                 waveColor: Colors.blue,
-                showGrid: true,
-                showLabels: true,
                 onCopyImage: onCopyImage,
               ),
             ),

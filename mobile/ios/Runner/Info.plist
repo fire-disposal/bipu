@@ -64,8 +64,20 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>bluetooth-central</string>
+		<string>bluetooth-peripheral</string>
 		<string>fetch</string>
 		<string>processing</string>
+		<string>remote-notification</string>
 	</array>
+
+	<!-- Notification Permissions (iOS 12+) -->
+	<key>NSUserNotificationUsageDescription</key>
+	<string>我们需要通知权限以提醒您收到新消息</string>
+
+	<!-- Health Kit (可选，如未来需要健康数据集成) -->
+	<!-- <key>NSHealthShareUsageDescription</key>
+	<string>我们需要访问健康数据以提供健康相关功能</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>我们需要更新健康数据以记录您的活动</string> -->
 </dict>
 </plist>
