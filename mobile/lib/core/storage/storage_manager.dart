@@ -23,11 +23,14 @@ class StorageManager {
       sharedPreferencesName: 'bipupu_secure_prefs',
       preferencesKeyPrefix: 'bipupu_',
     ),
-    iOptions: IOSOptions(
-      groupId: 'group.com.bipupu.user',
-      accountName: 'bipupu_keychain',
-    ),
+    // iOS 端不强制绑定 groupId，避免 Keychain Sharing 未配置时读写失败
+    iOptions: IOSOptions(),
   );
+
+  // iOS 回退存储：当 App Group/Keychain Entitlement 未正确配置时，
+  // 自定义 iOptions 可能读写失败（常见表现：登录 200，紧接着 /me 401）
+  static const FlutterSecureStorage _secureStorageFallback =
+      FlutterSecureStorage();
 
   // 存储盒子缓存
   static final Map<String, Box> _boxCache = {};
@@ -225,15 +228,51 @@ class StorageManager {
       await _secureStorage.write(key: key, value: value);
     } catch (e) {
       debugPrint('Error setting secure data for key $key: $e');
+
+      // iOS Keychain 组未配置时，回退到默认存储，保证 token 可用
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        try {
+          await _secureStorageFallback.write(key: key, value: value);
+          debugPrint('Fallback secure storage write success for key: $key');
+          return;
+        } catch (fallbackError) {
+          debugPrint(
+            'Fallback secure storage write failed for key $key: $fallbackError',
+          );
+        }
+      }
+
+      rethrow;
     }
   }
 
   /// 获取安全数据
   static Future<String?> getSecureData(String key) async {
     try {
-      return await _secureStorage.read(key: key);
+      final value = await _secureStorage.read(key: key);
+      if (value != null && value.isNotEmpty) {
+        return value;
+      }
+
+      // iOS 回退读取：兼容已落在默认 Keychain 的 token
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        return await _secureStorageFallback.read(key: key);
+      }
+
+      return value;
     } catch (e) {
       debugPrint('Error getting secure data for key $key: $e');
+
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        try {
+          return await _secureStorageFallback.read(key: key);
+        } catch (fallbackError) {
+          debugPrint(
+            'Fallback secure storage read failed for key $key: $fallbackError',
+          );
+        }
+      }
+
       return null;
     }
   }
