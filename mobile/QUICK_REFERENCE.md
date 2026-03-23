@@ -29,7 +29,7 @@ open ios/Runner.xcworkspace
 2. 选择 TARGETS → Runner
 3. 选择 "Signing & Capabilities"
 4. 勾选 "Automatically manage signing"
-5. Team 选择朋友的 Apple ID
+5. Team 选择朋友的 Apple ID 
 6. 如果没有，点 "Add Account" 登录
 ```
 
