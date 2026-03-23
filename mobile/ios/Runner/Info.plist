@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -24,16 +26,61 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Need Bluetooth to connect to pager devices.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Need Bluetooth to connect to pager devices.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>我们需要使用您的相机以拍摄头像照片</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Need Location to scan for devices in background.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Need Location to scan for devices in background.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Need Location to scan for devices.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs access to microphone for speech recognition.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>我们使用语音识别将用户语音转换为文本，用于语音消息与语音命令。</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>我们需要访问您的相册以设置头像</string>
+	<key>NSUserNotificationUsageDescription</key>
+	<string>我们需要通知权限以提醒您收到新消息</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>FlutterSceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-central</string>
+		<string>bluetooth-peripheral</string>
+		<string>fetch</string>
+		<string>processing</string>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>This app needs access to microphone for speech recognition.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>我们需要访问您的相册以设置头像</string>
-	<key>NSCameraUsageDescription</key>
-	<string>我们需要使用您的相机以拍摄头像照片</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -43,41 +90,5 @@
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-	
-	<!-- Bluetooth Permissions -->
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Need Bluetooth to connect to pager devices.</string>
-	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>Need Bluetooth to connect to pager devices.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Need Location to scan for devices in background.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Need Location to scan for devices.</string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>Need Location to scan for devices in background.</string>
-
-	<!-- Background Modes -->
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>bluetooth-central</string>
-		<string>bluetooth-peripheral</string>
-		<string>fetch</string>
-		<string>processing</string>
-		<string>remote-notification</string>
-	</array>
-
-	<!-- Notification Permissions (iOS 12+) -->
-	<key>NSUserNotificationUsageDescription</key>
-	<string>我们需要通知权限以提醒您收到新消息</string>
-
-	<!-- Health Kit (可选，如未来需要健康数据集成) -->
-	<!-- <key>NSHealthShareUsageDescription</key>
-	<string>我们需要访问健康数据以提供健康相关功能</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>我们需要更新健康数据以记录您的活动</string> -->
 </dict>
 </plist>

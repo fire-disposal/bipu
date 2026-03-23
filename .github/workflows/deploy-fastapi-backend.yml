@@ -1,4 +1,4 @@
-name: fastapi后端部署
+gname: fastapi后端部署
 
 concurrency:
   group: deploy-backend-${{ github.ref }}
