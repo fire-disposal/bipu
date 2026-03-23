@@ -24,7 +24,11 @@ class StorageManager {
       preferencesKeyPrefix: 'bipupu_',
     ),
     iOptions: IOSOptions(
-      groupId: 'group.com.bipupu.user',
+      // 不指定 groupId 可以避免在未在 Xcode 中配置 Keychain/Group 时出现
+      // "A required entitlement isn't present" (-34018) 错误。若需要使用
+      // 自定义 Keychain 组，请在 Xcode 中启用 Keychain Sharing，并把
+      // 对应的组（例如: group.com.bipupu.user 或 带 team 前缀的 $(AppIdentifierPrefix)group.com.bipupu.user）
+      // 添加到 Runner.entitlements 的 keychain-access-groups 中。
       accountName: 'bipupu_keychain',
     ),
   );
@@ -192,7 +196,7 @@ class StorageManager {
   }
 
   /// 获取用户数据（类型安全版本）
-  /// 
+  ///
   /// [fromJson] 参数用于提供从 JSON 转换到目标类型的函数，
   /// 确保类型安全。如果为 null，则返回原始解码后的数据。
   static Future<T?> getUserData<T>(
@@ -204,19 +208,21 @@ class StorageManager {
       final jsonString = box.get(key);
 
       if (jsonString == null) return null;
-      
+
       final decoded = json.decode(jsonString);
-      
+
       if (fromJson != null) {
         return fromJson(decoded);
       }
-      
+
       // 如果没有提供转换函数，尝试直接转换
       if (decoded is T) {
         return decoded;
       }
-      
-      debugPrint('Type mismatch for key $key: expected ${T.toString()}, got ${decoded.runtimeType}');
+
+      debugPrint(
+        'Type mismatch for key $key: expected ${T.toString()}, got ${decoded.runtimeType}',
+      );
       return null;
     } catch (e) {
       debugPrint('Error getting user data for key $key: $e');
@@ -512,7 +518,7 @@ class CacheItem<T> {
   }
 
   /// 从 JSON 反序列化缓存项（类型安全版本）
-  /// 
+  ///
   /// [dataFromJson] 参数用于提供从 JSON 转换到目标数据类型的函数，
   /// 确保类型安全。如果为 null，则直接尝试转换。
   static CacheItem<T> fromJson<T>(
@@ -521,7 +527,7 @@ class CacheItem<T> {
   }) {
     T data;
     final rawData = json['data'];
-    
+
     if (dataFromJson != null) {
       data = dataFromJson(rawData);
     } else {
@@ -535,7 +541,7 @@ class CacheItem<T> {
         );
       }
     }
-    
+
     return CacheItem<T>(
       data: data,
       timestamp: DateTime.parse(json['timestamp']),

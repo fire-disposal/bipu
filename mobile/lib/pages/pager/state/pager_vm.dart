@@ -127,6 +127,14 @@ class PagerVM extends ChangeNotifier {
   }
 
   Future<void> _selectRandomOperator() async {
+    // 确保 OperatorService 已初始化（幂等），避免在 init 尚未完成时访问空列表
+    try {
+      await _operatorService.init();
+    } catch (e) {
+      log('[PagerVM] OperatorService.init failed in _selectRandomOperator: $e');
+      rethrow;
+    }
+
     _operator = _operatorService.getRandomOperator();
     await _initBackend();
     _operatorVoice = OperatorVoice(operator: _operator!, backend: _backend);
